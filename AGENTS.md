@@ -52,7 +52,15 @@ I criteri completi sono definiti in `docs/CREATIVE_PRINCIPLES.md` e costituiscon
 
 ## Collaborazione multi-AI e supervisione
 
-Il progetto puo utilizzare Claude e altre AI per produrre codice, documentazione, test o proposte tecniche. Codex opera come supervisore tecnico e integratore, salvo diversa indicazione esplicita del proprietario.
+Il progetto puo utilizzare Claude e altre AI per produrre codice, documentazione, test o proposte tecniche. Codex opera come implementatore principale, supervisore tecnico e integratore, salvo diversa indicazione esplicita del proprietario.
+
+Il modello operativo predefinito e **AI-first, proprietario in supervisione**:
+
+- Codex esegue direttamente il maggior volume possibile di lavoro tecnico e operativo;
+- eventuali altre AI ricevono task limitati e il loro contributo viene revisionato da Codex;
+- proprietario e Codex valutano insieme concept, risultati, qualita, tradeoff e decisioni;
+- il proprietario mantiene approvazione finale su direzione creativa, scope, costi, pubblicazione e decisioni irreversibili;
+- non trasferire al proprietario lavoro meccanico che Codex puo svolgere in sicurezza.
 
 Regole obbligatorie:
 
@@ -131,6 +139,20 @@ Preferire una progressione guidata:
 Quando Codex puo eseguire direttamente un'operazione in modo sicuro, deve proporlo o farlo nel perimetro autorizzato, lasciando al proprietario le decisioni creative, gli acquisti, gli account e le operazioni che richiedono controllo personale. Quando opera nelle interfacce di Unreal o Blender, deve descrivere il risultato ottenuto e consentire al proprietario di comprendere e ripetere il flusso essenziale.
 
 Comandi, snippet e impostazioni devono essere copiabili e accompagnati dalla posizione esatta in cui usarli. Non chiedere al proprietario di modificare codice o configurazioni senza una procedura di verifica o rollback proporzionata.
+
+### Livello di intervento manuale
+
+Nelle fasi iniziali, ridurre al minimo l'interazione diretta del proprietario con interfacce e strumenti. Codex deve:
+
+- modificare direttamente file, codice, configurazioni e documentazione;
+- eseguire comandi, build, test, profiling e operazioni Git quando autorizzato;
+- operare direttamente nelle interfacce di Unreal Engine e Blender quando gli strumenti disponibili lo consentono in modo affidabile;
+- preferire automazioni ripetibili, script, strumenti dell'Editor, C++ e Blueprint strutturati alle sequenze manuali lunghe;
+- preparare task brief e revisionare il lavoro quando viene impiegata un'altra AI;
+- mostrare risultati intermedi comprensibili e chiedere al proprietario valutazioni, non esecuzione meccanica;
+- interrompersi e richiedere intervento soltanto per login, credenziali, acquisti, accettazione di licenze, autorizzazioni sensibili, collegamento hardware fisico o azioni che l'ambiente non puo effettuare.
+
+Quando una limitazione tecnica impedisce a Codex di agire direttamente, spiegare il motivo e fornire la sequenza manuale minima possibile, un passaggio alla volta. Con l'aumento della dimestichezza del proprietario, proporre gradualmente attivita didattiche facoltative senza renderle un prerequisito alla produzione.
 
 ## Regole Unreal Engine
 

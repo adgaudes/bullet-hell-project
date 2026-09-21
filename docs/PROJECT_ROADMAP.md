@@ -77,6 +77,7 @@ Attivita:
 7. Definire una cadenza: build giocabile almeno settimanale e revisione dello scope almeno mensile.
 8. Stabilire il protocollo di collaborazione tra proprietario, Codex supervisore e altre AI contributrici.
 9. Condurre installazione, apprendimento e produzione con istruzioni progressive, verifiche esplicite e nessuna conoscenza tecnica presunta.
+10. Adottare un flusso AI-first: Codex implementa e supervisiona, il proprietario partecipa soprattutto a valutazione e decisioni, con interazione manuale minima finche non acquisisce dimestichezza.
 
 Deliverable:
 
