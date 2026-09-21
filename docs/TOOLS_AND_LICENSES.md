@@ -23,7 +23,7 @@ Stati usati:
 | Blender | 5.2.2 registrato; eseguibili 5.1 e 5.2 presenti | Modellazione, UV, rig, animazione, export | Installato; fissare 5.2.2 dopo test pipeline |
 | Visual Studio Code | 1.137.0 x64 | Testo, configurazioni e modifiche leggere | Installato; non IDE primario UE C++ |
 | Claude Desktop | Installato; versione da rilevare | Confronto, pianificazione e revisione con Claude | Disponibile con piano Claude Pro |
-| Claude Code CLI | 2.1.278 | Delega controllata di implementazione, test e documentazione | Installato, `doctor` superato e autenticato con Claude.ai Pro; nessuna API PAYG configurata |
+| Claude Code CLI | 2.1.278 | Delega controllata di implementazione, test e documentazione | Installato, `doctor` e delega read-only superati, autenticato con Claude.ai Pro; nessuna API PAYG configurata |
 | Google Antigravity | 2.12.2 | Orchestrazione di agenti, task asincroni e browser agent | Installato; canale AI secondario |
 | Google Antigravity IDE | 2.5.5 | Editing agentico e task locali sul repository | Installato; non sostituisce Visual Studio per UE C++ |
 | Git | 2.55.0 | Versionamento | Installato |

@@ -105,7 +105,11 @@ Mantenere su Codex:
 
 Per ogni delega usare il minimo contesto sufficiente: inviare file mirati o riferimenti precisi, evitare intere cronologie di conversazione, richiedere output conciso e non chiedere spiegazioni estese se non necessarie. Preferire un singolo brief completo a una sequenza di messaggi correttivi. Se il primo risultato non soddisfa i criteri, fornire feedback puntuale sul diff invece di rigenerare tutto.
 
+Non delegare micro-task a Claude Code: il costo fisso di inizializzazione e contesto puo superare il lavoro utile. Accorpare invece task coerenti e sostanziali in una singola delega, usare effort basso quando sufficiente e controllare i dati di utilizzo restituiti dalla CLI. Codex deve interrompere o ridimensionare una delega se il rapporto tra contesto, output e valore prodotto e sfavorevole.
+
 La delega non e automatica quando espone segreti, richiede una decisione del proprietario, introduce dipendenze o costi, oppure non dispone di un canale Claude autorizzato e verificabile. In assenza di accesso diretto a Claude, Codex prepara un brief pronto all'uso e segnala il minimo intervento richiesto al proprietario.
+
+Il proprietario ha autorizzato Claude Code a leggere e trasmettere ad Anthropic i file non riservati del repository necessari ai task delegati. Restano sempre esclusi credenziali, token, dati personali, dati Steamworks, segreti e qualunque file non necessario al task. Ogni delega deve mantenere il principio del minimo accesso.
 
 Antigravity e Antigravity IDE sono canali secondari: usarli quando i loro agenti asincroni, browser agent o revisione indipendente producono un vantaggio concreto. Non inviare lo stesso task completo a piu AI salvo confronto intenzionale; scegliere prima il canale con il miglior rapporto tra contesto richiesto, budget disponibile e verificabilita dell'output.
 
