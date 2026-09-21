@@ -8,6 +8,7 @@
 - Input pienamente supportato: **tastiera e mouse**.
 - Obiettivo secondario: buona esperienza su **Steam Deck**, con aspirazione alla classificazione Verified se sostenibile.
 - Build Linux nativa: non prevista inizialmente; la prima strategia e testare la build Windows attraverso Proton.
+- Hardware di test: uno Steam Deck e gia posseduto dal proprietario; modello e configurazione da registrare al primo test.
 
 La classificazione Steam Deck non puo essere promessa prima dei test e della revisione Valve. Il progetto deve tuttavia evitare fin dall'inizio scelte che la rendano inutilmente difficile.
 
@@ -101,12 +102,13 @@ Target prestazionale iniziale: progettare per 60 fps, misurare appena esiste una
 - simulare 1280x800 e 16:10 nell'Editor;
 - controllare glifi, focus e cambio dispositivo;
 - registrare separatamente bug specifici dei due schemi.
+- non appena esiste la prima build Windows pacchettizzata, eseguire uno smoke test sullo Steam Deck disponibile tramite Proton.
 
-### Alla vertical slice
+### Dalla prima build pacchettizzata alla vertical slice
 
 - provare la build Windows reale tramite Proton;
-- testare su Steam Deck fisico, preso in prestito o tramite tester se non e disponibile internamente;
-- usare SteamOS Devkit Client quando esiste hardware disponibile;
+- testare sullo Steam Deck fisico gia disponibile;
+- configurare SteamOS Devkit Client quando la distribuzione frequente sul dispositivo diventa utile;
 - misurare frame time, memoria, temperature percepite, consumo e leggibilita;
 - testare sospensione/ripresa, dock/undock e cambio fra controlli integrati ed esterni;
 - verificare testo e UI alla distanza d'uso reale.
@@ -120,7 +122,16 @@ Target prestazionale iniziale: progettare per 60 fps, misurare appena esiste una
 
 ## Hardware e acquisti
 
-Non e necessario acquistare ora uno Steam Deck. Il bisogno diventa concreto alla vertical slice, quando esiste una build rappresentativa da profilare. Prima di un acquisto valutare prestito, tester affidabili o altre forme di accesso fisico; emulazione e test desktop non sostituiscono completamente display, controlli, sospensione e prestazioni del dispositivo.
+Il proprietario possiede gia uno Steam Deck, quindi non e previsto alcun acquisto hardware per questa verifica. Il dispositivo entra nella matrice di test dalla prima build Windows pacchettizzata. Emulatori e test desktop restano utili, ma non sostituiscono display, controlli, sospensione e prestazioni reali.
+
+Al primo utilizzo registrare:
+
+- modello LCD o OLED;
+- capacita e spazio disponibile;
+- versione SteamOS e canale aggiornamenti;
+- eventuale microSD o dock usato nei test;
+- refresh rate e limite frame selezionati;
+- versione Proton e preset grafico della build.
 
 ## Gate di input del prototipo
 

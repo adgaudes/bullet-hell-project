@@ -336,7 +336,7 @@ Ordine raccomandato:
 9. scena di stress e profiling;
 10. build pacchettizzata per playtest.
 
-Per tutto il prototipo verificare controller e tastiera/mouse a ogni incremento. Simulare anche 1280x800/16:10 e navigare ogni schermata senza mouse; i criteri completi sono in `PLATFORM_AND_INPUT.md`.
+Per tutto il prototipo verificare controller e tastiera/mouse a ogni incremento. Simulare anche 1280x800/16:10 e navigare ogni schermata senza mouse. Dalla prima build Windows pacchettizzata eseguire smoke test tramite Proton sullo Steam Deck gia posseduto; i criteri completi sono in `PLATFORM_AND_INPUT.md`.
 
 Deliverable:
 
