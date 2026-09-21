@@ -17,6 +17,7 @@ Progetto indipendente in fase di ideazione, destinato alla pubblicazione su Stea
 - [`docs/WORKING_CONCEPT.md`](docs/WORKING_CONCEPT.md): concept corrente, loop, firme, rischi ed esperimenti iniziali.
 - [`docs/TERRAIN_SYSTEM.md`](docs/TERRAIN_SYSTEM.md): trasformazione del terreno, tool, macchine, strategie tecniche e gate.
 - [`docs/WORLD_PREMISE.md`](docs/WORLD_PREMISE.md): invasione, terraformazione, rotazione, super-temporali e inondazioni.
+- [`docs/PROTOTYPE_01_SPEC.md`](docs/PROTOTYPE_01_SPEC.md): scope, ordine, metriche e gate del primo prototipo giocabile.
 - [`docs/PLATFORM_AND_INPUT.md`](docs/PLATFORM_AND_INPUT.md): Windows, controller, tastiera/mouse e obiettivo Steam Deck.
 - [`docs/DEMO_STRATEGY.md`](docs/DEMO_STRATEGY.md): obiettivi, scope, gate e strategia Steam per la demo pre-release.
 - [`docs/BRAINSTORMING_CONCEPTS.md`](docs/BRAINSTORMING_CONCEPTS.md): prime concept card da discutere e confrontare.

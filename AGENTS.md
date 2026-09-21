@@ -31,6 +31,7 @@ Obiettivo di produzione: arrivare a un gioco piccolo, rifinito, testabile e comm
 - I vincoli raccolti sono in `docs/PROJECT_BRIEF.md`; le prime proposte in `docs/BRAINSTORMING_CONCEPTS.md`.
 - Il concept corrente, ancora modificabile e non bloccato, e definito in `docs/WORKING_CONCEPT.md`.
 - Requisiti di piattaforma e input sono definiti in `docs/PLATFORM_AND_INPUT.md`.
+- La prossima implementazione autorizzabile e specificata in `docs/PROTOTYPE_01_SPEC.md`; non ampliarne lo scope senza una decisione registrata.
 
 Non presentare le scelte candidate come decisioni approvate. Registra le decisioni importanti nel registro indicato dalla roadmap.
 
