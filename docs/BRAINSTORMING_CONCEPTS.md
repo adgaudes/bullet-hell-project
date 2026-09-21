@@ -19,6 +19,12 @@ Il proprietario ha espresso interesse per:
 
 Questi assi guideranno la prossima generazione di concept. Per proteggere chiarezza e scope, ogni proposta usera una meccanica primaria e al massimo una secondaria con un'interazione dimostrabile; non sono una lista di feature da includere tutte.
 
+## Base selezionata per l'esplorazione
+
+Il proprietario ha scelto come punto di partenza modificabile la fantasia di un **ingegnere improvvisatore** che costruisce macchine capaci di accompagnarlo e trasformare radicalmente il campo di battaglia. La manipolazione del tempo resta una meccanica secondaria candidata; il controllo di uno sciame puo diventare una specifica famiglia di macchine in futuro.
+
+La versione strutturata, i rischi e i primi esperimenti sono in `WORKING_CONCEPT.md`. Le concept card A-D restano archivio utile e fonte di componenti, non finalisti equivalenti al concept di lavoro.
+
 ## Concept A - Il Faro Mobile
 
 **Pitch:** su un pianeta immerso in una tempesta senziente, il giocatore trascina e alimenta un faro mobile; la sua luce crea l'unica zona relativamente sicura, ma richiama creature sempre piu pericolose.

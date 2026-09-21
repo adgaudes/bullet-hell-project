@@ -8,7 +8,7 @@ Obiettivo di produzione: arrivare a un gioco piccolo, rifinito, testabile e comm
 
 ## Stato corrente
 
-- Fase attiva: fondazione del progetto e brainstorming.
+- Fase attiva: brainstorming e sviluppo del concept di lavoro.
 - Engine approvato: Unreal Engine 5.6, installazione tramite Epic Games Launcher.
 - DCC 3D installato: Blender 5.2.2; fissare definitivamente la versione di produzione dopo il test di export verso UE 5.6.
 - Editor leggero installato: Visual Studio Code 1.137.0. Non considerarlo un sostituto della toolchain C++ di Unreal.
@@ -17,10 +17,12 @@ Obiettivo di produzione: arrivare a un gioco piccolo, rifinito, testabile e comm
 - Modalita iniziale candidata: single-player.
 - Riferimenti dichiarati: *Deep Rock Galactic: Survivor* per resa 3D e leggibilita; *Vampire Survivors* per immediatezza, build e densita del loop.
 - Visuale 3D isometrica/top-down: direzione principale candidata; tema e modello di progressione non ancora decisi.
+- Base creativa corrente: ingegnere improvvisatore che costruisce macchine durante le missioni; le macchine trasformano il campo con vantaggi e conseguenze, mentre la manipolazione temporale e una meccanica secondaria candidata.
 - Esperienza iniziale: base in Blender, quasi nulla in Unreal Engine e C/C++.
 - Budget iniziale: molto basso; privilegiare soluzioni gratuite e rinviare acquisti non indispensabili.
 - La roadmap autorevole e `docs/PROJECT_ROADMAP.md`.
 - I vincoli raccolti sono in `docs/PROJECT_BRIEF.md`; le prime proposte in `docs/BRAINSTORMING_CONCEPTS.md`.
+- Il concept corrente, ancora modificabile e non bloccato, e definito in `docs/WORKING_CONCEPT.md`.
 
 Non presentare le scelte candidate come decisioni approvate. Registra le decisioni importanti nel registro indicato dalla roadmap.
 

@@ -56,9 +56,9 @@ La grafica 2D e l'identita specifica del titolo non sono il target visivo del pr
 
 ## Direzione candidata
 
-Un **survivor-like 3D isometrico single-player**, con sessioni rigiocabili, controllo focalizzato sul movimento e un sistema di build comprensibile ma capace di produrre sinergie. La componente bullet hell deve offrire pattern leggibili e decisioni di posizionamento, senza riempire lo schermo in modo indiscriminato.
+Un **survivor-like 3D isometrico single-player** incentrato su un ingegnere improvvisatore che costruisce macchine durante le missioni. Le macchine accompagnano il giocatore, modificano radicalmente terreno o condizioni dell'arena e possono manipolare localmente il tempo, creando vantaggi e svantaggi da gestire. La componente bullet hell deve offrire pattern leggibili e decisioni di posizionamento, senza riempire lo schermo in modo indiscriminato.
 
-Questa e una direzione forte, non ancora un concept lock. Tema, meccanica distintiva, durata della run, forma della progressione e grado di mira manuale devono essere scelti tramite brainstorming e prototipi.
+Questa e la base creativa scelta per l'esplorazione ed e descritta in `WORKING_CONCEPT.md`; non e ancora un Concept Lock. Tema, implementazione della costruzione, durata della run, forma della progressione e grado di mira manuale devono essere scelti tramite brainstorming e prototipi.
 
 ## Gerarchia iniziale dei pilastri
 
@@ -112,6 +112,13 @@ Le seguenti meccaniche interessano il proprietario e devono restare nel bacino d
 - costruire una macchina durante lo scontro.
 
 Non sono ancora feature approvate e non devono essere sommate automaticamente. Le concept card successive proveranno combinazioni controllate con una meccanica primaria e, al massimo, una secondaria strettamente sinergica.
+
+La prima combinazione scelta come base modificabile e:
+
+- fantasia primaria: ingegnere improvvisatore;
+- meccanica primaria: costruire macchine che accompagnano il giocatore e trasformano radicalmente il campo;
+- meccanica secondaria candidata: manipolazione temporale attraverso le macchine;
+- estensione futura possibile: comportamento a sciame per una famiglia di costruzioni.
 
 ## Prossimo gate
 

@@ -31,6 +31,14 @@ Vincoli gia confermati e quindi non piu trattati come semplici assunzioni:
 - *Vampire Survivors* come riferimento di loop e build, non come target grafico;
 - abilita arcade, costruzione della build, atmosfera e progressione/narrazione sono tutte desiderate, nell'ordine di validazione definito in `PROJECT_BRIEF.md`.
 
+Base creativa attualmente selezionata per l'esplorazione, non ancora bloccata:
+
+- ingegnere improvvisatore come fantasia del giocatore;
+- macchine costruite durante le missioni e capaci di accompagnare il giocatore;
+- trasformazione radicale del campo con vantaggi e conseguenze;
+- manipolazione temporale come meccanica secondaria candidata;
+- specifica e criteri di scarto in `WORKING_CONCEPT.md`.
+
 Ogni assunzione potra essere confermata, modificata o eliminata nelle prime fasi.
 
 ## 3. Milestone principali
@@ -583,6 +591,7 @@ Ogni espansione richiede un mini business case e non deve compromettere la stabi
 
 - `docs/VISION.md`: one-page vision e pilastri.
 - `docs/CREATIVE_PRINCIPLES.md`: criteri di originalita, autorialita e uso dell'AI.
+- `docs/WORKING_CONCEPT.md`: concept attivo durante brainstorming e micro-prototipi.
 - `docs/DECISIONS.md`: decision log con data, contesto, scelta e conseguenze.
 - `docs/GDD.md`: design eseguibile, non enciclopedia.
 - `docs/TECHNICAL_DESIGN.md`: architettura e contratti dei sistemi.
