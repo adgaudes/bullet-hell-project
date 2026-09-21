@@ -106,6 +106,8 @@ Mantenere su Codex:
 
 Per ogni delega usare il minimo contesto sufficiente: inviare file mirati o riferimenti precisi, evitare intere cronologie di conversazione, richiedere output conciso e non chiedere spiegazioni estese se non necessarie. Preferire un singolo brief completo a una sequenza di messaggi correttivi. Se il primo risultato non soddisfa i criteri, fornire feedback puntuale sul diff invece di rigenerare tutto.
 
+Preferenza del proprietario: Codex deve impartire direttamente i task a Claude tramite Claude Code e gestirne risultati, diff e revisione. Non chiedere al proprietario di copiare prompt o risposte tra applicazioni salvo indisponibilita tecnica del canale diretto o passaggi personali non automatizzabili.
+
 Non delegare micro-task a Claude Code: il costo fisso di inizializzazione e contesto puo superare il lavoro utile. Accorpare invece task coerenti e sostanziali in una singola delega, usare effort basso quando sufficiente e controllare i dati di utilizzo restituiti dalla CLI. Codex deve interrompere o ridimensionare una delega se il rapporto tra contesto, output e valore prodotto e sfavorevole.
 
 La delega non e automatica quando espone segreti, richiede una decisione del proprietario, introduce dipendenze o costi, oppure non dispone di un canale Claude autorizzato e verificabile. In assenza di accesso diretto a Claude, Codex prepara un brief pronto all'uso e segnala il minimo intervento richiesto al proprietario.
