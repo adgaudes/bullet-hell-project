@@ -399,7 +399,7 @@ void APrototype01Character::ApplyFacingRotation(float DeltaSeconds)
 			const float AimResponse = FMath::Clamp(
 				NormalizedMagnitude * FMath::Max(GamepadAimSensitivity, 0.0f), 0.0f, 1.0f);
 
-			Direction = FVector(LastGamepadAimValue.Y, -LastGamepadAimValue.X, 0.0f);
+			Direction = FVector(-LastGamepadAimValue.Y, -LastGamepadAimValue.X, 0.0f);
 			InterpSpeed = FMath::Max(GamepadAimRotationInterpSpeed, 0.0f) * AimResponse;
 			bHasDirection = AimResponse > KINDA_SMALL_NUMBER;
 		}

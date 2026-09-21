@@ -67,6 +67,8 @@ Build locale da collaudare: `LocalBuilds/Prototype01-CharacterFeel-Win64-v2/Wind
 
 Il gate resta aperto fino al collaudo manuale di leggibilita, accelerazione/frenata, mira e dash con tastiera/mouse e controller.
 
+Primo riscontro manuale: l'asse verticale della mira gamepad risultava invertito (stick verso il basso, indicatore verso l'alto). Il mapping e stato corretto preservando l'asse orizzontale gia validato; la nuova verifica e richiesta sulla build v3.
+
 ## Limiti intenzionali
 
 Non sono ancora presenti terreno, nemici, arena definitiva, HUD, audio o arte finale. Il corpo e l'indicatore frontale sono soltanto graybox provvisori.
