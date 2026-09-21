@@ -401,6 +401,7 @@ Gate di uscita, il piu importante del progetto:
 - la qualita target e producibile con il team disponibile;
 - non restano rischi tecnici esistenziali non mitigati;
 - scope, budget e calendario vengono approvati o il progetto viene ridimensionato.
+- viene presa una decisione go/no-go sulla demo pubblica e sul suo contenuto rappresentativo.
 
 Durata indicativa: 6-12 settimane.
 
@@ -518,6 +519,7 @@ Attivita:
 6. Preparare build upload, note di versione, simboli/debug privati e rollback.
 7. Inviare pagina e build alla revisione Valve con buffer per correzioni.
 8. Preparare press kit, mailing list/creator outreach e calendario annunci in misura compatibile con il progetto.
+9. Preparare e pubblicare una demo pre-release se supera i gate in `DEMO_STRATEGY.md`; valutare una sola edizione di Steam Next Fest quando il calendario e credibile.
 
 Vincoli Steam da ricontrollare al momento dell'esecuzione:
 

@@ -20,6 +20,8 @@ Obiettivo di produzione: arrivare a un gioco piccolo, rifinito, testabile e comm
 - Riferimenti dichiarati: *Deep Rock Galactic: Survivor* per resa 3D e leggibilita; *Vampire Survivors* per immediatezza, build e densita del loop.
 - Visuale 3D isometrica/top-down: direzione principale candidata; tema e modello di progressione non ancora decisi.
 - Base creativa corrente: mondo fantasy post-apocalittico caldo e colorato in rotazione perpetua; un ingegnere improvvisatore costruisce una carovana di macchine modulari che si agganciano, si separano, trasformano il campo e, in fasi avanzate, si fondono in forme colossali. Luce/buio e tempo sono sistemi candidati collegati.
+- Direzione ambientale: la natura ha riconquistato strutture decrepite; tono e palette restano caldi, accoglienti e vitali. La natura dei nemici non e ancora decisa.
+- Demo pubblica pre-release: pianificata come candidata dopo la vertical slice, subordinata ai gate in `docs/DEMO_STRATEGY.md`.
 - Esperienza iniziale: base in Blender, quasi nulla in Unreal Engine e C/C++.
 - Budget iniziale: molto basso; privilegiare soluzioni gratuite e rinviare acquisti non indispensabili.
 - La roadmap autorevole e `docs/PROJECT_ROADMAP.md`.

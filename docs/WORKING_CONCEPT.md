@@ -44,6 +44,20 @@ L'apocalisse non viene rappresentata principalmente con grigio, ruggine fredda e
 
 Il tono candidato e **meraviglia operosa**: il mondo e stato spezzato, ma costruire e viaggiare producono speranza concreta. Evitare cinismo uniforme, militarismo generico e iconografia distopica standard.
 
+### Natura che riconquista le rovine
+
+La natura ha preso il sopravvento sulle strutture del mondo precedente:
+
+- alberi e radici attraversano edifici, ponti e macchinari ormai decrepiti;
+- corsi d'acqua, fiori, funghi e creature trasformano vecchi spazi artificiali;
+- le rovine conservano tracce leggibili della loro funzione passata;
+- il nuovo ecosistema non e soltanto decorazione: puo aprire, bloccare, sostenere o alterare percorsi e macchine;
+- alcune strutture vengono recuperate con cura dagli abitanti invece di essere soltanto saccheggiate.
+
+*The Last of Us* e un riferimento per la capacita della vegetazione di intaccare e ridefinire vecchie strutture, non per tono, palette, storia, personaggi o composizioni riconoscibili. La nostra direzione deve restare fantasy, calda, accogliente e piu cromaticamente vitale.
+
+La natura non viene considerata automaticamente nemica. Puo essere rifugio, risorsa, infrastruttura o forza indifferente. La natura dei nemici resta aperta: organica, meccanica, magica, ibrida o legata alle anomalie del mondo verra decisa in una fase successiva.
+
 ## Fantasia del giocatore
 
 Il giocatore non e soltanto un combattente che trova armi piu forti. E un tecnico creativo sotto pressione:
