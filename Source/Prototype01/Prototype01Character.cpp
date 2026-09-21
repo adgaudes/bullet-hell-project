@@ -15,12 +15,16 @@
 #include "Materials/MaterialInterface.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "UObject/ConstructorHelpers.h"
+#include "TimerManager.h"
 
 namespace
 {
 	/** Materiale Engine base per l'istanza dinamica colorata del personaggio; nessun asset di progetto richiesto. */
 	const TCHAR* BasicShapeMaterialPath = TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial");
 	const FName ColorParamName(TEXT("Color"));
+	const FLinearColor GrayboxBodyColor(1.0f, 0.35f, 0.02f);
+	const FLinearColor FacingIndicatorColor(0.0f, 0.8f, 1.0f);
+	const FVector GrayboxBaseScale(0.9f, 0.45f, 0.9f);
 }
 
 APrototype01Character::APrototype01Character()
@@ -37,11 +41,28 @@ APrototype01Character::APrototype01Character()
 	if (GrayboxMeshAsset.Succeeded())
 	{
 		GrayboxMesh->SetStaticMesh(GrayboxMeshAsset.Object);
-		GrayboxMesh->SetRelativeScale3D(FVector(0.9f, 0.45f, 0.9f));
+		GrayboxMesh->SetRelativeScale3D(GrayboxBaseScale);
 	}
 	if (BasicShapeMaterialAsset.Succeeded())
 	{
 		GrayboxMesh->SetMaterial(0, BasicShapeMaterialAsset.Object);
+	}
+
+	// Indicatore graybox del Forward (+X): elimina l'ambiguita del corpo simmetrico, ancorato al bordo anteriore.
+	FacingIndicatorMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("FacingIndicatorMesh"));
+	FacingIndicatorMesh->SetupAttachment(RootComponent);
+	FacingIndicatorMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	FacingIndicatorMesh->SetCollisionResponseToAllChannels(ECR_Ignore);
+	FacingIndicatorMesh->SetCastShadow(false);
+	if (GrayboxMeshAsset.Succeeded())
+	{
+		FacingIndicatorMesh->SetStaticMesh(GrayboxMeshAsset.Object);
+		FacingIndicatorMesh->SetRelativeLocation(FVector(60.0f, 0.0f, 25.0f));
+		FacingIndicatorMesh->SetRelativeScale3D(FVector(0.35f, 0.35f, 0.35f));
+	}
+	if (BasicShapeMaterialAsset.Succeeded())
+	{
+		FacingIndicatorMesh->SetMaterial(0, BasicShapeMaterialAsset.Object);
 	}
 
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
@@ -80,9 +101,16 @@ void APrototype01Character::BeginPlay()
 	UE_LOG(LogTemp, Log, TEXT("PROTOTYPE01_CHARACTER_READY"));
 
 	// Colore caldo/arancione ad alto contrasto: il personaggio deve restare leggibile sul pavimento a griglia grigio.
-	if (UMaterialInstanceDynamic* GrayboxMID = GrayboxMesh->CreateAndSetMaterialInstanceDynamic(0))
+	GrayboxMID = GrayboxMesh->CreateAndSetMaterialInstanceDynamic(0);
+	if (GrayboxMID)
 	{
-		GrayboxMID->SetVectorParameterValue(ColorParamName, FLinearColor(1.0f, 0.35f, 0.02f));
+		GrayboxMID->SetVectorParameterValue(ColorParamName, GrayboxBodyColor);
+	}
+
+	// Indicatore Forward: colore bianco ad alto contrasto, distinto dal corpo.
+	if (UMaterialInstanceDynamic* IndicatorMID = FacingIndicatorMesh->CreateAndSetMaterialInstanceDynamic(0))
+	{
+		IndicatorMID->SetVectorParameterValue(ColorParamName, FacingIndicatorColor);
 	}
 
 	CameraBoom->TargetArmLength = CameraArmLength;
@@ -91,6 +119,8 @@ void APrototype01Character::BeginPlay()
 	UCharacterMovementComponent* Movement = GetCharacterMovement();
 	Movement->MaxWalkSpeed = PlanarMoveSpeed;
 	Movement->MaxFlySpeed = PlanarMoveSpeed;
+	Movement->MaxAcceleration = MoveAcceleration;
+	Movement->BrakingDecelerationFlying = MoveDeceleration;
 	Movement->SetMovementMode(MOVE_Flying);
 	if (APlayerController* PC = Cast<APlayerController>(GetController()))
 	{
@@ -104,6 +134,11 @@ void APrototype01Character::Tick(float DeltaSeconds)
 
 	UpdateMouseAimControlMode();
 	ApplyFacingRotation(DeltaSeconds);
+
+	if (bIsDashing)
+	{
+		GetCharacterMovement()->Velocity = DashDirection * DashSpeed;
+	}
 }
 
 void APrototype01Character::SetupEnhancedInput()
@@ -115,6 +150,9 @@ void APrototype01Character::SetupEnhancedInput()
 
 		IA_Aim = NewObject<UInputAction>(this, TEXT("IA_Aim"));
 		IA_Aim->ValueType = EInputActionValueType::Axis2D;
+
+		IA_Dash = NewObject<UInputAction>(this, TEXT("IA_Dash"));
+		IA_Dash->ValueType = EInputActionValueType::Boolean;
 
 		IMC_Gameplay = NewObject<UInputMappingContext>(this, TEXT("IMC_Gameplay"));
 
@@ -138,6 +176,9 @@ void APrototype01Character::SetupEnhancedInput()
 
 		IMC_Gameplay->MapKey(IA_Move, EKeys::Gamepad_Left2D);
 		IMC_Gameplay->MapKey(IA_Aim, EKeys::Gamepad_Right2D);
+
+		IMC_Gameplay->MapKey(IA_Dash, EKeys::SpaceBar);
+		IMC_Gameplay->MapKey(IA_Dash, EKeys::Gamepad_FaceButton_Bottom);
 	}
 
 	if (APlayerController* PC = Cast<APlayerController>(GetController()))
@@ -162,6 +203,7 @@ void APrototype01Character::SetupPlayerInputComponent(UInputComponent* PlayerInp
 		EnhancedInputComponent->BindAction(IA_Move, ETriggerEvent::Completed, this, &APrototype01Character::HandleMoveCompleted);
 		EnhancedInputComponent->BindAction(IA_Aim, ETriggerEvent::Triggered, this, &APrototype01Character::HandleAimTriggered);
 		EnhancedInputComponent->BindAction(IA_Aim, ETriggerEvent::Completed, this, &APrototype01Character::HandleAimCompleted);
+		EnhancedInputComponent->BindAction(IA_Dash, ETriggerEvent::Started, this, &APrototype01Character::HandleDashStarted);
 	}
 	else
 	{
@@ -172,6 +214,17 @@ void APrototype01Character::SetupPlayerInputComponent(UInputComponent* PlayerInp
 void APrototype01Character::HandleMoveTriggered(const FInputActionValue& Value)
 {
 	const FVector2D MoveValue = Value.Get<FVector2D>();
+
+	const FVector WorldMoveDirection = (FVector::ForwardVector * MoveValue.Y) + (FVector::RightVector * MoveValue.X);
+	if (!WorldMoveDirection.IsNearlyZero())
+	{
+		LastValidMoveDirection = WorldMoveDirection.GetSafeNormal();
+	}
+
+	if (bIsDashing)
+	{
+		return;
+	}
 
 	AddMovementInput(FVector::ForwardVector, MoveValue.Y);
 	AddMovementInput(FVector::RightVector, MoveValue.X);
@@ -198,6 +251,78 @@ void APrototype01Character::HandleAimCompleted(const FInputActionValue& Value)
 {
 	(void)Value;
 	LastGamepadAimValue = FVector2D::ZeroVector;
+}
+
+void APrototype01Character::HandleDashStarted(const FInputActionValue& Value)
+{
+	(void)Value;
+	StartDash();
+}
+
+void APrototype01Character::StartDash()
+{
+	if (bIsDashing || bDashOnCooldown)
+	{
+		return;
+	}
+
+	DashDirection = !LastValidMoveDirection.IsNearlyZero() ? LastValidMoveDirection : GetActorForwardVector();
+	DashDirection.Z = 0.0f;
+	DashDirection = DashDirection.GetSafeNormal();
+	if (DashDirection.IsNearlyZero())
+	{
+		DashDirection = GetActorForwardVector();
+	}
+
+	bIsDashing = true;
+	GetCharacterMovement()->Velocity = DashDirection * DashSpeed;
+
+	if (GrayboxMID)
+	{
+		GrayboxMID->SetVectorParameterValue(ColorParamName, DashColor);
+	}
+	GrayboxMesh->SetRelativeScale3D(GrayboxBaseScale * DashScaleMultiplier);
+
+	UE_LOG(LogTemp, Log, TEXT("PROTOTYPE01_DASH_STARTED"));
+
+	EffectiveDashDuration = FMath::Max(DashDuration, 0.01f);
+	GetWorldTimerManager().SetTimer(DashDurationTimerHandle, this, &APrototype01Character::EndDash, EffectiveDashDuration, false);
+}
+
+void APrototype01Character::EndDash()
+{
+	bIsDashing = false;
+	bDashOnCooldown = true;
+
+	GetCharacterMovement()->Velocity = FVector::ZeroVector;
+	GrayboxMesh->SetRelativeScale3D(GrayboxBaseScale);
+
+	if (GrayboxMID)
+	{
+		GrayboxMID->SetVectorParameterValue(ColorParamName, DashCooldownColor);
+	}
+
+	const float RemainingCooldown = FMath::Max(DashCooldown - EffectiveDashDuration, 0.0f);
+	if (RemainingCooldown <= KINDA_SMALL_NUMBER)
+	{
+		EndDashCooldown();
+	}
+	else
+	{
+		GetWorldTimerManager().SetTimer(DashCooldownTimerHandle, this, &APrototype01Character::EndDashCooldown, RemainingCooldown, false);
+	}
+}
+
+void APrototype01Character::EndDashCooldown()
+{
+	bDashOnCooldown = false;
+
+	if (GrayboxMID)
+	{
+		GrayboxMID->SetVectorParameterValue(ColorParamName, GrayboxBodyColor);
+	}
+
+	UE_LOG(LogTemp, Log, TEXT("PROTOTYPE01_DASH_READY"));
 }
 
 void APrototype01Character::UpdateMouseAimControlMode()
@@ -254,25 +379,39 @@ bool APrototype01Character::ComputeMouseAimDirection(FVector& OutDirection) cons
 
 void APrototype01Character::ApplyFacingRotation(float DeltaSeconds)
 {
-	(void)DeltaSeconds;
 	FVector Direction = FVector::ZeroVector;
 	bool bHasDirection = false;
+	float InterpSpeed = GamepadAimRotationInterpSpeed;
 
 	if (CurrentAimControlMode == EAimControlMode::Mouse)
 	{
 		bHasDirection = ComputeMouseAimDirection(Direction);
+		InterpSpeed = MouseAimRotationInterpSpeed;
 	}
-	else if (!LastGamepadAimValue.IsNearlyZero())
+	else
 	{
-		Direction = FVector(LastGamepadAimValue.Y, -LastGamepadAimValue.X, 0.0f);
-		bHasDirection = true;
+		const float ClampedDeadZone = FMath::Clamp(AimStickDeadZone, 0.0f, 0.99f);
+		const float AimMagnitude = LastGamepadAimValue.Size();
+		if (AimMagnitude > ClampedDeadZone)
+		{
+			const float NormalizedMagnitude =
+				(FMath::Min(AimMagnitude, 1.0f) - ClampedDeadZone) / (1.0f - ClampedDeadZone);
+			const float AimResponse = FMath::Clamp(
+				NormalizedMagnitude * FMath::Max(GamepadAimSensitivity, 0.0f), 0.0f, 1.0f);
+
+			Direction = FVector(LastGamepadAimValue.Y, -LastGamepadAimValue.X, 0.0f);
+			InterpSpeed = FMath::Max(GamepadAimRotationInterpSpeed, 0.0f) * AimResponse;
+			bHasDirection = AimResponse > KINDA_SMALL_NUMBER;
+		}
 	}
 
 	if (bHasDirection && !Direction.IsNearlyZero())
 	{
-		FRotator NewRotation = Direction.GetSafeNormal().Rotation();
-		NewRotation.Pitch = 0.0f;
-		NewRotation.Roll = 0.0f;
+		FRotator TargetRotation = Direction.GetSafeNormal().Rotation();
+		TargetRotation.Pitch = 0.0f;
+		TargetRotation.Roll = 0.0f;
+
+		const FRotator NewRotation = FMath::RInterpTo(GetActorRotation(), TargetRotation, DeltaSeconds, InterpSpeed);
 		SetActorRotation(NewRotation);
 	}
 }
