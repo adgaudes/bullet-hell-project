@@ -44,7 +44,7 @@ Verificare con controller reale e tastiera/mouse:
 
 Il test su Steam Deck LCD resta successivo alla stabilizzazione del primo loop giocabile. Velocita, accelerazione, sensibilita e dead zone saranno tarate in un incremento successivo; questo gate verifica soltanto correttezza e parita funzionale degli input.
 
-## Character Feel v1 - verifica manuale aperta
+## Character Feel v1 - collaudo manuale superato
 
 Il secondo incremento aggiunge:
 
@@ -65,9 +65,14 @@ Verifiche automatiche superate il 21 settembre 2026:
 
 Build locale da collaudare: `LocalBuilds/Prototype01-CharacterFeel-Win64-v2/Windows/Prototype01.exe`.
 
-Il gate resta aperto fino al collaudo manuale di leggibilita, accelerazione/frenata, mira e dash con tastiera/mouse e controller.
+Esito manuale del 21 settembre 2026 sulla build v4:
 
-Riscontri manuali: nella build v2 l'asse verticale della mira gamepad risultava invertito; dopo la prima correzione, la build v3 ha confermato l'asse verticale ma mostrato l'asse orizzontale ancora invertito. Entrambi i segni sono ora corretti rispetto alla proiezione della camera; la verifica finale delle quattro direzioni e richiesta sulla build v4.
+- mira con stick destro corretta su entrambi gli assi dopo la verifica delle quattro direzioni;
+- dash con il pulsante inferiore `A` funzionante;
+- blocco durante il cooldown e successiva disponibilita del dash confermati;
+- controlli precedentemente verificati con tastiera/mouse preservati.
+
+Il gate Character Feel v1 e superato. Velocita, accelerazione, frenata e valori di sensibilita restano parametri di bilanciamento da affinare con scene e avatar piu rappresentativi, non blocchi per il prossimo incremento.
 
 ## Limiti intenzionali
 
