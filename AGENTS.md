@@ -51,6 +51,7 @@ Non presentare le scelte candidate come decisioni approvate. Registra le decisio
 8. Non sacrificare leggibilita, accessibilita o prestazioni per aumentare il numero di proiettili a schermo.
 9. L'originalita percepibile e un requisito di prodotto: non approvare un concept che sia soltanto un survivor-like esistente con tema o asset differenti.
 10. Proteggere intenzionalita e coerenza autoriale. L'AI supporta il processo, ma non decide autonomamente identita, tono o significato del gioco.
+11. Risparmiare crediti Codex: usare contesto e reasoning minimi adeguati al rischio, letture mirate, chiamate raggruppate, output concisi e nessuna verifica duplicata; caricare documenti specialistici solo quando pertinenti.
 
 I criteri completi sono definiti in `docs/CREATIVE_PRINCIPLES.md` e costituiscono un gate obbligatorio prima del Concept Lock.
 
@@ -81,6 +82,8 @@ Regole obbligatorie:
 - Non inviare ad AI esterne credenziali, token, dati Steamworks riservati, informazioni personali o asset per i quali la licenza vieta la condivisione.
 
 Il repository, i test riproducibili e le decisioni registrate sono la fonte condivisa di verita. Le conversazioni separate con altre AI non sostituiscono la documentazione nel repository.
+
+Codex deve monitorare anche i propri limiti disponibili alle milestone o quando compaiono avvisi, informare subito il proprietario se la capacita e vicina all'esaurimento o terminata e non acquistare o attivare crediti aggiuntivi senza autorizzazione. Non eseguire controlli continui se il controllo stesso aggiunge consumo senza utilita decisionale.
 
 Il codice assistito da AI e ammesso solo attraverso questo processo di supervisione. Per impostazione iniziale, contenuti generativi visibili o udibili nella versione pubblica non sono asset finali: possono essere placeholder interni, ma qualsiasi eccezione richiede approvazione esplicita e verifica di diritti, regole della piattaforma e coerenza creativa.
 
