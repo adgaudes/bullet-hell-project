@@ -8,7 +8,7 @@
 - Input pienamente supportato: **tastiera e mouse**.
 - Obiettivo secondario: buona esperienza su **Steam Deck**, con aspirazione alla classificazione Verified se sostenibile.
 - Build Linux nativa: non prevista inizialmente; la prima strategia e testare la build Windows attraverso Proton.
-- Hardware di test: uno Steam Deck e gia posseduto dal proprietario; modello e configurazione da registrare al primo test.
+- Hardware di test: Steam Deck LCD gia posseduto dal proprietario; capacita e configurazione da registrare al primo test.
 
 La classificazione Steam Deck non puo essere promessa prima dei test e della revisione Valve. Il progetto deve tuttavia evitare fin dall'inizio scelte che la rendano inutilmente difficile.
 
@@ -124,9 +124,8 @@ Target prestazionale iniziale: progettare per 60 fps, misurare appena esiste una
 
 Il proprietario possiede gia uno Steam Deck, quindi non e previsto alcun acquisto hardware per questa verifica. Il dispositivo entra nella matrice di test dalla prima build Windows pacchettizzata. Emulatori e test desktop restano utili, ma non sostituiscono display, controlli, sospensione e prestazioni reali.
 
-Al primo utilizzo registrare:
+Dispositivo di riferimento attuale: **Steam Deck LCD**. Al primo utilizzo registrare:
 
-- modello LCD o OLED;
 - capacita e spazio disponibile;
 - versione SteamOS e canale aggiornamenti;
 - eventuale microSD o dock usato nei test;

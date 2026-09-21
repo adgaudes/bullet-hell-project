@@ -29,7 +29,7 @@ Non e ancora fissato un obiettivo di vendite. Prima di costruire un business cas
 | Piattaforma | Steam, inizialmente Windows | Controller, packaging, prestazioni e pagina Steam entrano nella roadmap |
 | Input | Controller primario, tastiera e mouse pienamente supportati | Progettare controlli e UI controller-first con parita funzionale |
 | Steam Deck | Buona compatibilita se sostenibile | Target 1280x800/16:10, Proton e test su hardware prima della release |
-| Hardware Steam Deck | Gia posseduto; modello da registrare | Test reali possibili dalla prima build Windows pacchettizzata |
+| Hardware Steam Deck | Modello LCD gia posseduto; capacita da registrare | Dispositivo di riferimento dalla prima build Windows pacchettizzata |
 | Grafica | 3D vicina per leggibilita e resa a *Deep Rock Galactic: Survivor* | Camera isometrica/top-down come direzione principale; no produzione sprite 2D come stile centrale |
 | Asset esterni | Librerie di asset gratuiti ammesse previa valutazione condivisa | Verificare uso commerciale, attribuzione, provenienza, coerenza e costo di adattamento prima dell'adozione |
 
