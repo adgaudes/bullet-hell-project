@@ -1,4 +1,10 @@
 #include "SmokeTestGameMode.h"
+#include "Prototype01Character.h"
+
+ASmokeTestGameMode::ASmokeTestGameMode()
+{
+	DefaultPawnClass = APrototype01Character::StaticClass();
+}
 
 void ASmokeTestGameMode::StartPlay()
 {
