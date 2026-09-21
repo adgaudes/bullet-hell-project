@@ -24,7 +24,7 @@ Stati usati:
 | Git LFS | 3.7.1 | Asset binari | Installato e configurato nel repository |
 | Git Credential Manager | 2.9.1 | Autenticazione remota | Installato |
 | Visual Studio Community 2022 | 17.14.41, MSVC 14.44.35207, MSBuild 17.14.60 | Compilazione e debugging UE 5.6 C++ | Installato e verificato; IDE/toolchain primaria |
-| Visual Studio Community 2026 | 18.10.1 | Non supportato ufficialmente da UE 5.6 | Rimuovibile se non serve ad altri progetti; non usarlo per questo repository |
+| Visual Studio Community 2026 | 18.10.1, disinstallato il 21 settembre 2026 | Non supportato ufficialmente da UE 5.6 | Rimosso; reinstallabile in futuro se servisse a un altro progetto |
 | GitHub CLI | Non rilevato | Issue, pull request e automazione GitHub | Opzionale |
 
 Spazio libero rilevato sul disco di progetto: circa 620 GB, sufficiente per la fase iniziale. Hardware rilevato: Intel Core i7-13620H, 16 GB RAM, RTX 4050 Laptop con 6 GB VRAM.
@@ -72,7 +72,7 @@ Componenti verificati il 21 settembre 2026:
 
 Visual Studio Installer indica l'istanza 2022 come completa, avviabile e senza riavvio richiesto. La verifica definitiva resta la creazione, compilazione e pacchettizzazione di un progetto C++ minimo dopo il completamento dell'installazione di UE 5.6.
 
-Visual Studio 2026 puo essere disinstallato prima dello smoke test se il proprietario conferma che non serve ad altri progetti. Usare Visual Studio Installer e rimuovere soltanto l'istanza Community 2026; non rimuovere Visual Studio 2022, componenti condivisi o Windows SDK usati dalla toolchain 2022.
+Visual Studio Community 2026 e stato disinstallato il 21 settembre 2026 dopo la conferma che non serviva ad altri progetti. Visual Studio Installer ha completato l'operazione con codice 0; una verifica successiva ha confermato che l'istanza Community 2022 e rimasta completa, avviabile e senza richiesta di riavvio. Sono rimasti presenti il workload Game development with C++, la toolchain MSVC, Windows 11 SDK, gli strumenti Unreal, il debugger Blueprint, Unreal Engine Test Adapter, AddressSanitizer, strumenti diagnostici e HLSL.
 
 ## Dipendenze da non installare separatamente ora
 
