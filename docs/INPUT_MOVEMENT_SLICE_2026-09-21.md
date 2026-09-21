@@ -2,7 +2,7 @@
 
 ## Esito
 
-**Pronto per il collaudo manuale.** Il primo personaggio graybox usa una camera isometrica fissa, movimento planare e orientamento indipendente.
+**Collaudo manuale parzialmente superato.** Il primo personaggio graybox usa una camera isometrica fissa, movimento planare e orientamento indipendente.
 
 ## Controlli
 
@@ -24,6 +24,13 @@ Le azioni `IA_Move`, `IA_Aim` e il mapping `IMC_Gameplay` vengono creati in C++ 
 Build locale: `LocalBuilds/Prototype01-Input-Win64/Windows/Prototype01.exe`.
 
 ## Collaudo manuale richiesto
+
+Esito desktop del 21 settembre 2026:
+
+- `WASD`: superato;
+- orientamento con mouse: superato;
+- rendering iniziale: superato dopo l'aggiunta dell'arena graybox e dell'esposizione stabile;
+- controller: ancora da verificare.
 
 Verificare con controller reale e tastiera/mouse:
 
