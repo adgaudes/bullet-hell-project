@@ -22,12 +22,15 @@ Stati usati:
 | Epic Games Launcher | 1.3.193.0 | Installazione e aggiornamento UE | Installato |
 | Blender | 5.2.2 registrato; eseguibili 5.1 e 5.2 presenti | Modellazione, UV, rig, animazione, export | Installato; fissare 5.2.2 dopo test pipeline |
 | Visual Studio Code | 1.137.0 x64 | Testo, configurazioni e modifiche leggere | Installato; non IDE primario UE C++ |
+| Claude Desktop | Installato; versione da rilevare | Confronto, pianificazione e revisione con Claude | Disponibile con piano Claude Pro |
+| Claude Code CLI | 2.1.278 | Delega controllata di implementazione, test e documentazione | Installato, `doctor` superato e autenticato con Claude.ai Pro; nessuna API PAYG configurata |
+| Google Antigravity | 2.12.2 | Orchestrazione di agenti, task asincroni e browser agent | Installato; canale AI secondario |
+| Google Antigravity IDE | 2.5.5 | Editing agentico e task locali sul repository | Installato; non sostituisce Visual Studio per UE C++ |
 | Git | 2.55.0 | Versionamento | Installato |
 | Git LFS | 3.7.1 | Asset binari | Installato e configurato nel repository |
 | Git Credential Manager | 2.9.1 | Autenticazione remota | Installato |
 | Visual Studio Community 2022 | 17.14.41, MSVC 14.44.35207, MSBuild 17.14.60 | Compilazione e debugging UE 5.6 C++ | Installato e verificato; IDE/toolchain primaria |
 | Visual Studio Community 2026 | 18.10.1, disinstallato il 21 settembre 2026 | Non supportato ufficialmente da UE 5.6 | Rimosso; reinstallabile in futuro se servisse a un altro progetto |
-| Claude Code CLI | Non rilevato | Delega controllata di implementazione, test e documentazione | Da valutare per rendere operativo il flusso multi-AI |
 | GitHub CLI | Non rilevato | Issue, pull request e automazione GitHub | Opzionale |
 
 Spazio libero rilevato sul disco di progetto: circa 620 GB, sufficiente per la fase iniziale. Hardware rilevato: Intel Core i7-13620H, 16 GB RAM, RTX 4050 Laptop con 6 GB VRAM.

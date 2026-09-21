@@ -13,6 +13,8 @@ Obiettivo di produzione: arrivare a un gioco piccolo, rifinito, testabile e comm
 - Plugin Epic verificati nell'installazione: Fab 0.0.9 e Quixel Bridge 2025.0.1, entrambi abilitati per impostazione predefinita; verificarne apertura e import in Editor prima dell'uso di produzione.
 - DCC 3D installato: Blender 5.2.2; fissare definitivamente la versione di produzione dopo il test di export verso UE 5.6.
 - Editor leggero installato: Visual Studio Code 1.137.0. Non considerarlo un sostituto della toolchain C++ di Unreal.
+- Strumenti agentici installati: Google Antigravity 2.12.2 e Antigravity IDE 2.5.5. Usarli per task isolati, analisi o seconda revisione; non sostituiscono Visual Studio 2022, Unreal Editor o la verifica di Codex.
+- Claude Desktop e piano Claude Pro disponibili. Claude Code 2.1.278 e installato, autenticato tramite Claude.ai Pro e verificato con `claude doctor`; non usare credenziali API o ricariche automatiche non approvate.
 - Toolchain C++ su Windows: Visual Studio Community 2022 17.14.41 verificato con MSVC, MSBuild, Windows SDK e componenti Unreal; dettagli in `docs/TOOLS_AND_LICENSES.md`.
 - Piattaforma iniziale candidata: Windows su Steam.
 - Modalita iniziale candidata: single-player.
@@ -53,7 +55,7 @@ I criteri completi sono definiti in `docs/CREATIVE_PRINCIPLES.md` e costituiscon
 
 ## Collaborazione multi-AI e supervisione
 
-Il progetto utilizza Claude e puo utilizzare altre AI per produrre codice, documentazione, test o proposte tecniche. Codex opera come supervisore tecnico, integratore e verificatore finale, oltre che come implementatore per i task che non conviene delegare.
+Il progetto utilizza Claude come prima destinazione esterna per i task delegabili e puo utilizzare Google Antigravity o altre AI per produrre codice, documentazione, test, revisioni indipendenti o proposte tecniche. Codex opera come supervisore tecnico, integratore e verificatore finale, oltre che come implementatore per i task che non conviene delegare.
 
 Il modello operativo predefinito e **AI-first, proprietario in supervisione**:
 
@@ -104,6 +106,8 @@ Mantenere su Codex:
 Per ogni delega usare il minimo contesto sufficiente: inviare file mirati o riferimenti precisi, evitare intere cronologie di conversazione, richiedere output conciso e non chiedere spiegazioni estese se non necessarie. Preferire un singolo brief completo a una sequenza di messaggi correttivi. Se il primo risultato non soddisfa i criteri, fornire feedback puntuale sul diff invece di rigenerare tutto.
 
 La delega non e automatica quando espone segreti, richiede una decisione del proprietario, introduce dipendenze o costi, oppure non dispone di un canale Claude autorizzato e verificabile. In assenza di accesso diretto a Claude, Codex prepara un brief pronto all'uso e segnala il minimo intervento richiesto al proprietario.
+
+Antigravity e Antigravity IDE sono canali secondari: usarli quando i loro agenti asincroni, browser agent o revisione indipendente producono un vantaggio concreto. Non inviare lo stesso task completo a piu AI salvo confronto intenzionale; scegliere prima il canale con il miglior rapporto tra contesto richiesto, budget disponibile e verificabilita dell'output.
 
 ## Raccomandazione proattiva di app e strumenti
 
