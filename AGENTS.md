@@ -15,6 +15,8 @@ Obiettivo di produzione: arrivare a un gioco piccolo, rifinito, testabile e comm
 - Toolchain C++ prevista su Windows: Visual Studio 2022 17.14 o successivo compatibile con UE 5.6; componenti da verificare in `docs/TOOLS_AND_LICENSES.md`.
 - Piattaforma iniziale candidata: Windows su Steam.
 - Modalita iniziale candidata: single-player.
+- Input: controller/gamepad come esperienza primaria, con piena parita funzionale per tastiera e mouse.
+- Steam Deck: obiettivo di buona compatibilita tramite build Windows/Proton; puntare a Verified se i test e lo scope lo consentono.
 - Riferimenti dichiarati: *Deep Rock Galactic: Survivor* per resa 3D e leggibilita; *Vampire Survivors* per immediatezza, build e densita del loop.
 - Visuale 3D isometrica/top-down: direzione principale candidata; tema e modello di progressione non ancora decisi.
 - Base creativa corrente: ingegnere improvvisatore che costruisce macchine durante le missioni; le macchine trasformano il campo con vantaggi e conseguenze, mentre la manipolazione temporale e una meccanica secondaria candidata.
@@ -23,6 +25,7 @@ Obiettivo di produzione: arrivare a un gioco piccolo, rifinito, testabile e comm
 - La roadmap autorevole e `docs/PROJECT_ROADMAP.md`.
 - I vincoli raccolti sono in `docs/PROJECT_BRIEF.md`; le prime proposte in `docs/BRAINSTORMING_CONCEPTS.md`.
 - Il concept corrente, ancora modificabile e non bloccato, e definito in `docs/WORKING_CONCEPT.md`.
+- Requisiti di piattaforma e input sono definiti in `docs/PLATFORM_AND_INPUT.md`.
 
 Non presentare le scelte candidate come decisioni approvate. Registra le decisioni importanti nel registro indicato dalla roadmap.
 
@@ -105,6 +108,10 @@ Dopo una modifica sostanziale:
 - Definire budget misurabili per frame time, numero di proiettili, VFX, memoria e tempi di caricamento prima della vertical slice.
 - Profilare prima di ottimizzare. Usare Unreal Insights e gli strumenti di profiling dell'engine per attribuire i colli di bottiglia.
 - Verificare regolarmente una build Development pacchettizzata; per una release candidate verificare anche Shipping su una macchina pulita.
+- Usare Enhanced Input con azioni semantiche e mapping context separati; non legare la logica di gameplay a tasti fisici.
+- Ogni nuova funzione e schermata deve essere utilizzabile interamente con controller e con tastiera/mouse.
+- Testare cambio del dispositivo attivo, glifi, focus UI, dead zone e sensibilita senza attendere la fase di polish.
+- Considerare 1280x800 e aspect ratio 16:10 fin dalle prime UI; non presumere che il test su desktop dimostri compatibilita Steam Deck.
 
 ## Regole Blender e asset
 

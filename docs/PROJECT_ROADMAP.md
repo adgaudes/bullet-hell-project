@@ -16,6 +16,8 @@ Queste non sono ancora decisioni definitive:
 
 - gioco premium single-player;
 - prima piattaforma: Windows su Steam;
+- controller/gamepad come input primario con pieno supporto tastiera/mouse;
+- buona compatibilita Steam Deck tramite Proton come obiettivo, senza promessa di Verified prima dei test;
 - Unreal Engine 5 e Blender;
 - sessioni relativamente brevi e rigiocabili;
 - controllo con tastiera/mouse e controller;
@@ -334,6 +336,8 @@ Ordine raccomandato:
 9. scena di stress e profiling;
 10. build pacchettizzata per playtest.
 
+Per tutto il prototipo verificare controller e tastiera/mouse a ogni incremento. Simulare anche 1280x800/16:10 e navigare ogni schermata senza mouse; i criteri completi sono in `PLATFORM_AND_INPUT.md`.
+
 Deliverable:
 
 - build graybox del core loop;
@@ -376,6 +380,7 @@ Contenuto indicativo:
 - UI, VFX, audio, arte e illuminazione vicini alla qualita finale;
 - salvataggio, impostazioni base, controller e remapping minimo;
 - build Steam di test privata, se l'onboarding Steamworks e pronto.
+- test della build Windows tramite Proton e su Steam Deck fisico, se accessibile;
 
 Testare anche pipeline e costi: tempo reale per creare un nemico, un pattern e un ambiente; dimensione della build; memoria; packaging; feedback di giocatori esterni.
 
@@ -479,6 +484,7 @@ Attivita:
 - feature freeze;
 - playtest esterno strutturato con consenso e raccolta dati proporzionata;
 - test di controller, Steam Input, overlay, achievement e cloud save se inclusi;
+- checklist aggiornata per la Steam Hardware Compatibility Review;
 - verifica installazione, aggiornamento, disinstallazione e salvataggi;
 - localizzazione e linguistic QA per le lingue approvate;
 - test della demo, se prevista, come prodotto separato;

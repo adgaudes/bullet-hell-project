@@ -79,6 +79,8 @@ La versione esatta di MSVC e Windows SDK verra verificata creando e compilando u
 | OBS Studio | Rimandato | Playtest registrati e materiale store | Cattura gameplay |
 | DaVinci Resolve | Rimandato | Trailer e marketing | Montaggio video |
 | Perforce | Rimandato | Solo se Git LFS/locking diventa insufficiente | Gestione di grandi volumi binari |
+| Steam Deck fisico | Rimandato | Vertical slice con build rappresentativa | Test reale di Proton, prestazioni, input, UI e sospensione; valutare prestito o tester prima dell'acquisto |
+| SteamOS Devkit Client | Rimandato, gratuito | Quando e disponibile uno Steam Deck per i test | Distribuzione e debug della build dal PC Windows al dispositivo |
 
 ## Librerie di asset esterni
 

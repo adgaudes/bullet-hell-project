@@ -27,6 +27,8 @@ Non e ancora fissato un obiettivo di vendite. Prima di costruire un business cas
 | Programmazione C/C++ | Esperienza quasi nulla | Architettura semplice, componenti piccoli, review rigorosa e niente ottimizzazioni premature |
 | Blender | Esperienza di base, non recente | Stile 3D producibile, kit modulari e pipeline di export validata prima della produzione |
 | Piattaforma | Steam, inizialmente Windows | Controller, packaging, prestazioni e pagina Steam entrano nella roadmap |
+| Input | Controller primario, tastiera e mouse pienamente supportati | Progettare controlli e UI controller-first con parita funzionale |
+| Steam Deck | Buona compatibilita se sostenibile | Target 1280x800/16:10, Proton e test su hardware prima della release |
 | Grafica | 3D vicina per leggibilita e resa a *Deep Rock Galactic: Survivor* | Camera isometrica/top-down come direzione principale; no produzione sprite 2D come stile centrale |
 | Asset esterni | Librerie di asset gratuiti ammesse previa valutazione condivisa | Verificare uso commerciale, attribuzione, provenienza, coerenza e costo di adattamento prima dell'adozione |
 
@@ -100,6 +102,8 @@ Salvo nuova decisione motivata, il primo prototipo non include:
 - profondita e forma della meta-progressione;
 - tono narrativo;
 - target hardware minimo e obiettivo di frame rate;
+- schema definitivo per controller e tastiera/mouse;
+- livello di compatibilita Steam Deck dimostrabile e possibile obiettivo Verified;
 - prezzo e obiettivo commerciale.
 
 ## Preferenze emerse dal brainstorming
