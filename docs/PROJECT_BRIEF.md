@@ -26,6 +26,7 @@ Non e ancora fissato un obiettivo di vendite. Prima di costruire un business cas
 | Unreal Engine | Esperienza quasi nulla | Apprendimento tramite un prototipo piccolo; Blueprint prima, C++ solo dove giustificato |
 | Programmazione C/C++ | Esperienza quasi nulla | Architettura semplice, componenti piccoli, review rigorosa e niente ottimizzazioni premature |
 | Blender | Esperienza di base, non recente | Stile 3D producibile, kit modulari e pipeline di export validata prima della produzione |
+| Metodo di apprendimento | Guida continua richiesta | Un passaggio alla volta, spiegazione semplice, risultato atteso e verifica esplicita |
 | Piattaforma | Steam, inizialmente Windows | Controller, packaging, prestazioni e pagina Steam entrano nella roadmap |
 | Input | Controller primario, tastiera e mouse pienamente supportati | Progettare controlli e UI controller-first con parita funzionale |
 | Steam Deck | Buona compatibilita se sostenibile | Target 1280x800/16:10, Proton e test su hardware prima della release |

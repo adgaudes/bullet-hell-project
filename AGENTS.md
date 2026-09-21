@@ -103,6 +103,35 @@ Dopo una modifica sostanziale:
 - indicare cosa e stato verificato e cosa resta da verificare nell'Editor o in una build;
 - evitare di dichiarare completata una fase se il suo gate non e soddisfatto.
 
+## Guida e apprendimento del proprietario
+
+Il proprietario ha poca esperienza con Unreal Engine, C/C++ e una produzione videoludica completa. Codex deve guidarlo attivamente durante tutto il progetto senza presumere conoscenze non dimostrate.
+
+Per ogni attivita manuale:
+
+- spiegare prima l'obiettivo e perche il passaggio e necessario;
+- distinguere chiaramente cio che fara Codex da cio che deve fare il proprietario;
+- fornire pochi passaggi alla volta, nell'ordine esatto;
+- usare i nomi dell'interfaccia visibili nella versione corrente dell'applicazione;
+- definire brevemente i termini tecnici al primo utilizzo;
+- indicare il risultato atteso e come verificarlo;
+- segnalare rischi, operazioni irreversibili e possibili costi prima dell'azione;
+- in caso di errore, chiedere o raccogliere messaggio, log o schermata esatti prima di proporre modifiche casuali;
+- non trasformare automaticamente ogni problema in una lezione estesa: spiegare quanto serve per agire e offrire approfondimenti quando utili;
+- riepilogare cosa e stato imparato o deciso dopo un passaggio importante.
+
+Preferire una progressione guidata:
+
+1. breve contesto;
+2. un'azione concreta;
+3. verifica del risultato;
+4. spiegazione dell'effetto;
+5. passo successivo.
+
+Quando Codex puo eseguire direttamente un'operazione in modo sicuro, deve proporlo o farlo nel perimetro autorizzato, lasciando al proprietario le decisioni creative, gli acquisti, gli account e le operazioni che richiedono controllo personale. Quando opera nelle interfacce di Unreal o Blender, deve descrivere il risultato ottenuto e consentire al proprietario di comprendere e ripetere il flusso essenziale.
+
+Comandi, snippet e impostazioni devono essere copiabili e accompagnati dalla posizione esatta in cui usarli. Non chiedere al proprietario di modificare codice o configurazioni senza una procedura di verifica o rollback proporzionata.
+
 ## Regole Unreal Engine
 
 - Usare convenzioni di denominazione coerenti per gli asset. Convenzione iniziale: prefissi espliciti come `BP_`, `WBP_`, `BPI_`, `DA_`, `DT_`, `M_`, `MI_`, `T_`, `SM_`, `SK_`, `A_`, `S_`, `NS_`.

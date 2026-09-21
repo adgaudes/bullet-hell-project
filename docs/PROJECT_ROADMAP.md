@@ -76,6 +76,7 @@ Attivita:
 6. Verificare hardware e spazio disponibile rispetto ai requisiti della versione UE scelta.
 7. Definire una cadenza: build giocabile almeno settimanale e revisione dello scope almeno mensile.
 8. Stabilire il protocollo di collaborazione tra proprietario, Codex supervisore e altre AI contributrici.
+9. Condurre installazione, apprendimento e produzione con istruzioni progressive, verifiche esplicite e nessuna conoscenza tecnica presunta.
 
 Deliverable:
 
