@@ -81,6 +81,8 @@ La soddisfazione deve provenire tanto dall'aver costruito una soluzione intellig
 
 La trasformazione profonda del terreno tramite tool personali e macchine e parte obbligatoria della firma meccanica. La specifica e i gate tecnici sono in `TERRAIN_SYSTEM.md`.
 
+*Astroneer* e il riferimento per la profondita dell'interazione: scavare, aggiungere materiale, livellare e creare percorsi. L'esperienza deve essere reinterpretata per camera dall'alto, combattimento a orde e macchine modulari, senza copiarne presentazione o struttura.
+
 Esempi ancora da prototipare:
 
 - un compressore solleva barriere dal terreno, ma restringe anche le vie di fuga;

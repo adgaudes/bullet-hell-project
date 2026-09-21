@@ -620,6 +620,7 @@ Ogni espansione richiede un mini business case e non deve compromettere la stabi
 | Terreno dinamico troppo complesso | Bug di collisione/pathfinding, stutter o salvataggi enormi | Stati discreti prima, prototipi isolati e voxel solo dopo prove misurate |
 | Modifica del terreno superficiale | Il giocatore scava solo per risorse o usa sempre la stessa soluzione | Ogni trasformazione influenza almeno due sistemi e include una conseguenza |
 | Acqua dinamica ingestibile | Fluidi, collisioni e navigazione consumano troppo o producono bug | Bacini e livelli discreti, preavviso, pompe/argini espliciti e nessuna simulazione generale iniziale |
+| Deformazione illeggibile dall'alto | Profondita, pareti o bersaglio del tool non sono comprensibili | Anteprima volumetrica, limiti iniziali a rampe/trincee, gestione occlusione e test controller |
 | Meta-progressione gonfia lo scope | Il bilanciamento richiede troppe combinazioni | Set piccolo di scelte significative e cap esplicito |
 | Produzione contenuti troppo lenta | Un nemico completo richiede molto piu della stima | Misurare nella vertical slice e tagliare quantita |
 | Repository binario ingestibile | Clone lenti, conflitti, quote LFS | LFS/locking o Perforce scelti prima della produzione |

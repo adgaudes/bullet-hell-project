@@ -12,6 +12,47 @@ Il terreno non e uno sfondo passivo. Il giocatore lo osserva, lo modifica con st
 
 La profondita non viene misurata soltanto dalla liberta geometrica. Una modifica e significativa quando produce conseguenze comprensibili e permette piu soluzioni valide.
 
+## Riferimento di interazione: Astroneer
+
+*Astroneer* e il riferimento dichiarato per la profondita e la sensazione tattile della modifica del terreno:
+
+- rimuovere materiale;
+- aggiungere materiale;
+- livellare o regolarizzare una superficie;
+- creare percorsi e rampe;
+- raggiungere risorse attraverso il terreno;
+- usare la trasformazione come parte continua dell'esplorazione e della risoluzione dei problemi.
+
+Il riferimento non autorizza a copiare stile grafico, forma del tool, interfaccia, animazioni, risorse o struttura del gioco. Il nostro sistema deve essere adattato a visuale isometrica/top-down, pressione delle orde, macchine, carovana, luce/buio e inondazioni.
+
+Obiettivo esperienziale candidato: il giocatore deve poter guardare un'area, immaginare una configurazione migliore e scolpirla abbastanza liberamente da riconoscere il risultato come propria soluzione.
+
+## Adattamento alla visuale dall'alto
+
+Problemi specifici da risolvere:
+
+- distinguere altezza, profondita e pendenza senza camera ravvicinata;
+- mirare dietro ostacoli e sui bordi verticali;
+- evitare che il personaggio o i nemici scompaiano in scavi profondi;
+- mostrare con precisione volume rimosso o aggiunto;
+- mantenere leggibili proiettili, telegraph e collisioni;
+- impedire modifiche accidentali durante combattimenti intensi;
+- offrire precisione equivalente con stick e mouse.
+
+Soluzioni candidate da prototipare:
+
+- cursore proiettato sul terreno con volume del pennello visibile;
+- anteprima colorata di rimozione, aggiunta e livellamento;
+- aggancio opzionale a pendenze, altezze o direzioni utili;
+- velocita del pennello dipendente dall'inclinazione dello stick o dalla pressione del comando;
+- modalita costruzione con rallentamento o pausa controllata in single-player;
+- trasparenza, dissolvenza o taglio visivo per pareti che coprono il giocatore;
+- limiti di profondita e pendenza comunicati prima dell'azione;
+- undo locale limitato o funzione di ripristino costosa per correggere errori;
+- vibrazione e audio distinti per materiale, resistenza e risultato.
+
+Nel primo test dall'alto privilegiare superficie, rampe, trincee e terrapieni. Tunnel profondi, caverne sovrapposte e grandi sporgenze entrano solo dopo aver risolto occlusione e leggibilita.
+
 ## Due scale di intervento
 
 ### Tool personali
@@ -123,7 +164,7 @@ La macchina acquatica diventa necessaria soltanto nelle situazioni in cui offre 
 
 ## Strategie tecniche da confrontare
 
-### A. Celle e stati discreti - prima scelta per il prototipo
+### A. Celle e stati discreti - prova delle regole
 
 Il campo e composto da celle o regioni con pochi stati: integro, scavato, rialzato, allagato, consolidato.
 
@@ -141,7 +182,9 @@ Limiti:
 - minore liberta geometrica;
 - necessita di buona presentazione per non sembrare una griglia rigida.
 
-### B. Zone deformabili controllate - candidato per la vertical slice
+Questa strategia serve a verificare conseguenze, input e AI. Non rappresenta necessariamente la fedelta finale desiderata dopo aver assunto *Astroneer* come riferimento di profondita.
+
+### B. Zone deformabili controllate - ponte produttivo
 
 Solo alcune superfici consentono deformazioni piu continue o combinano stati discreti con mesh e materiali dinamici.
 
@@ -160,7 +203,21 @@ Limiti:
 
 Offre grande liberta, ma introduce rischi rilevanti per performance, salvataggi, pathfinding, collisioni, arte, packaging e dipendenze esterne.
 
-Non adottare questa strategia solo perche promette liberta. Valutarla dopo il prototipo discreto con un esperimento isolato e una matrice build-vs-buy. Qualsiasi plugin deve superare verifica di costo, licenza, manutenzione, accesso al sorgente, Unreal 5.6, Windows, Proton e Steam Deck.
+La profondita ispirata ad *Astroneer* rende una rappresentazione volumetrica o equivalente una candidata seria, soprattutto per aggiunta/rimozione libera, rampe, cavita e sporgenze. Non adottarla pero solo perche promette liberta. Valutarla dopo il prototipo discreto con un esperimento isolato e una matrice build-vs-buy. Qualsiasi plugin deve superare verifica di costo, licenza, manutenzione, accesso al sorgente, Unreal 5.6, Windows, Proton e Steam Deck.
+
+### D. Approccio ibrido - candidato principale da ricercare
+
+Usare deformazione continua soltanto in volumi o superfici predisposte, mantenendo rovine, strutture principali e limiti del livello come geometria controllata.
+
+Possibili vantaggi:
+
+- sensazione di scavo e modellazione profonda nelle aree importanti;
+- protezione di landmark, obiettivi e struttura del livello;
+- costi e salvataggi piu prevedibili;
+- migliore convivenza con vegetazione, acqua, rovine e navigazione;
+- possibilita di mantenere leggibili bordi e limiti dall'alto.
+
+Rischio: se i confini delle zone deformabili risultano arbitrari, il sistema perde credibilita. Materiali, lore e feedback devono spiegare perche alcune strutture resistono.
 
 ## Primo micro-prototipo
 
@@ -188,6 +245,33 @@ Test B:
 - sollevare una barriera devia i nemici e protegge una macchina;
 - la barriera riduce lo spazio di schivata e puo bloccare la carovana.
 
+## Spike tecnico di deformazione continua
+
+Dopo che i test A/B hanno dimostrato valore sistemico, costruire una scena isolata senza gameplay completo per confrontare rappresentazione volumetrica e ibrida.
+
+Azioni minime:
+
+- scavare una trincea curva;
+- creare un terrapieno;
+- livellare una piattaforma per una macchina;
+- formare una rampa percorribile;
+- modificare ripetutamente la stessa zona;
+- salvare e ricaricare lo stato;
+- aggiornare collisione e un percorso nemico;
+- usare le stesse azioni con controller e mouse;
+- eseguire la scena su Steam Deck LCD.
+
+Misure:
+
+- frame time durante e dopo la modifica;
+- picchi e stutter di collisione/navigazione;
+- memoria e dimensione del salvataggio;
+- precisione e tempo necessario per ottenere la forma desiderata;
+- errori di occlusione e comprensione dalla camera di gioco;
+- comportamento ai bordi fra terreno modificabile e strutture protette.
+
+Lo spike non entra nel progetto principale finche non supera i gate e una revisione della dipendenza scelta.
+
 ## Gate per proseguire
 
 - I tester usano il terreno per risolvere problemi, non soltanto per raccogliere risorse.
@@ -213,3 +297,5 @@ Se questi gate falliscono, modificare la grammatica del terreno prima di aumenta
 - persistenza fra tappe della stessa run;
 - possibilita e costo di riparare una trasformazione sbagliata;
 - necessita reale di deformazione continua o voxel.
+- livello massimo di profondita, cavita e sporgenze leggibile dalla camera isometrica;
+- confini e giustificazione delle eventuali zone non deformabili.

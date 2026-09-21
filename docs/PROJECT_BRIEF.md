@@ -63,6 +63,8 @@ Un **survivor-like 3D isometrico single-player** ambientato in un mondo fantasy 
 
 Pilastro obbligatorio: il terreno deve essere profondamente modificabile tramite tool personali per interventi precisi e macchine per trasformazioni su larga scala. Le modifiche devono influenzare almeno due sistemi fra percorsi, nemici, risorse, luce, acqua, macchine e carovana. La profondita sistemica ha priorita sulla deformazione geometrica completamente libera.
 
+*Astroneer* e il riferimento di esperienza per liberta e tattilita della modifica del terreno. Il nostro adattamento deve conservare aggiunta, rimozione, livellamento e creazione di percorsi, rendendoli leggibili e controllabili da una visuale tendenzialmente dall'alto.
+
 La natura ha riconquistato le vecchie strutture decrepite. Il riferimento a *The Last of Us* riguarda questa relazione visiva fra vegetazione e rovine, mentre palette, tono e mondo devono essere nostri: caldi, accoglienti, fantasy e vitali. La tipologia dei nemici resta intenzionalmente aperta.
 
 Causa candidata dell'apocalisse: un'invasione aliena ha introdotto macchine terraformanti che hanno danneggiato o riconfigurato il nucleo planetario, accelerando il ciclo giorno-notte e intensificando piogge e super-temporali. Le inondazioni trasformano il campo e giustificano macchine terrestri, acquatiche e aeree con ruoli differenti. Stato degli invasori e identita dei nemici restano aperti.
