@@ -22,6 +22,7 @@ Obiettivo di produzione: arrivare a un gioco piccolo, rifinito, testabile e comm
 - Base creativa corrente: mondo fantasy post-apocalittico caldo e colorato in rotazione perpetua; un ingegnere improvvisatore costruisce una carovana di macchine modulari che si agganciano, si separano, trasformano il campo e, in fasi avanzate, si fondono in forme colossali. Luce/buio e tempo sono sistemi candidati collegati.
 - Pilastro di gameplay: trasformazione profonda del terreno con tool personali e macchine, secondo i criteri in `docs/TERRAIN_SYSTEM.md`. Non confondere profondita con voxel arbitrari; validare prima conseguenze e leggibilita.
 - Direzione ambientale: la natura ha riconquistato strutture decrepite; tono e palette restano caldi, accoglienti e vitali. La natura dei nemici non e ancora decisa.
+- Premessa candidata: invasione aliena e macchine terraformanti hanno destabilizzato il nucleo, accelerando giorno/notte e super-temporali; le inondazioni rendono sistemici mezzi terrestri, acquatici e aerei. Dettagli in `docs/WORLD_PREMISE.md`.
 - Demo pubblica pre-release: pianificata come candidata dopo la vertical slice, subordinata ai gate in `docs/DEMO_STRATEGY.md`.
 - Esperienza iniziale: base in Blender, quasi nulla in Unreal Engine e C/C++.
 - Budget iniziale: molto basso; privilegiare soluzioni gratuite e rinviare acquisti non indispensabili.

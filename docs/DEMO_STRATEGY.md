@@ -38,6 +38,7 @@ La demo dovrebbe includere:
 - onboarding breve, giocabile con controller o tastiera/mouse;
 - una zona rappresentativa del mondo caldo e riconquistato dalla natura;
 - almeno una transizione significativa fra luce e buio;
+- se il sistema ha superato i test, un super-temporale controllato che trasforma una parte asciutta dell'arena in zona allagata;
 - nucleo-officina e due moduli con aggancio/separazione;
 - una trasformazione leggibile del campo di battaglia;
 - 2-3 scelte capaci di produrre build differenti;

@@ -105,6 +105,22 @@ Modifiche puramente cosmetiche non contano come profondita del sistema.
 
 Questa impostazione protegge salvataggi, dimensione dei dati e riproducibilita dei test.
 
+## Inondazioni dinamiche
+
+I super-temporali causati dall'instabilita planetaria possono cambiare lo stato di bacini e canali durante una situazione.
+
+Prima implementazione candidata:
+
+- pochi livelli d'acqua predefiniti o interpolati;
+- segnali di tempesta e tempo di preparazione leggibile;
+- argini, canali e pompe come punti di controllo;
+- percorsi terrestri che diventano acquatici o impraticabili;
+- risorse e pericoli che emergono con la piena;
+- aggiornamento limitato e misurabile della navigazione;
+- nessuna simulazione fluidodinamica generale.
+
+La macchina acquatica diventa necessaria soltanto nelle situazioni in cui offre decisioni oltre il semplice attraversamento: deviazione, pompaggio, trasporto, recupero o controllo di pericoli conduttivi.
+
 ## Strategie tecniche da confrontare
 
 ### A. Celle e stati discreti - prima scelta per il prototipo
@@ -193,6 +209,7 @@ Se questi gate falliscono, modificare la grammatica del terreno prima di aumenta
 - velocita e rischio degli interventi personali;
 - pathfinding continuo, a regioni o comportamento ibrido dei nemici;
 - ruolo di acqua, vegetazione e ricrescita;
+- velocita, preavviso e reversibilita delle inondazioni;
 - persistenza fra tappe della stessa run;
 - possibilita e costo di riparare una trasformazione sbagliata;
 - necessita reale di deformazione continua o voxel.

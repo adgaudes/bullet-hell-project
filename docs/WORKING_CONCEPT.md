@@ -29,7 +29,9 @@ La promessa non e ancora definitiva. Deve essere pronunciabile, visibile nel gam
 
 Il mondo ruota in modo anomalo o e attraversato da una fascia di luce in movimento. Regioni diverse passano attraverso condizioni luminose e temporali che cambiano risorse, creature, percorsi e comportamento delle macchine.
 
-La causa della rotazione, la scala del mondo e la natura dell'apocalisse restano da definire. La regola deve avere conseguenze di gameplay senza richiedere una simulazione globale continua nel primo prototipo.
+La causa candidata e un'invasione aliena: enormi macchine terraformanti hanno perforato e danneggiato o riconfigurato il nucleo planetario, accelerando e destabilizzando il ciclo giorno-notte e l'atmosfera. Piogge e super-temporali producono inondazioni capaci di trasformare rapidamente il terreno. La specifica e in `WORLD_PREMISE.md`.
+
+La scala esatta del mondo, lo stato degli invasori e l'obiettivo finale restano da definire. La regola deve avere conseguenze di gameplay senza richiedere una simulazione globale continua nel primo prototipo.
 
 ### Fantasy post-apocalittico caldo
 
@@ -135,8 +137,9 @@ Ipotesi di loop della run, da validare:
 3. recuperare un nuovo telaio o modulo da costruire;
 4. decidere se agganciarlo alla carovana, usarlo come macchina autonoma o sacrificarlo;
 5. affrontare un evento che richiede una riconfigurazione;
-6. raggiungere il culmine con una fusione temporanea o forma colossale costruita dalla build effettiva;
-7. superare boss, estrazione o transizione prima che la fascia favorevole si sposti.
+6. anticipare o attraversare una piena, riconfigurando la carovana fra terra, acqua e accesso aereo;
+7. raggiungere il culmine con una fusione temporanea o forma colossale costruita dalla build effettiva;
+8. superare boss, estrazione o transizione prima che la fascia favorevole si sposti.
 
 Durata, numero di tappe e struttura esatta restano aperti. Una prima ipotesi da testare e 20-30 minuti.
 
@@ -230,6 +233,7 @@ Queste famiglie esprimono ruoli e svantaggi, non ancora contenuti approvati.
 - ruolo: attraversamento di zone sommerse, pompaggio, deviazione di correnti e controllo dei livelli d'acqua;
 - vantaggio: modifica ambientale su vasta scala e accesso a percorsi esclusivi;
 - svantaggio: utilita dipendente dal bioma, transizioni lente e rischio di separazione dalla carovana.
+- interazione centrale candidata: pompare, deviare o trattenere la piena causata dai super-temporali.
 
 ### Forma colossale
 

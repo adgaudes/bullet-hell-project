@@ -42,6 +42,7 @@ Base creativa attualmente selezionata per l'esplorazione, non ancora bloccata:
 - manipolazione temporale come meccanica secondaria candidata;
 - mezzi terrestri, aerei e acquatici come famiglie candidate introdotte per fasi;
 - fusione in configurazioni crescenti e forma colossale come culmine avanzato della build, subordinato ai test modulari;
+- invasione aliena e terraformatori come causa candidata della rotazione accelerata, dei super-temporali e delle inondazioni;
 - specifica e criteri di scarto in `WORKING_CONCEPT.md`.
 
 Ogni assunzione potra essere confermata, modificata o eliminata nelle prime fasi.
@@ -374,6 +375,12 @@ In una scena graybox, confrontare una zona illuminata e una buia con un solo ben
 
 Luce dinamica complessa, ciclo globale e numerose eccezioni per nemico restano fuori scope finche questa regola minima non dimostra valore.
 
+#### Esperimento ambientale - super-temporale e piena
+
+Dopo aver validato gli stati del terreno, usare un bacino e un canale con pochi livelli d'acqua. Annunciare una tempesta, permettere al giocatore di preparare argine o drenaggio e trasformare almeno un percorso terrestre in acquatico.
+
+Il test deve dimostrare che anticipazione e riconfigurazione sono interessanti senza simulazione fluidodinamica generale. Un mezzo acquatico semplice entra solo dopo che acqua, percorsi e preavviso risultano leggibili.
+
 ### Fase 6 - Vertical slice
 
 **Scopo:** dimostrare una piccola porzione alla qualita attesa per la release.
@@ -612,6 +619,7 @@ Ogni espansione richiede un mini business case e non deve compromettere la stabi
 | Pattern belli ma ingiusti | Morti non comprese o proiettili coperti da VFX | Gerarchia visiva, telegraph, safe color e replay dei test |
 | Terreno dinamico troppo complesso | Bug di collisione/pathfinding, stutter o salvataggi enormi | Stati discreti prima, prototipi isolati e voxel solo dopo prove misurate |
 | Modifica del terreno superficiale | Il giocatore scava solo per risorse o usa sempre la stessa soluzione | Ogni trasformazione influenza almeno due sistemi e include una conseguenza |
+| Acqua dinamica ingestibile | Fluidi, collisioni e navigazione consumano troppo o producono bug | Bacini e livelli discreti, preavviso, pompe/argini espliciti e nessuna simulazione generale iniziale |
 | Meta-progressione gonfia lo scope | Il bilanciamento richiede troppe combinazioni | Set piccolo di scelte significative e cap esplicito |
 | Produzione contenuti troppo lenta | Un nemico completo richiede molto piu della stima | Misurare nella vertical slice e tagliare quantita |
 | Repository binario ingestibile | Clone lenti, conflitti, quote LFS | LFS/locking o Perforce scelti prima della produzione |

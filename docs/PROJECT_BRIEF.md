@@ -65,6 +65,8 @@ Pilastro obbligatorio: il terreno deve essere profondamente modificabile tramite
 
 La natura ha riconquistato le vecchie strutture decrepite. Il riferimento a *The Last of Us* riguarda questa relazione visiva fra vegetazione e rovine, mentre palette, tono e mondo devono essere nostri: caldi, accoglienti, fantasy e vitali. La tipologia dei nemici resta intenzionalmente aperta.
 
+Causa candidata dell'apocalisse: un'invasione aliena ha introdotto macchine terraformanti che hanno danneggiato o riconfigurato il nucleo planetario, accelerando il ciclo giorno-notte e intensificando piogge e super-temporali. Le inondazioni trasformano il campo e giustificano macchine terrestri, acquatiche e aeree con ruoli differenti. Stato degli invasori e identita dei nemici restano aperti.
+
 Questa e la base creativa scelta per l'esplorazione ed e descritta in `WORKING_CONCEPT.md`; non e ancora un Concept Lock. Tema, implementazione della costruzione, durata della run, forma della progressione e grado di mira manuale devono essere scelti tramite brainstorming e prototipi.
 
 ## Gerarchia iniziale dei pilastri
@@ -98,7 +100,7 @@ Salvo nuova decisione motivata, il primo prototipo non include:
 
 ## Decisioni ancora aperte
 
-- causa della rotazione, natura dell'apocalisse e obiettivo del viaggio;
+- dettagli della rotazione, stato degli invasori e obiettivo del viaggio;
 - formulazione finale della promessa centrale;
 - auto-fire, mira manuale o sistema ibrido;
 - arena aperta, stanze collegate o percorso con obiettivi;
