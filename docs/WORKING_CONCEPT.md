@@ -77,6 +77,8 @@ La soddisfazione deve provenire tanto dall'aver costruito una soluzione intellig
 
 **Carovana riconfigurabile con conseguenze:** le macchine si costruiscono, si agganciano, si separano e si fondono. La configurazione modifica movimento, combattimento, geometria e tempo dell'arena. Ogni configurazione offre un beneficio e un costo sistemico, non soltanto statistiche positive.
 
+La trasformazione profonda del terreno tramite tool personali e macchine e parte obbligatoria della firma meccanica. La specifica e i gate tecnici sono in `TERRAIN_SYSTEM.md`.
+
 Esempi ancora da prototipare:
 
 - un compressore solleva barriere dal terreno, ma restringe anche le vie di fuga;
@@ -110,9 +112,9 @@ Direzione ancora da progettare, con questi requisiti:
 
 1. Leggere pressione, terreno e traiettorie.
 2. Muoversi, schivare e usare l'equipaggiamento personale.
-3. Recuperare componenti o energia in punti rischiosi.
-4. Agganciare, separare, alimentare o riconfigurare una macchina.
-5. Sfruttare la nuova forma e reagire al suo effetto collaterale.
+3. Modificare localmente il terreno con un tool oppure recuperare componenti o energia in punti rischiosi.
+4. Agganciare, separare, alimentare o riconfigurare una macchina per una trasformazione piu ampia.
+5. Sfruttare il nuovo campo e reagire alle conseguenze create.
 
 ### Ciclo di 3-5 minuti
 
@@ -324,6 +326,8 @@ Evitare una campagna basata su molte cinematiche, dialoghi doppiati o grandi qua
 L'ipotesi di differenziazione non e "survivor-like con crafting". E la seguente relazione sistemica:
 
 > La build del giocatore prende forma come carovana presente nel mondo: i moduli possono combattere, trasformare l'arena, separarsi e fondersi in una configurazione colossale mentre il mondo ruota fra luce e buio.
+
+Il terreno trasformabile e quindi una parte della build: non cambia soltanto dove si combatte, ma che cosa la carovana puo diventare e come viene utilizzata.
 
 Questa promessa dovra essere dimostrata in graybox. Se le macchine diventano torrette con bonus passivi o la trasformazione del campo e soltanto cosmetica, il concept perde la sua ragione d'essere.
 

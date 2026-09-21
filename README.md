@@ -15,6 +15,7 @@ Progetto indipendente in fase di ideazione, destinato alla pubblicazione su Stea
 - [`docs/PROJECT_BRIEF.md`](docs/PROJECT_BRIEF.md): obiettivi, vincoli, riferimenti e decisioni aperte.
 - [`docs/CREATIVE_PRINCIPLES.md`](docs/CREATIVE_PRINCIPLES.md): standard di originalita, coerenza autoriale e uso dell'AI.
 - [`docs/WORKING_CONCEPT.md`](docs/WORKING_CONCEPT.md): concept corrente, loop, firme, rischi ed esperimenti iniziali.
+- [`docs/TERRAIN_SYSTEM.md`](docs/TERRAIN_SYSTEM.md): trasformazione del terreno, tool, macchine, strategie tecniche e gate.
 - [`docs/PLATFORM_AND_INPUT.md`](docs/PLATFORM_AND_INPUT.md): Windows, controller, tastiera/mouse e obiettivo Steam Deck.
 - [`docs/DEMO_STRATEGY.md`](docs/DEMO_STRATEGY.md): obiettivi, scope, gate e strategia Steam per la demo pre-release.
 - [`docs/BRAINSTORMING_CONCEPTS.md`](docs/BRAINSTORMING_CONCEPTS.md): prime concept card da discutere e confrontare.

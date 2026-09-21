@@ -329,15 +329,18 @@ Durata indicativa: 1-2 settimane.
 Ordine raccomandato:
 
 1. movimento, collisioni, camera e input;
-2. generazione e aggiornamento efficiente dei proiettili;
-3. danno, invulnerabilita, morte e restart rapido;
-4. arma e feedback provvisorio;
-5. authoring dei pattern data-driven;
-6. nemico/boss e telegraph;
-7. HUD minimo;
-8. difficolta e curva di apprendimento;
-9. scena di stress e profiling;
-10. build pacchettizzata per playtest.
+2. stato discreto del terreno e primo tool personale;
+3. macchina di trasformazione con vantaggio e conseguenza;
+4. aggiornamento di collisioni, percorsi nemici e anteprima;
+5. generazione e aggiornamento efficiente dei proiettili;
+6. danno, invulnerabilita, morte e restart rapido;
+7. arma e feedback provvisorio;
+8. authoring dei pattern data-driven;
+9. nemico/boss e telegraph;
+10. HUD minimo;
+11. difficolta e curva di apprendimento;
+12. scena di stress e profiling, inclusa trasformazione del terreno;
+13. build pacchettizzata per playtest.
 
 Per tutto il prototipo verificare controller e tastiera/mouse a ogni incremento. Simulare anche 1280x800/16:10 e navigare ogni schermata senza mouse. Dalla prima build Windows pacchettizzata eseguire smoke test tramite Proton sullo Steam Deck gia posseduto; i criteri completi sono in `PLATFORM_AND_INPUT.md`.
 
@@ -352,6 +355,8 @@ Gate di uscita:
 
 - 15-20 minuti di gioco mantengono interesse senza dipendere da grafica finale;
 - input e hit risultano affidabili;
+- tool e macchine producono almeno due trasformazioni del terreno con conseguenze tattiche differenti;
+- collisioni e navigazione restano affidabili dopo trasformazioni ripetute;
 - il carico obiettivo gira entro il budget sulla macchina minima candidata;
 - restart e iterazione sono rapidi.
 
@@ -605,6 +610,8 @@ Ogni espansione richiede un mini business case e non deve compromettere la stabi
 | Costo animazioni laterali | Ogni arma/direzione moltiplica gli asset | Rig modulare, set movimenti limitato, prototipo del costo prima dell'art lock |
 | Troppi attori/proiettili | Frame time cresce linearmente e il GC causa hitch | Pooling o rappresentazione ottimizzata, scene di stress precoci |
 | Pattern belli ma ingiusti | Morti non comprese o proiettili coperti da VFX | Gerarchia visiva, telegraph, safe color e replay dei test |
+| Terreno dinamico troppo complesso | Bug di collisione/pathfinding, stutter o salvataggi enormi | Stati discreti prima, prototipi isolati e voxel solo dopo prove misurate |
+| Modifica del terreno superficiale | Il giocatore scava solo per risorse o usa sempre la stessa soluzione | Ogni trasformazione influenza almeno due sistemi e include una conseguenza |
 | Meta-progressione gonfia lo scope | Il bilanciamento richiede troppe combinazioni | Set piccolo di scelte significative e cap esplicito |
 | Produzione contenuti troppo lenta | Un nemico completo richiede molto piu della stima | Misurare nella vertical slice e tagliare quantita |
 | Repository binario ingestibile | Clone lenti, conflitti, quote LFS | LFS/locking o Perforce scelti prima della produzione |

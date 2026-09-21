@@ -61,6 +61,8 @@ La grafica 2D e l'identita specifica del titolo non sono il target visivo del pr
 
 Un **survivor-like 3D isometrico single-player** ambientato in un mondo fantasy post-apocalittico, caldo e colorato, in rotazione perpetua. Un ingegnere improvvisatore costruisce una carovana di macchine modulari durante le missioni: i moduli accompagnano il giocatore, si agganciano, si separano, trasformano il campo e possono fondersi in configurazioni crescenti. Luce, buio e manipolazione temporale creano vantaggi e svantaggi da gestire. La componente bullet hell deve offrire pattern leggibili e decisioni di posizionamento, senza riempire lo schermo in modo indiscriminato.
 
+Pilastro obbligatorio: il terreno deve essere profondamente modificabile tramite tool personali per interventi precisi e macchine per trasformazioni su larga scala. Le modifiche devono influenzare almeno due sistemi fra percorsi, nemici, risorse, luce, acqua, macchine e carovana. La profondita sistemica ha priorita sulla deformazione geometrica completamente libera.
+
 La natura ha riconquistato le vecchie strutture decrepite. Il riferimento a *The Last of Us* riguarda questa relazione visiva fra vegetazione e rovine, mentre palette, tono e mondo devono essere nostri: caldi, accoglienti, fantasy e vitali. La tipologia dei nemici resta intenzionalmente aperta.
 
 Questa e la base creativa scelta per l'esplorazione ed e descritta in `WORKING_CONCEPT.md`; non e ancora un Concept Lock. Tema, implementazione della costruzione, durata della run, forma della progressione e grado di mira manuale devono essere scelti tramite brainstorming e prototipi.

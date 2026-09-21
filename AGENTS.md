@@ -20,6 +20,7 @@ Obiettivo di produzione: arrivare a un gioco piccolo, rifinito, testabile e comm
 - Riferimenti dichiarati: *Deep Rock Galactic: Survivor* per resa 3D e leggibilita; *Vampire Survivors* per immediatezza, build e densita del loop.
 - Visuale 3D isometrica/top-down: direzione principale candidata; tema e modello di progressione non ancora decisi.
 - Base creativa corrente: mondo fantasy post-apocalittico caldo e colorato in rotazione perpetua; un ingegnere improvvisatore costruisce una carovana di macchine modulari che si agganciano, si separano, trasformano il campo e, in fasi avanzate, si fondono in forme colossali. Luce/buio e tempo sono sistemi candidati collegati.
+- Pilastro di gameplay: trasformazione profonda del terreno con tool personali e macchine, secondo i criteri in `docs/TERRAIN_SYSTEM.md`. Non confondere profondita con voxel arbitrari; validare prima conseguenze e leggibilita.
 - Direzione ambientale: la natura ha riconquistato strutture decrepite; tono e palette restano caldi, accoglienti e vitali. La natura dei nemici non e ancora decisa.
 - Demo pubblica pre-release: pianificata come candidata dopo la vertical slice, subordinata ai gate in `docs/DEMO_STRATEGY.md`.
 - Esperienza iniziale: base in Blender, quasi nulla in Unreal Engine e C/C++.
@@ -107,6 +108,8 @@ Dopo una modifica sostanziale:
 - Usare Blueprint per iterazione e prototipazione. Introdurre C++ quando serve per prestazioni, infrastruttura stabile, testabilita o API non esposte; documentare il motivo.
 - Evitare logica critica in Level Blueprint quando puo vivere in componenti, subsystem o classi riutilizzabili.
 - Esporre parametri di bilanciamento tramite Data Asset, Data Table, Curve o configurazione equivalente.
+- Tenere separati stato logico del terreno, rappresentazione visiva, collisioni e navigazione; ogni trasformazione deve avere un esito deterministico e testabile.
+- Non introdurre un plugin voxel o una dipendenza di terrain runtime senza prototipo isolato, profiling su Steam Deck e decisione build-vs-buy documentata.
 - Definire budget misurabili per frame time, numero di proiettili, VFX, memoria e tempi di caricamento prima della vertical slice.
 - Profilare prima di ottimizzare. Usare Unreal Insights e gli strumenti di profiling dell'engine per attribuire i colli di bottiglia.
 - Verificare regolarmente una build Development pacchettizzata; per una release candidate verificare anche Shipping su una macchina pulita.
