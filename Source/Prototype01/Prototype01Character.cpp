@@ -12,7 +12,16 @@
 #include "InputModifiers.h"
 #include "InputCoreTypes.h"
 #include "Engine/LocalPlayer.h"
+#include "Materials/MaterialInterface.h"
+#include "Materials/MaterialInstanceDynamic.h"
 #include "UObject/ConstructorHelpers.h"
+
+namespace
+{
+	/** Materiale Engine base per l'istanza dinamica colorata del personaggio; nessun asset di progetto richiesto. */
+	const TCHAR* BasicShapeMaterialPath = TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial");
+	const FName ColorParamName(TEXT("Color"));
+}
 
 APrototype01Character::APrototype01Character()
 {
@@ -24,10 +33,15 @@ APrototype01Character::APrototype01Character()
 	GrayboxMesh->SetCollisionResponseToAllChannels(ECR_Ignore);
 	GrayboxMesh->SetCastShadow(false);
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> GrayboxMeshAsset(TEXT("/Engine/BasicShapes/Cube.Cube"));
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> BasicShapeMaterialAsset(BasicShapeMaterialPath);
 	if (GrayboxMeshAsset.Succeeded())
 	{
 		GrayboxMesh->SetStaticMesh(GrayboxMeshAsset.Object);
 		GrayboxMesh->SetRelativeScale3D(FVector(0.9f, 0.45f, 0.9f));
+	}
+	if (BasicShapeMaterialAsset.Succeeded())
+	{
+		GrayboxMesh->SetMaterial(0, BasicShapeMaterialAsset.Object);
 	}
 
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
@@ -64,6 +78,12 @@ void APrototype01Character::BeginPlay()
 	Super::BeginPlay();
 
 	UE_LOG(LogTemp, Log, TEXT("PROTOTYPE01_CHARACTER_READY"));
+
+	// Colore caldo/arancione ad alto contrasto: il personaggio deve restare leggibile sul pavimento a griglia grigio.
+	if (UMaterialInstanceDynamic* GrayboxMID = GrayboxMesh->CreateAndSetMaterialInstanceDynamic(0))
+	{
+		GrayboxMID->SetVectorParameterValue(ColorParamName, FLinearColor(1.0f, 0.35f, 0.02f));
+	}
 
 	CameraBoom->TargetArmLength = CameraArmLength;
 	CameraBoom->SetRelativeRotation(FRotator(CameraPitchDegrees, 0.0f, 0.0f));
