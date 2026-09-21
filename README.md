@@ -15,6 +15,7 @@ Progetto indipendente in fase di ideazione, destinato alla pubblicazione su Stea
 - [`docs/PROJECT_BRIEF.md`](docs/PROJECT_BRIEF.md): obiettivi, vincoli, riferimenti e decisioni aperte.
 - [`docs/CREATIVE_PRINCIPLES.md`](docs/CREATIVE_PRINCIPLES.md): standard di originalita, coerenza autoriale e uso dell'AI.
 - [`docs/WORKING_CONCEPT.md`](docs/WORKING_CONCEPT.md): concept corrente, loop, firme, rischi ed esperimenti iniziali.
+- [`docs/VISION_WORKSHOP.md`](docs/VISION_WORKSHOP.md): tre alternative di promessa centrale, loop candidato e scorecard per il prossimo confronto.
 - [`docs/TERRAIN_SYSTEM.md`](docs/TERRAIN_SYSTEM.md): trasformazione del terreno, tool, macchine, strategie tecniche e gate.
 - [`docs/WORLD_PREMISE.md`](docs/WORLD_PREMISE.md): invasione, terraformazione, rotazione, super-temporali e inondazioni.
 - [`docs/PROTOTYPE_01_SPEC.md`](docs/PROTOTYPE_01_SPEC.md): scope, ordine, metriche e gate del primo prototipo giocabile.
@@ -27,6 +28,7 @@ Progetto indipendente in fase di ideazione, destinato alla pubblicazione su Stea
 - [`docs/PLAYTESTS/`](docs/PLAYTESTS/): protocolli e risultati dei playtest.
 - [`docs/STORAGE_AUDIT_2026-09-21.md`](docs/STORAGE_AUDIT_2026-09-21.md): spazio occupato, build da conservare e pulizia proposta ma non ancora autorizzata.
 - [`docs/TOOLS_AND_LICENSES.md`](docs/TOOLS_AND_LICENSES.md): inventario, dipendenze approvate e tool radar.
+- [`docs/BLENDER_UNREAL_ROUNDTRIP_SPEC.md`](docs/BLENDER_UNREAL_ROUNDTRIP_SPEC.md): prova minima di scala, pivot, materiali, reimport e animazione fra Blender e Unreal.
 - [`docs/SMOKE_TEST_2026-09-21.md`](docs/SMOKE_TEST_2026-09-21.md): risultati della prima compilazione, packaging e avvio Windows.
 
 ## Avvertenza
