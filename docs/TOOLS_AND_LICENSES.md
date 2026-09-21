@@ -69,7 +69,7 @@ La versione esatta di MSVC e Windows SDK verra verificata creando e compilando u
 
 | Strumento | Priorita | Quando rivalutarlo | Motivo |
 |---|---|---|---|
-| PureRef | Raccomandato | Brainstorming/moodboard | Reference visuali in una lavagna leggera |
+| PureRef 2.x Small Business | Rimandato, a pagamento | Quando una moodboard dedicata giustifica il costo | La licenza Personal e solo per uso personale; il progetto Steam richiede uso commerciale |
 | GitHub CLI | Opzionale | Primo flusso branch/PR con Claude | Automatizzare issue, PR e review |
 | Krita | Opzionale | Se scegliamo sprite o concept paint 2D | Produzione e modifica raster |
 | JetBrains Rider | Rimandato | Se Visual Studio rallenta il flusso C++ | Alternativa UE a pagamento |
