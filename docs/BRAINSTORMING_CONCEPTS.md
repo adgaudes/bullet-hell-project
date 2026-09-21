@@ -8,6 +8,17 @@ Per evitare cloni, ogni proposta introduce una regola centrale che modifica movi
 
 Le quattro concept card sono **materia prima di brainstorming**, non concept gia abbastanza originali per la produzione. Devono ancora acquisire una firma fantastica e audiovisiva propria, essere confrontate con il mercato e superare i test in `CREATIVE_PRINCIPLES.md`.
 
+## Assi meccanici apprezzati
+
+Il proprietario ha espresso interesse per:
+
+- trasformazione fisica del campo di battaglia;
+- manipolazione del tempo;
+- controllo di uno sciame;
+- costruzione di una macchina durante lo scontro.
+
+Questi assi guideranno la prossima generazione di concept. Per proteggere chiarezza e scope, ogni proposta usera una meccanica primaria e al massimo una secondaria con un'interazione dimostrabile; non sono una lista di feature da includere tutte.
+
 ## Concept A - Il Faro Mobile
 
 **Pitch:** su un pianeta immerso in una tempesta senziente, il giocatore trascina e alimenta un faro mobile; la sua luce crea l'unica zona relativamente sicura, ma richiama creature sempre piu pericolose.

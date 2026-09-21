@@ -28,6 +28,7 @@ Non e ancora fissato un obiettivo di vendite. Prima di costruire un business cas
 | Blender | Esperienza di base, non recente | Stile 3D producibile, kit modulari e pipeline di export validata prima della produzione |
 | Piattaforma | Steam, inizialmente Windows | Controller, packaging, prestazioni e pagina Steam entrano nella roadmap |
 | Grafica | 3D vicina per leggibilita e resa a *Deep Rock Galactic: Survivor* | Camera isometrica/top-down come direzione principale; no produzione sprite 2D come stile centrale |
+| Asset esterni | Librerie di asset gratuiti ammesse previa valutazione condivisa | Verificare uso commerciale, attribuzione, provenienza, coerenza e costo di adattamento prima dell'adozione |
 
 ## Riferimenti dichiarati
 
@@ -100,6 +101,17 @@ Salvo nuova decisione motivata, il primo prototipo non include:
 - tono narrativo;
 - target hardware minimo e obiettivo di frame rate;
 - prezzo e obiettivo commerciale.
+
+## Preferenze emerse dal brainstorming
+
+Le seguenti meccaniche interessano il proprietario e devono restare nel bacino di esplorazione:
+
+- modificare fisicamente il campo di battaglia;
+- manipolare il tempo;
+- controllare uno sciame;
+- costruire una macchina durante lo scontro.
+
+Non sono ancora feature approvate e non devono essere sommate automaticamente. Le concept card successive proveranno combinazioni controllate con una meccanica primaria e, al massimo, una secondaria strettamente sinergica.
 
 ## Prossimo gate
 

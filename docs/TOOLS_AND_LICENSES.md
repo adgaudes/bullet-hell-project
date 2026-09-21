@@ -80,6 +80,19 @@ La versione esatta di MSVC e Windows SDK verra verificata creando e compilando u
 | DaVinci Resolve | Rimandato | Trailer e marketing | Montaggio video |
 | Perforce | Rimandato | Solo se Git LFS/locking diventa insufficiente | Gestione di grandi volumi binari |
 
+## Librerie di asset esterni
+
+Le librerie di asset gratuiti possono essere valutate quando risolvono un bisogno concreto di prototipo o produzione. Prima dell'importazione stabile registrare:
+
+- URL, autore e data di acquisizione;
+- testo o identificatore della licenza e conferma dell'uso commerciale;
+- requisiti di attribuzione e limiti alla redistribuzione dei sorgenti;
+- versione e formati disponibili;
+- modifiche necessarie per stile, scala, materiali, collisioni e prestazioni;
+- decisione condivisa: placeholder, adottato, da modificare o rifiutato.
+
+Evitare download massivi preventivi. Cercare un asset soltanto dopo aver definito il problema, confrontare poche alternative e provarlo in una scena isolata prima di inserirlo nel progetto principale.
+
 ## Fonti ufficiali
 
 - [Epic Games - Visual Studio per progetti C++ Unreal](https://dev.epicgames.com/documentation/unreal-engine/setting-up-visual-studio-development-environment-for-cplusplus-projects-in-unreal-engine)

@@ -80,13 +80,16 @@ Qualsiasi futura eccezione richiede una decisione documentata che valuti coerenz
 
 ## Asset pack e marketplace
 
-Asset gratuiti o acquistati sono ammessi per ridurre i costi, ma devono essere trattati come materia prima:
+Librerie di asset gratuiti e, in futuro, asset acquistati sono ammessi per ridurre costi e tempi, ma l'adozione viene valutata insieme al proprietario e gli asset devono essere trattati come materia prima:
 
 - verificare licenza e provenienza;
+- confermare esplicitamente uso commerciale, eventuale attribuzione, limiti di redistribuzione e compatibilita con Steam;
 - adattare materiali, palette, scala e presentazione alla direzione del progetto;
 - evitare che kit con stili incompatibili convivano senza un passaggio di armonizzazione;
 - non basare la firma visiva su un pacchetto molto riconoscibile;
 - mantenere un registro degli asset esterni e delle modifiche.
+
+Un asset gratuito non e automaticamente privo di costo: importazione, correzione, ottimizzazione e armonizzazione possono costare piu della produzione diretta. Nessun asset esterno diventa dipendenza di produzione senza una breve prova nell'engine e una decisione registrata.
 
 ## Test di originalita
 
