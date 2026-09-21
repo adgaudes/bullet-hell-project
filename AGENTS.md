@@ -9,8 +9,10 @@ Obiettivo di produzione: arrivare a un gioco piccolo, rifinito, testabile e comm
 ## Stato corrente
 
 - Fase attiva: fondazione del progetto e brainstorming.
-- Engine previsto: Unreal Engine 5, versione da fissare prima di creare il progetto.
-- DCC 3D previsto: Blender, versione LTS/stabile da fissare prima della produzione degli asset.
+- Engine approvato: Unreal Engine 5.6, installazione tramite Epic Games Launcher.
+- DCC 3D installato: Blender 5.2.2; fissare definitivamente la versione di produzione dopo il test di export verso UE 5.6.
+- Editor leggero installato: Visual Studio Code 1.137.0. Non considerarlo un sostituto della toolchain C++ di Unreal.
+- Toolchain C++ prevista su Windows: Visual Studio 2022 17.14 o successivo compatibile con UE 5.6; componenti da verificare in `docs/TOOLS_AND_LICENSES.md`.
 - Piattaforma iniziale candidata: Windows su Steam.
 - Modalita iniziale candidata: single-player.
 - Prospettiva, stile, tema e modello di progressione: non ancora decisi.

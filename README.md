@@ -13,8 +13,8 @@ Progetto indipendente in fase di ideazione, destinato alla pubblicazione su Stea
 
 - [`AGENTS.md`](AGENTS.md): regole operative del progetto.
 - [`docs/PROJECT_ROADMAP.md`](docs/PROJECT_ROADMAP.md): fasi, milestone, gate e rischi.
+- [`docs/TOOLS_AND_LICENSES.md`](docs/TOOLS_AND_LICENSES.md): inventario, dipendenze approvate e tool radar.
 
 ## Avvertenza
 
 Il nome `Bullet Hell Project` e provvisorio. Le decisioni creative elencate come candidate non rappresentano ancora scope approvato.
-
