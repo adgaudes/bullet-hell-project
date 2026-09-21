@@ -120,6 +120,12 @@ La prima combinazione scelta come base modificabile e:
 - meccanica secondaria candidata: manipolazione temporale attraverso le macchine;
 - estensione futura possibile: comportamento a sciame per una famiglia di costruzioni.
 
+Estensione avanzata da conservare nel concept, ma non nel primo prototipo:
+
+- costruire e pilotare macchine o mezzi modulari;
+- iniziare eventualmente da un solo telaio terrestre;
+- valutare movimento acquatico e aereo soltanto dopo la validazione del core loop e del mezzo terrestre.
+
 ## Prossimo gate
 
 La scheda e completa quando il proprietario conferma che rappresenta correttamente obiettivi e vincoli. Il passo seguente e confrontare le concept card in `BRAINSTORMING_CONCEPTS.md`, modificarle insieme e scegliere due idee per micro-prototipi economici. Nessuna proposta passa il Concept Lock senza superare i test di originalita definiti in `CREATIVE_PRINCIPLES.md`.

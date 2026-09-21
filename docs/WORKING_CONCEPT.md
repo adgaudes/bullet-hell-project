@@ -107,6 +107,45 @@ Famiglie candidate, non approvate:
 
 Il primo prototipo non deve contenere una griglia di crafting libera, catene logiche complesse o decine di componenti.
 
+## Macchine pilotabili e mobilita avanzata
+
+Direzione futura apprezzata dal proprietario: alcune costruzioni possono diventare mezzi pilotabili, permettendo al personaggio di non muoversi soltanto a piedi e di attraversare terra, acqua o aria.
+
+Questa idea rafforza la fantasia dell'ingegnere, ma non e parte del primo micro-prototipo. Deve crescere dallo stesso sistema modulare delle macchine da campo, evitando tre sottogiochi indipendenti.
+
+Progressione tecnica consigliata:
+
+1. **Telaio da campo terrestre:** una macchina esistente puo essere montata o guidata per brevi periodi nella stessa arena; movimento semplice, nessuna fisica veicolo complessa.
+2. **Mezzo terrestre modulare:** propulsione, difesa e funzione di trasformazione condividono i moduli gia validati; il mezzo cambia la build e non serve soltanto a spostarsi piu velocemente.
+3. **Attraversamento specializzato:** acqua o aria vengono valutate soltanto se level design e promessa del gioco le richiedono realmente.
+4. **Sistema multimodale:** terra, acqua e aria convivono solo dopo una prova di produzione e prestazioni che ne dimostri la sostenibilita.
+
+Principi candidati:
+
+- entrare nel mezzo deve cambiare rischio, spazio occupato e accesso alle macchine, non eliminare il combattimento a piedi;
+- il mezzo deve essere costruito o riconfigurato durante la run, non selezionato come veicolo separato da un menu;
+- danni o sovraccarico devono costringere a riparare, abbandonare o cannibalizzare il mezzo;
+- i componenti devono restare utili anche fuori dal mezzo per evitare sistemi di upgrade duplicati;
+- ogni modalita di movimento deve offrire decisioni proprie, non essere una semplice chiave per attraversare un ostacolo colorato;
+- camera, collisioni e leggibilita del bullet hell devono restare coerenti durante entrata, guida e uscita.
+
+Rischi specifici:
+
+- triplicazione del level design per terra, acqua e aria;
+- fisica e collisioni difficili da leggere in un gioco con molti nemici e proiettili;
+- perdita di precisione arcade durante la guida;
+- moltiplicazione di animazioni, VFX, audio, UI e bilanciamento;
+- mezzi troppo potenti che rendono irrilevanti movimento a piedi e macchine stazionarie;
+- ambienti costruiti come corridoi obbligati per giustificare ogni mezzo.
+
+Gate per iniziare un prototipo pilotabile:
+
+- il core loop a piedi e le macchine da campo sono gia divertenti;
+- esiste almeno un telaio modulare con vantaggio e conseguenza leggibili;
+- entrare nel mezzo risolve un problema di gameplay dimostrabile;
+- il test usa una sola modalita terrestre e riutilizza controlli, moduli e asset esistenti;
+- acqua e aria restano fuori scope fino a una decisione successiva basata sul prototipo terrestre.
+
 ## Il ruolo della manipolazione temporale
 
 Il tempo e una meccanica secondaria candidata, legata alle macchine e non a un potere universale del personaggio. Deve approfondire l'ingegneria, non diventare un secondo gioco separato.
@@ -181,6 +220,8 @@ Il micro-prototipo include soltanto:
 
 Non include arte finale, salvataggi, meta-progressione, generazione procedurale, crafting libero, storia completa o molte armi.
 
+Non include mezzi pilotabili. Questi appartengono a un esperimento successivo e condizionato ai gate definiti sopra.
+
 ## Esperimenti iniziali
 
 ### Esperimento A - Il campo cambia davvero?
@@ -225,3 +266,4 @@ Il concept resta candidato principale soltanto se il prototipo dimostra che:
 - tono e ambientazione;
 - cosa viene conservato fra una tappa e l'altra;
 - prima direzione temporale da testare.
+- ruolo a lungo termine delle macchine pilotabili e necessita effettiva di acqua o aria.

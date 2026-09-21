@@ -350,6 +350,12 @@ Gate di uscita:
 
 Durata indicativa: 3-6 settimane.
 
+#### Esperimento opzionale successivo - macchina pilotabile
+
+Soltanto dopo il gate del core loop, costruire un test isolato di un singolo telaio terrestre pilotabile che riutilizzi i moduli delle macchine da campo. Il test deve verificare se guidare aggiunge una decisione interessante senza compromettere precisione, leggibilita o scope.
+
+Movimento acquatico e aereo non entrano nella roadmap di produzione finche il test terrestre non dimostra valore e sostenibilita. La loro adozione richiede una decisione di scope separata con costo per controlli, fisica, camera, ambienti, nemici, UI, audio e prestazioni.
+
 ### Fase 6 - Vertical slice
 
 **Scopo:** dimostrare una piccola porzione alla qualita attesa per la release.
