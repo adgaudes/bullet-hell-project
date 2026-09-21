@@ -51,18 +51,18 @@ Non presentare le scelte candidate come decisioni approvate. Registra le decisio
 8. Non sacrificare leggibilita, accessibilita o prestazioni per aumentare il numero di proiettili a schermo.
 9. L'originalita percepibile e un requisito di prodotto: non approvare un concept che sia soltanto un survivor-like esistente con tema o asset differenti.
 10. Proteggere intenzionalita e coerenza autoriale. L'AI supporta il processo, ma non decide autonomamente identita, tono o significato del gioco.
-11. Risparmiare crediti Codex: usare contesto e reasoning minimi adeguati al rischio, letture mirate, chiamate raggruppate, output concisi e nessuna verifica duplicata; caricare documenti specialistici solo quando pertinenti.
+11. Preservare prioritariamente i crediti Codex: usare Claude come prima scelta per la scrittura di codice e consumarne prima la capacita utile disponibile; riservare Codex soprattutto a brainstorming, decisioni, brief, supervisione, integrazione e verifica. Non sprecare deliberatamente crediti di nessun servizio.
 
 I criteri completi sono definiti in `docs/CREATIVE_PRINCIPLES.md` e costituiscono un gate obbligatorio prima del Concept Lock.
 
 ## Collaborazione multi-AI e supervisione
 
-Il progetto utilizza Claude come prima destinazione esterna per i task delegabili e puo utilizzare Google Antigravity o altre AI per produrre codice, documentazione, test, revisioni indipendenti o proposte tecniche. Codex opera come supervisore tecnico, integratore e verificatore finale, oltre che come implementatore per i task che non conviene delegare.
+Il progetto utilizza Claude come prima destinazione per la scrittura di codice e puo utilizzare Google Antigravity o altre AI per revisioni indipendenti o proposte tecniche. Codex opera come partner di brainstorming, supervisore tecnico, integratore e verificatore finale; implementa direttamente codice solo nelle eccezioni definite sotto.
 
 Il modello operativo predefinito e **AI-first, proprietario in supervisione**:
 
-- Codex delega a Claude i task ben circoscritti quando la delega riduce il consumo complessivo di token o consente di sfruttare in modo utile i budget disponibili sui due servizi;
-- Codex esegue direttamente pianificazione, decisioni trasversali, operazioni locali, integrazione, verifiche e i task per cui il costo del brief e della revisione supererebbe il risparmio;
+- Codex delega a Claude per impostazione predefinita implementazioni, refactoring e test automatici che richiedono scrittura di codice, accorpandoli in incarichi sostanziali e verificabili;
+- Codex esegue direttamente pianificazione, decisioni trasversali, operazioni locali, integrazione e verifiche; la scrittura di codice segue le eccezioni esplicite definite nella politica sotto;
 - Claude riceve task limitati e il suo contributo viene sempre revisionato da Codex;
 - proprietario e Codex valutano insieme concept, risultati, qualita, tradeoff e decisioni;
 - il proprietario mantiene approvazione finale su direzione creativa, scope, costi, pubblicazione e decisioni irreversibili;
@@ -89,23 +89,24 @@ Il codice assistito da AI e ammesso solo attraverso questo processo di supervisi
 
 ### Politica di risparmio token e delega a Claude
 
-L'obiettivo e minimizzare il consumo complessivo su Codex e Claude senza ridurre qualita, verificabilita o sicurezza. Prima di iniziare un task non banale, Codex deve valutarne la delegabilita.
+L'obiettivo e preservare prioritariamente la capacita Codex senza ridurre qualita, verificabilita o sicurezza. La capacita Claude Pro va usata per prima e in modo produttivo sui task di codice; non deve essere consumata artificialmente con richieste inutili. Prima di scrivere codice non banale, Codex deve preparare un brief circoscritto e delegarlo a Claude finche il piano dispone di capacita.
 
 Delegare preferibilmente a Claude:
 
 - implementazioni isolate con file e interfacce gia definiti;
-- test, documentazione tecnica, refactoring meccanici e analisi di log voluminosi;
-- prima stesura di alternative tecniche o ricerca interna al codice;
+- implementazioni estese suddivisibili in milestone verificabili;
+- test automatici, refactoring meccanici e ricerca interna al codice necessaria all'implementazione;
 - task parallelizzabili che non toccano gli stessi file o asset;
 - lavori con criteri di accettazione chiari e output verificabile localmente.
 
 Mantenere su Codex:
 
 - decisioni creative o architetturali che richiedono il contesto complessivo del progetto;
-- pianificazione, definizione dei brief, integrazione e code review;
+- brainstorming, pianificazione, definizione dei brief, documentazione di progetto, integrazione e code review;
 - operazioni su Unreal, Blender, filesystem, Git e applicazioni locali quando Claude non ha accesso equivalente;
-- modifiche piccole per cui delegare costerebbe piu token che eseguirle;
 - verifiche finali, build, test, profiling e controllo del diff.
+
+Codex puo scrivere codice direttamente soltanto per una correzione minima emersa durante la propria revisione, per sbloccare Claude da un limite tecnico, per gestire un'urgenza esplicitamente richiesta oppure quando Claude ha raggiunto il limite disponibile. Anche in questi casi deve mantenere la modifica piu piccola possibile. Claude non viene usato per brainstorming generale, decisioni creative o conversazione di progetto: il suo budget e dedicato alla produzione di codice utile.
 
 Per ogni delega usare il minimo contesto sufficiente: inviare file mirati o riferimenti precisi, evitare intere cronologie di conversazione, richiedere output conciso e non chiedere spiegazioni estese se non necessarie. Preferire un singolo brief completo a una sequenza di messaggi correttivi. Se il primo risultato non soddisfa i criteri, fornire feedback puntuale sul diff invece di rigenerare tutto.
 
@@ -113,7 +114,7 @@ Preferenza del proprietario: Codex deve impartire direttamente i task a Claude t
 
 Monitoraggio Claude Pro: dopo ogni delega, Codex deve controllare output ed errori per avvisi di capacita residua, rate limit, esaurimento del piano, fallback o proposta di utilizzo API. Quando il limite e vicino o raggiunto, avvisare subito il proprietario e indicare l'orario di ripristino se disponibile. Non passare mai automaticamente a crediti API/PAYG, non acquistare capacita e non nascondere il blocco passando silenziosamente a un'altra AI. Usare `/status` solo quando serve confermare un avviso o a una milestone significativa, evitando controlli ripetitivi che aggiungano consumo o lavoro inutile.
 
-Non delegare micro-task a Claude Code: il costo fisso di inizializzazione e contesto puo superare il lavoro utile. Accorpare invece task coerenti e sostanziali in una singola delega, usare effort basso quando sufficiente e controllare i dati di utilizzo restituiti dalla CLI. Codex deve interrompere o ridimensionare una delega se il rapporto tra contesto, output e valore prodotto e sfavorevole.
+Non delegare singolarmente micro-task a Claude Code: accorparli nel successivo pacchetto di implementazione coerente. Usare il minimo effort sufficiente e controllare i dati di utilizzo restituiti dalla CLI. Interrompere soltanto richieste bloccate o improduttive; finche Claude dispone di capacita, preferire un nuovo incarico di codice utile a un'implementazione diretta in Codex.
 
 La delega non e automatica quando espone segreti, richiede una decisione del proprietario, introduce dipendenze o costi, oppure non dispone di un canale Claude autorizzato e verificabile. In assenza di accesso diretto a Claude, Codex prepara un brief pronto all'uso e segnala il minimo intervento richiesto al proprietario.
 
