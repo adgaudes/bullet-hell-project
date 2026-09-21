@@ -9,10 +9,11 @@ Obiettivo di produzione: arrivare a un gioco piccolo, rifinito, testabile e comm
 ## Stato corrente
 
 - Fase attiva: brainstorming e sviluppo del concept di lavoro.
-- Engine approvato: Unreal Engine 5.6, installazione tramite Epic Games Launcher.
+- Engine approvato e installato: Unreal Engine 5.6.1 tramite Epic Games Launcher; smoke test C++ e packaging ancora da eseguire.
+- Plugin Epic verificati nell'installazione: Fab 0.0.9 e Quixel Bridge 2025.0.1, entrambi abilitati per impostazione predefinita; verificarne apertura e import in Editor prima dell'uso di produzione.
 - DCC 3D installato: Blender 5.2.2; fissare definitivamente la versione di produzione dopo il test di export verso UE 5.6.
 - Editor leggero installato: Visual Studio Code 1.137.0. Non considerarlo un sostituto della toolchain C++ di Unreal.
-- Toolchain C++ prevista su Windows: Visual Studio 2022 17.14 o successivo compatibile con UE 5.6; componenti da verificare in `docs/TOOLS_AND_LICENSES.md`.
+- Toolchain C++ su Windows: Visual Studio Community 2022 17.14.41 verificato con MSVC, MSBuild, Windows SDK e componenti Unreal; dettagli in `docs/TOOLS_AND_LICENSES.md`.
 - Piattaforma iniziale candidata: Windows su Steam.
 - Modalita iniziale candidata: single-player.
 - Input: controller/gamepad come esperienza primaria, con piena parita funzionale per tastiera e mouse.
@@ -52,12 +53,13 @@ I criteri completi sono definiti in `docs/CREATIVE_PRINCIPLES.md` e costituiscon
 
 ## Collaborazione multi-AI e supervisione
 
-Il progetto puo utilizzare Claude e altre AI per produrre codice, documentazione, test o proposte tecniche. Codex opera come implementatore principale, supervisore tecnico e integratore, salvo diversa indicazione esplicita del proprietario.
+Il progetto utilizza Claude e puo utilizzare altre AI per produrre codice, documentazione, test o proposte tecniche. Codex opera come supervisore tecnico, integratore e verificatore finale, oltre che come implementatore per i task che non conviene delegare.
 
 Il modello operativo predefinito e **AI-first, proprietario in supervisione**:
 
-- Codex esegue direttamente il maggior volume possibile di lavoro tecnico e operativo;
-- eventuali altre AI ricevono task limitati e il loro contributo viene revisionato da Codex;
+- Codex delega a Claude i task ben circoscritti quando la delega riduce il consumo complessivo di token o consente di sfruttare in modo utile i budget disponibili sui due servizi;
+- Codex esegue direttamente pianificazione, decisioni trasversali, operazioni locali, integrazione, verifiche e i task per cui il costo del brief e della revisione supererebbe il risparmio;
+- Claude riceve task limitati e il suo contributo viene sempre revisionato da Codex;
 - proprietario e Codex valutano insieme concept, risultati, qualita, tradeoff e decisioni;
 - il proprietario mantiene approvazione finale su direzione creativa, scope, costi, pubblicazione e decisioni irreversibili;
 - non trasferire al proprietario lavoro meccanico che Codex puo svolgere in sicurezza.
@@ -78,6 +80,30 @@ Regole obbligatorie:
 Il repository, i test riproducibili e le decisioni registrate sono la fonte condivisa di verita. Le conversazioni separate con altre AI non sostituiscono la documentazione nel repository.
 
 Il codice assistito da AI e ammesso solo attraverso questo processo di supervisione. Per impostazione iniziale, contenuti generativi visibili o udibili nella versione pubblica non sono asset finali: possono essere placeholder interni, ma qualsiasi eccezione richiede approvazione esplicita e verifica di diritti, regole della piattaforma e coerenza creativa.
+
+### Politica di risparmio token e delega a Claude
+
+L'obiettivo e minimizzare il consumo complessivo su Codex e Claude senza ridurre qualita, verificabilita o sicurezza. Prima di iniziare un task non banale, Codex deve valutarne la delegabilita.
+
+Delegare preferibilmente a Claude:
+
+- implementazioni isolate con file e interfacce gia definiti;
+- test, documentazione tecnica, refactoring meccanici e analisi di log voluminosi;
+- prima stesura di alternative tecniche o ricerca interna al codice;
+- task parallelizzabili che non toccano gli stessi file o asset;
+- lavori con criteri di accettazione chiari e output verificabile localmente.
+
+Mantenere su Codex:
+
+- decisioni creative o architetturali che richiedono il contesto complessivo del progetto;
+- pianificazione, definizione dei brief, integrazione e code review;
+- operazioni su Unreal, Blender, filesystem, Git e applicazioni locali quando Claude non ha accesso equivalente;
+- modifiche piccole per cui delegare costerebbe piu token che eseguirle;
+- verifiche finali, build, test, profiling e controllo del diff.
+
+Per ogni delega usare il minimo contesto sufficiente: inviare file mirati o riferimenti precisi, evitare intere cronologie di conversazione, richiedere output conciso e non chiedere spiegazioni estese se non necessarie. Preferire un singolo brief completo a una sequenza di messaggi correttivi. Se il primo risultato non soddisfa i criteri, fornire feedback puntuale sul diff invece di rigenerare tutto.
+
+La delega non e automatica quando espone segreti, richiede una decisione del proprietario, introduce dipendenze o costi, oppure non dispone di un canale Claude autorizzato e verificabile. In assenza di accesso diretto a Claude, Codex prepara un brief pronto all'uso e segnala il minimo intervento richiesto al proprietario.
 
 ## Raccomandazione proattiva di app e strumenti
 

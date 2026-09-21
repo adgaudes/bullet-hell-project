@@ -16,7 +16,9 @@ Stati usati:
 
 | Strumento | Versione/stato | Uso previsto | Decisione |
 |---|---|---|---|
-| Unreal Engine | 5.6, in installazione | Engine e packaging Windows | Approvato |
+| Unreal Engine | 5.6.1 | Engine e packaging Windows | Installato; smoke test C++ e packaging da eseguire |
+| Fab UE plugin | 0.0.9, incluso in UE 5.6.1 | Ricerca e import di asset Fab | Installato e abilitato di default; test in Editor da eseguire |
+| Quixel Bridge UE plugin | 2025.0.1, incluso in UE 5.6.1 | Accesso e import dei contenuti Megascans compatibili | Installato e abilitato di default; test in Editor da eseguire |
 | Epic Games Launcher | 1.3.193.0 | Installazione e aggiornamento UE | Installato |
 | Blender | 5.2.2 registrato; eseguibili 5.1 e 5.2 presenti | Modellazione, UV, rig, animazione, export | Installato; fissare 5.2.2 dopo test pipeline |
 | Visual Studio Code | 1.137.0 x64 | Testo, configurazioni e modifiche leggere | Installato; non IDE primario UE C++ |
@@ -25,6 +27,7 @@ Stati usati:
 | Git Credential Manager | 2.9.1 | Autenticazione remota | Installato |
 | Visual Studio Community 2022 | 17.14.41, MSVC 14.44.35207, MSBuild 17.14.60 | Compilazione e debugging UE 5.6 C++ | Installato e verificato; IDE/toolchain primaria |
 | Visual Studio Community 2026 | 18.10.1, disinstallato il 21 settembre 2026 | Non supportato ufficialmente da UE 5.6 | Rimosso; reinstallabile in futuro se servisse a un altro progetto |
+| Claude Code CLI | Non rilevato | Delega controllata di implementazione, test e documentazione | Da valutare per rendere operativo il flusso multi-AI |
 | GitHub CLI | Non rilevato | Issue, pull request e automazione GitHub | Opzionale |
 
 Spazio libero rilevato sul disco di progetto: circa 620 GB, sufficiente per la fase iniziale. Hardware rilevato: Intel Core i7-13620H, 16 GB RAM, RTX 4050 Laptop con 6 GB VRAM.
