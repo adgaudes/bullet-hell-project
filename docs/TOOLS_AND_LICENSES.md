@@ -23,14 +23,15 @@ Stati usati:
 | Git | 2.55.0 | Versionamento | Installato |
 | Git LFS | 3.7.1 | Asset binari | Installato e configurato nel repository |
 | Git Credential Manager | 2.9.1 | Autenticazione remota | Installato |
-| Visual Studio / Build Tools | Non rilevato | Compilazione e debugging UE C++ | Da installare |
+| Visual Studio Community 2022 | 17.14.41, MSVC 14.44.35207, MSBuild 17.14.60 | Compilazione e debugging UE 5.6 C++ | Installato e verificato; IDE/toolchain primaria |
+| Visual Studio Community 2026 | 18.10.1 | Nessun uso previsto per UE 5.6 | Installato; non usare per il progetto finche non validato |
 | GitHub CLI | Non rilevato | Issue, pull request e automazione GitHub | Opzionale |
 
 Spazio libero rilevato sul disco di progetto: circa 620 GB, sufficiente per la fase iniziale. Hardware rilevato: Intel Core i7-13620H, 16 GB RAM, RTX 4050 Laptop con 6 GB VRAM.
 
-## Installazione prioritaria: Visual Studio 2022
+## Visual Studio 2022 - verifica completata
 
-Per Unreal Engine 5.6 usare Visual Studio 2022 versione 17.14 o successiva compatibile. UE 5.6 non richiede Visual Studio 2026.
+Per Unreal Engine 5.6 usare Visual Studio 2022 versione 17.14 o successiva compatibile. Installazione rilevata: Community 2022 17.14.41. UE 5.6 non richiede Visual Studio 2026 e il progetto non deve selezionarlo automaticamente prima di una verifica esplicita.
 
 Selezionare il workload:
 
@@ -55,7 +56,21 @@ Non selezionare per ora:
 - un secondo installer di Unreal Engine dentro Visual Studio;
 - componenti cloud non richiesti dal progetto.
 
-La versione esatta di MSVC e Windows SDK verra verificata creando e compilando un progetto C++ minimo dopo l'installazione di UE 5.6.
+Componenti verificati il 21 settembre 2026:
+
+- workload Game development with C++;
+- MSVC x64/x86 14.44.35207, compilatore 19.44.35229;
+- linker x64 14.44.35229;
+- MSBuild 17.14.60;
+- Windows 11 SDK 10.0.26100;
+- Visual Studio Tools for Unreal Engine;
+- Blueprint debugger tools;
+- Unreal Engine Test Adapter;
+- C++ AddressSanitizer;
+- C++ diagnostic/profiling tools;
+- HLSL tools.
+
+Visual Studio Installer indica l'istanza 2022 come completa, avviabile e senza riavvio richiesto. La verifica definitiva resta la creazione, compilazione e pacchettizzazione di un progetto C++ minimo dopo il completamento dell'installazione di UE 5.6.
 
 ## Dipendenze da non installare separatamente ora
 
