@@ -139,6 +139,8 @@ void APrototype01Character::Tick(float DeltaSeconds)
 	{
 		GetCharacterMovement()->Velocity = DashDirection * DashSpeed;
 	}
+
+	UpdateTerrainTarget();
 }
 
 void APrototype01Character::SetupEnhancedInput()
@@ -153,6 +155,12 @@ void APrototype01Character::SetupEnhancedInput()
 
 		IA_Dash = NewObject<UInputAction>(this, TEXT("IA_Dash"));
 		IA_Dash->ValueType = EInputActionValueType::Boolean;
+
+		IA_TerrainTool = NewObject<UInputAction>(this, TEXT("IA_TerrainTool"));
+		IA_TerrainTool->ValueType = EInputActionValueType::Boolean;
+
+		IA_TerrainMode = NewObject<UInputAction>(this, TEXT("IA_TerrainMode"));
+		IA_TerrainMode->ValueType = EInputActionValueType::Boolean;
 
 		IMC_Gameplay = NewObject<UInputMappingContext>(this, TEXT("IMC_Gameplay"));
 
@@ -179,6 +187,12 @@ void APrototype01Character::SetupEnhancedInput()
 
 		IMC_Gameplay->MapKey(IA_Dash, EKeys::SpaceBar);
 		IMC_Gameplay->MapKey(IA_Dash, EKeys::Gamepad_FaceButton_Bottom);
+
+		IMC_Gameplay->MapKey(IA_TerrainTool, EKeys::LeftMouseButton);
+		IMC_Gameplay->MapKey(IA_TerrainTool, EKeys::Gamepad_RightTrigger);
+		IMC_Gameplay->MapKey(IA_TerrainMode, EKeys::RightMouseButton);
+		IMC_Gameplay->MapKey(IA_TerrainMode, EKeys::Q);
+		IMC_Gameplay->MapKey(IA_TerrainMode, EKeys::Gamepad_LeftShoulder);
 	}
 
 	if (APlayerController* PC = Cast<APlayerController>(GetController()))
@@ -204,6 +218,8 @@ void APrototype01Character::SetupPlayerInputComponent(UInputComponent* PlayerInp
 		EnhancedInputComponent->BindAction(IA_Aim, ETriggerEvent::Triggered, this, &APrototype01Character::HandleAimTriggered);
 		EnhancedInputComponent->BindAction(IA_Aim, ETriggerEvent::Completed, this, &APrototype01Character::HandleAimCompleted);
 		EnhancedInputComponent->BindAction(IA_Dash, ETriggerEvent::Started, this, &APrototype01Character::HandleDashStarted);
+		EnhancedInputComponent->BindAction(IA_TerrainTool, ETriggerEvent::Started, this, &APrototype01Character::HandleTerrainToolStarted);
+		EnhancedInputComponent->BindAction(IA_TerrainMode, ETriggerEvent::Started, this, &APrototype01Character::HandleTerrainModeStarted);
 	}
 	else
 	{
@@ -257,6 +273,27 @@ void APrototype01Character::HandleDashStarted(const FInputActionValue& Value)
 {
 	(void)Value;
 	StartDash();
+}
+
+void APrototype01Character::HandleTerrainToolStarted(const FInputActionValue& Value)
+{
+	(void)Value;
+	if (TerrainGrid)
+	{
+		UpdateTerrainTarget();
+		TerrainGrid->ApplyCommandAtWorldLocation(CurrentTerrainTarget, TerrainToolMode);
+	}
+}
+
+void APrototype01Character::HandleTerrainModeStarted(const FInputActionValue& Value)
+{
+	(void)Value;
+	TerrainToolMode = TerrainToolMode == EPrototypeTerrainToolMode::Dig
+		? EPrototypeTerrainToolMode::Raise
+		: EPrototypeTerrainToolMode::Dig;
+	UE_LOG(LogTemp, Log, TEXT("PROTOTYPE01_TERRAIN_MODE %s"),
+		TerrainToolMode == EPrototypeTerrainToolMode::Dig ? TEXT("Dig") : TEXT("Raise"));
+	UpdateTerrainTarget();
 }
 
 void APrototype01Character::StartDash()
@@ -323,6 +360,32 @@ void APrototype01Character::EndDashCooldown()
 	}
 
 	UE_LOG(LogTemp, Log, TEXT("PROTOTYPE01_DASH_READY"));
+}
+
+void APrototype01Character::SetTerrainGrid(APrototype01TerrainGridActor* InTerrainGrid)
+{
+	TerrainGrid = InTerrainGrid;
+	UpdateTerrainTarget();
+	UE_LOG(LogTemp, Log, TEXT("PROTOTYPE01_TERRAIN_MODE Dig"));
+}
+
+void APrototype01Character::UpdateTerrainTarget()
+{
+	if (!TerrainGrid)
+	{
+		return;
+	}
+
+	FVector Forward = GetActorForwardVector();
+	Forward.Z = 0.0f;
+	if (!Forward.Normalize())
+	{
+		TerrainGrid->HidePreview();
+		return;
+	}
+
+	CurrentTerrainTarget = GetActorLocation() + Forward * FMath::Max(TerrainToolRange, 100.0f);
+	TerrainGrid->UpdatePreview(CurrentTerrainTarget, TerrainToolMode);
 }
 
 void APrototype01Character::UpdateMouseAimControlMode()

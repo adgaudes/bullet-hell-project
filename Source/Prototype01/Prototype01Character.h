@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "InputActionValue.h"
+#include "Prototype01TerrainGridActor.h"
 #include "TimerManager.h"
 #include "Prototype01Character.generated.h"
 
@@ -28,6 +29,9 @@ public:
 	virtual void BeginPlay() override;
 	virtual void Tick(float DeltaSeconds) override;
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+
+	/** Collega la griglia terreno creata dalla GameMode senza ricerche globali per frame. */
+	void SetTerrainGrid(APrototype01TerrainGridActor* InTerrainGrid);
 
 protected:
 	/** Mesh graybox del personaggio, senza collisione. */
@@ -110,6 +114,10 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Prototype01|Dash")
 	FLinearColor DashCooldownColor = FLinearColor(0.4f, 0.4f, 0.4f);
 
+	/** Distanza davanti al personaggio usata per selezionare la cella terreno. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Prototype01|Terrain", meta = (ClampMin = "100.0"))
+	float TerrainToolRange = 480.0f;
+
 private:
 	/** Azione di movimento WASD / stick sinistro. */
 	UPROPERTY(Transient)
@@ -123,6 +131,14 @@ private:
 	UPROPERTY(Transient)
 	TObjectPtr<UInputAction> IA_Dash;
 
+	/** Applica la modalita terreno corrente alla cella bersaglio. */
+	UPROPERTY(Transient)
+	TObjectPtr<UInputAction> IA_TerrainTool;
+
+	/** Alterna le modalita terreno Dig e Raise. */
+	UPROPERTY(Transient)
+	TObjectPtr<UInputAction> IA_TerrainMode;
+
 	/** Mapping context di gameplay. */
 	UPROPERTY(Transient)
 	TObjectPtr<UInputMappingContext> IMC_Gameplay;
@@ -130,6 +146,9 @@ private:
 	/** Istanza dinamica di materiale del graybox, usata per il feedback dash/cooldown. */
 	UPROPERTY(Transient)
 	TObjectPtr<UMaterialInstanceDynamic> GrayboxMID;
+
+	UPROPERTY(Transient)
+	TObjectPtr<APrototype01TerrainGridActor> TerrainGrid;
 
 	enum class EAimControlMode : uint8
 	{
@@ -149,6 +168,8 @@ private:
 
 	FVector DashDirection = FVector::ZeroVector;
 	float EffectiveDashDuration = 0.0f;
+	FVector CurrentTerrainTarget = FVector::ZeroVector;
+	EPrototypeTerrainToolMode TerrainToolMode = EPrototypeTerrainToolMode::Dig;
 
 	FTimerHandle DashDurationTimerHandle;
 	FTimerHandle DashCooldownTimerHandle;
@@ -160,6 +181,8 @@ private:
 	void HandleAimTriggered(const FInputActionValue& Value);
 	void HandleAimCompleted(const FInputActionValue& Value);
 	void HandleDashStarted(const FInputActionValue& Value);
+	void HandleTerrainToolStarted(const FInputActionValue& Value);
+	void HandleTerrainModeStarted(const FInputActionValue& Value);
 
 	void UpdateMouseAimControlMode();
 	void ApplyFacingRotation(float DeltaSeconds);
@@ -168,4 +191,5 @@ private:
 	void StartDash();
 	void EndDash();
 	void EndDashCooldown();
+	void UpdateTerrainTarget();
 };

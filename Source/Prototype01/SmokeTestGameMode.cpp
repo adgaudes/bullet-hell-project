@@ -1,6 +1,7 @@
 #include "SmokeTestGameMode.h"
 #include "Prototype01Character.h"
 #include "Prototype01ArenaActor.h"
+#include "Prototype01TerrainGridActor.h"
 
 #include "Components/CapsuleComponent.h"
 #include "Engine/World.h"
@@ -30,8 +31,10 @@ void ASmokeTestGameMode::StartPlay()
 	// posizionata in base al pawn effettivamente spawnato, cosi il pavimento e sempre
 	// sotto i suoi piedi indipendentemente dal punto di spawn della mappa.
 	FVector FloorTopTarget = FVector::ZeroVector;
-	if (const APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(World, 0))
+	APrototype01Character* PrototypeCharacter = nullptr;
+	if (APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(World, 0))
 	{
+		PrototypeCharacter = Cast<APrototype01Character>(PlayerPawn);
 		FloorTopTarget = PlayerPawn->GetActorLocation();
 		if (const ACharacter* PlayerCharacter = Cast<ACharacter>(PlayerPawn))
 		{
@@ -64,5 +67,22 @@ void ASmokeTestGameMode::StartPlay()
 	else
 	{
 		UE_LOG(LogTemp, Warning, TEXT("PROTOTYPE01_ARENA_SPAWN_FAILED"));
+	}
+
+	if (APrototype01TerrainGridActor* TerrainGrid = World->SpawnActor<APrototype01TerrainGridActor>(
+		APrototype01TerrainGridActor::StaticClass(), FloorTopTarget, FRotator::ZeroRotator, SpawnParams))
+	{
+		if (PrototypeCharacter)
+		{
+			PrototypeCharacter->SetTerrainGrid(TerrainGrid);
+		}
+		else
+		{
+			UE_LOG(LogTemp, Warning, TEXT("PROTOTYPE01_TERRAIN_CHARACTER_MISSING"));
+		}
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("PROTOTYPE01_TERRAIN_SPAWN_FAILED"));
 	}
 }
