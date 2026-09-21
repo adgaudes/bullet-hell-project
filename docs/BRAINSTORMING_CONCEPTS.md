@@ -6,6 +6,8 @@ Queste proposte sono materiale da discutere, combinare o scartare. Nessuna e app
 
 Per evitare cloni, ogni proposta introduce una regola centrale che modifica movimento, rischio e costruzione della build.
 
+Le quattro concept card sono **materia prima di brainstorming**, non concept gia abbastanza originali per la produzione. Devono ancora acquisire una firma fantastica e audiovisiva propria, essere confrontate con il mercato e superare i test in `CREATIVE_PRINCIPLES.md`.
+
 ## Concept A - Il Faro Mobile
 
 **Pitch:** su un pianeta immerso in una tempesta senziente, il giocatore trascina e alimenta un faro mobile; la sua luce crea l'unica zona relativamente sicura, ma richiama creature sempre piu pericolose.
@@ -117,3 +119,11 @@ Non selezionare in base alla quantita di lore possibile. I finalisti devono:
 - usare al massimo due sistemi tecnici nuovi nel primo prototipo;
 - permettere un test significativo con un personaggio, due nemici, un'arena e pochi upgrade;
 - conservare un percorso credibile verso atmosfera, progressione e narrazione dopo la validazione del combattimento.
+
+Inoltre, ogni finalista deve dimostrare tre firme coerenti:
+
+- una firma meccanica che non sia una gimmick occasionale;
+- una firma fantastica non riducibile a una semplice skin tematica;
+- una firma audiovisiva riconoscibile senza logo.
+
+Se una proposta puo essere descritta soltanto come "un altro gioco, ma con...", resta in brainstorming anche se e tecnicamente fattibile.

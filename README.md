@@ -13,6 +13,7 @@ Progetto indipendente in fase di ideazione, destinato alla pubblicazione su Stea
 
 - [`AGENTS.md`](AGENTS.md): regole operative del progetto.
 - [`docs/PROJECT_BRIEF.md`](docs/PROJECT_BRIEF.md): obiettivi, vincoli, riferimenti e decisioni aperte.
+- [`docs/CREATIVE_PRINCIPLES.md`](docs/CREATIVE_PRINCIPLES.md): standard di originalita, coerenza autoriale e uso dell'AI.
 - [`docs/BRAINSTORMING_CONCEPTS.md`](docs/BRAINSTORMING_CONCEPTS.md): prime concept card da discutere e confrontare.
 - [`docs/PROJECT_ROADMAP.md`](docs/PROJECT_ROADMAP.md): fasi, milestone, gate e rischi.
 - [`docs/TOOLS_AND_LICENSES.md`](docs/TOOLS_AND_LICENSES.md): inventario, dipendenze approvate e tool radar.

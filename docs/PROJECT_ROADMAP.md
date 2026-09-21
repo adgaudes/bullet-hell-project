@@ -133,11 +133,12 @@ Valutare ogni concept da 1 a 5 con pesi concordati:
 | Divertimento del core loop | 25% |
 | Distinzione e comunicabilita | 20% |
 | Fattibilita per il team | 20% |
-| Chiarezza e leggibilita del bullet hell | 15% |
-| Potenziale di espansione controllata | 10% |
+| Coerenza autoriale: meccanica, mondo e audiovisivo | 10% |
+| Chiarezza e leggibilita del bullet hell | 10% |
+| Potenziale di espansione controllata | 5% |
 | Compatibilita con budget e calendario | 10% |
 
-La scorecard restringe il campo ma non sostituisce il playtest.
+La scorecard restringe il campo ma non sostituisce il playtest. Un concept che fallisce i test vincolanti in `CREATIVE_PRINCIPLES.md` non passa il gate anche con una media alta.
 
 Deliverable:
 
@@ -152,6 +153,8 @@ Gate di uscita:
 - due concept abbastanza precisi da poter essere prototipati in pochi giorni;
 - nessun concept dipende da una tecnologia non ancora validata;
 - target, emozione e vincolo di scope sono comprensibili in meno di due minuti.
+- ogni finalista possiede una firma meccanica, fantastica e audiovisiva distinguibile;
+- il pitch funziona senza dipendere dal nome di un gioco esistente.
 
 Durata indicativa: 1-2 settimane.
 
@@ -579,6 +582,7 @@ Ogni espansione richiede un mini business case e non deve compromettere la stabi
 ## 6. Documenti vivi da creare quando servono
 
 - `docs/VISION.md`: one-page vision e pilastri.
+- `docs/CREATIVE_PRINCIPLES.md`: criteri di originalita, autorialita e uso dell'AI.
 - `docs/DECISIONS.md`: decision log con data, contesto, scelta e conseguenze.
 - `docs/GDD.md`: design eseguibile, non enciclopedia.
 - `docs/TECHNICAL_DESIGN.md`: architettura e contratti dei sistemi.

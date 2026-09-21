@@ -10,6 +10,8 @@
 
 Realizzare senza fretta un videogioco indipendente ben rifinito, pubblicabile su Steam e capace di trovare un pubblico pagante. Il successo non viene definito soltanto dal completamento tecnico: il gioco deve avere una promessa comprensibile, un buon livello di polish e una ragione credibile per essere scelto rispetto ad altri survivor-like.
 
+Il concept deve essere originale e riconoscibile pur potendo imparare da titoli esistenti. Il prodotto finale non deve sembrare un clone, un collage di asset o il risultato impersonale di generazione automatica. I criteri vincolanti sono in `CREATIVE_PRINCIPLES.md`.
+
 Non e ancora fissato un obiettivo di vendite. Prima di costruire un business case serviranno una vertical slice, una stima attendibile dei costi e dati iniziali da playtest e comunicazione.
 
 ## Vincoli confermati
@@ -18,6 +20,8 @@ Non e ancora fissato un obiettivo di vendite. Prima di costruire un business cas
 |---|---|---|
 | Tempo | Nessuna urgenza di pubblicazione | Evitare una data prematura; lavorare per gate di qualita |
 | Budget | Iniziale molto basso | Preferire strumenti gratuiti, asset originali riutilizzabili e acquisti solo con beneficio provato |
+| Originalita | Requisito centrale per attrarre il pubblico | Concept Lock subordinato a firma meccanica, fantastica e audiovisiva |
+| Percezione dell'AI | Il gioco non deve apparire generico o generato automaticamente | AI come supporto supervisionato; direzione e asset finali con intenzionalita autoriale |
 | Team | Progetto personale con supporto di Codex e possibili contributi di altre AI | Scope da solista; ogni output AI deve essere revisionato e testato |
 | Unreal Engine | Esperienza quasi nulla | Apprendimento tramite un prototipo piccolo; Blueprint prima, C++ solo dove giustificato |
 | Programmazione C/C++ | Esperienza quasi nulla | Architettura semplice, componenti piccoli, review rigorosa e niente ottimizzazioni premature |
@@ -99,4 +103,4 @@ Salvo nuova decisione motivata, il primo prototipo non include:
 
 ## Prossimo gate
 
-La scheda e completa quando il proprietario conferma che rappresenta correttamente obiettivi e vincoli. Il passo seguente e confrontare le concept card in `BRAINSTORMING_CONCEPTS.md`, modificarle insieme e scegliere due idee per micro-prototipi economici.
+La scheda e completa quando il proprietario conferma che rappresenta correttamente obiettivi e vincoli. Il passo seguente e confrontare le concept card in `BRAINSTORMING_CONCEPTS.md`, modificarle insieme e scegliere due idee per micro-prototipi economici. Nessuna proposta passa il Concept Lock senza superare i test di originalita definiti in `CREATIVE_PRINCIPLES.md`.
