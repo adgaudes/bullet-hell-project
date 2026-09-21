@@ -24,14 +24,14 @@ Stati usati:
 | Git LFS | 3.7.1 | Asset binari | Installato e configurato nel repository |
 | Git Credential Manager | 2.9.1 | Autenticazione remota | Installato |
 | Visual Studio Community 2022 | 17.14.41, MSVC 14.44.35207, MSBuild 17.14.60 | Compilazione e debugging UE 5.6 C++ | Installato e verificato; IDE/toolchain primaria |
-| Visual Studio Community 2026 | 18.10.1 | Nessun uso previsto per UE 5.6 | Candidato alla disinstallazione dopo che lo smoke test conferma VS 2022 e dopo verifica di eventuali altri usi del proprietario |
+| Visual Studio Community 2026 | 18.10.1 | Non supportato ufficialmente da UE 5.6 | Rimuovibile se non serve ad altri progetti; non usarlo per questo repository |
 | GitHub CLI | Non rilevato | Issue, pull request e automazione GitHub | Opzionale |
 
 Spazio libero rilevato sul disco di progetto: circa 620 GB, sufficiente per la fase iniziale. Hardware rilevato: Intel Core i7-13620H, 16 GB RAM, RTX 4050 Laptop con 6 GB VRAM.
 
 ## Visual Studio 2022 - verifica completata
 
-Per Unreal Engine 5.6 usare Visual Studio 2022 versione 17.14 o successiva compatibile. Installazione rilevata: Community 2022 17.14.41. UE 5.6 non richiede Visual Studio 2026 e il progetto non deve selezionarlo automaticamente prima di una verifica esplicita.
+Per Unreal Engine 5.6 usare Visual Studio 2022. La matrice ufficiale Epic indica 17.8 come minimo e 17.14 come versione raccomandata/predefinita; Visual Studio 2026 e indicato come non supportato per UE 5.6. Installazione rilevata: Community 2022 17.14.41, quindi perfettamente allineata alla raccomandazione.
 
 Selezionare il workload:
 
@@ -72,12 +72,7 @@ Componenti verificati il 21 settembre 2026:
 
 Visual Studio Installer indica l'istanza 2022 come completa, avviabile e senza riavvio richiesto. La verifica definitiva resta la creazione, compilazione e pacchettizzazione di un progetto C++ minimo dopo il completamento dell'installazione di UE 5.6.
 
-Dopo lo smoke test:
-
-1. verificare nei log e nelle impostazioni che UnrealBuildTool abbia selezionato Visual Studio 2022/MSVC 14.44;
-2. confermare con il proprietario che Visual Studio 2026 non serva ad altri progetti;
-3. se entrambe le condizioni sono soddisfatte, raccomandarne esplicitamente la disinstallazione tramite Visual Studio Installer per recuperare spazio;
-4. non rimuovere componenti condivisi o Windows SDK usati dalla toolchain 2022.
+Visual Studio 2026 puo essere disinstallato prima dello smoke test se il proprietario conferma che non serve ad altri progetti. Usare Visual Studio Installer e rimuovere soltanto l'istanza Community 2026; non rimuovere Visual Studio 2022, componenti condivisi o Windows SDK usati dalla toolchain 2022.
 
 ## Dipendenze da non installare separatamente ora
 
@@ -123,5 +118,6 @@ Evitare download massivi preventivi. Cercare un asset soltanto dopo aver definit
 - [Epic Games - Visual Studio per progetti C++ Unreal](https://dev.epicgames.com/documentation/unreal-engine/setting-up-visual-studio-development-environment-for-cplusplus-projects-in-unreal-engine)
 - [Microsoft - Visual Studio Tools for Unreal Engine](https://learn.microsoft.com/en-us/visualstudio/gamedev/unreal/get-started/vs-tools-unreal-overview)
 - [Microsoft - Installare Visual Studio Tools for Unreal Engine](https://learn.microsoft.com/en-us/visualstudio/gamedev/unreal/get-started/vs-tools-unreal-install)
+- [Epic Games - Versioni Visual Studio supportate per Unreal Engine](https://dev.epicgames.com/documentation/unreal-engine/setting-up-visual-studio-development-environment-for-cplusplus-projects-in-unreal-engine)
 
 Licenze, prezzi e compatibilita devono essere ricontrollati prima di acquisti o aggiornamenti maggiori.
