@@ -1,0 +1,73 @@
+# Unreal Engine generated directories
+Binaries/
+Build/
+DerivedDataCache/
+Intermediate/
+Saved/
+.vs/
+
+# Unreal local files
+*.VC.db
+*.VC.opendb
+*.sln
+*.suo
+*.opensdf
+*.sdf
+*.tmp
+*.log
+*.pdb
+*.ipch
+*.user
+*.userprefs
+*.opensdf
+*.sdf
+
+# IDEs and editors
+.idea/
+.vscode/
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+*.code-workspace
+
+# Rider
+.idea/.idea.*
+
+# Blender temporary and backup files
+*.blend1
+*.blend2
+*.blend@
+*.blend@1
+*.blend@2
+
+# Operating system files
+.DS_Store
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Local builds, exports, captures and caches
+Artifacts/
+Cooked/
+Dist/
+LocalBuilds/
+Releases/
+Screenshots/
+StagedBuilds/
+Temp/
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+
+# Steamworks private/local material
+steam_appid.txt
+SteamworksSDK/
+steamworks_sdk/
+tools/ContentBuilder/content/
+tools/ContentBuilder/output/
+
