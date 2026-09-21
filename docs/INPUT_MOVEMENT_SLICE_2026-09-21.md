@@ -44,6 +44,36 @@ Verificare con controller reale e tastiera/mouse:
 
 Il test su Steam Deck LCD resta successivo alla stabilizzazione del primo loop giocabile. Velocita, accelerazione, sensibilita e dead zone saranno tarate in un incremento successivo; questo gate verifica soltanto correttezza e parita funzionale degli input.
 
+## Character Feel v1 - collaudo manuale superato
+
+Il secondo incremento aggiunge:
+
+- un indicatore frontale ciano sul graybox;
+- accelerazione, decelerazione, dead zone, sensibilita e rapidita di rotazione configurabili;
+- dash semantico con `Spazio` o pulsante inferiore del gamepad;
+- direzione del dash basata sull'ultima direzione di movimento valida, con fallback sull'orientamento;
+- durata e cooldown configurabili, blocco del retrigger e feedback graybox tramite colore e scala;
+- marker runtime `PROTOTYPE01_DASH_STARTED` e `PROTOTYPE01_DASH_READY`.
+
+Verifiche automatiche superate il 21 settembre 2026:
+
+- controllo del diff e degli errori di whitespace;
+- compilazione Editor e Game Win64 Development;
+- avvio headless con inizializzazione di input, personaggio, arena ed esposizione senza nuovi errori;
+- packaging Windows Development;
+- controllo visivo automatico dell'indicatore frontale a 1280x720.
+
+Build locale da collaudare: `LocalBuilds/Prototype01-CharacterFeel-Win64-v2/Windows/Prototype01.exe`.
+
+Esito manuale del 21 settembre 2026 sulla build v4:
+
+- mira con stick destro corretta su entrambi gli assi dopo la verifica delle quattro direzioni;
+- dash con il pulsante inferiore `A` funzionante;
+- blocco durante il cooldown e successiva disponibilita del dash confermati;
+- controlli precedentemente verificati con tastiera/mouse preservati.
+
+Il gate Character Feel v1 e superato. Velocita, accelerazione, frenata e valori di sensibilita restano parametri di bilanciamento da affinare con scene e avatar piu rappresentativi, non blocchi per il prossimo incremento.
+
 ## Limiti intenzionali
 
-Non sono ancora presenti dash, terreno, nemici, arena definitiva, HUD o arte. Il cubo allungato e soltanto un indicatore provvisorio della direzione del personaggio.
+Non sono ancora presenti terreno, nemici, arena definitiva, HUD, audio o arte finale. Il corpo e l'indicatore frontale sono soltanto graybox provvisori.

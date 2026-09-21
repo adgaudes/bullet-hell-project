@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "InputActionValue.h"
+#include "TimerManager.h"
 #include "Prototype01Character.generated.h"
 
 class UStaticMeshComponent;
@@ -10,6 +11,7 @@ class USpringArmComponent;
 class UCameraComponent;
 class UInputAction;
 class UInputMappingContext;
+class UMaterialInstanceDynamic;
 
 /**
  * Personaggio graybox con camera isometrica fissa e movimento planare.
@@ -32,6 +34,10 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Prototype01|Graybox")
 	TObjectPtr<UStaticMeshComponent> GrayboxMesh;
 
+	/** Indicatore graybox del Forward del personaggio (asse +X), senza collisione. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Prototype01|Graybox")
+	TObjectPtr<UStaticMeshComponent> FacingIndicatorMesh;
+
 	/** Braccio camera isometrico fisso. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Prototype01|Camera")
 	TObjectPtr<USpringArmComponent> CameraBoom;
@@ -40,9 +46,17 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Prototype01|Camera")
 	TObjectPtr<UCameraComponent> TopDownCamera;
 
-	/** Velocita di movimento planare in unita al secondo. */
+	/** Velocita massima di movimento planare in unita al secondo. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Prototype01|Movement")
 	float PlanarMoveSpeed = 600.0f;
+
+	/** Accelerazione applicata al CharacterMovement in modalita Flying. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Prototype01|Movement")
+	float MoveAcceleration = 2048.0f;
+
+	/** Decelerazione/frenata applicata al CharacterMovement in modalita Flying. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Prototype01|Movement")
+	float MoveDeceleration = 2048.0f;
 
 	/** Lunghezza del braccio camera. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Prototype01|Camera")
@@ -56,9 +70,45 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Prototype01|Input")
 	float AimStickDeadZone = 0.2f;
 
+	/** Sensibilita della mira gamepad: moltiplica la risposta della rotazione dopo la dead zone. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Prototype01|Input")
+	float GamepadAimSensitivity = 1.0f;
+
+	/** Rapidita di interpolazione della rotazione per la mira gamepad. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Prototype01|Input")
+	float GamepadAimRotationInterpSpeed = 10.0f;
+
+	/** Velocita di interpolazione della rotazione per la mira mouse; alta per restare reattiva. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Prototype01|Input")
+	float MouseAimRotationInterpSpeed = 25.0f;
+
 	/** Delta minimo del mouse per passare all'orientamento tramite mouse. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Prototype01|Input")
 	float MouseAimDeltaThreshold = 0.1f;
+
+	/** Velocita del dash in unita al secondo. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Prototype01|Dash")
+	float DashSpeed = 3000.0f;
+
+	/** Durata del dash in secondi. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Prototype01|Dash")
+	float DashDuration = 0.18f;
+
+	/** Cooldown del dash in secondi, misurato dall'attivazione. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Prototype01|Dash")
+	float DashCooldown = 1.2f;
+
+	/** Scala applicata al graybox durante il dash, come feedback visivo temporaneo. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Prototype01|Dash")
+	float DashScaleMultiplier = 1.15f;
+
+	/** Colore del graybox durante il dash. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Prototype01|Dash")
+	FLinearColor DashColor = FLinearColor(0.1f, 0.9f, 1.0f);
+
+	/** Colore del graybox durante il cooldown del dash. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Prototype01|Dash")
+	FLinearColor DashCooldownColor = FLinearColor(0.4f, 0.4f, 0.4f);
 
 private:
 	/** Azione di movimento WASD / stick sinistro. */
@@ -69,9 +119,17 @@ private:
 	UPROPERTY(Transient)
 	TObjectPtr<UInputAction> IA_Aim;
 
+	/** Azione semantica di dash (Space / Gamepad_FaceButton_Bottom). */
+	UPROPERTY(Transient)
+	TObjectPtr<UInputAction> IA_Dash;
+
 	/** Mapping context di gameplay. */
 	UPROPERTY(Transient)
 	TObjectPtr<UInputMappingContext> IMC_Gameplay;
+
+	/** Istanza dinamica di materiale del graybox, usata per il feedback dash/cooldown. */
+	UPROPERTY(Transient)
+	TObjectPtr<UMaterialInstanceDynamic> GrayboxMID;
 
 	enum class EAimControlMode : uint8
 	{
@@ -83,14 +141,31 @@ private:
 
 	FVector2D LastGamepadAimValue = FVector2D::ZeroVector;
 
+	/** Ultima direzione di movimento planare valida (normalizzata), usata come direzione di dash. */
+	FVector LastValidMoveDirection = FVector::ZeroVector;
+
+	bool bIsDashing = false;
+	bool bDashOnCooldown = false;
+
+	FVector DashDirection = FVector::ZeroVector;
+	float EffectiveDashDuration = 0.0f;
+
+	FTimerHandle DashDurationTimerHandle;
+	FTimerHandle DashCooldownTimerHandle;
+
 	void SetupEnhancedInput();
 
 	void HandleMoveTriggered(const FInputActionValue& Value);
 	void HandleMoveCompleted(const FInputActionValue& Value);
 	void HandleAimTriggered(const FInputActionValue& Value);
 	void HandleAimCompleted(const FInputActionValue& Value);
+	void HandleDashStarted(const FInputActionValue& Value);
 
 	void UpdateMouseAimControlMode();
 	void ApplyFacingRotation(float DeltaSeconds);
 	bool ComputeMouseAimDirection(FVector& OutDirection) const;
+
+	void StartDash();
+	void EndDash();
+	void EndDashCooldown();
 };

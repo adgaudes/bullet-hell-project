@@ -24,6 +24,7 @@ Requisiti:
 - cambiare dispositivo deve aggiornare rapidamente i glifi mostrati;
 - controller collegato o scollegato durante il gioco non deve bloccare la sessione;
 - rimappatura, sensibilita, inversione assi e dead zone devono essere previste nell'architettura;
+- la mira deve offrire inversione indipendente degli assi orizzontale e verticale, almeno per lo stick destro e senza imporre la stessa scelta al mouse;
 - le impostazioni devono distinguere chiaramente controller, tastiera e mouse;
 - il gameplay non deve dipendere da combinazioni scomode o dal clic degli stick per azioni frequenti;
 - vibrazione e aim assist, se presenti, devono essere configurabili.
