@@ -10,5 +10,6 @@ class PROTOTYPE01_API ASmokeTestGameMode : public AGameModeBase
 	GENERATED_BODY()
 
 public:
+	ASmokeTestGameMode();
 	virtual void StartPlay() override;
 };
