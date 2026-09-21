@@ -356,6 +356,12 @@ Soltanto dopo il gate del core loop, costruire un test isolato di un singolo tel
 
 Movimento acquatico e aereo non entrano nella roadmap di produzione finche il test terrestre non dimostra valore e sostenibilita. La loro adozione richiede una decisione di scope separata con costo per controlli, fisica, camera, ambienti, nemici, UI, audio e prestazioni.
 
+#### Esperimento ambientale - luce e buio
+
+In una scena graybox, confrontare una zona illuminata e una buia con un solo beneficio e un solo costo ciascuna. Verificare se il giocatore modifica consapevolmente posizione e uso delle macchine, mantenendo leggibili movimento, proiettili e telegraph.
+
+Luce dinamica complessa, ciclo globale e numerose eccezioni per nemico restano fuori scope finche questa regola minima non dimostra valore.
+
 ### Fase 6 - Vertical slice
 
 **Scopo:** dimostrare una piccola porzione alla qualita attesa per la release.

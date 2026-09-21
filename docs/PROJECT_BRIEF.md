@@ -126,6 +126,13 @@ Estensione avanzata da conservare nel concept, ma non nel primo prototipo:
 - iniziare eventualmente da un solo telaio terrestre;
 - valutare movimento acquatico e aereo soltanto dopo la validazione del core loop e del mezzo terrestre.
 
+Sistema ambientale candidato:
+
+- luce e buio devono offrire entrambi vantaggi e svantaggi;
+- le macchine possono creare, spostare o consumare luce;
+- luce, costruzioni e propulsione possono competere per la stessa energia;
+- l'oscurita non deve compromettere la leggibilita essenziale del combattimento.
+
 ## Prossimo gate
 
 La scheda e completa quando il proprietario conferma che rappresenta correttamente obiettivi e vincoli. Il passo seguente e confrontare le concept card in `BRAINSTORMING_CONCEPTS.md`, modificarle insieme e scegliere due idee per micro-prototipi economici. Nessuna proposta passa il Concept Lock senza superare i test di originalita definiti in `CREATIVE_PRINCIPLES.md`.

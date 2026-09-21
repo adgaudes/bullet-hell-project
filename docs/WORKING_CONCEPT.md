@@ -158,6 +158,37 @@ Direzioni da confrontare:
 
 Per il primo micro-prototipo e preferibile la zona temporale, piu economica da comprendere e costruire. Il ripristino dello stato e piu originale, ma tecnicamente piu rischioso e va isolato in un esperimento separato.
 
+## Luce e buio come condizioni operative
+
+Direzione candidata: luce e oscurita non sono soltanto atmosfera, ma due condizioni con vantaggi e svantaggi che il giocatore puo manipolare attraverso le macchine.
+
+La regola di design e che nessuno stato sia sempre preferibile. Il giocatore deve scegliere quale rischio accettare e, idealmente, costruire transizioni fra i due.
+
+Possibili proprieta da prototipare:
+
+| Condizione | Vantaggi candidati | Svantaggi candidati |
+|---|---|---|
+| Luce | migliore lettura dell'arena; sensori e macchine piu precisi; costruzione o riparazione piu rapida; nemici chiaramente telegrafati | attira o risveglia nemici; consuma energia condivisa; rende visibili personaggio e macchine; puo surriscaldare o destabilizzare alcuni moduli |
+| Buio | riduce il rilevamento; permette imboscate o raccolta sicura; rivela materiali/anomalie invisibili alla luce; puo amplificare effetti temporali | riduce portata dei sensori e precisione; nasconde ostacoli o telegraph; abilita comportamenti nemici piu pericolosi; rende piu fragili alcune operazioni di costruzione |
+
+Interazioni coerenti con il concept:
+
+- un generatore illumina e stabilizza le macchine vicine, ma diventa un richiamo per le orde;
+- un faro mobile accompagna il telaio o il mezzo pilotabile, consumando la stessa energia usata da propulsione e moduli;
+- una macchina puo spostare, schermare, concentrare o spegnere la luce invece di limitarsi a crearla;
+- alcune trasformazioni del terreno proiettano ombre utili o aprono l'arena a una fonte luminosa pericolosa;
+- una zona temporale puo accelerare il ciclo luce-buio locale o conservare temporaneamente uno dei due stati.
+
+Rischi da evitare:
+
+- oscurita che rende il gioco semplicemente difficile da vedere;
+- luce trattata come aura di bonus permanente da mantenere sempre attiva;
+- troppe eccezioni diverse per nemico o macchina;
+- VFX e illuminazione che coprono proiettili, telegraph o materiali interagibili;
+- costi GPU incompatibili con il numero di nemici e costruzioni previsto.
+
+Il test iniziale deve usare effetti discreti e leggibili, non illuminazione finale costosa: due zone chiaramente identificabili, una sola risorsa energetica e un beneficio/costo per stato.
+
 ## Costruzione delle build
 
 Una build interessante deve cambiare il modo in cui il giocatore usa spazio e tempo.
@@ -245,6 +276,12 @@ Permettere di scegliere fra due modificatori comportamentali per lo stesso telai
 
 Domanda: il giocatore percepisce di aver costruito una soluzione propria e cambia strategia di conseguenza?
 
+### Esperimento D - Luce e buio creano decisioni?
+
+Dividere temporaneamente l'arena in una zona illuminata e una buia. Nella luce le macchine operano meglio ma generano piu pressione nemica; nel buio il giocatore viene rilevato meno facilmente ma perde parte del supporto dei sensori.
+
+Domanda: il giocatore cambia posizione o configurazione intenzionalmente, oppure uno stato risulta sempre dominante o soltanto frustrante?
+
 ## Criteri per proseguire
 
 Il concept resta candidato principale soltanto se il prototipo dimostra che:
@@ -266,4 +303,5 @@ Il concept resta candidato principale soltanto se il prototipo dimostra che:
 - tono e ambientazione;
 - cosa viene conservato fra una tappa e l'altra;
 - prima direzione temporale da testare.
+- ruolo di luce e buio e loro eventuale legame con l'energia delle macchine.
 - ruolo a lungo termine delle macchine pilotabili e necessita effettiva di acqua o aria.
