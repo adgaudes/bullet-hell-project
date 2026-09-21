@@ -2,20 +2,20 @@
 
 ## Scopo
 
-Misurare lo spazio usato dal progetto e individuare file ricostruibili senza cancellare dati durante la sessione autonoma. Questo documento e una proposta: nessuna vecchia build e stata eliminata.
+Misurare lo spazio usato dal progetto e individuare file ricostruibili. La rilevazione iniziale e stata seguita dalla pulizia autorizzata delle sole build obsolete; sorgenti, cache di lavoro e build correnti non sono stati toccati.
 
 ## Rilevazione
 
 | Area | Dimensione | Natura |
 |---|---:|---|
-| `LocalBuilds/` | 12.784.716.759 byte, circa 11,91 GiB | build Windows ricostruibili |
+| `LocalBuilds/` dopo la pulizia | 1.826.921.866 byte, circa 1,70 GiB | due build Windows conservate |
 | `Intermediate/` | 4.621.557.286 byte, circa 4,30 GiB | output di compilazione ricostruibile |
 | `Saved/` | 1.143.071.388 byte, circa 1,06 GiB | log, cook e dati temporanei |
 | `Binaries/` | 765.784.324 byte, circa 0,71 GiB | binari locali ricostruibili |
 | `Artifacts/` | 286.826.312 byte, circa 0,27 GiB | archivio di test e checksum generati localmente |
 | `DerivedDataCache/` | 1.627.828 byte | cache ricostruibile |
 
-Lo spazio libero sull'unita `C:` al momento della misura era circa 598 GiB. Non esiste quindi un'urgenza operativa.
+Lo spazio libero sull'unita `C:` dopo la pulizia era circa 607 GiB. Non esiste quindi un'urgenza operativa.
 
 ## Build da conservare ora
 
@@ -23,14 +23,14 @@ Lo spazio libero sull'unita `C:` al momento della misura era circa 598 GiB. Non 
 - `LocalBuilds/Prototype01-TerrainGrid-Win64-v1`: build candidata per il prossimo playtest.
 - `Artifacts/Playtests/Prototype01-TerrainGrid-Win64-v1-Deck.zip`: trasferimento verificato per Steam Deck, senza simboli di debug.
 
-## Pulizia proposta, non eseguita
+## Pulizia eseguita
 
-Le dodici build precedenti in `LocalBuilds/` occupano complessivamente `10.957.794.893` byte, circa 10,21 GiB. Dopo il playtest e con approvazione esplicita del proprietario possono essere eliminate, mantenendo le due build sopra indicate.
+Con autorizzazione esplicita del proprietario sono state eliminate dodici build precedenti in `LocalBuilds/`, per complessivi `10.957.794.893` byte, circa 10,21 GiB. Sono state verificate prima dell'eliminazione come cartelle figlie dirette di `LocalBuilds/`; al termine entrambe le build da conservare risultavano ancora presenti.
 
 `Intermediate/`, parti di `Saved/`, `Binaries/` e `DerivedDataCache/` sono anch'essi ricostruibili, ma cancellarli ora farebbe perdere tempo alla compilazione successiva senza un beneficio necessario. La raccomandazione e quindi:
 
 1. non pulire le directory di lavoro mentre lo spazio libero resta ampio;
-2. eliminare soltanto le vecchie build dopo autorizzazione;
+2. eliminare in futuro soltanto build sostituite e ricostruibili, sempre dopo autorizzazione;
 3. conservare almeno una build approvata e una candidata;
 4. ripetere l'audit quando `LocalBuilds/` supera circa 25 GiB o lo spazio libero scende sotto 100 GiB.
 
