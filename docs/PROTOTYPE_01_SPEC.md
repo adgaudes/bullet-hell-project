@@ -2,7 +2,7 @@
 
 ## Stato
 
-- Specifica candidata pronta per implementazione dopo lo smoke test della toolchain.
+- Specifica candidata in implementazione: smoke test della toolchain Windows superato il 21 settembre 2026.
 - Scopo: verificare il rischio principale del concept, non rappresentare la qualita finale.
 - Engine previsto: Unreal Engine 5.6.
 - Target: Windows; smoke test successivo su Steam Deck LCD.

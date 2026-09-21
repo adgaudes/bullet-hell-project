@@ -16,7 +16,7 @@ Stati usati:
 
 | Strumento | Versione/stato | Uso previsto | Decisione |
 |---|---|---|---|
-| Unreal Engine | 5.6.1 | Engine e packaging Windows | Installato; smoke test C++ e packaging da eseguire |
+| Unreal Engine | 5.6.1 | Engine e packaging Windows | Installato; compilazione C++, cook, packaging e avvio build Windows verificati |
 | Fab UE plugin | 0.0.9, incluso in UE 5.6.1 | Ricerca e import di asset Fab | Installato e abilitato di default; test in Editor da eseguire |
 | Quixel Bridge UE plugin | 2025.0.1, incluso in UE 5.6.1 | Accesso e import dei contenuti Megascans compatibili | Installato e abilitato di default; test in Editor da eseguire |
 | Epic Games Launcher | 1.3.193.0 | Installazione e aggiornamento UE | Installato |
@@ -76,7 +76,7 @@ Componenti verificati il 21 settembre 2026:
 - C++ diagnostic/profiling tools;
 - HLSL tools.
 
-Visual Studio Installer indica l'istanza 2022 come completa, avviabile e senza riavvio richiesto. La verifica definitiva resta la creazione, compilazione e pacchettizzazione di un progetto C++ minimo dopo il completamento dell'installazione di UE 5.6.
+Visual Studio Installer indica l'istanza 2022 come completa, avviabile e senza riavvio richiesto. La verifica definitiva e stata completata il 21 settembre 2026 con compilazione Editor e Game, cook, packaging Windows Development e avvio della build; risultati in `SMOKE_TEST_2026-09-21.md`.
 
 Visual Studio Community 2026 e stato disinstallato il 21 settembre 2026 dopo la conferma che non serviva ad altri progetti. Visual Studio Installer ha completato l'operazione con codice 0; una verifica successiva ha confermato che l'istanza Community 2022 e rimasta completa, avviabile e senza richiesta di riavvio. Sono rimasti presenti il workload Game development with C++, la toolchain MSVC, Windows 11 SDK, gli strumenti Unreal, il debugger Blueprint, Unreal Engine Test Adapter, AddressSanitizer, strumenti diagnostici e HLSL.
 

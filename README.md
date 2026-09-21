@@ -4,10 +4,10 @@ Progetto indipendente in fase di ideazione, destinato alla pubblicazione su Stea
 
 ## Stato
 
-- Fase attiva: fondazione e brainstorming.
+- Fase attiva: avvio del Prototipo 01; brainstorming e concept restano aperti ai gate previsti.
 - Repository: privato, con Git LFS per gli asset binari.
 - Target iniziale candidato: Windows / Steam, single-player.
-- Engine e versioni degli strumenti: da fissare dopo la valutazione tecnica.
+- Engine fissato: Unreal Engine 5.6.1; toolchain C++ e packaging Windows verificati.
 
 ## Documentazione
 
@@ -23,6 +23,7 @@ Progetto indipendente in fase di ideazione, destinato alla pubblicazione su Stea
 - [`docs/BRAINSTORMING_CONCEPTS.md`](docs/BRAINSTORMING_CONCEPTS.md): prime concept card da discutere e confrontare.
 - [`docs/PROJECT_ROADMAP.md`](docs/PROJECT_ROADMAP.md): fasi, milestone, gate e rischi.
 - [`docs/TOOLS_AND_LICENSES.md`](docs/TOOLS_AND_LICENSES.md): inventario, dipendenze approvate e tool radar.
+- [`docs/SMOKE_TEST_2026-09-21.md`](docs/SMOKE_TEST_2026-09-21.md): risultati della prima compilazione, packaging e avvio Windows.
 
 ## Avvertenza
 

@@ -8,8 +8,8 @@ Obiettivo di produzione: arrivare a un gioco piccolo, rifinito, testabile e comm
 
 ## Stato corrente
 
-- Fase attiva: brainstorming e sviluppo del concept di lavoro.
-- Engine approvato e installato: Unreal Engine 5.6.1 tramite Epic Games Launcher; smoke test C++ e packaging ancora da eseguire.
+- Fase attiva: avvio del Prototipo 01 dopo il superamento dello smoke test della toolchain; brainstorming e concept restano aperti ai gate previsti.
+- Engine approvato e installato: Unreal Engine 5.6.1 tramite Epic Games Launcher; compilazione C++, cook, packaging Windows e avvio headless verificati il 21 settembre 2026.
 - Plugin Epic verificati nell'installazione: Fab 0.0.9 e Quixel Bridge 2025.0.1, entrambi abilitati per impostazione predefinita; verificarne apertura e import in Editor prima dell'uso di produzione.
 - DCC 3D installato: Blender 5.2.2; fissare definitivamente la versione di produzione dopo il test di export verso UE 5.6.
 - Editor leggero installato: Visual Studio Code 1.137.0. Non considerarlo un sostituto della toolchain C++ di Unreal.
@@ -35,6 +35,7 @@ Obiettivo di produzione: arrivare a un gioco piccolo, rifinito, testabile e comm
 - Il concept corrente, ancora modificabile e non bloccato, e definito in `docs/WORKING_CONCEPT.md`.
 - Requisiti di piattaforma e input sono definiti in `docs/PLATFORM_AND_INPUT.md`.
 - La prossima implementazione autorizzabile e specificata in `docs/PROTOTYPE_01_SPEC.md`; non ampliarne lo scope senza una decisione registrata.
+- Il rapporto dello smoke test iniziale e `docs/SMOKE_TEST_2026-09-21.md`; il prossimo incremento tecnico e Enhanced Input per controller e tastiera/mouse.
 
 Non presentare le scelte candidate come decisioni approvate. Registra le decisioni importanti nel registro indicato dalla roadmap.
 
