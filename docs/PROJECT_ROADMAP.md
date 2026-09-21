@@ -22,6 +22,15 @@ Queste non sono ancora decisioni definitive:
 - niente multiplayer, open world, live service o contenuti generati proceduralmente complessi nella prima release;
 - team molto piccolo, con uso selettivo di asset o servizi esterni.
 
+Vincoli gia confermati e quindi non piu trattati come semplici assunzioni:
+
+- nessuna urgenza di lancio, con qualita e sostenibilita prioritarie;
+- budget iniziale molto basso;
+- esperienza di base in Blender e quasi nulla in Unreal Engine e C/C++;
+- grafica 3D vicina, per livello generale di resa e leggibilita, a *Deep Rock Galactic: Survivor*;
+- *Vampire Survivors* come riferimento di loop e build, non come target grafico;
+- abilita arcade, costruzione della build, atmosfera e progressione/narrazione sono tutte desiderate, nell'ordine di validazione definito in `PROJECT_BRIEF.md`.
+
 Ogni assunzione potra essere confermata, modificata o eliminata nelle prime fasi.
 
 ## 3. Milestone principali

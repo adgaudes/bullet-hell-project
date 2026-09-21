@@ -2,7 +2,7 @@
 
 ## Scopo del progetto
 
-Questo repository contiene un videogioco indipendente destinato alla pubblicazione su Steam. Il concept iniziale e un bullet hell, con prospettiva ancora da scegliere tra isometrica dall'alto e scorrimento laterale.
+Questo repository contiene un videogioco indipendente destinato alla pubblicazione su Steam. La direzione candidata e un survivor-like 3D con visuale isometrica/top-down; concept, tema e meccanica distintiva devono ancora superare brainstorming e micro-prototipi.
 
 Obiettivo di produzione: arrivare a un gioco piccolo, rifinito, testabile e commercialmente pubblicabile. La qualita del game feel e la leggibilita hanno priorita sulla quantita di contenuti.
 
@@ -15,8 +15,12 @@ Obiettivo di produzione: arrivare a un gioco piccolo, rifinito, testabile e comm
 - Toolchain C++ prevista su Windows: Visual Studio 2022 17.14 o successivo compatibile con UE 5.6; componenti da verificare in `docs/TOOLS_AND_LICENSES.md`.
 - Piattaforma iniziale candidata: Windows su Steam.
 - Modalita iniziale candidata: single-player.
-- Prospettiva, stile, tema e modello di progressione: non ancora decisi.
+- Riferimenti dichiarati: *Deep Rock Galactic: Survivor* per resa 3D e leggibilita; *Vampire Survivors* per immediatezza, build e densita del loop.
+- Visuale 3D isometrica/top-down: direzione principale candidata; tema e modello di progressione non ancora decisi.
+- Esperienza iniziale: base in Blender, quasi nulla in Unreal Engine e C/C++.
+- Budget iniziale: molto basso; privilegiare soluzioni gratuite e rinviare acquisti non indispensabili.
 - La roadmap autorevole e `docs/PROJECT_ROADMAP.md`.
+- I vincoli raccolti sono in `docs/PROJECT_BRIEF.md`; le prime proposte in `docs/BRAINSTORMING_CONCEPTS.md`.
 
 Non presentare le scelte candidate come decisioni approvate. Registra le decisioni importanti nel registro indicato dalla roadmap.
 

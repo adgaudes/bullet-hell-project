@@ -1,6 +1,6 @@
 # Bullet Hell Project
 
-Progetto indipendente in fase di ideazione, destinato alla pubblicazione su Steam. La direzione iniziale e un bullet hell sviluppato con Unreal Engine e Blender; prospettiva, tema e struttura definitiva saranno scelti tramite brainstorming e micro-prototipi comparativi.
+Progetto indipendente in fase di ideazione, destinato alla pubblicazione su Steam. La direzione candidata e un survivor-like 3D isometrico sviluppato con Unreal Engine e Blender; tema, meccanica distintiva e struttura definitiva saranno scelti tramite brainstorming e micro-prototipi comparativi.
 
 ## Stato
 
@@ -12,6 +12,8 @@ Progetto indipendente in fase di ideazione, destinato alla pubblicazione su Stea
 ## Documentazione
 
 - [`AGENTS.md`](AGENTS.md): regole operative del progetto.
+- [`docs/PROJECT_BRIEF.md`](docs/PROJECT_BRIEF.md): obiettivi, vincoli, riferimenti e decisioni aperte.
+- [`docs/BRAINSTORMING_CONCEPTS.md`](docs/BRAINSTORMING_CONCEPTS.md): prime concept card da discutere e confrontare.
 - [`docs/PROJECT_ROADMAP.md`](docs/PROJECT_ROADMAP.md): fasi, milestone, gate e rischi.
 - [`docs/TOOLS_AND_LICENSES.md`](docs/TOOLS_AND_LICENSES.md): inventario, dipendenze approvate e tool radar.
 
