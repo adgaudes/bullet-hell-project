@@ -8,13 +8,13 @@ Obiettivo di produzione: arrivare a un gioco piccolo, rifinito, testabile e comm
 
 ## Stato corrente
 
-- Fase attiva: avvio del Prototipo 01 dopo il superamento dello smoke test della toolchain; brainstorming e concept restano aperti ai gate previsti.
+- Fase attiva: Fase 3, micro-prototipi. Character Feel v1 e validato e integrato in `main`; Terrain Slice A e isolato sul branch `feature/terrain-grid-slice`, compilato e pacchettizzato ma non integrabile prima del playtest. Brainstorming e concept restano aperti ai gate previsti.
 - Engine approvato e installato: Unreal Engine 5.6.1 tramite Epic Games Launcher; compilazione C++, cook, packaging Windows e avvio headless verificati il 21 settembre 2026.
 - Plugin Epic verificati nell'installazione: Fab 0.0.9 e Quixel Bridge 2025.0.1, entrambi abilitati per impostazione predefinita; verificarne apertura e import in Editor prima dell'uso di produzione.
 - DCC 3D installato: Blender 5.2.2; fissare definitivamente la versione di produzione dopo il test di export verso UE 5.6.
 - Editor leggero installato: Visual Studio Code 1.137.0. Non considerarlo un sostituto della toolchain C++ di Unreal.
 - Strumenti agentici installati: Google Antigravity 2.12.2 e Antigravity IDE 2.5.5. Usarli per task isolati, analisi o seconda revisione; non sostituiscono Visual Studio 2022, Unreal Editor o la verifica di Codex.
-- Claude Desktop e piano Claude Pro disponibili. Claude Code 2.1.278 e installato, autenticato tramite Claude.ai Pro e verificato con `claude doctor`; non usare credenziali API o ricariche automatiche non approvate.
+- Claude Desktop e piano Claude Pro disponibili. Claude Code 2.1.278 e installato, autenticato tramite Claude.ai Pro e verificato con `claude doctor`; il canale CLI funziona quando l'esecuzione dispone di accesso di rete autorizzato. Un errore `ECONNREFUSED` nell'ambiente isolato non indica un problema OAuth. Non usare credenziali API o ricariche automatiche non approvate.
 - Toolchain C++ su Windows: Visual Studio Community 2022 17.14.41 verificato con MSVC, MSBuild, Windows SDK e componenti Unreal; dettagli in `docs/TOOLS_AND_LICENSES.md`.
 - Piattaforma iniziale candidata: Windows su Steam.
 - Modalita iniziale candidata: single-player.
@@ -34,8 +34,9 @@ Obiettivo di produzione: arrivare a un gioco piccolo, rifinito, testabile e comm
 - I vincoli raccolti sono in `docs/PROJECT_BRIEF.md`; le prime proposte in `docs/BRAINSTORMING_CONCEPTS.md`.
 - Il concept corrente, ancora modificabile e non bloccato, e definito in `docs/WORKING_CONCEPT.md`.
 - Requisiti di piattaforma e input sono definiti in `docs/PLATFORM_AND_INPUT.md`.
-- La prossima implementazione autorizzabile e specificata in `docs/PROTOTYPE_01_SPEC.md`; non ampliarne lo scope senza una decisione registrata.
-- Il rapporto dello smoke test iniziale e `docs/SMOKE_TEST_2026-09-21.md`; il prossimo incremento tecnico e Enhanced Input per controller e tastiera/mouse.
+- La specifica del prototipo e in `docs/PROTOTYPE_01_SPEC.md`; non ampliarne lo scope senza una decisione registrata.
+- Il rapporto dello smoke test iniziale e `docs/SMOKE_TEST_2026-09-21.md`. Enhanced Input e Character Feel v1 sono validati; il prossimo gate manuale e il playtest Terrain Slice A descritto in `docs/PLAYTESTS/TERRAIN_GRID_SLICE_A_2026-09-22.md`.
+- Il ripristino del repository e stato verificato da clone remoto pulito del branch Terrain Slice A, download LFS, compilazione e avvio headless. Dettagli in `docs/TOOLS_AND_LICENSES.md`.
 
 Non presentare le scelte candidate come decisioni approvate. Registra le decisioni importanti nel registro indicato dalla roadmap.
 

@@ -4,7 +4,7 @@ Progetto indipendente in fase di ideazione, destinato alla pubblicazione su Stea
 
 ## Stato
 
-- Fase attiva: avvio del Prototipo 01; brainstorming e concept restano aperti ai gate previsti.
+- Fase attiva: Fase 3, micro-prototipi. Character Feel v1 e in `main`; Terrain Slice A e su branch e attende playtest. Brainstorming e concept restano aperti ai gate previsti.
 - Repository: privato, con Git LFS per gli asset binari.
 - Target iniziale candidato: Windows / Steam, single-player.
 - Engine fissato: Unreal Engine 5.6.1; toolchain C++ e packaging Windows verificati.
@@ -22,6 +22,10 @@ Progetto indipendente in fase di ideazione, destinato alla pubblicazione su Stea
 - [`docs/DEMO_STRATEGY.md`](docs/DEMO_STRATEGY.md): obiettivi, scope, gate e strategia Steam per la demo pre-release.
 - [`docs/BRAINSTORMING_CONCEPTS.md`](docs/BRAINSTORMING_CONCEPTS.md): prime concept card da discutere e confrontare.
 - [`docs/PROJECT_ROADMAP.md`](docs/PROJECT_ROADMAP.md): fasi, milestone, gate e rischi.
+- [`docs/DECISIONS.md`](docs/DECISIONS.md): decisioni approvate, validate, provvisorie e ancora aperte.
+- [`docs/RISK_REGISTER.md`](docs/RISK_REGISTER.md): rischi, segnali, mitigazioni e prossime revisioni.
+- [`docs/PLAYTESTS/`](docs/PLAYTESTS/): protocolli e risultati dei playtest.
+- [`docs/STORAGE_AUDIT_2026-09-21.md`](docs/STORAGE_AUDIT_2026-09-21.md): spazio occupato, build da conservare e pulizia proposta ma non ancora autorizzata.
 - [`docs/TOOLS_AND_LICENSES.md`](docs/TOOLS_AND_LICENSES.md): inventario, dipendenze approvate e tool radar.
 - [`docs/SMOKE_TEST_2026-09-21.md`](docs/SMOKE_TEST_2026-09-21.md): risultati della prima compilazione, packaging e avvio Windows.
 

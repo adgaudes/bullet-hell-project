@@ -23,7 +23,7 @@ Stati usati:
 | Blender | 5.2.2 registrato; eseguibili 5.1 e 5.2 presenti | Modellazione, UV, rig, animazione, export | Installato; fissare 5.2.2 dopo test pipeline |
 | Visual Studio Code | 1.137.0 x64 | Testo, configurazioni e modifiche leggere | Installato; non IDE primario UE C++ |
 | Claude Desktop | Installato; versione da rilevare | Confronto, pianificazione e revisione con Claude | Disponibile con piano Claude Pro |
-| Claude Code CLI | 2.1.278 | Delega controllata di implementazione, test e documentazione | Installato, `doctor` e delega read-only superati, autenticato con Claude.ai Pro; nessuna API PAYG configurata |
+| Claude Code CLI | 2.1.278 | Delega controllata di implementazione, test e documentazione | Installato e autenticato con Claude.ai Pro; `doctor` non rileva problemi. I `ConnectionRefused` del 21 settembre 2026 erano causati dall'esecuzione nel sandbox senza rete: il canale funziona con autorizzazione di rete esplicita. Nessuna API PAYG configurata |
 | Google Antigravity | 2.12.2 | Orchestrazione di agenti, task asincroni e browser agent | Installato; canale AI secondario |
 | Google Antigravity IDE | 2.5.5 | Editing agentico e task locali sul repository | Installato; non sostituisce Visual Studio per UE C++ |
 | Git | 2.55.0 | Versionamento | Installato |
@@ -31,9 +31,11 @@ Stati usati:
 | Git Credential Manager | 2.9.1 | Autenticazione remota | Installato |
 | Visual Studio Community 2022 | 17.14.41, MSVC 14.44.35207, MSBuild 17.14.60 | Compilazione e debugging UE 5.6 C++ | Installato e verificato; IDE/toolchain primaria |
 | Visual Studio Community 2026 | 18.10.1, disinstallato il 21 settembre 2026 | Non supportato ufficialmente da UE 5.6 | Rimosso; reinstallabile in futuro se servisse a un altro progetto |
-| GitHub CLI | Non rilevato | Issue, pull request e automazione GitHub | Opzionale |
+| GitHub CLI | Non installato/rilevato, verifica del 21 settembre 2026 | Issue, pull request e automazione GitHub | Opzionale; non serve ora perche Git e Git Credential Manager coprono il flusso corrente |
 
 Spazio libero rilevato sul disco di progetto: circa 620 GB, sufficiente per la fase iniziale. Hardware rilevato: Intel Core i7-13620H, 16 GB RAM, RTX 4050 Laptop con 6 GB VRAM.
+
+Audit repository del 21 settembre 2026: Git LFS 3.7.1 configurato e integro; il branch remoto `feature/terrain-grid-slice` al commit `40b7682` e stato clonato in un percorso pulito, inclusa la mappa LFS, quindi compilato e avviato headless con successo. La copia temporanea e stata rimossa dopo la verifica.
 
 ## Visual Studio 2022 - verifica completata
 

@@ -10,6 +10,16 @@ Principio guida:
 
 > Prima dimostriamo che e divertente. Poi dimostriamo che e producibile. Solo dopo costruiamo tutto il resto.
 
+## Stato operativo al 21 settembre 2026
+
+- Fase 0: quasi completata; repository remoto, LFS, clone pulito, compilazione e ripristino sono verificati. Restano da formalizzare disponibilita settimanale e budget massimo.
+- Fase 1: in corso; esiste un working concept coerente, ma one-page vision, promessa centrale e Concept Lock non sono approvati.
+- Fase 2: avanzata; toolchain Windows end-to-end verificata. Restano round-trip Blender-Unreal e prime prove Fab/Quixel.
+- Fase 3: **fase attiva**. Character Feel v1 e validato e integrato; Terrain Slice A e compilato/pacchettizzato sul branch `feature/terrain-grid-slice` e attende playtest.
+- Fasi 4-14: non iniziate formalmente. Esperimenti tecnici anticipati non equivalgono al superamento dei relativi gate.
+
+Fonti operative: `DECISIONS.md`, `RISK_REGISTER.md` e i protocolli in `PLAYTESTS/`.
+
 ## 2. Assunzioni provvisorie
 
 Queste non sono ancora decisioni definitive:
