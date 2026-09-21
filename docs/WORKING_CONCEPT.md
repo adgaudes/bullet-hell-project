@@ -9,13 +9,40 @@
 
 ## High concept
 
-Un ingegnere improvvisatore attraversa ambienti instabili costruendo macchine modulari durante la missione. Le macchine non sono semplici torrette: deformano il campo di battaglia, alterano percorsi e condizioni locali e possono manipolare il tempo. Ogni intervento crea un vantaggio tattico e una nuova vulnerabilita che il giocatore deve imparare a sfruttare.
+In un mondo fantasy post-apocalittico, colorato e in rotazione perpetua, un ingegnere improvvisatore insegue una fascia mobile di luce costruendo una carovana di macchine modulari. I mezzi possono accompagnarlo, separarsi per modificare il campo di battaglia e fondersi in configurazioni sempre piu grandi. Ogni crescita aumenta potenza e possibilita, ma introduce ingombro, consumo, vulnerabilita o perdita di flessibilita.
 
-## Pitch provvisorio
+## Promessa centrale provvisoria
 
-> Costruisci macchine impossibili mentre combatti, riscrivi il campo di battaglia e sopravvivi alle conseguenze delle tue stesse invenzioni.
+> Costruisci una carovana di macchine modulari, separale per riscrivere il campo di battaglia e fondile in un colosso mentre insegui l'alba attraverso un mondo in eterna rotazione.
 
 Il pitch deve ancora essere verificato senza riferimenti ad altri giochi e confrontato con il mercato.
+
+Versione breve candidata:
+
+> Costruisci, aggancia, separa e trasforma la tua macchina prima che il mondo giri oltre la luce.
+
+La promessa non e ancora definitiva. Deve essere pronunciabile, visibile nel gameplay e dimostrata dal prototipo.
+
+## Ambientazione e tono selezionati
+
+### Mondo in rotazione perpetua
+
+Il mondo ruota in modo anomalo o e attraversato da una fascia di luce in movimento. Regioni diverse passano attraverso condizioni luminose e temporali che cambiano risorse, creature, percorsi e comportamento delle macchine.
+
+La causa della rotazione, la scala del mondo e la natura dell'apocalisse restano da definire. La regola deve avere conseguenze di gameplay senza richiedere una simulazione globale continua nel primo prototipo.
+
+### Fantasy post-apocalittico caldo
+
+L'apocalisse non viene rappresentata principalmente con grigio, ruggine fredda e desolazione. Il mondo deve risultare accogliente, vitale e colorato nonostante le rovine:
+
+- palette calde: oro, terracotta, corallo, verde vegetale, turchese e magenta controllato;
+- luce radente simile ad alba o tramonto come firma ricorrente;
+- natura, magia e tecnologia che hanno colonizzato le rovine invece di lasciarle morte;
+- insediamenti piccoli ma vivi, oggetti riparati e materiali riutilizzati con cura;
+- oscurita ricca di bioluminescenza e colori profondi, non semplicemente nera o fredda;
+- pericolo espresso attraverso trasformazione e contrasto, non soltanto degrado.
+
+Il tono candidato e **meraviglia operosa**: il mondo e stato spezzato, ma costruire e viaggiare producono speranza concreta. Evitare cinismo uniforme, militarismo generico e iconografia distopica standard.
 
 ## Fantasia del giocatore
 
@@ -34,7 +61,7 @@ La soddisfazione deve provenire tanto dall'aver costruito una soluzione intellig
 
 ### Firma meccanica
 
-**Ingegneria con conseguenze:** le macchine modificano fisicamente o temporalmente lo spazio di combattimento. Ogni macchina ha un beneficio e un costo sistemico, non soltanto statistiche positive.
+**Carovana riconfigurabile con conseguenze:** le macchine si costruiscono, si agganciano, si separano e si fondono. La configurazione modifica movimento, combattimento, geometria e tempo dell'arena. Ogni configurazione offre un beneficio e un costo sistemico, non soltanto statistiche positive.
 
 Esempi ancora da prototipare:
 
@@ -46,9 +73,9 @@ Esempi ancora da prototipare:
 
 ### Firma fantastica
 
-Un professionista dell'improvvisazione che usa tecnologia incompleta in un ambiente dove spazio, materia e tempo sono instabili. La macchina perfetta non esiste: il giocatore sopravvive costruendo strumenti adatti al problema corrente e accettandone le conseguenze.
+Un professionista dell'improvvisazione che guida una piccola officina viaggiante attraverso un mondo fantasy spezzato e colorato. La macchina perfetta non esiste: il giocatore costruisce una famiglia di mezzi, li combina per affrontare il problema corrente e accetta le conseguenze di ogni forma.
 
-Ambientazione, origine dell'instabilita e obiettivo narrativo restano aperti. Evitare per ora iconografia da minatore spaziale, nani, estrazione mineraria tradizionale e altri elementi troppo vicini al riferimento principale.
+Origine della rotazione, natura dell'apocalisse e obiettivo narrativo restano aperti. Evitare iconografia da minatore spaziale, nani, estrazione mineraria tradizionale e altri elementi troppo vicini al riferimento principale.
 
 ### Firma audiovisiva
 
@@ -56,6 +83,8 @@ Direzione ancora da progettare, con questi requisiti:
 
 - costruzione visibile in piu passaggi, non apparizione istantanea di una torre generica;
 - macchine asimmetriche, riparate e riconfigurate sul campo;
+- silhouette della carovana leggibile mentre nuovi moduli ne cambiano forma e comportamento;
+- fusioni costruite a partire da componenti realmente presenti, non trasformazioni scollegate dalla build;
 - trasformazioni dell'arena chiaramente leggibili dall'alto;
 - segnali distinti per stato normale, preparazione, attivazione ed effetto collaterale;
 - suoni meccanici ritmici che permettono di capire lo stato della macchina senza guardarla;
@@ -68,20 +97,30 @@ Direzione ancora da progettare, con questi requisiti:
 1. Leggere pressione, terreno e traiettorie.
 2. Muoversi, schivare e usare l'equipaggiamento personale.
 3. Recuperare componenti o energia in punti rischiosi.
-4. Posizionare, alimentare o riconfigurare una macchina.
-5. Sfruttare la trasformazione e reagire al suo effetto collaterale.
+4. Agganciare, separare, alimentare o riconfigurare una macchina.
+5. Sfruttare la nuova forma e reagire al suo effetto collaterale.
 
 ### Ciclo di 3-5 minuti
 
 1. Raggiungere un obiettivo o una nuova zona.
 2. Scegliere un modulo che cambia il comportamento di una macchina.
-3. Combinare due funzioni in una build visibile.
+3. Combinare due funzioni in una carovana visibile oppure separarle per coprire ruoli diversi.
 4. Affrontare un evento che rende problematica una configurazione precedentemente efficace.
 5. Salvare, riciclare o sacrificare parte della macchina.
 
 ### Ciclo della run
 
-Una run e una spedizione composta da piu situazioni con obiettivi, non soltanto sopravvivenza passiva in un'unica arena. Le macchine principali possono accompagnare il giocatore, ma spazio, energia o instabilita impediscono di conservare tutto.
+Una run e una spedizione che segue o attraversa la fascia di luce, composta da piu situazioni con obiettivi. Non e soltanto sopravvivenza passiva in un'unica arena. Le macchine accompagnano il giocatore e formano una carovana, ma spazio, energia, terreno e instabilita impediscono di mantenere sempre la configurazione piu grande.
+
+Ipotesi di loop della run, da validare:
+
+1. partire con un nucleo-officina e una funzione semplice;
+2. attraversare una zona mentre luce e buio modificano opportunita e pressione;
+3. recuperare un nuovo telaio o modulo da costruire;
+4. decidere se agganciarlo alla carovana, usarlo come macchina autonoma o sacrificarlo;
+5. affrontare un evento che richiede una riconfigurazione;
+6. raggiungere il culmine con una fusione temporanea o forma colossale costruita dalla build effettiva;
+7. superare boss, estrazione o transizione prima che la fascia favorevole si sposti.
 
 Durata, numero di tappe e struttura esatta restano aperti. Una prima ipotesi da testare e 20-30 minuti.
 
@@ -107,23 +146,28 @@ Famiglie candidate, non approvate:
 
 Il primo prototipo non deve contenere una griglia di crafting libera, catene logiche complesse o decine di componenti.
 
-## Macchine pilotabili e mobilita avanzata
+## Macchine pilotabili, carovana e mobilita avanzata
 
-Direzione futura apprezzata dal proprietario: alcune costruzioni possono diventare mezzi pilotabili, permettendo al personaggio di non muoversi soltanto a piedi e di attraversare terra, acqua o aria.
+Direzione creativa scelta: alcune costruzioni diventano mezzi pilotabili e possono agganciarsi o fondersi, permettendo al personaggio di non muoversi soltanto a piedi e, in fasi avanzate, di attraversare terra, acqua o aria.
 
 Questa idea rafforza la fantasia dell'ingegnere, ma non e parte del primo micro-prototipo. Deve crescere dallo stesso sistema modulare delle macchine da campo, evitando tre sottogiochi indipendenti.
 
 Progressione tecnica consigliata:
 
 1. **Telaio da campo terrestre:** una macchina esistente puo essere montata o guidata per brevi periodi nella stessa arena; movimento semplice, nessuna fisica veicolo complessa.
-2. **Mezzo terrestre modulare:** propulsione, difesa e funzione di trasformazione condividono i moduli gia validati; il mezzo cambia la build e non serve soltanto a spostarsi piu velocemente.
-3. **Attraversamento specializzato:** acqua o aria vengono valutate soltanto se level design e promessa del gioco le richiedono realmente.
-4. **Sistema multimodale:** terra, acqua e aria convivono solo dopo una prova di produzione e prestazioni che ne dimostri la sostenibilita.
+2. **Aggancio di due moduli:** due macchine si collegano in un ordine leggibile e ottengono una proprieta combinata, con penalita di ingombro o manovrabilita.
+3. **Separazione tattica:** i moduli collegati possono essere distaccati per modificare l'arena o coprire una funzione autonoma.
+4. **Fusione controllata:** una configurazione piu grande nasce dagli stessi moduli e dura per un evento limitato, con costo e vulnerabilita propri.
+5. **Mezzo aereo:** prima come macchina distinta con movimento e ruolo semplici; il volo libero tridimensionale non e assunto automaticamente.
+6. **Mezzo acquatico:** valutato quando esiste un ambiente che ne giustifica realmente navigazione e trasformazione.
+7. **Forma colossale:** culmine della run e della build, soltanto dopo aver dimostrato che aggancio, separazione e leggibilita funzionano con pochi moduli.
 
 Principi candidati:
 
 - entrare nel mezzo deve cambiare rischio, spazio occupato e accesso alle macchine, non eliminare il combattimento a piedi;
 - il mezzo deve essere costruito o riconfigurato durante la run, non selezionato come veicolo separato da un menu;
+- l'ordine o la posizione dei moduli agganciati deve produrre differenze comprensibili senza richiedere un editor ingegneristico complesso;
+- un convoglio piu grande deve ottenere potenza o sinergie pagando almeno un costo fra agilita, bersaglio, energia, calore e difficolta di riconfigurazione;
 - danni o sovraccarico devono costringere a riparare, abbandonare o cannibalizzare il mezzo;
 - i componenti devono restare utili anche fuori dal mezzo per evitare sistemi di upgrade duplicati;
 - ogni modalita di movimento deve offrire decisioni proprie, non essere una semplice chiave per attraversare un ostacolo colorato;
@@ -137,6 +181,8 @@ Rischi specifici:
 - moltiplicazione di animazioni, VFX, audio, UI e bilanciamento;
 - mezzi troppo potenti che rendono irrilevanti movimento a piedi e macchine stazionarie;
 - ambienti costruiti come corridoi obbligati per giustificare ogni mezzo.
+- combinazioni modulari che moltiplicano animazioni, collisioni e bug in modo ingestibile;
+- forma colossale che appare come una cutscene o un bonus automatico invece del risultato della build scelta;
 
 Gate per iniziare un prototipo pilotabile:
 
@@ -145,6 +191,37 @@ Gate per iniziare un prototipo pilotabile:
 - entrare nel mezzo risolve un problema di gameplay dimostrabile;
 - il test usa una sola modalita terrestre e riutilizza controlli, moduli e asset esistenti;
 - acqua e aria restano fuori scope fino a una decisione successiva basata sul prototipo terrestre.
+- la prima fusione usa due soli moduli e una trasformazione preparata, non assemblaggio fisico completamente libero.
+
+## Famiglie di mezzo candidate
+
+Queste famiglie esprimono ruoli e svantaggi, non ancora contenuti approvati.
+
+### Terrestre
+
+- ruolo: trasporto, trazione, scavo, compressione e creazione di percorsi;
+- vantaggio: stabilita, capacita di carico e forte interazione col terreno;
+- svantaggio: ingombro, inerzia, dipendenza dal percorso e vulnerabilita ai blocchi.
+
+### Aereo
+
+- ruolo: ricognizione, trasporto leggero, controllo della luce/ombra e accesso rapido;
+- vantaggio: ignora parte della geometria e osserva o influenza zone lontane;
+- svantaggio: poco carico, consumo elevato, esposizione e permanenza limitata.
+
+### Acquatico
+
+- ruolo: attraversamento di zone sommerse, pompaggio, deviazione di correnti e controllo dei livelli d'acqua;
+- vantaggio: modifica ambientale su vasta scala e accesso a percorsi esclusivi;
+- svantaggio: utilita dipendente dal bioma, transizioni lente e rischio di separazione dalla carovana.
+
+### Forma colossale
+
+- ruolo: culmine temporaneo della configurazione costruita durante la run;
+- vantaggio: combina funzioni e permette di affrontare una minaccia o trasformazione altrimenti impossibile;
+- svantaggio: enorme consumo, grande bersaglio, minore flessibilita e possibile perdita o danneggiamento dei moduli al termine.
+
+Il termine "Megazord" resta soltanto un riferimento informale alla fantasia di fusione e non deve essere usato come nome, testo pubblico o identita del progetto.
 
 ## Il ruolo della manipolazione temporale
 
@@ -178,6 +255,8 @@ Interazioni coerenti con il concept:
 - una macchina puo spostare, schermare, concentrare o spegnere la luce invece di limitarsi a crearla;
 - alcune trasformazioni del terreno proiettano ombre utili o aprono l'arena a una fonte luminosa pericolosa;
 - una zona temporale puo accelerare il ciclo luce-buio locale o conservare temporaneamente uno dei due stati.
+- la carovana deve scegliere quanta energia assegnare a luce, propulsione, macchine separate e fusione;
+- il mezzo aereo puo proiettare ombra o concentrare luce, mentre quello acquatico puo rifletterla o trasportarla lungo correnti.
 
 Rischi da evitare:
 
@@ -230,7 +309,7 @@ Evitare una campagna basata su molte cinematiche, dialoghi doppiati o grandi qua
 
 L'ipotesi di differenziazione non e "survivor-like con crafting". E la seguente relazione sistemica:
 
-> La build del giocatore prende forma come macchina presente nel mondo, e ogni upgrade modifica anche la geometria o il tempo del combattimento producendo una conseguenza da gestire.
+> La build del giocatore prende forma come carovana presente nel mondo: i moduli possono combattere, trasformare l'arena, separarsi e fondersi in una configurazione colossale mentre il mondo ruota fra luce e buio.
 
 Questa promessa dovra essere dimostrata in graybox. Se le macchine diventano torrette con bonus passivi o la trasformazione del campo e soltanto cosmetica, il concept perde la sua ragione d'essere.
 
@@ -243,6 +322,7 @@ Il micro-prototipo include soltanto:
 - due tipi di nemico;
 - una risorsa recuperabile;
 - un telaio macchina;
+- un secondo modulo agganciabile con una sola sinergia di configurazione;
 - due moduli di trasformazione del terreno;
 - un modulo temporale locale;
 - un effetto collaterale per ogni modulo;
@@ -251,7 +331,21 @@ Il micro-prototipo include soltanto:
 
 Non include arte finale, salvataggi, meta-progressione, generazione procedurale, crafting libero, storia completa o molte armi.
 
-Non include mezzi pilotabili. Questi appartengono a un esperimento successivo e condizionato ai gate definiti sopra.
+Non include ancora mezzi pilotabili, aerei, acquatici o una forma colossale completa. Include soltanto una versione minima di aggancio/separazione fra due moduli; il primo telaio terrestre pilotabile appartiene a un esperimento successivo condizionato ai gate definiti sopra.
+
+## Ordine dei micro-prototipi
+
+Le meccaniche non vengono costruite tutte insieme. Ogni gradino produce una build osservabile e puo fermare o modificare il successivo:
+
+1. **Movimento e pressione:** personaggio, camera, controller, due nemici e sopravvivenza breve.
+2. **Ingegneria del campo:** una macchina con un vantaggio spaziale e una conseguenza.
+3. **Seconda trasformazione:** verificare che due macchine producano decisioni diverse, non varianti cosmetiche.
+4. **Aggancio e separazione:** due moduli, una sinergia da uniti e un'utilita da separati; nessuna fisica di assemblaggio libero.
+5. **Luce e buio:** due zone, una risorsa energetica condivisa e una regola per stato.
+6. **Tempo locale:** una sola zona temporale con effetto simmetrico su vantaggi e minacce.
+7. **Telaio terrestre pilotabile:** riutilizzare i moduli gia validati e confrontare guida e movimento a piedi.
+
+Mezzo aereo, mezzo acquatico e forma colossale entrano in prototipi successivi soltanto se i primi sette gradini dimostrano che la carovana e divertente, leggibile e producibile.
 
 ## Esperimenti iniziali
 
@@ -282,6 +376,12 @@ Dividere temporaneamente l'arena in una zona illuminata e una buia. Nella luce l
 
 Domanda: il giocatore cambia posizione o configurazione intenzionalmente, oppure uno stato risulta sempre dominante o soltanto frustrante?
 
+### Esperimento E - La carovana e la build?
+
+Collegare due moduli in una configurazione predefinita. Uniti ottengono una sinergia ma si muovono peggio; separati coprono due funzioni o zone diverse.
+
+Domanda: decidere quando unire o dividere le macchine e interessante e leggibile, oppure esiste sempre una configurazione ottimale?
+
 ## Criteri per proseguire
 
 Il concept resta candidato principale soltanto se il prototipo dimostra che:
@@ -300,8 +400,9 @@ Il concept resta candidato principale soltanto se il prototipo dimostra che:
 - macchina singola riconfigurabile o poche macchine specializzate;
 - trasformazione continua del terreno o stati discreti preparati;
 - rapporto fra obiettivi e sopravvivenza;
-- tono e ambientazione;
+- causa della rotazione, natura dell'apocalisse e obiettivo del viaggio;
 - cosa viene conservato fra una tappa e l'altra;
 - prima direzione temporale da testare.
 - ruolo di luce e buio e loro eventuale legame con l'energia delle macchine.
-- ruolo a lungo termine delle macchine pilotabili e necessita effettiva di acqua o aria.
+- regole di aggancio, separazione e fusione dei moduli;
+- ruolo a lungo termine di terra, aria e acqua e forma della configurazione colossale.

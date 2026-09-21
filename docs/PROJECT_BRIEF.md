@@ -59,7 +59,7 @@ La grafica 2D e l'identita specifica del titolo non sono il target visivo del pr
 
 ## Direzione candidata
 
-Un **survivor-like 3D isometrico single-player** incentrato su un ingegnere improvvisatore che costruisce macchine durante le missioni. Le macchine accompagnano il giocatore, modificano radicalmente terreno o condizioni dell'arena e possono manipolare localmente il tempo, creando vantaggi e svantaggi da gestire. La componente bullet hell deve offrire pattern leggibili e decisioni di posizionamento, senza riempire lo schermo in modo indiscriminato.
+Un **survivor-like 3D isometrico single-player** ambientato in un mondo fantasy post-apocalittico, caldo e colorato, in rotazione perpetua. Un ingegnere improvvisatore costruisce una carovana di macchine modulari durante le missioni: i moduli accompagnano il giocatore, si agganciano, si separano, trasformano il campo e possono fondersi in configurazioni crescenti. Luce, buio e manipolazione temporale creano vantaggi e svantaggi da gestire. La componente bullet hell deve offrire pattern leggibili e decisioni di posizionamento, senza riempire lo schermo in modo indiscriminato.
 
 Questa e la base creativa scelta per l'esplorazione ed e descritta in `WORKING_CONCEPT.md`; non e ancora un Concept Lock. Tema, implementazione della costruzione, durata della run, forma della progressione e grado di mira manuale devono essere scelti tramite brainstorming e prototipi.
 
@@ -94,8 +94,8 @@ Salvo nuova decisione motivata, il primo prototipo non include:
 
 ## Decisioni ancora aperte
 
-- fantasia centrale del giocatore e tema;
-- meccanica distintiva esprimibile in una frase;
+- causa della rotazione, natura dell'apocalisse e obiettivo del viaggio;
+- formulazione finale della promessa centrale;
 - auto-fire, mira manuale o sistema ibrido;
 - arena aperta, stanze collegate o percorso con obiettivi;
 - durata target di una run;
@@ -121,15 +121,18 @@ Non sono ancora feature approvate e non devono essere sommate automaticamente. L
 La prima combinazione scelta come base modificabile e:
 
 - fantasia primaria: ingegnere improvvisatore;
-- meccanica primaria: costruire macchine che accompagnano il giocatore e trasformano radicalmente il campo;
+- ambientazione: fantasy post-apocalittico caldo e colorato in un mondo in rotazione perpetua;
+- meccanica primaria: costruire una carovana di macchine modulari che si agganciano, si separano e trasformano radicalmente il campo;
 - meccanica secondaria candidata: manipolazione temporale attraverso le macchine;
 - estensione futura possibile: comportamento a sciame per una famiglia di costruzioni.
 
 Estensione avanzata da conservare nel concept, ma non nel primo prototipo:
 
 - costruire e pilotare macchine o mezzi modulari;
-- iniziare eventualmente da un solo telaio terrestre;
-- valutare movimento acquatico e aereo soltanto dopo la validazione del core loop e del mezzo terrestre.
+- iniziare da un telaio terrestre e due moduli con una fusione controllata;
+- introdurre un mezzo aereo con ruolo limitato dopo la validazione dell'aggancio;
+- valutare il mezzo acquatico quando un ambiente ne giustifica le peculiarita;
+- far culminare la build in una configurazione colossale derivata dai moduli realmente costruiti.
 
 Sistema ambientale candidato:
 

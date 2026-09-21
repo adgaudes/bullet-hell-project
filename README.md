@@ -1,6 +1,6 @@
 # Bullet Hell Project
 
-Progetto indipendente in fase di ideazione, destinato alla pubblicazione su Steam. Il concept di lavoro e un survivor-like 3D isometrico su un ingegnere improvvisatore che costruisce macchine capaci di trasformare il campo di battaglia, sviluppato con Unreal Engine e Blender. La direzione resta modificabile fino alla validazione tramite micro-prototipi.
+Progetto indipendente in fase di ideazione, destinato alla pubblicazione su Steam. Il concept di lavoro e un survivor-like 3D isometrico ambientato in un mondo fantasy post-apocalittico caldo e colorato, in rotazione perpetua. Un ingegnere improvvisatore costruisce una carovana di macchine modulari capaci di agganciarsi, separarsi, trasformare il campo e fondersi. La direzione resta modificabile fino alla validazione tramite micro-prototipi.
 
 ## Stato
 

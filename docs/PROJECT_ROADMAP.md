@@ -36,9 +36,12 @@ Vincoli gia confermati e quindi non piu trattati come semplici assunzioni:
 Base creativa attualmente selezionata per l'esplorazione, non ancora bloccata:
 
 - ingegnere improvvisatore come fantasia del giocatore;
-- macchine costruite durante le missioni e capaci di accompagnare il giocatore;
+- mondo fantasy post-apocalittico caldo e colorato in rotazione perpetua;
+- carovana di macchine costruite durante le missioni, capaci di accompagnare il giocatore, agganciarsi e separarsi;
 - trasformazione radicale del campo con vantaggi e conseguenze;
 - manipolazione temporale come meccanica secondaria candidata;
+- mezzi terrestri, aerei e acquatici come famiglie candidate introdotte per fasi;
+- fusione in configurazioni crescenti e forma colossale come culmine avanzato della build, subordinato ai test modulari;
 - specifica e criteri di scarto in `WORKING_CONCEPT.md`.
 
 Ogni assunzione potra essere confermata, modificata o eliminata nelle prime fasi.
