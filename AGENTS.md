@@ -29,6 +29,41 @@ Non presentare le scelte candidate come decisioni approvate. Registra le decisio
 7. Aggiungere strumenti o dipendenze soltanto se risolvono un problema concreto e dopo averne verificato licenza, costo, manutenzione ed esportabilita.
 8. Non sacrificare leggibilita, accessibilita o prestazioni per aumentare il numero di proiettili a schermo.
 
+## Collaborazione multi-AI e supervisione
+
+Il progetto puo utilizzare Claude e altre AI per produrre codice, documentazione, test o proposte tecniche. Codex opera come supervisore tecnico e integratore, salvo diversa indicazione esplicita del proprietario.
+
+Regole obbligatorie:
+
+- Trattare l'output di ogni AI come una proposta non verificata, mai come fonte autorevole.
+- Prima di delegare, fornire un brief con obiettivo, file in scope, vincoli, criteri di accettazione, test richiesti e parti da non modificare.
+- Richiedere in consegna: riepilogo, file modificati, assunzioni, test eseguiti, risultati, rischi e dubbi rimasti.
+- Isolare contributi sostanziali in branch, commit o worktree riconoscibili. Evitare che piu AI modifichino contemporaneamente gli stessi file.
+- Non integrare una modifica soltanto perche compila o perche l'autore AI dichiara che funziona.
+- Prima dell'integrazione, Codex deve leggere il diff effettivo e verificare requisiti, architettura, casi limite, regressioni, sicurezza, prestazioni, manutenzione e documentazione.
+- Eseguire test e build pertinenti nell'ambiente del progetto. Dichiarare esplicitamente cio che non e stato possibile verificare.
+- Rifiutare o ridurre modifiche inutilmente ampie, duplicazioni, dipendenze non approvate, astrazioni premature e cambiamenti fuori scope.
+- In caso di conflitto tra contributi AI, preservare la versione verificata sul branch principale e risolvere attraverso una decisione documentata.
+- Non inviare ad AI esterne credenziali, token, dati Steamworks riservati, informazioni personali o asset per i quali la licenza vieta la condivisione.
+
+Il repository, i test riproducibili e le decisioni registrate sono la fonte condivisa di verita. Le conversazioni separate con altre AI non sostituiscono la documentazione nel repository.
+
+## Raccomandazione proattiva di app e strumenti
+
+Codex deve segnalare spontaneamente un'applicazione, plugin, servizio, libreria, asset pack o automazione quando puo ridurre in modo concreto tempi, rischi, costi, errori o lavoro manuale, anche se lo strumento non e strettamente necessario.
+
+Ogni raccomandazione deve essere breve ma decisionale e includere:
+
+- problema o opportunita individuata;
+- beneficio atteso nel progetto e fase in cui serve;
+- priorita: `necessario`, `raccomandato`, `opzionale` oppure `da rivalutare piu avanti`;
+- costo e tipo di licenza, quando rilevanti;
+- integrazione con Unreal, Blender, GitHub e toolchain esistente;
+- principali alternative, rischio di lock-in e costo di apprendimento;
+- proposta esplicita: installare/adottare ora, fare una prova limitata o rimandare.
+
+Evitare liste indiscriminate di strumenti. Privilegiare il set minimo che produce un vantaggio verificabile e rivalutare le raccomandazioni ai gate di ogni fase. Raccomandare non equivale ad autorizzare: non installare software, creare account, acquistare licenze o aggiungere dipendenze di produzione senza approvazione esplicita del proprietario.
+
 ## Processo obbligatorio
 
 Prima di una modifica sostanziale:
@@ -87,6 +122,20 @@ Per una feature di gameplay, la definizione di completato richiede, quando appli
 
 Per correggere un bug, riprodurlo prima quando possibile e verificare esplicitamente il caso che falliva dopo la modifica.
 
+## Regole di code review
+
+Nella revisione di codice prodotto da persone o AI, dare priorita a:
+
+1. corrispondenza con requisiti e criteri di accettazione;
+2. regressioni funzionali, perdita dati, crash e problemi di sicurezza;
+3. correttezza di ownership, ciclo di vita e stato nei sistemi Unreal;
+4. prestazioni nei percorsi eseguiti per frame o per ogni proiettile/entita;
+5. test mancanti e casi limite non coperti;
+6. compatibilita con salvataggi, input, build e asset esistenti;
+7. complessita non necessaria e costo futuro di manutenzione.
+
+Riportare prima i problemi concreti, con file e posizione quando disponibili. Separare errori bloccanti, rischi e suggerimenti opzionali. Non approvare modifiche sostanziali senza averne ispezionato il diff.
+
 ## Sicurezza e pubblicazione
 
 - Non caricare build, modificare la pagina Steam, inviare materiale a revisione o pubblicare aggiornamenti senza autorizzazione esplicita del proprietario del progetto.
@@ -109,4 +158,3 @@ Quando le fonti sono in conflitto, usare in questo ordine:
 2. documentazione ufficiale della versione fissata di Unreal Engine, Blender e Steamworks;
 3. esperimenti riproducibili effettuati sul progetto;
 4. fonti secondarie, solo come supporto.
-

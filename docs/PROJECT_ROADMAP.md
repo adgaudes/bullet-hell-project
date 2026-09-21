@@ -52,6 +52,7 @@ Attivita:
 5. Stabilire un registro delle decisioni, un backlog, una cartella per ricerche/licenze e una per i playtest.
 6. Verificare hardware e spazio disponibile rispetto ai requisiti della versione UE scelta.
 7. Definire una cadenza: build giocabile almeno settimanale e revisione dello scope almeno mensile.
+8. Stabilire il protocollo di collaborazione tra proprietario, Codex supervisore e altre AI contributrici.
 
 Deliverable:
 
@@ -161,6 +162,21 @@ Per ogni strumento registrare:
 - impatto su repository, build e collaborazione;
 - tempo di apprendimento;
 - decisione: adottare ora, provare, rimandare o rifiutare.
+
+La valutazione degli strumenti non termina con questa fase. A ogni milestone Codex mantiene un **tool radar** leggero: segnala opportunita nuove o problemi che giustificano un tool, assegna una priorita e propone adozione, prova limitata o rinvio. Le raccomandazioni devono restare proporzionate al progetto e non autorizzano automaticamente installazioni, account, acquisti o nuove dipendenze.
+
+#### Workflow con Claude e altre AI
+
+Quando un'altra AI contribuisce allo sviluppo:
+
+1. Codex o il proprietario prepara un task brief con scope e criteri di accettazione.
+2. Il contributo viene prodotto in un branch, commit o worktree isolato quando possibile.
+3. L'AI restituisce riepilogo, assunzioni, diff, test e limiti della verifica.
+4. Codex revisiona il diff effettivo e ripete i controlli pertinenti nel progetto.
+5. Correzioni o riduzioni di scope vengono richieste prima dell'integrazione.
+6. Soltanto il contributo verificato entra nel branch principale.
+
+Questo permette di usare modelli diversi come forza produttiva senza frammentare architettura, standard o fonte di verita.
 
 #### Matrice iniziale da verificare
 
