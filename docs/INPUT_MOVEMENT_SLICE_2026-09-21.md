@@ -2,7 +2,7 @@
 
 ## Esito
 
-**Collaudo manuale parzialmente superato.** Il primo personaggio graybox usa una camera isometrica fissa, movimento planare e orientamento indipendente.
+**Collaudo manuale superato.** Il primo personaggio graybox usa una camera isometrica fissa, movimento planare e orientamento indipendente.
 
 ## Controlli
 
@@ -30,7 +30,9 @@ Esito desktop del 21 settembre 2026:
 - `WASD`: superato;
 - orientamento con mouse: superato;
 - rendering iniziale: superato dopo l'aggiunta dell'arena graybox e dell'esposizione stabile;
-- controller: ancora da verificare.
+- stick sinistro: superato;
+- orientamento con stick destro: superato dopo la correzione dell'asse orizzontale;
+- leggibilita dell'orientamento: da migliorare, perche il rettangolo graybox ruota sul proprio asse senza un indicatore frontale evidente.
 
 Verificare con controller reale e tastiera/mouse:
 
@@ -40,7 +42,7 @@ Verificare con controller reale e tastiera/mouse:
 4. stabilita della camera mentre il personaggio ruota;
 5. leggibilita a 16:9.
 
-Il test su Steam Deck LCD resta successivo alla stabilizzazione del primo loop giocabile.
+Il test su Steam Deck LCD resta successivo alla stabilizzazione del primo loop giocabile. Velocita, accelerazione, sensibilita e dead zone saranno tarate in un incremento successivo; questo gate verifica soltanto correttezza e parita funzionale degli input.
 
 ## Limiti intenzionali
 

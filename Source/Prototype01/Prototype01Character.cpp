@@ -264,7 +264,7 @@ void APrototype01Character::ApplyFacingRotation(float DeltaSeconds)
 	}
 	else if (!LastGamepadAimValue.IsNearlyZero())
 	{
-		Direction = FVector(LastGamepadAimValue.Y, LastGamepadAimValue.X, 0.0f);
+		Direction = FVector(LastGamepadAimValue.Y, -LastGamepadAimValue.X, 0.0f);
 		bHasDirection = true;
 	}
 
