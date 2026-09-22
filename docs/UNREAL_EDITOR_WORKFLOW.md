@@ -13,7 +13,7 @@ Adottare un flusso ibrido, in questo ordine:
 3. **Computer Use per osservare e manovrare l'interfaccia visibile**;
 4. **Play In Editor e Live Coding per feedback rapido quando compatibili con la modifica**;
 5. **MCP ufficiale Epic in una prova isolata e misurata**, iniziando da ispezione e operazioni reversibili;
-6. **Aura soltanto se il MCP ufficiale lascia un problema concreto irrisolto**, per evitare costi e lock-in prematuri.
+6. **Aura valutato task per task** quando le sue funzioni specializzate possono ridurre lavoro o migliorare la verifica, senza duplicare l'autore attivo.
 
 Questa combinazione permette di vedere le modifiche mentre vengono applicate, ma conserva file e script revisionabili come fonte di verita. I clic nell'Editor non devono essere l'unico modo per ricostruire una feature.
 
@@ -113,16 +113,16 @@ Non assumere quindi che Aura permetta di usare gratuitamente o soltanto con il p
 
 ### Decisione corrente
 
-Priorita: **installato, adozione da rivalutare piu avanti**. Aura 1.0.6 e presente a livello engine e puo aggiungere capacita utili per Blueprint, livelli e verifiche PIE, ma introduce un plugin proprietario, un secondo budget AI e condizioni sui dati. Non collegare contemporaneamente `unreal_inspector` o `unreal_editor` finche non emerge un limite concreto del canale ufficiale: mantenere un solo autore di modifiche.
+Priorita: **installato, candidato operativo da valutare per ogni task**. Aura 1.0.6 e presente a livello engine e puo aggiungere capacita utili per Blueprint, livelli e verifiche PIE, ma introduce un plugin proprietario, un secondo budget AI e condizioni sui dati. Prima di un lavoro nell'Editor, confrontare il suo vantaggio con MCP ufficiale, Claude Code e automazioni locali. Mantenere sempre un solo autore di modifiche.
 
-Dopo il playtest Terrain Slice A, se il controllo diretto dell'Editor resta un collo di bottiglia:
+Procedura operativa:
 
-1. attivare la prova gratuita soltanto dopo approvazione del proprietario;
-2. installare Aura per UE 5.8 in un progetto/copia isolata, senza segreti o dati Steamworks;
-3. lasciare disattivato l'addestramento durante il primo test, accettando che Auto Mode illimitata non sia disponibile;
-4. collegare prima il solo `unreal_inspector` e verificare lettura, stabilita e quantita di contesto trasmesso;
-5. provare `unreal_editor` su un task reversibile e misurare durata, interventi manuali, qualita del diff, consumo e affidabilita del playtest automatico;
-6. adottarlo solo se il vantaggio supera costo, rischio sui dati e duplicazione della toolchain Claude/Codex.
+1. verificare prima del task piano attivo, costo, impostazioni dati e capacita necessarie;
+2. preferire un canale diretto da Codex ad Aura quando disponibile e verificabile;
+3. se il canale diretto non e disponibile, Codex prepara un unico prompt circoscritto che il proprietario deve soltanto incollare nel pannello Aura;
+4. iniziare con ispezione o task reversibile, quindi misurare qualita, consumo e affidabilita;
+5. terminare la sessione dell'altro agente prima di consentire ad Aura di scrivere nell'Editor;
+6. revisionare log, asset modificati, diff e risultato in PIE prima dell'integrazione.
 
 Il Filesystem Sandbox di Aura e dichiarato sperimentale anche su UE 5.8; non sostituisce branch/copia isolata, Git LFS e backup degli asset binari.
 
