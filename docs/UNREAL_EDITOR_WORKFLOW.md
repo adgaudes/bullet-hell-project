@@ -79,6 +79,8 @@ Decisione corrente:
 
 Verifica del 22 settembre 2026: il target Editor compila con entrambi i plugin; in avvio headless il server parte automaticamente, accetta l'handshake MCP `2025-06-18`, crea una sessione ed espone i tre strumenti di discovery. `list_toolsets` ha enumerato correttamente i toolset installati, inclusi Editor, log, test, attori, asset, Blueprint, scene, materiali, UMG, Niagara e Slate. Anche una scrittura reversibile e riuscita: lettura di stato PIE inattivo, avvio PIE, verifica dello stato attivo, arresto e verifica del ritorno allo stato inattivo. Nessun asset e stato salvato o modificato.
 
+`AllToolsets` carica anche gli strumenti Game Features. Per questo UE richiede la registrazione di `GameFeatureData` nell'Asset Manager anche se il gioco non usa ancora plugin di gameplay modulari. La voce ufficiale con regola `AlwaysCook` e stata aggiunta tramite le impostazioni dell'Editor; non implica l'adozione architetturale del sistema Game Features.
+
 Fonti:
 
 - video esaminato: https://www.youtube.com/watch?v=Pwqujpu4548
