@@ -23,10 +23,13 @@ Questo file registra le decisioni costose da dimenticare o cambiare. Le proposte
 | D-008 | 2026-09-21 | Validata | Character Feel v1 e integrato in `main`. | Movimento, mira indipendente, indicatore frontale, dash e cooldown sono stati verificati manualmente; inversione assi separata resta requisito delle impostazioni future. | Quando esiste un avatar e una scena piu rappresentativi. |
 | D-009 | 2026-09-21 | Provvisoria | Terrain Slice A resta sul branch `feature/terrain-grid-slice` fino al playtest del proprietario. | Build e controlli automatici sono superati, ma leggibilita e precisione richiedono giudizio umano. Non costruire collisioni o nemici su un'interazione non ancora validata. | Playtest Terrain Slice A. |
 | D-010 | 2026-09-22 | Approvata | L'anima del gioco e divertente, spiritosa, burlona e irriverente; il protagonista non prende quasi nulla sul serio ed e sboccato. | Tono, feedback e presentazione devono condividere questa energia. Quantita di parolacce, carattere preciso e rapporto con l'alcol restano parametri creativi da definire, non feature gia approvate. | Workshop del protagonista e primo test di scrittura. |
+| D-011 | 2026-09-22 | Provvisoria | La promessa di lavoro e: "Sopravvivi a un mondo impazzito costruendo, fondendo e pilotando macchine improvvisate capaci di trasformare fisicamente il campo di battaglia." Il loop Leggi-Intervieni-Sfrutta-Paga-Riconfigura-Avanza guida i prossimi prototipi. | Fornisce una direzione verificabile senza costituire Vision Lock; deve essere modificata se il gameplay non la dimostra. | Dopo la prima catena causale completa terreno-macchina-conseguenza. |
+| D-012 | 2026-09-22 | Provvisoria | La prima macchina e un compagno autonomo, non pilotabile: segue il giocatore, trasporta risorse, aiuta contro i nemici e modifica lievemente il terreno. I mezzi pilotabili arrivano piu avanti nella progressione. | Mantiene centrale il movimento a piedi, introduce gradualmente la carovana e permette di validare relazione e utilita della macchina prima del costo di veicoli e fusioni. | Specifica e micro-prototipo del primo compagno. |
+| D-013 | 2026-09-22 | Approvata | L'umorismo del protagonista e principalmente cinico e sboccato, con parolacce, ma deve conservarlo simpatico. | La comicita non deve diventare crudelta uniforme, rumore ripetitivo o coprire informazioni di gameplay. | Primo test di scrittura e valutazione del rating. |
 
 ## Decisioni ancora aperte
 
-- promessa centrale e one-page vision;
+- formulazione finale della promessa e Vision Lock;
 - struttura della run e progressione;
 - natura dei nemici;
 - necessita di un prototipo laterale comparativo;

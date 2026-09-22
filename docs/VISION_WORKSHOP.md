@@ -60,9 +60,15 @@ In forma compatta:
 
 > Costruisci macchine che riscrivono il campo, sfrutta le conseguenze e riconfigura la tua carovana prima che il mondo cambi di nuovo.
 
-Questa e una raccomandazione da discutere, non una decisione. Il vantaggio e che il prossimo prototipo puo validare A senza dover prima costruire l'intero sistema di B o C.
+Il 22 settembre 2026 il proprietario ha accettato provvisoriamente una formulazione equivalente come guida di lavoro, senza chiudere il Vision Lock:
+
+> Sopravvivi a un mondo impazzito costruendo, fondendo e pilotando macchine improvvisate capaci di trasformare fisicamente il campo di battaglia.
+
+Il vantaggio e che il prossimo prototipo puo validare A senza dover prima costruire l'intero sistema di B o C. La prima macchina sara un compagno a piedi; la guida dei mezzi resta un payoff di progressione successivo.
 
 ## Core loop candidato
+
+Il proprietario ha accettato provvisoriamente questo loop come base da verificare e modificare durante i prototipi.
 
 Il ciclo breve viene espresso con sei verbi:
 

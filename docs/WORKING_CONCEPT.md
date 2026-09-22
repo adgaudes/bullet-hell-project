@@ -13,15 +13,15 @@ In un mondo fantasy post-apocalittico, colorato e in rotazione perpetua, un inge
 
 ## Promessa centrale provvisoria
 
-> Costruisci una carovana di macchine modulari, separale per riscrivere il campo di battaglia e fondile in un colosso mentre insegui l'alba attraverso un mondo in eterna rotazione.
+> Sopravvivi a un mondo impazzito costruendo, fondendo e pilotando macchine improvvisate capaci di trasformare fisicamente il campo di battaglia.
 
-Il pitch deve ancora essere verificato senza riferimenti ad altri giochi e confrontato con il mercato.
+Il proprietario ha accettato questa formulazione il 22 settembre 2026 come guida provvisoria. Puo essere modificata durante lo sviluppo e deve ancora essere verificata nel gameplay e confrontata con il mercato.
 
 Versione breve candidata:
 
 > Costruisci, aggancia, separa e trasforma la tua macchina prima che il mondo giri oltre la luce.
 
-La promessa non e ancora definitiva. Deve essere pronunciabile, visibile nel gameplay e dimostrata dal prototipo.
+La promessa non costituisce Vision Lock. Deve essere pronunciabile, visibile nel gameplay e dimostrata dal prototipo.
 
 ## Ambientazione e tono selezionati
 
@@ -44,7 +44,7 @@ L'apocalisse non viene rappresentata principalmente con grigio, ruggine fredda e
 - oscurita ricca di bioluminescenza e colori profondi, non semplicemente nera o fredda;
 - pericolo espresso attraverso trasformazione e contrasto, non soltanto degrado.
 
-Il tono candidato e **meraviglia operosa**: il mondo e stato spezzato, ma costruire e viaggiare producono speranza concreta. Evitare cinismo uniforme, militarismo generico e iconografia distopica standard.
+Il tono del mondo candidato e **meraviglia operosa**: il mondo e stato spezzato, ma costruire e viaggiare producono speranza concreta. Il protagonista vi contrappone un umorismo cinico, senza trasformare l'intero mondo in disperazione uniforme. Evitare militarismo generico e iconografia distopica standard.
 
 ### Commedia irriverente
 
@@ -55,6 +55,7 @@ Direzioni approvate:
 - il gioco non mantiene a lungo un tono solenne, cupo o reverenziale;
 - umorismo e irriverenza devono emergere anche da animazioni, feedback, nomi provvisori delle macchine, risultati inattesi e reazioni del mondo;
 - il protagonista puo essere sboccato e dire molte parolacce;
+- la sua comicita primaria e cinica e sboccata, ma deve conservarlo simpatico e piacevole da accompagnare;
 - la personalita deve restare riconoscibile anche senza lunghe cinematiche o dialoghi continui;
 - il pericolo resta comprensibile: una battuta non deve coprire un telegraph, un obiettivo o un'informazione critica.
 
@@ -166,6 +167,19 @@ Ipotesi di loop della run, da validare:
 
 Durata, numero di tappe e struttura esatta restano aperti. Una prima ipotesi da testare e 20-30 minuti.
 
+### Crescita della fantasia meccanica
+
+La complessita deve espandersi insieme al personaggio. Il giocatore comincia a piedi con una macchina di accompagnamento limitata; trasporto del protagonista, mezzi specializzati e fusioni arrivano soltanto dopo che movimento, combattimento, raccolta e relazione con la prima macchina sono comprensibili.
+
+Progressione candidata:
+
+1. tool personale e piccolo compagno autonomo;
+2. nuovi moduli e trasformazioni leggere del terreno;
+3. aggancio fra macchine e trasformazioni piu ampie;
+4. primo telaio pilotabile terrestre;
+5. adattamenti acquatici o aerei giustificati dall'ambiente;
+6. fusione avanzata o forma colossale come payoff, non come condizione iniziale.
+
 ## Costruzione durante il combattimento
 
 Il sistema deve comunicare improvvisazione senza richiedere un editor complesso sotto attacco.
@@ -188,6 +202,27 @@ Famiglie candidate, non approvate:
 
 Il primo prototipo non deve contenere una griglia di crafting libera, catene logiche complesse o decine di componenti.
 
+## Prima macchina di accompagnamento candidata
+
+La prima macchina costruita non trasporta il protagonista. E un compagno autonomo che rende visibile l'inizio della futura carovana e copre quattro funzioni in forma limitata:
+
+- segue o raggiunge il giocatore senza richiedere guida continua;
+- raccoglie e trasporta una quantita limitata di risorse;
+- contribuisce al combattimento con un attacco semplice e leggibile;
+- modifica lievemente il terreno, per esempio livellando una piccola area, spostando materiale leggero o consolidando un bordo.
+
+Nome funzionale provvisorio: **Field Mule / Mulo da campo**. Il nome finale dovra riflettere la voce irriverente del protagonista.
+
+Tradeoff candidato: piu risorse trasporta, piu diventa lento e meno efficace nel combattimento o nel lavoro sul terreno. In questo modo raccolta, difesa e modifica dello spazio competono per la stessa capacita invece di offrire quattro vantaggi gratuiti.
+
+Comandi iniziali candidati, pensati prima per controller:
+
+- **Segui/Raduna**;
+- **Fermati/Lavora qui**;
+- un comando contestuale di priorita fra risorsa, minaccia e terreno, senza microgestione continua.
+
+Funzioni aggiuntive restano aperte e devono nascere da problemi osservati nei test. La macchina non deve diventare una torretta passiva, un inventario senza personalita o un sostituto del giocatore.
+
 ## Macchine pilotabili, carovana e mobilita avanzata
 
 Direzione creativa scelta: alcune costruzioni diventano mezzi pilotabili e possono agganciarsi o fondersi, permettendo al personaggio di non muoversi soltanto a piedi e, in fasi avanzate, di attraversare terra, acqua o aria.
@@ -196,13 +231,14 @@ Questa idea rafforza la fantasia dell'ingegnere, ma non e parte del primo micro-
 
 Progressione tecnica consigliata:
 
-1. **Telaio da campo terrestre:** una macchina esistente puo essere montata o guidata per brevi periodi nella stessa arena; movimento semplice, nessuna fisica veicolo complessa.
+1. **Compagno da campo:** accompagna il protagonista a piedi, trasporta risorse, aiuta in combattimento e modifica lievemente il terreno.
 2. **Aggancio di due moduli:** due macchine si collegano in un ordine leggibile e ottengono una proprieta combinata, con penalita di ingombro o manovrabilita.
 3. **Separazione tattica:** i moduli collegati possono essere distaccati per modificare l'arena o coprire una funzione autonoma.
-4. **Fusione controllata:** una configurazione piu grande nasce dagli stessi moduli e dura per un evento limitato, con costo e vulnerabilita propri.
-5. **Mezzo aereo:** prima come macchina distinta con movimento e ruolo semplici; il volo libero tridimensionale non e assunto automaticamente.
-6. **Mezzo acquatico:** valutato quando esiste un ambiente che ne giustifica realmente navigazione e trasformazione.
-7. **Forma colossale:** culmine della run e della build, soltanto dopo aver dimostrato che aggancio, separazione e leggibilita funzionano con pochi moduli.
+4. **Telaio da campo terrestre pilotabile:** riutilizza una macchina gia compresa e validata; movimento semplice, nessuna fisica veicolo complessa.
+5. **Fusione controllata:** una configurazione piu grande nasce dagli stessi moduli e dura per un evento limitato, con costo e vulnerabilita propri.
+6. **Mezzo aereo:** prima come macchina distinta con movimento e ruolo semplici; il volo libero tridimensionale non e assunto automaticamente.
+7. **Mezzo acquatico:** valutato quando esiste un ambiente che ne giustifica realmente navigazione e trasformazione.
+8. **Forma colossale:** culmine della run e della build, soltanto dopo aver dimostrato che aggancio, separazione e leggibilita funzionano con pochi moduli.
 
 Principi candidati:
 
