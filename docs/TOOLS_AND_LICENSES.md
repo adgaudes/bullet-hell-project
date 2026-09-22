@@ -31,6 +31,7 @@ Stati usati:
 | Git Credential Manager | 2.9.1 | Autenticazione remota | Installato |
 | Visual Studio Community 2022 | 17.14.41, MSVC 14.44.35207, MSBuild 17.14.60 | Compilazione e debugging UE 5.6 C++ | Installato e verificato; IDE/toolchain primaria |
 | Visual Studio Community 2026 | 18.10.1, MSVC 14.51.36231 | Compilazione e debugging UE 5.8 C++ | Installato e completo il 22 settembre 2026; workload Game development with C++, strumenti Unreal, debugger Blueprint, test adapter, ASan, profiling, HLSL e Windows SDK verificati. Diventera la toolchain primaria dopo la migrazione validata a UE 5.8.2 |
+| IncrediBuild | Installato come componente opzionale di VS 2026 | Accelerazione distribuita di build, shader e cook | Non necessario nella fase corrente con un solo PC e poco codice. Rimuovere durante la pulizia post-migrazione; riproporre solo se tempi misurati di compilazione, shader o packaging diventano un collo di bottiglia |
 | GitHub CLI | Non installato/rilevato, verifica del 21 settembre 2026 | Issue, pull request e automazione GitHub | Opzionale; non serve ora perche Git e Git Credential Manager coprono il flusso corrente |
 
 Spazio libero rilevato sul disco di progetto: circa 620 GB, sufficiente per la fase iniziale. Hardware rilevato: Intel Core i7-13620H, 16 GB RAM, RTX 4050 Laptop con 6 GB VRAM.
@@ -83,6 +84,8 @@ Visual Studio Installer indica l'istanza 2022 come completa, avviabile e senza r
 Visual Studio Community 2026 e stato inizialmente disinstallato il 21 settembre 2026 perche UE 5.6 non lo supportava, poi reinstallato il 22 settembre 2026 in preparazione alla migrazione a UE 5.8.2. L'istanza 18.10.1 risulta completa, avviabile e senza riavvio richiesto. Sono verificati workload Game development with C++, MSVC 14.51.36231, Windows 11 SDK 10.0.22621/26100/28000, strumenti Unreal, debugger Blueprint, Unreal Engine Test Adapter, AddressSanitizer, diagnostica/profiling e HLSL. In Visual Studio 2026 l'identificatore interno del test adapter e `Microsoft.VisualStudio.Component.Unreal.TestAdapter`.
 
 Visual Studio 2022 resta temporaneamente installato perche il progetto autorevole e ancora associato a UE 5.6.1, che non supporta VS 2026. Rimuoverlo soltanto dopo installazione UE 5.8.2, conversione su copia/branch, compilazione, cook, packaging e avvio riusciti con la nuova toolchain.
+
+IncrediBuild e stato installato come componente opzionale insieme a VS 2026, ma non e adottato dal progetto. Il proprietario ne ha approvato la rimozione durante la stessa pulizia post-migrazione. Rivalutarlo in futuro soltanto sulla base di profiling dei tempi e di un vantaggio concreto rispetto a build incrementali, Live Coding e cache locali.
 
 ## Dipendenze da non installare separatamente ora
 
