@@ -46,6 +46,27 @@ L'apocalisse non viene rappresentata principalmente con grigio, ruggine fredda e
 
 Il tono candidato e **meraviglia operosa**: il mondo e stato spezzato, ma costruire e viaggiare producono speranza concreta. Evitare cinismo uniforme, militarismo generico e iconografia distopica standard.
 
+### Commedia irriverente
+
+L'anima confermata e **divertente, spiritosa e burlona**. Il contrasto fondamentale e fra una catastrofe planetaria enorme e un protagonista che non concede quasi mai alla situazione la dignita che pretende. Non e un eroe ingenuo: e un ingegnere capace che affronta pericoli, guasti e creature con insolenza, parolacce e soluzioni discutibili ma efficaci.
+
+Direzioni approvate:
+
+- il gioco non mantiene a lungo un tono solenne, cupo o reverenziale;
+- umorismo e irriverenza devono emergere anche da animazioni, feedback, nomi provvisori delle macchine, risultati inattesi e reazioni del mondo;
+- il protagonista puo essere sboccato e dire molte parolacce;
+- la personalita deve restare riconoscibile anche senza lunghe cinematiche o dialoghi continui;
+- il pericolo resta comprensibile: una battuta non deve coprire un telegraph, un obiettivo o un'informazione critica.
+
+Elementi ancora da definire:
+
+- frequenza e varieta del linguaggio esplicito, evitando che una ripetizione continua sostituisca la scrittura comica;
+- natura dell'eventuale rapporto con l'alcol: tratto caratteriale, elemento del mondo, gag ricorrente o meccanica con vantaggi e conseguenze;
+- confine fra personaggio simpaticamente irresponsabile e protagonista respingente;
+- quantita di voce registrata sostenibile, localizzazione, opzioni audio/testo e rating desiderato.
+
+Il protagonista **potenzialmente ubriacone** e quindi una direzione candidata forte, non ancora una meccanica approvata. Non introdurre oscillazione dei controlli, filtri visivi o penalita casuali prima di aver dimostrato che producono decisioni divertenti e non soltanto frustrazione.
+
 ### Natura che riconquista le rovine
 
 La natura ha preso il sopravvento sulle strutture del mondo precedente:
@@ -62,7 +83,7 @@ La natura non viene considerata automaticamente nemica. Puo essere rifugio, riso
 
 ## Fantasia del giocatore
 
-Il giocatore non e soltanto un combattente che trova armi piu forti. E un tecnico creativo sotto pressione:
+Il giocatore non e soltanto un combattente che trova armi piu forti. E un tecnico creativo sotto pressione, competente quanto irriverente e sempre pronto a ridicolizzare il disastro corrente:
 
 - osserva un problema spaziale;
 - raccoglie o recupera componenti;

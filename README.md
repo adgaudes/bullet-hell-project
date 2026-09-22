@@ -29,6 +29,7 @@ Progetto indipendente in fase di ideazione, destinato alla pubblicazione su Stea
 - [`docs/STORAGE_AUDIT_2026-09-21.md`](docs/STORAGE_AUDIT_2026-09-21.md): spazio occupato, build da conservare e pulizia proposta ma non ancora autorizzata.
 - [`docs/TOOLS_AND_LICENSES.md`](docs/TOOLS_AND_LICENSES.md): inventario, dipendenze approvate e tool radar.
 - [`docs/BLENDER_UNREAL_ROUNDTRIP_SPEC.md`](docs/BLENDER_UNREAL_ROUNDTRIP_SPEC.md): prova minima di scala, pivot, materiali, reimport e animazione fra Blender e Unreal.
+- [`docs/UNREAL_EDITOR_WORKFLOW.md`](docs/UNREAL_EDITOR_WORKFLOW.md): strategia per modifiche visibili nell'Editor, automazione ripetibile e possibile MCP.
 - [`docs/SMOKE_TEST_2026-09-21.md`](docs/SMOKE_TEST_2026-09-21.md): risultati della prima compilazione, packaging e avvio Windows.
 
 ## Avvertenza

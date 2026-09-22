@@ -33,6 +33,7 @@ Non e ancora fissato un obiettivo di vendite. Prima di costruire un business cas
 | Steam Deck | Buona compatibilita se sostenibile | Target 1280x800/16:10, Proton e test su hardware prima della release |
 | Hardware Steam Deck | Modello LCD gia posseduto; capacita da registrare | Dispositivo di riferimento dalla prima build Windows pacchettizzata |
 | Grafica | 3D vicina per leggibilita e resa a *Deep Rock Galactic: Survivor* | Camera isometrica/top-down come direzione principale; no produzione sprite 2D come stile centrale |
+| Anima del gioco | Divertente, spiritosa, burlona e irriverente | Evitare solennita uniforme; gameplay, feedback, scrittura e presentazione devono condividere la stessa energia |
 | Asset esterni | Librerie di asset gratuiti ammesse previa valutazione condivisa | Verificare uso commerciale, attribuzione, provenienza, coerenza e costo di adattamento prima dell'adozione |
 
 ## Riferimenti dichiarati
@@ -68,6 +69,8 @@ Pilastro obbligatorio: il terreno deve essere profondamente modificabile tramite
 *Astroneer* e il riferimento di esperienza per liberta e tattilita della modifica del terreno. Il nostro adattamento deve conservare aggiunta, rimozione, livellamento e creazione di percorsi, rendendoli leggibili e controllabili da una visuale tendenzialmente dall'alto.
 
 La natura ha riconquistato le vecchie strutture decrepite. Il riferimento a *The Last of Us* riguarda questa relazione visiva fra vegetazione e rovine, mentre palette, tono e mondo devono essere nostri: caldi, accoglienti, fantasy e vitali. La tipologia dei nemici resta intenzionalmente aperta.
+
+L'anima confermata del gioco e comica e irriverente: il mondo puo essere in condizioni catastrofiche, ma il protagonista rifiuta di trattarlo con solennita. E un ingegnere competente e improvvisatore, sboccato, incline alle parolacce e potenzialmente ubriacone. Questi tratti devono propagarsi a reazioni, macchine, fallimenti e ritmo della presentazione, non limitarsi a battute sovrapposte. Carattere preciso, frequenza del linguaggio esplicito, rapporto con l'alcol e conseguenze sul rating restano da definire.
 
 Causa candidata dell'apocalisse: un'invasione aliena ha introdotto macchine terraformanti che hanno danneggiato o riconfigurato il nucleo planetario, accelerando il ciclo giorno-notte e intensificando piogge e super-temporali. Le inondazioni trasformano il campo e giustificano macchine terrestri, acquatiche e aeree con ruoli differenti. Stato degli invasori e identita dei nemici restano aperti.
 
@@ -111,7 +114,7 @@ Salvo nuova decisione motivata, il primo prototipo non include:
 - durata target di una run;
 - struttura di morte, estrazione e ricompensa;
 - profondita e forma della meta-progressione;
-- tono narrativo;
+- dosaggio della comicita, del linguaggio esplicito e dell'eventuale rapporto del protagonista con l'alcol;
 - target hardware minimo e obiettivo di frame rate;
 - schema definitivo per controller e tastiera/mouse;
 - livello di compatibilita Steam Deck dimostrabile e possibile obiettivo Verified;

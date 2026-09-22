@@ -26,6 +26,7 @@ Obiettivo di produzione: arrivare a un gioco piccolo, rifinito, testabile e comm
 - Pilastro di gameplay: trasformazione profonda del terreno con tool personali e macchine, secondo i criteri in `docs/TERRAIN_SYSTEM.md`. Non confondere profondita con voxel arbitrari; validare prima conseguenze e leggibilita.
 - Riferimento del terreno: *Astroneer* per rimozione, aggiunta, livellamento e creazione di percorsi; reinterpretare per visuale dall'alto e non copiarne UI, stile o struttura.
 - Direzione ambientale: la natura ha riconquistato strutture decrepite; tono e palette restano caldi, accoglienti e vitali. La natura dei nemici non e ancora decisa.
+- Anima e tono: il gioco deve essere divertente, spiritoso, burlone e irriverente anche quando il mondo e in pericolo. Il protagonista affronta tutto con leggerezza, linguaggio sboccato e scarsa reverenza; frequenza delle parolacce, rapporto con l'alcol e caratterizzazione precisa restano da definire e testare.
 - Premessa candidata: invasione aliena e macchine terraformanti hanno destabilizzato il nucleo, accelerando giorno/notte e super-temporali; le inondazioni rendono sistemici mezzi terrestri, acquatici e aerei. Dettagli in `docs/WORLD_PREMISE.md`.
 - Demo pubblica pre-release: pianificata come candidata dopo la vertical slice, subordinata ai gate in `docs/DEMO_STRATEGY.md`.
 - Esperienza iniziale: base in Blender, quasi nulla in Unreal Engine e C/C++.
