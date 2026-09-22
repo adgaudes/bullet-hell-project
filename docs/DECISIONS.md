@@ -26,6 +26,7 @@ Questo file registra le decisioni costose da dimenticare o cambiare. Le proposte
 | D-011 | 2026-09-22 | Provvisoria | La promessa di lavoro e: "Sopravvivi a un mondo impazzito costruendo, fondendo e pilotando macchine improvvisate capaci di trasformare fisicamente il campo di battaglia." Il loop Leggi-Intervieni-Sfrutta-Paga-Riconfigura-Avanza guida i prossimi prototipi. | Fornisce una direzione verificabile senza costituire Vision Lock; deve essere modificata se il gameplay non la dimostra. | Dopo la prima catena causale completa terreno-macchina-conseguenza. |
 | D-012 | 2026-09-22 | Provvisoria | La prima macchina e un compagno autonomo, non pilotabile: segue il giocatore, trasporta risorse, aiuta contro i nemici e modifica lievemente il terreno. I mezzi pilotabili arrivano piu avanti nella progressione. | Mantiene centrale il movimento a piedi, introduce gradualmente la carovana e permette di validare relazione e utilita della macchina prima del costo di veicoli e fusioni. | Specifica e micro-prototipo del primo compagno. |
 | D-013 | 2026-09-22 | Approvata | L'umorismo del protagonista e principalmente cinico e sboccato, con parolacce, ma deve conservarlo simpatico. | La comicita non deve diventare crudelta uniforme, rumore ripetitivo o coprire informazioni di gameplay. | Primo test di scrittura e valutazione del rating. |
+| D-014 | 2026-09-22 | Provvisoria | La direzione grafica e un realismo stilizzato caldo: forme e proporzioni quasi cartoonesche, materiali e luce credibili, alta leggibilita isometrica. | Mantiene coerenza con il tono comico senza perdere peso e atmosfera; le reference locali sono ispirazione, non asset approvati o modelli da copiare. | Prima prova artistica a camera reale e 1280x800. |
 
 ## Decisioni ancora aperte
 
@@ -36,3 +37,4 @@ Questo file registra le decisioni costose da dimenticare o cambiare. Le proposte
 - rappresentazione finale del terreno;
 - scope reale di carovana, veicoli e forma colossale;
 - pipeline artistica Blender-Unreal definitiva.
+- grado esatto di stilizzazione, roster iniziale e linguaggio visivo originale dei personaggi.

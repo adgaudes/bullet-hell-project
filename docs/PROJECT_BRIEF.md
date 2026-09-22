@@ -70,6 +70,8 @@ Pilastro obbligatorio: il terreno deve essere profondamente modificabile tramite
 
 La natura ha riconquistato le vecchie strutture decrepite. Il riferimento a *The Last of Us* riguarda questa relazione visiva fra vegetazione e rovine, mentre palette, tono e mondo devono essere nostri: caldi, accoglienti, fantasy e vitali. La tipologia dei nemici resta intenzionalmente aperta.
 
+Direzione grafica provvisoria: **realismo stilizzato caldo**, quasi cartoonesco nelle forme e proporzioni ma credibile nei materiali e nella luce. Personaggi compatti e caricaturali, macchine asimmetriche e ambienti a grandi masse leggibili devono sostenere il tono spiritoso senza diventare cartoon puro. Criteri e rischi sono descritti in `docs/ART_DIRECTION.md`.
+
 L'anima confermata del gioco e comica e irriverente: il mondo puo essere in condizioni catastrofiche, ma il protagonista rifiuta di trattarlo con solennita. E un ingegnere competente e improvvisatore, sboccato, incline alle parolacce e potenzialmente ubriacone. Questi tratti devono propagarsi a reazioni, macchine, fallimenti e ritmo della presentazione, non limitarsi a battute sovrapposte. Carattere preciso, frequenza del linguaggio esplicito, rapporto con l'alcol e conseguenze sul rating restano da definire.
 
 Causa candidata dell'apocalisse: un'invasione aliena ha introdotto macchine terraformanti che hanno danneggiato o riconfigurato il nucleo planetario, accelerando il ciclo giorno-notte e intensificando piogge e super-temporali. Le inondazioni trasformano il campo e giustificano macchine terrestri, acquatiche e aeree con ruoli differenti. Stato degli invasori e identita dei nemici restano aperti.
