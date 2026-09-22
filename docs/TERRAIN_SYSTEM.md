@@ -203,7 +203,7 @@ Limiti:
 
 Offre grande liberta, ma introduce rischi rilevanti per performance, salvataggi, pathfinding, collisioni, arte, packaging e dipendenze esterne.
 
-La profondita ispirata ad *Astroneer* rende una rappresentazione volumetrica o equivalente una candidata seria, soprattutto per aggiunta/rimozione libera, rampe, cavita e sporgenze. Non adottarla pero solo perche promette liberta. Valutarla dopo il prototipo discreto con un esperimento isolato e una matrice build-vs-buy. Qualsiasi plugin deve superare verifica di costo, licenza, manutenzione, accesso al sorgente, Unreal 5.6, Windows, Proton e Steam Deck.
+La profondita ispirata ad *Astroneer* rende una rappresentazione volumetrica o equivalente una candidata seria, soprattutto per aggiunta/rimozione libera, rampe, cavita e sporgenze. Non adottarla pero solo perche promette liberta. Valutarla dopo il prototipo discreto con un esperimento isolato e una matrice build-vs-buy. Qualsiasi plugin deve superare verifica di costo, licenza, manutenzione, accesso al sorgente, Unreal 5.8, Windows, Proton e Steam Deck.
 
 ### D. Approccio ibrido - candidato principale da ricercare
 

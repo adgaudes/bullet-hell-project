@@ -2,7 +2,7 @@
 
 ## Scopo
 
-Questo documento registra gli strumenti rilevati, approvati, proposti o rimandati. Le versioni rilevate descrivono il computer di sviluppo al 21 settembre 2026; prima di aggiornare un componente critico verificare la compatibilita con Unreal Engine 5.6.
+Questo documento registra gli strumenti rilevati, approvati, proposti o rimandati. Le versioni rilevate descrivono il computer di sviluppo al 22 settembre 2026; prima di aggiornare un componente critico verificare la compatibilita con Unreal Engine 5.8.
 
 Stati usati:
 
@@ -16,9 +16,9 @@ Stati usati:
 
 | Strumento | Versione/stato | Uso previsto | Decisione |
 |---|---|---|---|
-| Unreal Engine | 5.6.1 | Engine e packaging Windows | Installato; compilazione C++, cook, packaging e avvio build Windows verificati |
-| Fab UE plugin | 0.0.9, incluso in UE 5.6.1 | Ricerca e import di asset Fab | Installato e abilitato di default; test in Editor da eseguire |
-| Quixel Bridge UE plugin | 2025.0.1, incluso in UE 5.6.1 | Accesso e import dei contenuti Megascans compatibili | Installato e abilitato di default; test in Editor da eseguire |
+| Unreal Engine | 5.8.2 | Engine e packaging Windows | Installato; compilazione Editor/Game C++, caricamento mappa, cook, packaging e avvio build Windows verificati il 22 settembre 2026 |
+| Fab UE plugin | Incluso in UE 5.8.2 | Ricerca e import di asset Fab | Installato; apertura e import in Editor da verificare |
+| Quixel Bridge UE plugin | Incluso in UE 5.8.2 | Accesso e import dei contenuti Megascans compatibili | Installato; apertura e import in Editor da verificare |
 | Epic Games Launcher | 1.3.193.0 | Installazione e aggiornamento UE | Installato |
 | Blender | 5.2.2 registrato; eseguibili 5.1 e 5.2 presenti | Modellazione, UV, rig, animazione, export | Installato; fissare 5.2.2 dopo test pipeline |
 | Visual Studio Code | 1.137.0 x64 | Testo, configurazioni e modifiche leggere | Installato; non IDE primario UE C++ |
@@ -29,8 +29,8 @@ Stati usati:
 | Git | 2.55.0 | Versionamento | Installato |
 | Git LFS | 3.7.1 | Asset binari | Installato e configurato nel repository |
 | Git Credential Manager | 2.9.1 | Autenticazione remota | Installato |
-| Visual Studio Community 2022 | 17.14.41, MSVC 14.44.35207, MSBuild 17.14.60 | Compilazione e debugging UE 5.6 C++ | Installato e verificato; IDE/toolchain primaria |
-| Visual Studio Community 2026 | 18.10.1, MSVC 14.51.36231 | Compilazione e debugging UE 5.8 C++ | Installato e completo il 22 settembre 2026; workload Game development with C++, strumenti Unreal, debugger Blueprint, test adapter, ASan, profiling, HLSL e Windows SDK verificati. Diventera la toolchain primaria dopo la migrazione validata a UE 5.8.2 |
+| Visual Studio Community 2022 | 17.14.41, MSVC 14.44.35207, MSBuild 17.14.60 | Precedente toolchain UE 5.6 | Migrazione completata; da rimuovere nella pulizia post-migrazione |
+| Visual Studio Community 2026 | 18.10.1, MSVC 14.51.36231 | Compilazione e debugging UE 5.8 C++ | Toolchain primaria, completa e verificata con build Editor/Game, cook e packaging. UE avvisa che MSVC 14.51 e piu recente della 14.50 preferita, senza errori rilevati nel progetto |
 | IncrediBuild | Installato come componente opzionale di VS 2026 | Accelerazione distribuita di build, shader e cook | Non necessario nella fase corrente con un solo PC e poco codice. Rimuovere durante la pulizia post-migrazione; riproporre solo se tempi misurati di compilazione, shader o packaging diventano un collo di bottiglia |
 | GitHub CLI | Non installato/rilevato, verifica del 21 settembre 2026 | Issue, pull request e automazione GitHub | Opzionale; non serve ora perche Git e Git Credential Manager coprono il flusso corrente |
 
@@ -38,9 +38,9 @@ Spazio libero rilevato sul disco di progetto: circa 620 GB, sufficiente per la f
 
 Audit repository del 21 settembre 2026: Git LFS 3.7.1 configurato e integro; il branch remoto `feature/terrain-grid-slice` al commit `40b7682` e stato clonato in un percorso pulito, inclusa la mappa LFS, quindi compilato e avviato headless con successo. La copia temporanea e stata rimossa dopo la verifica.
 
-## Visual Studio 2022 - verifica completata
+## Migrazione UE 5.8.2 e Visual Studio 2026
 
-Per Unreal Engine 5.6 usare Visual Studio 2022. La matrice ufficiale Epic indica 17.8 come minimo e 17.14 come versione raccomandata/predefinita; Visual Studio 2026 e indicato come non supportato per UE 5.6. Installazione rilevata: Community 2022 17.14.41, quindi perfettamente allineata alla raccomandazione.
+La precedente combinazione Unreal Engine 5.6.1 e Visual Studio 2022 e stata sostituita il 22 settembre 2026 da Unreal Engine 5.8.2 e Visual Studio Community 2026. I target `Prototype01` e `Prototype01Editor` fissano `VisualStudio2026` e la famiglia MSVC `14.51.36231`, evitando selezioni silenziose della toolchain precedente.
 
 Selezionare il workload:
 
@@ -79,11 +79,11 @@ Componenti verificati il 21 settembre 2026:
 - C++ diagnostic/profiling tools;
 - HLSL tools.
 
-Visual Studio Installer indica l'istanza 2022 come completa, avviabile e senza riavvio richiesto. La verifica definitiva e stata completata il 21 settembre 2026 con compilazione Editor e Game, cook, packaging Windows Development e avvio della build; risultati in `SMOKE_TEST_2026-09-21.md`.
+Visual Studio 2022 resta documentato come toolchain precedentemente validata; non e piu richiesto dal progetto dopo i test UE 5.8.2 riportati in `SMOKE_TEST_UE58_2026-09-22.md`.
 
 Visual Studio Community 2026 e stato inizialmente disinstallato il 21 settembre 2026 perche UE 5.6 non lo supportava, poi reinstallato il 22 settembre 2026 in preparazione alla migrazione a UE 5.8.2. L'istanza 18.10.1 risulta completa, avviabile e senza riavvio richiesto. Sono verificati workload Game development with C++, MSVC 14.51.36231, Windows 11 SDK 10.0.22621/26100/28000, strumenti Unreal, debugger Blueprint, Unreal Engine Test Adapter, AddressSanitizer, diagnostica/profiling e HLSL. In Visual Studio 2026 l'identificatore interno del test adapter e `Microsoft.VisualStudio.Component.Unreal.TestAdapter`.
 
-Visual Studio 2022 resta temporaneamente installato perche il progetto autorevole e ancora associato a UE 5.6.1, che non supporta VS 2026. Rimuoverlo soltanto dopo installazione UE 5.8.2, conversione su copia/branch, compilazione, cook, packaging e avvio riusciti con la nuova toolchain.
+La condizione per rimuovere Visual Studio 2022 e soddisfatta: installazione UE 5.8.2, migrazione su branch, compilazione Editor/Game, caricamento mappa, cook, packaging e avvio riusciti con VS2026. Dopo la rimozione eseguire nuovamente almeno build incrementale e verifica dell'istanza.
 
 IncrediBuild e stato installato come componente opzionale insieme a VS 2026, ma non e adottato dal progetto. Il proprietario ne ha approvato la rimozione durante la stessa pulizia post-migrazione. Rivalutarlo in futuro soltanto sulla base di profiling dei tempi e di un vantaggio concreto rispetto a build incrementali, Live Coding e cache locali.
 
@@ -111,9 +111,9 @@ IncrediBuild e stato installato come componente opzionale insieme a VS 2026, ma 
 | Perforce | Rimandato | Solo se Git LFS/locking diventa insufficiente | Gestione di grandi volumi binari |
 | Steam Deck LCD | Disponibile; capacita da rilevare | Dalla prima build Windows pacchettizzata | Dispositivo di riferimento per test reali di Proton, prestazioni, input, UI e sospensione |
 | SteamOS Devkit Client | Rimandato, gratuito | Prima distribuzione frequente sullo Steam Deck disponibile | Distribuzione e debug della build dal PC Windows al dispositivo |
-| Soluzione terrain voxel/runtime | Da ricercare, non installare ora | Dopo il prototipo discreto e prima della vertical slice | Confronto build-vs-buy per deformazione continua; verificare UE 5.6, sorgente, licenza, Windows, Proton e Steam Deck |
-| Aura di Ramen VR (`tryaura.dev`) | Opzionale; prova limitata, non installare ora | Dopo il playtest Terrain Slice A, se l'Editor resta un collo di bottiglia | Plugin/MCP per controllo strutturato di UE 5.6.1 da Claude/Codex. Trial 2 settimane; Indie 20 USD/mese o 120 USD/anno al 22 settembre 2026. Auto Mode illimitata richiede consenso all'uso dei dati per training; valutazione completa in `UNREAL_EDITOR_WORKFLOW.md` |
-| Unreal MCP ufficiale Epic | Rimandato | Gate di eventuale migrazione a UE 5.8+ | Integrato ma sperimentale da UE 5.8; non disponibile nella versione 5.6.1 fissata e non giustifica da solo una migrazione |
+| Soluzione terrain voxel/runtime | Da ricercare, non installare ora | Dopo il prototipo discreto e prima della vertical slice | Confronto build-vs-buy per deformazione continua; verificare UE 5.8, sorgente, licenza, Windows, Proton e Steam Deck |
+| Aura di Ramen VR (`tryaura.dev`) | Da rivalutare piu avanti | Solo se il MCP ufficiale non copre un bisogno concreto | Plugin commerciale con funzioni aggiuntive ma costo, lock-in e superficie dati maggiori; non installare prima del test MCP Epic |
+| Unreal MCP ufficiale Epic | Raccomandato: prova isolata | Dopo la pulizia della toolchain e il playtest Terrain Slice A | Incluso in UE 5.8.2 come funzione sperimentale; testare prima lettura e poi una modifica reversibile su branch dedicato |
 
 ## Librerie di asset esterni
 

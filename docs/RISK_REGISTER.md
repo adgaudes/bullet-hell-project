@@ -24,6 +24,6 @@
 
 | ID | Evidenza | Esito |
 |---|---|---|
-| R-C01 | Toolchain C++ UE 5.6.1, cook, packaging e avvio verificati. | Rischio di ambiente Windows non funzionante ridotto. |
+| R-C01 | Toolchain C++ UE 5.8.2 con Visual Studio 2026, cook, packaging e avvio verificati. | Rischio di ambiente Windows non funzionante ridotto; monitorare l'avviso MSVC 14.51 piu recente della versione preferita da Epic. |
 | R-C02 | Clone remoto pulito del commit `40b7682`, download LFS, compilazione Editor e avvio headless riusciti. | Rischio di backup GitHub non ripristinabile ridotto. |
 | R-C03 | Test manuale di WASD, mouse, due stick, dash e cooldown. | Rischio iniziale di mapping input errato ridotto; remapping completo resta futuro. |

@@ -222,7 +222,7 @@ Questo permette di usare modelli diversi come forza produttiva senza frammentare
 |---|---|---|---|
 | Engine | Unreal Engine 5 | - | Versione esatta, Blueprint/C++ e plugin consentiti |
 | Modellazione/animazione | Blender | - | Versione fissata, scala, assi e preset di export |
-| IDE | Visual Studio 2022 | JetBrains Rider | Valutare costo, debugging e supporto UE |
+| IDE | Visual Studio 2026 | JetBrains Rider | Valutare costo, debugging e supporto UE |
 | Versionamento piccolo team | Git + Git LFS | Perforce | Stimare volume binari e necessita di file locking |
 | Hosting repository | GitHub | GitLab, Azure DevOps | Limiti LFS, backup, issue e CI |
 | Reference/moodboard | PureRef | Canva, cartelle locali | Scegliere uno standard esportabile e archiviabile |

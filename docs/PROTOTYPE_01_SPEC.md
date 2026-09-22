@@ -4,7 +4,7 @@
 
 - Specifica candidata in implementazione: toolchain Windows superata; input, movimento e camera pronti per il collaudo manuale dal 21 settembre 2026.
 - Scopo: verificare il rischio principale del concept, non rappresentare la qualita finale.
-- Engine previsto: Unreal Engine 5.6.
+- Engine previsto: Unreal Engine 5.8.2.
 - Target: Windows; smoke test successivo su Steam Deck LCD.
 
 ## Domanda centrale

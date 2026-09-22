@@ -2,7 +2,7 @@
 
 ## Obiettivo
 
-Validare una pipeline ripetibile fra Blender 5.2.2 LTS e Unreal Engine 5.6.1 prima di produrre asset. Il test misura scala, orientamento, pivot, normali, slot materiale, reimport e provenienza dei file. Non serve a creare arte definitiva.
+Validare una pipeline ripetibile fra Blender 5.2.2 e Unreal Engine 5.8.2 prima di produrre asset. Il test misura scala, orientamento, pivot, normali, slot materiale, reimport e provenienza dei file. Non serve a creare arte definitiva.
 
 ## Vincoli
 

@@ -2,7 +2,7 @@
 
 ## Obiettivo
 
-Permettere a Codex di modificare il progetto con il minimo intervento manuale del proprietario e mostrare i risultati nell'Editor aperto, senza sacrificare ripetibilita, versionamento o stabilita della toolchain Unreal Engine 5.6.1.
+Permettere a Codex di modificare il progetto con il minimo intervento manuale del proprietario e mostrare i risultati nell'Editor aperto, senza sacrificare ripetibilita, versionamento o stabilita della toolchain Unreal Engine 5.8.2.
 
 ## Decisione raccomandata per la fase corrente
 
@@ -12,8 +12,8 @@ Adottare un flusso ibrido, in questo ordine:
 2. **script Python/Editor Scripting per operazioni Unreal ripetibili**;
 3. **Computer Use per osservare e manovrare l'interfaccia visibile**;
 4. **Play In Editor e Live Coding per feedback rapido quando compatibili con la modifica**;
-5. **Aura soltanto come prova isolata e misurata**, prima di adottare un MCP di terze parti;
-6. **MCP ufficiale Epic dopo un futuro gate di migrazione dell'engine**, non come motivo sufficiente per lasciare UE 5.6.1.
+5. **MCP ufficiale Epic in una prova isolata e misurata**, iniziando da ispezione e operazioni reversibili;
+6. **Aura soltanto se il MCP ufficiale lascia un problema concreto irrisolto**, per evitare costi e lock-in prematuri.
 
 Questa combinazione permette di vedere le modifiche mentre vengono applicate, ma conserva file e script revisionabili come fonte di verita. I clic nell'Editor non devono essere l'unico modo per ricostruire una feature.
 
@@ -33,7 +33,7 @@ Nella verifica del 22 settembre 2026 il canale Computer Use era disponibile, ma 
 
 Fonte ufficiale OpenAI: https://learn.chatgpt.com/docs/computer-use
 
-## 2. Automazione strutturata in Unreal 5.6
+## 2. Automazione strutturata in Unreal 5.8
 
 Per creare o modificare asset, livelli e impostazioni ripetibili, la base consigliata e:
 
@@ -49,7 +49,7 @@ L'esecuzione Python remota e disponibile nelle impostazioni dell'Editor, ma va a
 Fonti ufficiali Epic:
 
 - https://dev.epicgames.com/documentation/en-us/unreal-engine/scripting-the-unreal-editor-using-python
-- https://dev.epicgames.com/documentation/en-us/unreal-engine/python-api/class/EditorPythonScripting?application_version=5.6
+- https://dev.epicgames.com/documentation/en-us/unreal-engine/python-api/class/EditorPythonScripting?application_version=5.8
 - https://dev.epicgames.com/documentation/en-us/unreal-engine/remote-control-for-unreal-engine
 
 ## 3. Feedback quasi in tempo reale
@@ -65,16 +65,16 @@ Fonte ufficiale Epic: https://dev.epicgames.com/documentation/en-us/unreal-engin
 
 Il video analizzato il 22 settembre 2026, *Build a Playable Unreal Engine 5 Level with AI (MCP + Claude Code)*, mostra il flusso reale del nuovo **Unreal MCP** incluso in Unreal Engine 5.8. Non e un plugin Marketplace di terze parti: e un plugin sperimentale Epic distribuito con l'engine. Nel video vengono abilitati il plugin Unreal MCP e i toolset, poi avviato il server e generata la configurazione per Claude Code.
 
-Epic documenta un server MCP incorporato nell'Editor, accessibile localmente via HTTP e compatibile con client quali Claude Code. I tool ufficiali possono creare attori, configurare luci e materiali, ispezionare Slate ed eseguire test. Il plugin principale e `ModelContextProtocol`; i tool predefiniti richiedono anche i toolset. La funzione e pero **Experimental** e presente da Unreal Engine 5.8: il progetto e fissato alla 5.6.1 e non dispone di questo server nativo.
+Epic documenta un server MCP incorporato nell'Editor, accessibile localmente via HTTP e compatibile con client quali Claude Code. I tool ufficiali possono creare attori, configurare luci e materiali, ispezionare Slate ed eseguire test. Il plugin principale e `ModelContextProtocol`; i tool predefiniti richiedono anche i toolset. La funzione e **Experimental**, ma i plugin `ModelContextProtocol` e `AllToolsets` sono presenti nell'installazione UE 5.8.2 verificata.
 
-Esistono plugin MCP della comunita compatibili con UE 5.6, ma aggiungono codice C++, un server esterno e una superficie di controllo non ancora necessaria al micro-prototipo. Possono inoltre diventare incompatibili con una futura migrazione al MCP ufficiale Epic.
+I plugin MCP della comunita non sono candidati correnti: aggiungono codice, manutenzione e una superficie di controllo senza un vantaggio dimostrato rispetto al server ufficiale gia disponibile.
 
 Decisione corrente:
 
-- non migrare il progetto a UE 5.8 soltanto per MCP;
-- non installare ora un plugin MCP della comunita nel progetto principale;
-- rivalutare dopo Terrain Slice A e il round-trip Blender-Unreal;
-- se il lavoro nell'Editor diventa un collo di bottiglia, provare un solo candidato in branch/worktree isolato, con licenza, sorgente, permessi, rollback, test UE 5.6.1 e misurazione del risparmio reale.
+- non installare un plugin MCP della comunita nel progetto principale;
+- dopo la pulizia della toolchain e il playtest Terrain Slice A, abilitare MCP Epic in un branch dedicato;
+- validare prima ispezione e lettura, poi una sola modifica reversibile, con log, diff e rollback;
+- adottarlo nel flusso standard soltanto se e stabile e riduce davvero il lavoro manuale.
 
 Fonti:
 
@@ -82,9 +82,9 @@ Fonti:
 - Unreal MCP ufficiale Epic: https://dev.epicgames.com/documentation/en-us/unreal-engine/unreal-mcp-in-unreal-editor
 - configurazione MCP in Codex: https://learn.chatgpt.com/docs/extend/mcp
 
-## 5. Valutazione Aura per UE 5.6.1
+## 5. Valutazione Aura
 
-Esistono piu prodotti chiamati Aura. Quello pertinente a questo flusso e **Aura di Ramen VR** su `tryaura.dev`, un plugin commerciale per Unreal e Unity. La documentazione dichiara supporto Windows per UE 5.4-5.8, quindi include la nostra UE 5.6.1.
+Esistono piu prodotti chiamati Aura. Quello pertinente a questo flusso e **Aura di Ramen VR** su `tryaura.dev`, un plugin commerciale per Unreal e Unity. La documentazione dichiara supporto Windows per UE 5.4-5.8, quindi include UE 5.8.2.
 
 Aura installa a livello engine un plugin che puo essere usato come app separata o pannello nell'Editor. Espone inoltre due server MCP `stdio` a client esterni:
 
@@ -106,18 +106,18 @@ Non assumere quindi che Aura permetta di usare gratuitamente o soltanto con il p
 
 ### Decisione corrente
 
-Priorita: **opzionale, prova limitata**. Aura potrebbe ridurre molto il lavoro manuale nell'Editor gia con UE 5.6.1, soprattutto per Blueprint, livelli e verifiche PIE, ma introduce un plugin proprietario, un secondo budget AI e condizioni sui dati. Non installarlo ancora nel progetto principale.
+Priorita: **da rivalutare piu avanti**. Aura potrebbe aggiungere capacita utili per Blueprint, livelli e verifiche PIE, ma introduce un plugin proprietario, un secondo budget AI e condizioni sui dati. Non installarlo prima di avere misurato i limiti del MCP ufficiale Epic.
 
 Dopo il playtest Terrain Slice A, se il controllo diretto dell'Editor resta un collo di bottiglia:
 
 1. attivare la prova gratuita soltanto dopo approvazione del proprietario;
-2. installare Aura per UE 5.6 in un progetto/copia isolata, senza segreti o dati Steamworks;
+2. installare Aura per UE 5.8 in un progetto/copia isolata, senza segreti o dati Steamworks;
 3. lasciare disattivato l'addestramento durante il primo test, accettando che Auto Mode illimitata non sia disponibile;
 4. collegare prima il solo `unreal_inspector` e verificare lettura, stabilita e quantita di contesto trasmesso;
 5. provare `unreal_editor` su un task reversibile e misurare durata, interventi manuali, qualita del diff, consumo e affidabilita del playtest automatico;
 6. adottarlo solo se il vantaggio supera costo, rischio sui dati e duplicazione della toolchain Claude/Codex.
 
-Il Filesystem Sandbox di Aura richiede UE 5.8 ed e dichiarato sperimentale; non e una protezione disponibile sulla nostra 5.6.1. Per il test restano obbligatori branch/copia isolata, Git LFS e backup degli asset binari.
+Il Filesystem Sandbox di Aura e dichiarato sperimentale anche su UE 5.8; non sostituisce branch/copia isolata, Git LFS e backup degli asset binari.
 
 Fonti ufficiali Aura:
 
@@ -155,9 +155,9 @@ Play In Editor accelera il controllo del gameplay ma non sostituisce completamen
 Dopo il playtest Terrain Slice A:
 
 - abilitare Computer Use nell'app Codex e autorizzare Unreal Editor;
-- aprire la build di sviluppo nell'Editor, senza aggiungere MCP;
+- aprire la build di sviluppo nell'Editor e verificare prima il normale flusso PIE;
 - far eseguire a Codex un cambiamento innocuo e reversibile, per esempio colore o intensita di un indicatore graybox;
 - avviare PIE, verificare insieme il cambiamento e ripristinarlo o conservarlo;
 - misurare affidabilita, durata e numero di interventi manuali.
 
-Se il test e affidabile, Computer Use diventa il canale visivo standard. Python Editor Scripting viene aggiunto quando compare il primo task ripetitivo su asset o livelli. MCP viene valutato solo se questa combinazione lascia ancora un problema concreto irrisolto.
+Se il test e affidabile, Computer Use diventa il canale visivo standard. Python Editor Scripting viene aggiunto quando compare il primo task ripetitivo su asset o livelli. Il MCP ufficiale viene poi provato in isolamento per valutarne affidabilita e risparmio manuale rispetto a questa base.
