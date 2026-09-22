@@ -112,8 +112,8 @@ IncrediBuild, installato inizialmente come componente opzionale, e stato rimosso
 | Steam Deck LCD | Disponibile; capacita da rilevare | Dalla prima build Windows pacchettizzata | Dispositivo di riferimento per test reali di Proton, prestazioni, input, UI e sospensione |
 | SteamOS Devkit Client | Rimandato, gratuito | Prima distribuzione frequente sullo Steam Deck disponibile | Distribuzione e debug della build dal PC Windows al dispositivo |
 | Soluzione terrain voxel/runtime | Da ricercare, non installare ora | Dopo il prototipo discreto e prima della vertical slice | Confronto build-vs-buy per deformazione continua; verificare UE 5.8, sorgente, licenza, Windows, Proton e Steam Deck |
-| Aura di Ramen VR (`tryaura.dev`) | Da rivalutare piu avanti | Solo se il MCP ufficiale non copre un bisogno concreto | Plugin commerciale con funzioni aggiuntive ma costo, lock-in e superficie dati maggiori; non installare prima del test MCP Epic |
-| Unreal MCP ufficiale Epic | Raccomandato: prova isolata | Dopo la pulizia della toolchain e il playtest Terrain Slice A | Incluso in UE 5.8.2 come funzione sperimentale; testare prima lettura e poi una modifica reversibile su branch dedicato |
+| Aura di Ramen VR (`tryaura.dev`) | 1.0.6 installato a livello engine | Solo se il MCP ufficiale non copre un bisogno concreto | Plugin commerciale con funzioni aggiuntive, costo, lock-in e superficie dati maggiori. I suoi MCP restano scollegati; nessun acquisto o piano approvato |
+| Unreal MCP ufficiale Epic | Configurato e validato | Controllo strutturato dell'Editor | Plugin sperimentali `ModelContextProtocol` e `AllToolsets` abilitati nel progetto; build, auto-start, handshake MCP `2025-06-18`, scoperta toolset e ciclo reversibile Start/Stop PIE verificati il 22 settembre 2026 su `http://127.0.0.1:8000/mcp`; Codex richiede approvazione per le scritture |
 
 ## Librerie di asset esterni
 

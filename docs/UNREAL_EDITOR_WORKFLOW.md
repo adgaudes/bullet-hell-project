@@ -72,9 +72,12 @@ I plugin MCP della comunita non sono candidati correnti: aggiungono codice, manu
 Decisione corrente:
 
 - non installare un plugin MCP della comunita nel progetto principale;
-- dopo la pulizia della toolchain e il playtest Terrain Slice A, abilitare MCP Epic in un branch dedicato;
-- validare prima ispezione e lettura, poi una sola modifica reversibile, con log, diff e rollback;
-- adottarlo nel flusso standard soltanto se e stabile e riduce davvero il lavoro manuale.
+- MCP Epic e abilitato nel progetto e configurato per avviarsi con l'Editor su `127.0.0.1:8000/mcp`;
+- Codex usa una configurazione locale al repository, non obbligatoria quando l'Editor e chiuso, con approvazione per gli strumenti di scrittura;
+- validazione iniziale completata: ispezione, lettura e una modifica reversibile con controllo dello stato;
+- usarlo come canale strutturato standard quando l'Editor e aperto, mantenendo log, diff e rollback per le modifiche persistenti.
+
+Verifica del 22 settembre 2026: il target Editor compila con entrambi i plugin; in avvio headless il server parte automaticamente, accetta l'handshake MCP `2025-06-18`, crea una sessione ed espone i tre strumenti di discovery. `list_toolsets` ha enumerato correttamente i toolset installati, inclusi Editor, log, test, attori, asset, Blueprint, scene, materiali, UMG, Niagara e Slate. Anche una scrittura reversibile e riuscita: lettura di stato PIE inattivo, avvio PIE, verifica dello stato attivo, arresto e verifica del ritorno allo stato inattivo. Nessun asset e stato salvato o modificato.
 
 Fonti:
 
@@ -106,7 +109,7 @@ Non assumere quindi che Aura permetta di usare gratuitamente o soltanto con il p
 
 ### Decisione corrente
 
-Priorita: **da rivalutare piu avanti**. Aura potrebbe aggiungere capacita utili per Blueprint, livelli e verifiche PIE, ma introduce un plugin proprietario, un secondo budget AI e condizioni sui dati. Non installarlo prima di avere misurato i limiti del MCP ufficiale Epic.
+Priorita: **installato, adozione da rivalutare piu avanti**. Aura 1.0.6 e presente a livello engine e puo aggiungere capacita utili per Blueprint, livelli e verifiche PIE, ma introduce un plugin proprietario, un secondo budget AI e condizioni sui dati. Non collegare contemporaneamente `unreal_inspector` o `unreal_editor` finche non emerge un limite concreto del canale ufficiale: mantenere un solo autore di modifiche.
 
 Dopo il playtest Terrain Slice A, se il controllo diretto dell'Editor resta un collo di bottiglia:
 
