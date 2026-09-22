@@ -72,6 +72,7 @@ Non legare la logica a tasti fisici. Il prototipo deve poter essere completato s
 ### Arena
 
 - piccola superficie graybox delimitata;
+- la mappa `SmokeTest` mantiene una preview editoriale calda e leggibile tramite attori nella cartella `EditorPreview`; sono `Editor Only` e `Hidden In Game`, quindi non sostituiscono ne alterano l'arena generata a runtime;
 - stato logico suddiviso in celle o regioni, inizialmente non deformazione continua;
 - terreno normale;
 - stato abbassato/trincea;
