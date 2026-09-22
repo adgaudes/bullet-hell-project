@@ -107,6 +107,8 @@ Visual Studio Community 2026 e stato disinstallato il 21 settembre 2026 dopo la 
 | Steam Deck LCD | Disponibile; capacita da rilevare | Dalla prima build Windows pacchettizzata | Dispositivo di riferimento per test reali di Proton, prestazioni, input, UI e sospensione |
 | SteamOS Devkit Client | Rimandato, gratuito | Prima distribuzione frequente sullo Steam Deck disponibile | Distribuzione e debug della build dal PC Windows al dispositivo |
 | Soluzione terrain voxel/runtime | Da ricercare, non installare ora | Dopo il prototipo discreto e prima della vertical slice | Confronto build-vs-buy per deformazione continua; verificare UE 5.6, sorgente, licenza, Windows, Proton e Steam Deck |
+| Aura di Ramen VR (`tryaura.dev`) | Opzionale; prova limitata, non installare ora | Dopo il playtest Terrain Slice A, se l'Editor resta un collo di bottiglia | Plugin/MCP per controllo strutturato di UE 5.6.1 da Claude/Codex. Trial 2 settimane; Indie 20 USD/mese o 120 USD/anno al 22 settembre 2026. Auto Mode illimitata richiede consenso all'uso dei dati per training; valutazione completa in `UNREAL_EDITOR_WORKFLOW.md` |
+| Unreal MCP ufficiale Epic | Rimandato | Gate di eventuale migrazione a UE 5.8+ | Integrato ma sperimentale da UE 5.8; non disponibile nella versione 5.6.1 fissata e non giustifica da solo una migrazione |
 
 ## Librerie di asset esterni
 

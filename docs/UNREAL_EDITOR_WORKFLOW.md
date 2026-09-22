@@ -12,7 +12,8 @@ Adottare un flusso ibrido, in questo ordine:
 2. **script Python/Editor Scripting per operazioni Unreal ripetibili**;
 3. **Computer Use per osservare e manovrare l'interfaccia visibile**;
 4. **Play In Editor e Live Coding per feedback rapido quando compatibili con la modifica**;
-5. **MCP Unreal soltanto come spike isolato**, non come dipendenza della produzione su UE 5.6.1.
+5. **Aura soltanto come prova isolata e misurata**, prima di adottare un MCP di terze parti;
+6. **MCP ufficiale Epic dopo un futuro gate di migrazione dell'engine**, non come motivo sufficiente per lasciare UE 5.6.1.
 
 Questa combinazione permette di vedere le modifiche mentre vengono applicate, ma conserva file e script revisionabili come fonte di verita. I clic nell'Editor non devono essere l'unico modo per ricostruire una feature.
 
@@ -62,7 +63,9 @@ Fonte ufficiale Epic: https://dev.epicgames.com/documentation/en-us/unreal-engin
 
 ## 4. Unreal MCP
 
-Epic distribuisce un **Unreal MCP** ufficiale che incorpora un server MCP nell'Editor e consente a client compatibili di creare attori, configurare luci, lavorare con materiali, ispezionare Slate ed eseguire test. Tuttavia, la documentazione corrente lo presenta come funzionalita **Experimental** di Unreal Engine 5.8; il progetto e fissato alla 5.6.1.
+Il video analizzato il 22 settembre 2026, *Build a Playable Unreal Engine 5 Level with AI (MCP + Claude Code)*, mostra il flusso reale del nuovo **Unreal MCP** incluso in Unreal Engine 5.8. Non e un plugin Marketplace di terze parti: e un plugin sperimentale Epic distribuito con l'engine. Nel video vengono abilitati il plugin Unreal MCP e i toolset, poi avviato il server e generata la configurazione per Claude Code.
+
+Epic documenta un server MCP incorporato nell'Editor, accessibile localmente via HTTP e compatibile con client quali Claude Code. I tool ufficiali possono creare attori, configurare luci e materiali, ispezionare Slate ed eseguire test. Il plugin principale e `ModelContextProtocol`; i tool predefiniti richiedono anche i toolset. La funzione e pero **Experimental** e presente da Unreal Engine 5.8: il progetto e fissato alla 5.6.1 e non dispone di questo server nativo.
 
 Esistono plugin MCP della comunita compatibili con UE 5.6, ma aggiungono codice C++, un server esterno e una superficie di controllo non ancora necessaria al micro-prototipo. Possono inoltre diventare incompatibili con una futura migrazione al MCP ufficiale Epic.
 
@@ -75,8 +78,54 @@ Decisione corrente:
 
 Fonti:
 
+- video esaminato: https://www.youtube.com/watch?v=Pwqujpu4548
 - Unreal MCP ufficiale Epic: https://dev.epicgames.com/documentation/en-us/unreal-engine/unreal-mcp-in-unreal-editor
 - configurazione MCP in Codex: https://learn.chatgpt.com/docs/extend/mcp
+
+## 5. Valutazione Aura per UE 5.6.1
+
+Esistono piu prodotti chiamati Aura. Quello pertinente a questo flusso e **Aura di Ramen VR** su `tryaura.dev`, un plugin commerciale per Unreal e Unity. La documentazione dichiara supporto Windows per UE 5.4-5.8, quindi include la nostra UE 5.6.1.
+
+Aura installa a livello engine un plugin che puo essere usato come app separata o pannello nell'Editor. Espone inoltre due server MCP `stdio` a client esterni:
+
+- `unreal_inspector`, orientato a ispezione e pianificazione senza modifiche;
+- `unreal_editor`, capace di modificare Blueprint, C++, materiali, Niagara, Behavior Tree, Data Table, UMG ed Enhanced Input e di controllare Play In Editor, screenshot e profiling.
+
+Il vantaggio concreto rispetto al solo controllo visivo e l'accesso strutturato agli asset binari e ai sistemi dell'Editor. Aura dichiara anche compilazione/Live Coding, verifica automatica in PIE con registrazione video e recupero dai crash. Queste sono capacita del fornitore da convalidare sperimentalmente, non risultati gia verificati sul nostro progetto.
+
+### Costi e dati verificati il 22 settembre 2026
+
+- prova gratuita di due settimane senza carta, con Auto Mode illimitata e 10 USD di credito premium;
+- piano Indie: 20 USD/mese oppure 120 USD/anno; include MCP esterno illimitato e 15 USD di credito premium;
+- piano Pro: 40 USD/mese oppure 360 USD/anno;
+- l'integrazione MCP con Claude Code/Codex e indicata come **Alpha** e richiede una prova attiva o un piano a pagamento;
+- Aura dichiara che puo usare conversazioni e contesto forniti esplicitamente per addestramento; l'opzione puo essere disattivata, ma Auto Mode illimitata richiede che sia attiva;
+- i sotto-agenti specializzati di Aura consumano il credito Aura; l'uso da un IDE puo anche aumentare il consumo del servizio AI esterno.
+
+Non assumere quindi che Aura permetta di usare gratuitamente o soltanto con il piano Claude Pro tutte le sue funzioni. Nessun acquisto, overage o API a consumo deve essere attivato automaticamente.
+
+### Decisione corrente
+
+Priorita: **opzionale, prova limitata**. Aura potrebbe ridurre molto il lavoro manuale nell'Editor gia con UE 5.6.1, soprattutto per Blueprint, livelli e verifiche PIE, ma introduce un plugin proprietario, un secondo budget AI e condizioni sui dati. Non installarlo ancora nel progetto principale.
+
+Dopo il playtest Terrain Slice A, se il controllo diretto dell'Editor resta un collo di bottiglia:
+
+1. attivare la prova gratuita soltanto dopo approvazione del proprietario;
+2. installare Aura per UE 5.6 in un progetto/copia isolata, senza segreti o dati Steamworks;
+3. lasciare disattivato l'addestramento durante il primo test, accettando che Auto Mode illimitata non sia disponibile;
+4. collegare prima il solo `unreal_inspector` e verificare lettura, stabilita e quantita di contesto trasmesso;
+5. provare `unreal_editor` su un task reversibile e misurare durata, interventi manuali, qualita del diff, consumo e affidabilita del playtest automatico;
+6. adottarlo solo se il vantaggio supera costo, rischio sui dati e duplicazione della toolchain Claude/Codex.
+
+Il Filesystem Sandbox di Aura richiede UE 5.8 ed e dichiarato sperimentale; non e una protezione disponibile sulla nostra 5.6.1. Per il test restano obbligatori branch/copia isolata, Git LFS e backup degli asset binari.
+
+Fonti ufficiali Aura:
+
+- prezzi e trattamento dei dati: https://www.tryaura.dev/about/
+- installazione e funzioni: https://www.tryaura.dev/documentation/
+- integrazione MCP/Claude Code: https://www.tryaura.dev/documentation/aura-ide-mcp/
+- Verification Agent: https://www.tryaura.dev/documentation/verification-agent/
+- Filesystem Sandbox: https://www.tryaura.dev/documentation/filesystem-sandbox/
 
 ## Flusso operativo proposto
 
