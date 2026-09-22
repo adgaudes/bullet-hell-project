@@ -9,13 +9,13 @@ Obiettivo di produzione: arrivare a un gioco piccolo, rifinito, testabile e comm
 ## Stato corrente
 
 - Fase attiva: Fase 3, micro-prototipi. Character Feel v1 e validato e integrato in `main`; Terrain Slice A e isolato sul branch `feature/terrain-grid-slice`, compilato e pacchettizzato ma non integrabile prima del playtest. Brainstorming e concept restano aperti ai gate previsti.
-- Engine approvato e installato: Unreal Engine 5.8.2 tramite Epic Games Launcher; compilazione Editor e Game C++, caricamento mappa, cook, packaging Windows e avvio headless verificati il 22 settembre 2026.
+- Engine approvato e installato: Unreal Engine 5.8.2 tramite Epic Games Launcher; compilazione Editor e Game C++, caricamento mappa, cook, packaging Windows e avvio headless verificati il 22 settembre 2026. La precedente UE 5.6 e stata rimossa dopo la migrazione.
 - Plugin Epic verificati nell'installazione: Fab 0.0.9 e Quixel Bridge 2025.0.1, entrambi abilitati per impostazione predefinita; verificarne apertura e import in Editor prima dell'uso di produzione.
 - DCC 3D installato: Blender 5.2.2; fissare definitivamente la versione di produzione dopo il test di export verso UE 5.8.
 - Editor leggero installato: Visual Studio Code 1.137.0. Non considerarlo un sostituto della toolchain C++ di Unreal.
 - Strumenti agentici installati: Google Antigravity 2.12.2 e Antigravity IDE 2.5.5. Usarli per task isolati, analisi o seconda revisione; non sostituiscono Visual Studio 2026, Unreal Editor o la verifica di Codex.
 - Claude Desktop e piano Claude Pro disponibili. Claude Code 2.1.278 e installato, autenticato tramite Claude.ai Pro e verificato con `claude doctor`; il canale CLI funziona quando l'esecuzione dispone di accesso di rete autorizzato. Un errore `ECONNREFUSED` nell'ambiente isolato non indica un problema OAuth. Non usare credenziali API o ricariche automatiche non approvate.
-- Toolchain C++ su Windows: Visual Studio Community 2026 18.10.1 con MSVC 14.51.36231, Windows SDK e componenti Unreal; target Editor e Game fissati esplicitamente a VS2026. UE 5.8.2 segnala che MSVC 14.51 e piu recente della 14.50 preferita, ma build, cook, packaging e avvio sono riusciti. Dettagli in `docs/TOOLS_AND_LICENSES.md`.
+- Toolchain C++ su Windows: Visual Studio Community 2026 18.10.1 con MSVC 14.51.36231, Windows SDK e componenti Unreal; target Editor e Game fissati esplicitamente a VS2026. Visual Studio 2022 e IncrediBuild sono stati rimossi. UE 5.8.2 segnala che MSVC 14.51 e piu recente della 14.50 preferita, ma build, cook, packaging e avvio sono riusciti anche dopo la pulizia. Dettagli in `docs/TOOLS_AND_LICENSES.md`.
 - Piattaforma iniziale candidata: Windows su Steam.
 - Modalita iniziale candidata: single-player.
 - Input: controller/gamepad come esperienza primaria, con piena parita funzionale per tastiera e mouse.

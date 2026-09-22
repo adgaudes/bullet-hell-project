@@ -29,9 +29,9 @@ Stati usati:
 | Git | 2.55.0 | Versionamento | Installato |
 | Git LFS | 3.7.1 | Asset binari | Installato e configurato nel repository |
 | Git Credential Manager | 2.9.1 | Autenticazione remota | Installato |
-| Visual Studio Community 2022 | 17.14.41, MSVC 14.44.35207, MSBuild 17.14.60 | Precedente toolchain UE 5.6 | Migrazione completata; da rimuovere nella pulizia post-migrazione |
+| Visual Studio Community 2022 | Rimossa il 22 settembre 2026 | Precedente toolchain UE 5.6 | Non piu necessaria; rimozione verificata con `vswhere` e build successiva |
 | Visual Studio Community 2026 | 18.10.1, MSVC 14.51.36231 | Compilazione e debugging UE 5.8 C++ | Toolchain primaria, completa e verificata con build Editor/Game, cook e packaging. UE avvisa che MSVC 14.51 e piu recente della 14.50 preferita, senza errori rilevati nel progetto |
-| IncrediBuild | Installato come componente opzionale di VS 2026 | Accelerazione distribuita di build, shader e cook | Non necessario nella fase corrente con un solo PC e poco codice. Rimuovere durante la pulizia post-migrazione; riproporre solo se tempi misurati di compilazione, shader o packaging diventano un collo di bottiglia |
+| IncrediBuild | Rimosso il 22 settembre 2026 | Accelerazione distribuita di build, shader e cook | Non necessario nella fase corrente con un solo PC e poco codice; riproporre solo se tempi misurati diventano un collo di bottiglia |
 | GitHub CLI | Non installato/rilevato, verifica del 21 settembre 2026 | Issue, pull request e automazione GitHub | Opzionale; non serve ora perche Git e Git Credential Manager coprono il flusso corrente |
 
 Spazio libero rilevato sul disco di progetto: circa 620 GB, sufficiente per la fase iniziale. Hardware rilevato: Intel Core i7-13620H, 16 GB RAM, RTX 4050 Laptop con 6 GB VRAM.
@@ -83,9 +83,9 @@ Visual Studio 2022 resta documentato come toolchain precedentemente validata; no
 
 Visual Studio Community 2026 e stato inizialmente disinstallato il 21 settembre 2026 perche UE 5.6 non lo supportava, poi reinstallato il 22 settembre 2026 in preparazione alla migrazione a UE 5.8.2. L'istanza 18.10.1 risulta completa, avviabile e senza riavvio richiesto. Sono verificati workload Game development with C++, MSVC 14.51.36231, Windows 11 SDK 10.0.22621/26100/28000, strumenti Unreal, debugger Blueprint, Unreal Engine Test Adapter, AddressSanitizer, diagnostica/profiling e HLSL. In Visual Studio 2026 l'identificatore interno del test adapter e `Microsoft.VisualStudio.Component.Unreal.TestAdapter`.
 
-La condizione per rimuovere Visual Studio 2022 e soddisfatta: installazione UE 5.8.2, migrazione su branch, compilazione Editor/Game, caricamento mappa, cook, packaging e avvio riusciti con VS2026. Dopo la rimozione eseguire nuovamente almeno build incrementale e verifica dell'istanza.
+Visual Studio 2022 e stato rimosso il 22 settembre 2026. `vswhere` rileva soltanto Visual Studio Community 2026, completo, avviabile e senza riavvio richiesto. Dopo la rimozione sono riusciti build incrementale, cook, packaging e avvio headless; AutomationTool usa `Visual Studio\18\Community\MSBuild`.
 
-IncrediBuild e stato installato come componente opzionale insieme a VS 2026, ma non e adottato dal progetto. Il proprietario ne ha approvato la rimozione durante la stessa pulizia post-migrazione. Rivalutarlo in futuro soltanto sulla base di profiling dei tempi e di un vantaggio concreto rispetto a build incrementali, Live Coding e cache locali.
+IncrediBuild, installato inizialmente come componente opzionale, e stato rimosso il 22 settembre 2026. Registro applicazioni, componente Visual Studio e cartella di installazione risultano assenti. Rivalutarlo in futuro soltanto sulla base di profiling dei tempi e di un vantaggio concreto rispetto a Unreal Build Accelerator, build incrementali, Live Coding e cache locali.
 
 ## Dipendenze da non installare separatamente ora
 
