@@ -30,7 +30,7 @@ Stati usati:
 | Git LFS | 3.7.1 | Asset binari | Installato e configurato nel repository |
 | Git Credential Manager | 2.9.1 | Autenticazione remota | Installato |
 | Visual Studio Community 2022 | 17.14.41, MSVC 14.44.35207, MSBuild 17.14.60 | Compilazione e debugging UE 5.6 C++ | Installato e verificato; IDE/toolchain primaria |
-| Visual Studio Community 2026 | 18.10.1, disinstallato il 21 settembre 2026 | Non supportato ufficialmente da UE 5.6 | Rimosso; reinstallabile in futuro se servisse a un altro progetto |
+| Visual Studio Community 2026 | 18.10.1, MSVC 14.51.36231 | Compilazione e debugging UE 5.8 C++ | Installato e completo il 22 settembre 2026; workload Game development with C++, strumenti Unreal, debugger Blueprint, test adapter, ASan, profiling, HLSL e Windows SDK verificati. Diventera la toolchain primaria dopo la migrazione validata a UE 5.8.2 |
 | GitHub CLI | Non installato/rilevato, verifica del 21 settembre 2026 | Issue, pull request e automazione GitHub | Opzionale; non serve ora perche Git e Git Credential Manager coprono il flusso corrente |
 
 Spazio libero rilevato sul disco di progetto: circa 620 GB, sufficiente per la fase iniziale. Hardware rilevato: Intel Core i7-13620H, 16 GB RAM, RTX 4050 Laptop con 6 GB VRAM.
@@ -80,7 +80,9 @@ Componenti verificati il 21 settembre 2026:
 
 Visual Studio Installer indica l'istanza 2022 come completa, avviabile e senza riavvio richiesto. La verifica definitiva e stata completata il 21 settembre 2026 con compilazione Editor e Game, cook, packaging Windows Development e avvio della build; risultati in `SMOKE_TEST_2026-09-21.md`.
 
-Visual Studio Community 2026 e stato disinstallato il 21 settembre 2026 dopo la conferma che non serviva ad altri progetti. Visual Studio Installer ha completato l'operazione con codice 0; una verifica successiva ha confermato che l'istanza Community 2022 e rimasta completa, avviabile e senza richiesta di riavvio. Sono rimasti presenti il workload Game development with C++, la toolchain MSVC, Windows 11 SDK, gli strumenti Unreal, il debugger Blueprint, Unreal Engine Test Adapter, AddressSanitizer, strumenti diagnostici e HLSL.
+Visual Studio Community 2026 e stato inizialmente disinstallato il 21 settembre 2026 perche UE 5.6 non lo supportava, poi reinstallato il 22 settembre 2026 in preparazione alla migrazione a UE 5.8.2. L'istanza 18.10.1 risulta completa, avviabile e senza riavvio richiesto. Sono verificati workload Game development with C++, MSVC 14.51.36231, Windows 11 SDK 10.0.22621/26100/28000, strumenti Unreal, debugger Blueprint, Unreal Engine Test Adapter, AddressSanitizer, diagnostica/profiling e HLSL. In Visual Studio 2026 l'identificatore interno del test adapter e `Microsoft.VisualStudio.Component.Unreal.TestAdapter`.
+
+Visual Studio 2022 resta temporaneamente installato perche il progetto autorevole e ancora associato a UE 5.6.1, che non supporta VS 2026. Rimuoverlo soltanto dopo installazione UE 5.8.2, conversione su copia/branch, compilazione, cook, packaging e avvio riusciti con la nuova toolchain.
 
 ## Dipendenze da non installare separatamente ora
 
