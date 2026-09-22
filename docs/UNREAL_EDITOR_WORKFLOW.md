@@ -74,6 +74,8 @@ Decisione corrente:
 - non installare un plugin MCP della comunita nel progetto principale;
 - MCP Epic e abilitato nel progetto e configurato per avviarsi con l'Editor su `127.0.0.1:8000/mcp`;
 - Codex usa una configurazione locale al repository, non obbligatoria quando l'Editor e chiuso, con approvazione per gli strumenti di scrittura;
+- Claude Code usa lo stesso endpoint tramite `.mcp.json` con scope progetto, dopo login e consenso personale una tantum;
+- durante ogni incarico un solo agente puo modificare l'Editor: Claude implementa e verifica il proprio task, poi termina la sessione MCP prima della revisione e integrazione di Codex;
 - validazione iniziale completata: ispezione, lettura e una modifica reversibile con controllo dello stato;
 - usarlo come canale strutturato standard quando l'Editor e aperto, mantenendo log, diff e rollback per le modifiche persistenti.
 
