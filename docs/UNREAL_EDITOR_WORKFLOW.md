@@ -129,6 +129,8 @@ Fonti ufficiali Aura:
 
 ## Flusso operativo proposto
 
+Preferenza del proprietario: quando l'attivita lo consente, mantenere Unreal Editor aperto e rendere visibili le modifiche nella viewport o in Play In Editor durante la sessione. Questo e il ciclo di iterazione predefinito; non generare una build pacchettizzata dopo ogni piccolo cambiamento.
+
 Per ogni incremento visivo:
 
 1. Codex o Claude modifica file/script su un branch isolato.
@@ -138,6 +140,15 @@ Per ogni incremento visivo:
 5. Il proprietario vede il risultato nella viewport o in Play In Editor.
 6. Codex controlla Output Log e comportamento, poi salva soltanto gli asset previsti.
 7. Diff, build e test restano obbligatori prima dell'integrazione.
+
+### Cadenza delle verifiche
+
+- **A ogni modifica pertinente:** compilazione Blueprint, Live Coding oppure build del solo target Editor, poi verifica in viewport o Play In Editor.
+- **A ogni incremento coerente o prima dell'integrazione:** chiusura dell'Editor se richiesta, compilazione pulita del codice interessato e controllo dei log.
+- **Alle milestone e dopo cambiamenti a packaging, configurazione, plugin, caricamento o piattaforma:** cook e build Windows Development pacchettizzata.
+- **Prima di demo e release:** build Shipping e test su macchina pulita e Steam Deck.
+
+Play In Editor accelera il controllo del gameplay ma non sostituisce completamente una build: packaging, dipendenze mancanti, configurazioni Shipping, percorsi dei file, avvio standalone, Proton e prestazioni possono comportarsi diversamente. La build pacchettizzata e quindi periodica e basata sul rischio, non eliminata.
 
 ## Primo esperimento consigliato
 
