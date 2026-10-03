@@ -4,7 +4,8 @@ extends CharacterBody3D
 ##
 ## Movimento planare analogico, orientamento indipendente (stick destro o mouse
 ## deproiettato sul piano del personaggio), commutazione automatica del
-## dispositivo di mira e dash con cooldown e feedback solo visivo.
+## dispositivo di mira, dash con cooldown e feedback solo visivo, tool terreno
+## con bersaglio fisso davanti al personaggio.
 ## L'origine e al centro della capsula, come la location dell'attore Unreal.
 
 signal dash_started
@@ -17,12 +18,17 @@ const BODY_COLOR_LINEAR := Color(1.0, 0.35, 0.02)
 const FACING_INDICATOR_COLOR_LINEAR := Color(0.0, 0.8, 1.0)
 
 @export var tuning: PlayerTuning
+## Griglia su cui agisce il tool (SetTerrainGrid in Unreal). Opzionale.
+@export var terrain_grid: TerrainGrid
 
 ## Scala la velocita massima senza toccare il tuning (penalita terreno, Fase 8).
 var speed_multiplier := 1.0
 var aim_device := AimDevice.GAMEPAD
 var is_dashing := false
 var is_dash_on_cooldown := false
+var terrain_tool_mode := TerrainState.ToolMode.DIG
+## Punto mondo bersaglio del tool, aggiornato a ogni passo fisico.
+var terrain_target := Vector3.ZERO
 
 var _movement := PlanarMovement.new()
 ## Ultima direzione di movimento valida (normalizzata): direzione del dash.
@@ -52,6 +58,9 @@ func _ready() -> void:
 	_facing_indicator.material_override = indicator_material
 
 	print("PROTOTYPE01_CHARACTER_READY")
+	if terrain_grid != null:
+		_update_terrain_target()
+		print("PROTOTYPE01_TERRAIN_MODE Dig")
 
 
 func _input(event: InputEvent) -> void:
@@ -64,6 +73,10 @@ func _unhandled_input(event: InputEvent) -> void:
 	# A eventi come il trigger Started di Unreal: nessuna pressione persa tra due passi fisici.
 	if event.is_action_pressed(&"dash", false, true):
 		_start_dash()
+	elif event.is_action_pressed(&"terrain_tool", false, true):
+		_use_terrain_tool()
+	elif event.is_action_pressed(&"terrain_mode", false, true):
+		_toggle_terrain_mode()
 
 
 func _physics_process(delta: float) -> void:
@@ -92,6 +105,34 @@ func _physics_process(delta: float) -> void:
 
 	# Dopo il movimento, come il TimerManager Unreal che avanza a fine tick.
 	_update_dash_timers(delta)
+	_update_terrain_target()
+
+
+func _use_terrain_tool() -> void:
+	if terrain_grid == null:
+		return
+	_update_terrain_target()
+	terrain_grid.apply_command_at(terrain_target, terrain_tool_mode, self)
+	_update_terrain_target()
+
+
+func _toggle_terrain_mode() -> void:
+	terrain_tool_mode = TerrainState.ToolMode.RAISE 		if terrain_tool_mode == TerrainState.ToolMode.DIG else TerrainState.ToolMode.DIG
+	print("PROTOTYPE01_TERRAIN_MODE %s" % ("Dig" if terrain_tool_mode == TerrainState.ToolMode.DIG else "Raise"))
+	_update_terrain_target()
+
+
+## Bersaglio a distanza fissa lungo il forward planare, con anteprima sulla griglia.
+func _update_terrain_target() -> void:
+	if terrain_grid == null:
+		return
+	var forward := -global_basis.z
+	forward.y = 0.0
+	if forward.is_zero_approx():
+		terrain_grid.hide_preview()
+		return
+	terrain_target = global_position + forward.normalized() * UnrealSpace.length(maxf(tuning.terrain_tool_range_cm, 100.0))
+	terrain_grid.update_preview(terrain_target, terrain_tool_mode, self)
 
 
 ## Volume collidente in coordinate mondo, come GetActorBounds(true) in Unreal.

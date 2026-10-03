@@ -67,13 +67,3 @@ func _report_scale_reference() -> void:
 	print("PROTOTYPE01_SCALE arena=%.1fm camera_arm=%.1fm cell=%.2fm"
 		% [arena_side_m, camera_arm_m, cell_size_m])
 
-
-func _unhandled_input(event: InputEvent) -> void:
-	# Riscontro immediato quando il proprietario prova i controlli nell'editor.
-	if event.is_action_pressed(&"dash"):
-		print("PROTOTYPE01_ACTION dash")
-	elif event.is_action_pressed(&"terrain_tool"):
-		print("PROTOTYPE01_ACTION terrain_tool")
-	elif event.is_action_pressed(&"terrain_mode"):
-		print("PROTOTYPE01_ACTION terrain_mode")
-

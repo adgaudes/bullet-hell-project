@@ -17,8 +17,9 @@ script = ExtResource("2_arena")
 script = ExtResource("5_terrain")
 tuning = ExtResource("6_terrain_tuning")
 
-[node name="Player" parent="." instance=ExtResource("4_player")]
+[node name="Player" parent="." node_paths=PackedStringArray("terrain_grid") instance=ExtResource("4_player")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.88, 0)
+terrain_grid = NodePath("../TerrainGrid")
 
 [node name="CameraRig" type="Node3D" parent="." node_paths=PackedStringArray("target")]
 script = ExtResource("3_camera")

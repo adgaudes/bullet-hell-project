@@ -4,7 +4,7 @@
 
 **Ultimo aggiornamento:** 3 ottobre 2026
 **Engine:** Godot 4.7.2 stable, edizione standard/GDScript
-**Fase corrente:** 6 completata; Fase 5 **in attesa del playtest di feel del proprietario** → prossima: Fase 7
+**Fase corrente:** 7 completata nel codice; **playtest del proprietario in sospeso** per Fase 5 (feel) e Fase 7 (Test A manuale) → prossima: Fase 8
 **Branch di lavoro:** `feature/godot-migration-foundation` (non ancora integrato in `main`)
 
 ## In una frase
@@ -22,8 +22,8 @@ Stiamo migrando a Godot un micro-prototipo Unreal gia validato da un playtest, *
 | 4 | Arena, illuminazione, camera isometrica | **fatta** |
 | 5 | Personaggio: movimento, mira, cambio dispositivo, dash | **fatta nel codice**, playtest del proprietario da fare |
 | 6 | Griglia terreno: stato, presentazione, collisioni | **fatta** |
-| 7 | Tool e anteprima | **prossima** |
-| 8 | Slice B: penalita velocita, hazard | da fare |
+| 7 | Tool e anteprima | **fatta nel codice**, Test A manuale del proprietario da fare |
+| 8 | Slice B: penalita velocita, hazard | **prossima** |
 | 9 | Verifica di parita, export, smoke test Steam Deck | da fare |
 | 10 | Pulizia documentale, destino del progetto Unreal | da fare |
 
@@ -75,9 +75,20 @@ Verificato: `tests/terrain_tests.gd`, 37 controlli verdi (regole, 49 celle senza
 
 Limite noto: modificare i valori dentro `terrain_default.tres` dall'Inspector non ricostruisce la griglia in tempo reale nell'editor; serve riaprire la scena o riassegnare la risorsa.
 
-## Prossimo passo concreto — Fase 7
+## Fase 7 — com'e stata chiusa
 
-**Obiettivo:** tool terreno e anteprima, a parita con `APrototype01Character` (`UpdateTerrainTarget`, `HandleTerrainTool*`, `HandleTerrainMode*`) e `UpdatePreview`/`HidePreview` di `Prototype01TerrainGridActor.cpp`. Bersaglio a 480 cm davanti al personaggio, modalita Dig/Raise alternata da `terrain_mode`, anteprima 72% della cella colorata ciano/giallo/rosso. Criterio di uscita: ripercorrere invariato il Test A di `docs/PLAYTESTS/TERRAIN_GRID_SLICE_A_2026-09-22.md`. Rimuovere dalla sonda i log `PROTOTYPE01_ACTION terrain_*` quando il tool reale li sostituisce.
+- `PlayerCharacter`: `terrain_grid` (collegata in `smoke_test.tscn`), `terrain_tool_mode` Dig/Raise, bersaglio a `terrain_tool_range_cm` (480) lungo il forward planare aggiornato a ogni passo fisico; `terrain_tool` applica, `terrain_mode` alterna. Input a eventi come il dash.
+- `TerrainGrid.update_preview()` / `hide_preview()`: anteprima 72% della cella, 5 cm, 2 cm sopra la cella; ciano Dig, giallo Raise, rosso impossibile; nascosta fuori griglia. `preview_cell` esposto.
+- Log invariati rispetto a Unreal: `PROTOTYPE01_TERRAIN_MODE`, `PROTOTYPE01_TERRAIN_CHANGED`, `PROTOTYPE01_TERRAIN_REJECTED`, `PROTOTYPE01_TERRAIN_RAISE_OCCUPIED_REJECTED`.
+- Sonda: rimossi i log `PROTOTYPE01_ACTION *`, sostituiti da quelli reali.
+
+Verificato: `tests/terrain_tool_tests.gd`, 20 controlli verdi che automatizzano i passi 5-9 del Test A (scavo, cambio modalita, Normal/Raised, anteprima rossa oltre il limite, cella protetta, fuori griglia, modifiche rapide); le altre due suite restano verdi; cattura con anteprima ciano.
+
+**Da fare dal proprietario:** Test A di `docs/PLAYTESTS/TERRAIN_GRID_SLICE_A_2026-09-22.md`, passi 2-4 e domande percettive (corrispondenza cella/direzione, leggibilita colori, naturalezza del cambio modalita), con mouse e controller. Si avvia con F5 dall'editor Godot.
+
+## Prossimo passo concreto — Fase 8
+
+**Obiettivo:** Slice B a parita con Unreal: penalita di velocita sulle celle Lowered (`UpdateTerrainSpeedModifier`, usare `PlayerCharacter.speed_multiplier` e `TerrainGrid.lowered_speed_penalty()`), hazard che percorre la corsia lungo l'asse X Unreal della griglia (`Prototype01TerrainHazardActor.cpp`, configurazione corsia in `SmokeTestGameMode.cpp`) e si ferma su un terrapieno Raised. Criterio di uscita: l'hazard si ferma su un terrapieno alzato dal giocatore.
 
 ## Da non dimenticare
 

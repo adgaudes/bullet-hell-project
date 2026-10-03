@@ -24,6 +24,10 @@ extends Resource
 ## Spostamento minimo del mouse, in pixel, per passare alla mira mouse.
 @export var mouse_aim_delta_threshold := 0.1
 
+@export_group("Terrain")
+## TerrainToolRange: distanza davanti al personaggio del bersaglio terreno, cm (min 100).
+@export var terrain_tool_range_cm := 480.0
+
 @export_group("Dash")
 ## DashSpeed, cm/s.
 @export var dash_speed_cm := 3000.0

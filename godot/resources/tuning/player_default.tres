@@ -14,6 +14,7 @@ gamepad_aim_sensitivity = 1.0
 gamepad_aim_rotation_interp_speed = 10.0
 mouse_aim_rotation_interp_speed = 25.0
 mouse_aim_delta_threshold = 0.1
+terrain_tool_range_cm = 480.0
 dash_speed_cm = 3000.0
 dash_duration = 0.18
 dash_cooldown = 1.2

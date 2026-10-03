@@ -19,6 +19,13 @@ const NORMAL_COLOR := Color(0.34, 0.48, 0.20)
 const LOWERED_COLOR := Color(0.08, 0.16, 0.20)
 const RAISED_COLOR := Color(0.64, 0.28, 0.08)
 const PROTECTED_COLOR := Color(0.42, 0.12, 0.48)
+const DIG_PREVIEW_COLOR := Color(0.05, 0.75, 1.0)
+const RAISE_PREVIEW_COLOR := Color(1.0, 0.78, 0.05)
+const INVALID_PREVIEW_COLOR := Color(1.0, 0.03, 0.03)
+## Anteprima: 72% della cella visibile, 5 cm di spessore, 2 cm sopra la cella.
+const PREVIEW_SIZE_RATIO := 0.72
+const PREVIEW_HEIGHT_CM := 5.0
+const PREVIEW_LIFT_CM := 2.0
 
 @export var tuning: TerrainTuning:
 	set(value):
@@ -27,6 +34,8 @@ const PROTECTED_COLOR := Color(0.42, 0.12, 0.48)
 			rebuild()
 
 var state := TerrainState.new()
+## Cella sotto l'anteprima, (-1, -1) se nascosta.
+var preview_cell := Vector2i(-1, -1)
 
 # Valori di tuning normalizzati come ClampGridProperties, senza modificare la risorsa.
 var _cell_size_cm := 240.0
@@ -36,6 +45,7 @@ var _cells: Array[StaticBody3D] = []
 var _meshes: Dictionary[int, BoxMesh] = {}
 var _shapes: Dictionary[int, BoxShape3D] = {}
 var _material: ShaderMaterial
+var _preview: MeshInstance3D
 
 
 func _ready() -> void:
@@ -53,6 +63,9 @@ func rebuild() -> void:
 		remove_child(cell)
 		cell.queue_free()
 	_cells.clear()
+	if _preview != null:
+		remove_child(_preview)
+		_preview.queue_free()
 
 	_material = ShaderMaterial.new()
 	_material.shader = CELL_SHADER
@@ -69,6 +82,46 @@ func rebuild() -> void:
 	for y in state.height:
 		for x in state.width:
 			_cells.append(_create_cell(Vector2i(x, y)))
+
+	var preview_size := UnrealSpace.length(maxf(_cell_size_cm - _cell_gap_cm, 10.0) * PREVIEW_SIZE_RATIO)
+	var preview_mesh := BoxMesh.new()
+	preview_mesh.size = Vector3(preview_size, UnrealSpace.length(PREVIEW_HEIGHT_CM), preview_size)
+	_preview = MeshInstance3D.new()
+	_preview.name = "Preview"
+	_preview.mesh = preview_mesh
+	_preview.material_override = _material
+	_preview.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_preview.visible = false
+	add_child(_preview)
+
+
+## Mostra l'anteprima sulla cella che contiene [param world_target].
+## Ciano = Dig, giallo = Raise, rosso = comando impossibile.
+## Restituisce se il comando e applicabile; nasconde l'anteprima fuori griglia.
+func update_preview(world_target: Vector3, mode: TerrainState.ToolMode, instigator: Node3D = null) -> bool:
+	var cell := cell_at(world_target)
+	if not state.is_valid(cell):
+		hide_preview()
+		return false
+
+	var cell_state := state.get_state(cell)
+	var can_apply := state.can_apply(cell, mode, _would_raise_overlap(cell, instigator))
+	var position_cm := Vector3(0.0, 0.0, _heights_cm[cell_state] + PREVIEW_HEIGHT_CM * 0.5 + PREVIEW_LIFT_CM)
+	var cell_position := cell_local_position(cell, cell_state)
+	_preview.position = Vector3(cell_position.x, UnrealSpace.length(position_cm.z), cell_position.z)
+	var color := INVALID_PREVIEW_COLOR
+	if can_apply:
+		color = DIG_PREVIEW_COLOR if mode == TerrainState.ToolMode.DIG else RAISE_PREVIEW_COLOR
+	_preview.set_instance_shader_parameter(&"cell_color", color.linear_to_srgb())
+	_preview.visible = true
+	preview_cell = cell
+	return can_apply
+
+
+func hide_preview() -> void:
+	preview_cell = Vector2i(-1, -1)
+	if _preview != null:
+		_preview.visible = false
 
 
 ## Cella che contiene il punto mondo; usare state.is_valid() sul risultato.
