@@ -18,6 +18,8 @@ func _initialize() -> void:
 	await _test_hazard_lane()
 	await _reload_scene()
 	await _test_hazard_blocked_by_player_raise()
+	await _reload_scene()
+	await _test_lane_follows_grid()
 	print("PROTOTYPE01_TESTS %s failures=%d" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -96,6 +98,20 @@ func _test_hazard_blocked_by_player_raise() -> void:
 	_hazard.reached.connect(func(): reached[0] += 1)
 	await _wait_until(func(): return reached[0] > 0, 1200)
 	_check(reached[0] == 1 and blocked[0] == 2, "cella tornata Normal: l'hazard arriva in fondo")
+
+
+func _test_lane_follows_grid() -> void:
+	print("lane follows grid")
+	# Griglia ricostruita 5x7: corsia 5 * 2,4 + 2 * 2,6 = 17,2 m.
+	_grid.tuning = _grid.tuning.duplicate()
+	_grid.tuning.grid_width = 5
+	await _frames(2)
+	_check(is_equal_approx(_hazard.lane_length, 17.2), "corsia ricalcolata dopo la ricostruzione (got %.2f)" % _hazard.lane_length)
+	_check(_hazard.lane_start.is_equal_approx(Vector3(0, 0.5, 8.6)), "nuovo inizio corsia (got %s)" % _hazard.lane_start)
+	# Griglia scalata 2x: la lunghezza segue gli estremi in spazio mondo.
+	_grid.scale = Vector3(2, 2, 2)
+	_hazard.configure_lane_from_grid(_grid)
+	_check(is_equal_approx(_hazard.lane_length, 34.4), "corsia su griglia scalata (got %.2f)" % _hazard.lane_length)
 
 
 func _load_scene() -> void:

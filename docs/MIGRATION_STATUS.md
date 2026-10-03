@@ -102,6 +102,19 @@ Verificato: `tests/slice_b_tests.gd`, 19 controlli verdi, incluso il **criterio 
 - Export template 4.7.2 installati (solo Windows e Linux x86_64, SHA-512 verificato). `godot/export_presets.cfg`: preset Windows e Linux, esclusa la cartella `tests/`.
 - Build in `LocalBuilds/Prototype01-Godot-Win64/` (109 MB, smoke test e avvio con finestra verificati) e `LocalBuilds/Prototype01-Godot-Linux/` (74 MB, non eseguita).
 
+## Review indipendente del 3 ottobre 2026
+
+Review del codice Godot fatta da un agente separato. Corretto:
+
+- **grilletto destro**: applicava il tool piu volte per pressione (ogni variazione analogica era un nuovo comando); ora una volta per pressione, come `Started`. Bug reale su controller e Deck, invisibile ai test basati su azioni simulate;
+- **modificatori**: Shift/Ctrl bloccavano dash e tool; ora ignorati come in Unreal;
+- **soglia dello stick di movimento**: 0,5 sul modulo grezzo come il trigger `Down` di `IA_Move` (prima 0,2 con riscalatura);
+- comandi del tool eseguiti nel passo fisico; corsia dell'hazard ricalcolata quando la griglia si ricostruisce e corretta su griglia scalata; il rig camera non riscrive piu la propria trasformazione nell'editor.
+
+Nuova suite `tests/input_events_tests.gd`. Build Windows e Linux riesportate dopo le correzioni.
+
+Non corretto, annotato: la mira mouse usa la posizione fisica del personaggio e la camera interpolata (scarto massimo di un passo, simile a Unreal).
+
 ## Cosa serve dal proprietario
 
 Protocollo unico con tabelle da compilare: **`docs/PLAYTESTS/GODOT_PARITY_PLAYTEST.md`**.
@@ -136,6 +149,7 @@ Nessuno di questi passi e stato eseguito.
 - **Non estendere il progetto Unreal.** E materiale di riferimento da leggere, non da far evolvere.
 - **Il riferimento Unreal si legge dal codice sorgente**, non avviando editor o build: il proprietario non vuole che si apra Unreal.
 - **Non cancellare `Source/`, `Content/`, `Config/`, `Prototype01.uproject` senza conferma esplicita del proprietario**: vedi la proposta della Fase 10.
+- **Quando arrivera la UI:** l'azione predefinita `ui_accept` usa Spazio e il pulsante A, gli stessi del dash. I Control di gioco vanno tenuti con `focus_mode = NONE` oppure `ui_accept` va rimappata, o un Control con focus si prendera il dash.
 - **Non cancellare `Artifacts/Playtests/`**: unica evidenza con hash del playtest Slice A superato, non ricostruibile dopo la rimozione di Unreal.
 - La parita di feel del personaggio (Fase 5) **va playtestata dal proprietario**, non dichiarata da un agente.
 - Il rischio aperto piu serio e **R-G1**, la resa grafica senza Lumen e Nanite rispetto a `ART_DIRECTION.md`. Si manifestera alla vertical slice, non adesso.

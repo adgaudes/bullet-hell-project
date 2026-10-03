@@ -51,15 +51,20 @@ func _ready() -> void:
 
 	if terrain_grid != null:
 		configure_lane_from_grid(terrain_grid)
+		terrain_grid.rebuilt.connect(configure_lane_from_grid.bind(terrain_grid))
 	print("PROTOTYPE01_TERRAIN_SLICE_B_READY")
 
 
 ## Corsia fissa lungo l'asse X Unreal della griglia, centrata sulla sua origine.
 func configure_lane_from_grid(grid: TerrainGrid) -> void:
+	# Estremi in spazio mondo: la lunghezza resta corretta anche con griglia scalata.
+	# La corsia segue la rotazione della griglia (in Unreal era sempre +X mondo,
+	# con la griglia mai ruotata: stesso risultato nella scena del prototipo).
 	var half_length_cm := grid.width_extent_cm() * 0.5 + tuning.lane_margin_cm
-	var start := grid.to_global(UnrealSpace.position(Vector3(-half_length_cm, 0.0, tuning.lane_center_height_cm)))
-	var direction := grid.global_basis * UnrealSpace.position(Vector3(100.0, 0.0, 0.0))
-	configure_lane(start, direction, UnrealSpace.length(half_length_cm * 2.0))
+	var height_cm := tuning.lane_center_height_cm
+	var start := grid.to_global(UnrealSpace.position(Vector3(-half_length_cm, 0.0, height_cm)))
+	var end := grid.to_global(UnrealSpace.position(Vector3(half_length_cm, 0.0, height_cm)))
+	configure_lane(start, end - start, start.distance_to(end))
 
 
 ## Origine, direzione planare e lunghezza (m) della corsia; riavvia dall'origine.

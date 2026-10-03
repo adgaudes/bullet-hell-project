@@ -30,6 +30,7 @@ Alternare le due build (Unreal e Godot) per qualche minuto ciascuna, prima con i
 |---|---|---|
 | Accelerazione e arresto sembrano gli stessi? | | |
 | La velocita massima sembra la stessa? | | |
+| Con lo stick inclinato poco o a meta, la risposta e la stessa? (punto non verificabile da un agente) | | — |
 | La rotazione verso stick o cursore ha la stessa prontezza? | | |
 | Il passaggio stick ↔ mouse avviene senza intoppi? | — | |
 | Il dash copre la stessa distanza, con lo stesso ritmo di cooldown? | | |

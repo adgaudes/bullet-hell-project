@@ -9,6 +9,7 @@ Legenda evidenza: **T** test automatico (`godot/tests/`), **C** cattura visiva i
 | Funzione Unreal | Godot | Evidenza |
 |---|---|---|
 | Movimento planare analogico 600 u/s, accelerazione e frenata 2048 | `PlanarMovement`, porta letterale di `CalcVelocity` | T: 0→6 m/s in 18 frame, frenata in 6 frame, stick 0,5 → 3 m/s |
+| Soglia di attuazione dello stick di movimento (trigger `Down` di `IA_Move`, 0,5 sul modulo, poi modulo grezzo) | `move_actuation_threshold` in `PlayerTuning` | T con eventi joypad reali: 0,4 fermo, 0,6 → 3,6 m/s. **Non verificata**: l'eventuale dead zone per asse delle impostazioni input Unreal, non leggibile dal sorgente del progetto |
 | Orientamento twin-stick con stick destro (dead zone 0,2, sensibilita, interpolazione) | `PlayerCharacter._apply_facing_rotation` | T: quattro direzioni, risposta lenta con stick leggero, nessuna rotazione sotto dead zone |
 | Mira mouse per deproiezione sul piano del personaggio | `aim_direction_at_screen` | T: deproiezione esatta. **P da fare**: feel con mouse reale |
 | Commutazione automatica del dispositivo | `_set_aim_device`, marker `PROTOTYPE01_AIM_DEVICE` | T: mouse → stick → mouse |
@@ -33,6 +34,7 @@ Legenda evidenza: **T** test automatico (`godot/tests/`), **C** cattura visiva i
 | Collisione solo su Raised | `CollisionShape3D.disabled` | T: raycast; personaggio bloccato e poi libero |
 | Dig/Raise di un passo per volta | `TerrainState.apply` | T: tabella completa delle transizioni |
 | Anteprima ciano / gialla / rossa sulla cella bersaglio | `update_preview` | T + C |
+| Comandi una volta per pressione (`Started`), anche col grilletto analogico; modificatori ignorati | fronte di pressione in `PlayerCharacter._unhandled_input` | T con eventi joypad e tasti reali (`input_events_tests.gd`) |
 | Bersaglio a 480 u davanti al personaggio, non sul cursore | `_update_terrain_target` | T: cella (5,3) all'origine, (3,5) mirando a destra |
 | Cella protetta immodificabile | `protected_cell` | T + C |
 | Rifiuto del rialzo che intersecherebbe il giocatore | `_would_raise_overlap` | T |

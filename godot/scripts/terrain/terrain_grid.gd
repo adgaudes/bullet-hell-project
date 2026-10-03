@@ -11,6 +11,8 @@ extends Node3D
 ## L'origine del nodo e il centro della griglia, sul piano del pavimento.
 
 signal cell_changed(cell: Vector2i, state: TerrainState.CellState)
+## Emesso a fine ricostruzione: dimensioni o posizione delle celle possono essere cambiate.
+signal rebuilt
 
 const CELL_SHADER := preload("res://resources/materials/terrain_cell.gdshader")
 
@@ -98,6 +100,7 @@ func rebuild() -> void:
 	_preview.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_preview.visible = false
 	add_child(_preview)
+	rebuilt.emit()
 
 
 ## Mostra l'anteprima sulla cella che contiene [param world_target].

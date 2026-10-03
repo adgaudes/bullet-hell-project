@@ -14,6 +14,9 @@ signal aim_device_changed(device: AimDevice)
 
 enum AimDevice { GAMEPAD, MOUSE }
 
+## Azioni con semantica Started di Unreal: un comando per pressione.
+const STARTED_ACTIONS: Array[StringName] = [&"dash", &"terrain_tool", &"terrain_mode"]
+
 const BODY_COLOR_LINEAR := Color(1.0, 0.35, 0.02)
 const FACING_INDICATOR_COLOR_LINEAR := Color(0.0, 0.8, 1.0)
 
@@ -38,6 +41,8 @@ var _dash_direction := Vector3.ZERO
 ## Tempo dall'attivazione del dash: durata e cooldown si misurano entrambi da qui.
 var _time_since_dash := 0.0
 var _effective_dash_duration := 0.0
+var _held_actions: Dictionary[StringName, bool] = {}
+var _pending_actions: Array[StringName] = []
 var _body_material := StandardMaterial3D.new()
 var _base_body_scale := Vector3.ONE
 
@@ -70,17 +75,34 @@ func _input(event: InputEvent) -> void:
 		_set_aim_device(AimDevice.MOUSE)
 
 
+## Rileva il fronte di pressione: un grilletto analogico invia un evento a ogni
+## variazione sopra la dead zone e non deve ripetere il comando. I modificatori
+## sono ignorati come in Unreal. Il comando e eseguito al passo fisico successivo,
+## come l'input Unreal elaborato prima del Tick: nessuna pressione va persa.
 func _unhandled_input(event: InputEvent) -> void:
-	# A eventi come il trigger Started di Unreal: nessuna pressione persa tra due passi fisici.
-	if event.is_action_pressed(&"dash", false, true):
-		_start_dash()
-	elif event.is_action_pressed(&"terrain_tool", false, true):
-		_use_terrain_tool()
-	elif event.is_action_pressed(&"terrain_mode", false, true):
-		_toggle_terrain_mode()
+	for action in STARTED_ACTIONS:
+		if not event.is_action(action):
+			continue
+		var pressed := event.is_action_pressed(action)
+		if pressed and not _held_actions.get(action, false):
+			_pending_actions.append(action)
+		_held_actions[action] = pressed
+
+
+func _run_pending_actions() -> void:
+	for action in _pending_actions:
+		match action:
+			&"dash":
+				_start_dash()
+			&"terrain_tool":
+				_use_terrain_tool()
+			&"terrain_mode":
+				_toggle_terrain_mode()
+	_pending_actions.clear()
 
 
 func _physics_process(delta: float) -> void:
+	_run_pending_actions()
 	_update_terrain_speed_modifier()
 	var move_direction := _read_move_direction()
 
@@ -154,7 +176,12 @@ func get_collision_aabb() -> AABB:
 
 ## Legge il movimento e aggiorna l'ultima direzione valida, come HandleMoveTriggered.
 func _read_move_direction() -> Vector3:
-	var move_input := Input.get_vector(&"move_left", &"move_right", &"move_forward", &"move_back")
+	# Valore grezzo, senza la dead zone delle azioni: come il trigger Down di
+	# IA_Move, sotto la soglia di attuazione non c'e movimento e sopra conta
+	# il modulo reale dello stick.
+	var move_input := Input.get_vector(&"move_left", &"move_right", &"move_forward", &"move_back", 0.0)
+	if move_input.length() < tuning.move_actuation_threshold:
+		move_input = Vector2.ZERO
 	var move_direction := Vector3(move_input.x, 0.0, move_input.y)
 	if not move_direction.is_zero_approx():
 		_last_valid_move_direction = move_direction.normalized()

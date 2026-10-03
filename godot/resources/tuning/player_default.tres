@@ -9,6 +9,7 @@ move_acceleration_cm = 2048.0
 move_deceleration_cm = 2048.0
 ground_friction = 8.0
 braking_friction_factor = 2.0
+move_actuation_threshold = 0.5
 aim_stick_dead_zone = 0.2
 gamepad_aim_sensitivity = 1.0
 gamepad_aim_rotation_interp_speed = 10.0

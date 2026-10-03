@@ -16,6 +16,9 @@ extends Resource
 ## BrakingFrictionFactor: default di UCharacterMovementComponent.
 @export var braking_friction_factor := 2.0
 
+## ActuationThreshold di UInputTriggerDown su IA_Move: modulo minimo dello stick.
+@export var move_actuation_threshold := 0.5
+
 @export_group("Aim")
 @export var aim_stick_dead_zone := 0.2
 @export var gamepad_aim_sensitivity := 1.0

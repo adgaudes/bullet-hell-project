@@ -47,7 +47,9 @@ func _ready() -> void:
 
 
 func _process(_delta: float) -> void:
-	if target != null:
+	# Nell'editor il rig si posiziona solo in _apply(): seguirlo a ogni frame
+	# riscriverebbe la trasformazione salvata nella scena.
+	if target != null and not Engine.is_editor_hint():
 		global_position = target.get_global_transform_interpolated().origin
 
 

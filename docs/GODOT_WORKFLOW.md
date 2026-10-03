@@ -80,6 +80,8 @@ Piu semplice: `tools/godot/Invoke-GodotChecks.ps1` esegue tutte le suite present
 
 Trappola verificata: `CollisionShape3D.set_deferred("disabled", ...)` lascia la forma attiva per un frame; se applicato in costruzione spinge via i corpi sovrapposti. In costruzione impostarlo direttamente, a runtime differito.
 
+Trappola verificata: `InputEvent.is_action_pressed()` e vero per **ogni** `InputEventJoypadMotion` sopra la dead zone, e un grilletto analogico ne invia uno a ogni variazione. Per azioni "una volta per pressione" serve il rilevamento del fronte (vedi `PlayerCharacter.STARTED_ACTIONS`). Il terzo argomento `exact_match = true` blocca l'azione se e premuto un modificatore. I test che usano solo `InputEventAction` o `Input.action_press` non vedono questi casi: `tests/input_events_tests.gd` usa eventi joypad e tasti reali.
+
 Per l'input nei test: `Input.action_press()` per azioni tenute; per azioni a evento (dash) usare `Input.parse_input_event()` con `InputEventAction`, perche `is_action_just_pressed` in `_physics_process` puo perdere una pressione simulata.
 
 ### Verifica visiva
