@@ -144,3 +144,5 @@ func _add_environment() -> void:
 	world_environment.environment = environment
 	world_environment.camera_attributes = camera_attributes
 	add_child(world_environment)
+	if not Engine.is_editor_hint():
+		print("PROTOTYPE01_EXPOSURE_READY")

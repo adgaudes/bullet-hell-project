@@ -19,6 +19,8 @@ const EXPECTED_ACTIONS: Array[StringName] = [
 
 func _ready() -> void:
 	print("PROTOTYPE01_GODOT_SKELETON_READY")
+	# Marker del protocollo di smoke test Unreal, conservati per parita.
+	print("PROTOTYPE01_SMOKE_TEST_OK")
 	_report_input_map()
 	_report_scale_reference()
 	_capture_if_requested()
@@ -52,6 +54,8 @@ func _report_input_map() -> void:
 
 	print("PROTOTYPE01_INPUT_ACTIONS total=%d missing=%d unbound=%d"
 		% [EXPECTED_ACTIONS.size(), missing.size(), unbound.size()])
+	if missing.is_empty() and unbound.is_empty():
+		print("PROTOTYPE01_INPUT_READY")
 	if not missing.is_empty():
 		push_error("Azioni mancanti nella mappa input: %s" % str(missing))
 	if not unbound.is_empty():

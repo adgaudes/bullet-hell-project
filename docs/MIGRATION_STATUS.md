@@ -4,7 +4,7 @@
 
 **Ultimo aggiornamento:** 3 ottobre 2026
 **Engine:** Godot 4.7.2 stable, edizione standard/GDScript
-**Fase corrente:** 8 completata; **playtest del proprietario in sospeso** per Fase 5 (feel) e Fase 7 (Test A manuale) → prossima: Fase 9
+**Fase corrente:** 9 completata per la parte eseguibile da un agente; **in attesa del proprietario**: playtest Fase 5 (feel), Test A Fase 7, smoke test Steam Deck → poi Fase 10
 **Branch di lavoro:** `feature/godot-migration-foundation` (non ancora integrato in `main`)
 
 ## In una frase
@@ -24,7 +24,7 @@ Stiamo migrando a Godot un micro-prototipo Unreal gia validato da un playtest, *
 | 6 | Griglia terreno: stato, presentazione, collisioni | **fatta** |
 | 7 | Tool e anteprima | **fatta nel codice**, Test A manuale del proprietario da fare |
 | 8 | Slice B: penalita velocita, hazard | **fatta** |
-| 9 | Verifica di parita, export, smoke test Steam Deck | **prossima** |
+| 9 | Verifica di parita, export, smoke test Steam Deck | **fatta** salvo Steam Deck → `GODOT_PARITY_CHECKLIST.md` |
 | 10 | Pulizia documentale, destino del progetto Unreal | da fare |
 
 Dettaglio completo di ogni fase e criteri di uscita: `GODOT_MIGRATION_ANALYSIS.md`, sezione 9.
@@ -94,15 +94,23 @@ Verificato: `tests/terrain_tool_tests.gd`, 20 controlli verdi che automatizzano 
 
 Verificato: `tests/slice_b_tests.gd`, 19 controlli verdi, incluso il **criterio di uscita**: il giocatore rialza col tool la cella (5,3) sulla corsia e l'hazard si ferma a contatto del terrapieno (z = −3,21), a ogni ciclo, e torna ad arrivare in fondo quando la cella e riabbassata. Le altre tre suite restano verdi; cattura con l'hazard fermo contro il terrapieno.
 
-## Prossimo passo concreto — Fase 9
+## Fase 9 — com'e stata chiusa
 
-**Obiettivo:** verifica di parita completa contro la sezione 2 di `GODOT_MIGRATION_ANALYSIS.md`, export Windows e smoke test Steam Deck.
+- `docs/GODOT_PARITY_CHECKLIST.md`: nessuna funzione della sezione 2 manca; per ognuna c'e l'evidenza o quella che manca.
+- Aggiunti i marker Unreal `SMOKE_TEST_OK`, `INPUT_READY`, `EXPOSURE_READY`, citati dai documenti di smoke test.
+- `tools/godot/Invoke-GodotChecks.ps1`: **gate unico**: `--check-only` su ogni script, tutte le suite, smoke test con marker. Con `-Executable <build>` verifica una build esportata. Controllo negativo fatto: con un eseguibile sbagliato risponde FAIL.
+- Export template 4.7.2 installati (solo Windows e Linux x86_64, SHA-512 verificato). `godot/export_presets.cfg`: preset Windows e Linux, esclusa la cartella `tests/`.
+- Build in `LocalBuilds/Prototype01-Godot-Win64/` (109 MB, smoke test e avvio con finestra verificati) e `LocalBuilds/Prototype01-Godot-Linux/` (74 MB, non eseguita).
 
-Passi:
-1. Checklist funzione per funzione della sezione 2 contro il progetto Godot.
-2. Export template di Godot 4.7.2: download gratuito ufficiale, ma va **confermato con il proprietario** prima di scaricarlo (circa 1 GB). Poi preset Windows (ed eventualmente Linux nativo per Deck, decisione aperta).
-3. Build locale in `LocalBuilds/`, avvio e cattura.
-4. Steam Deck: richiede il proprietario e il Deck fisico.
+## Cosa serve dal proprietario
+
+1. **Feel del personaggio** (Fase 5): F5 dall'editor, oppure la build Windows.
+2. **Test A percettivo** (Fase 7): `docs/PLAYTESTS/TERRAIN_GRID_SLICE_A_2026-09-22.md`.
+3. **Steam Deck**: scegliere Proton (build Windows) o Linux nativa (`Prototype01.x86_64`, decisione aperta) e ripetere il Test B dello stesso documento.
+
+## Prossimo passo concreto — Fase 10
+
+Pulizia documentale e decisione sul progetto Unreal, **dopo** i tre punti sopra. Prima: integrare `feature/godot-migration-foundation` in `main` (fast-forward, il branch contiene `main`). Poi: aggiornare i documenti che citano ancora flussi Unreal (`PROJECT_ROADMAP.md`, `TOOLS_AND_LICENSES.md`, `PLATFORM_AND_INPUT.md`, ...) e proporre al proprietario se archiviare o rimuovere `Source/`, `Content/`, `Config/`, `Prototype01.uproject` e `LocalBuilds/` Unreal. **Nessuna rimozione senza conferma esplicita.**
 
 ## Da non dimenticare
 
@@ -121,6 +129,12 @@ godot_console --headless --path godot --check-only --script res://percorso.gd
 
 # eseguire e leggere i log
 godot_console --headless --path godot --quit-after 120
+
+# gate completo (check-only, test, smoke test); con -Executable verifica una build
+powershell -ExecutionPolicy Bypass -File tools/godot/Invoke-GodotChecks.ps1
+
+# export
+godot_console --headless --path godot --export-release "Windows Desktop" ../LocalBuilds/Prototype01-Godot-Win64/Prototype01.exe
 
 # verifica visiva (serve una finestra reale, mai --headless)
 godot_console --path godot --resolution 1280x800 --quit-after 240 res://scena.tscn

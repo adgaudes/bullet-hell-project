@@ -122,12 +122,22 @@ Regole operative che ne derivano:
 | Log dettagliato | `--verbose` |
 | Validazione senza esecuzione | `--check-only --script <file>` |
 
+### Export
+
+Verificato il 3 ottobre 2026. Template in `%APPDATA%\Godot\export_templates.7.2.stable\` (installati solo Windows e Linux x86_64 dal `.tpz` ufficiale, SHA-512 verificato). Preset in `godot/export_presets.cfg`.
+
+```bash
+godot_console --headless --path godot --export-release "Windows Desktop" ../LocalBuilds/Prototype01-Godot-Win64/Prototype01.exe
+godot_console --headless --path godot --export-release "Linux" ../LocalBuilds/Prototype01-Godot-Linux/Prototype01.x86_64
+```
+
+La cartella di destinazione deve esistere. La build Windows scrive i `print()` su stdout anche senza wrapper console: lo smoke test della build funziona (`Invoke-GodotChecks.ps1 -Executable`).
+
 ## Non ancora verificato
 
 Da confermare quando servira, senza darlo per acquisito:
 
 - `--import` (reimport headless degli asset);
-- `--export-release` / `--export-debug`: richiedono gli **export template**, un download separato non ancora effettuato. Serviranno alla Fase 9 (packaging Windows e valutazione build Linux nativa per Steam Deck);
 - framework di test (GUT, GdUnit4): sono addon di terze parti e ricadono sotto la regola delle dipendenze.
 
 ## Model Context Protocol: valutato, rimandato
