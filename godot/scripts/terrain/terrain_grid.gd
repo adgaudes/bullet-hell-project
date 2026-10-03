@@ -11,6 +11,8 @@ extends Node3D
 ## L'origine del nodo e il centro della griglia, sul piano del pavimento.
 
 signal cell_changed(cell: Vector2i, state: TerrainState.CellState)
+## Emesso a ogni comando applicato, con la modalita (Dig produce rottami).
+signal command_applied(cell: Vector2i, mode: TerrainState.ToolMode, state: TerrainState.CellState)
 ## Emesso a fine ricostruzione: dimensioni o posizione delle celle possono essere cambiate.
 signal rebuilt
 
@@ -106,14 +108,15 @@ func rebuild() -> void:
 ## Mostra l'anteprima sulla cella che contiene [param world_target].
 ## Ciano = Dig, giallo = Raise, rosso = comando impossibile.
 ## Restituisce se il comando e applicabile; nasconde l'anteprima fuori griglia.
-func update_preview(world_target: Vector3, mode: TerrainState.ToolMode, instigator: Node3D = null) -> bool:
+## [param blocked]: vincolo esterno alla griglia (es. rottami mancanti), mostra rosso.
+func update_preview(world_target: Vector3, mode: TerrainState.ToolMode, instigator: Node3D = null, blocked := false) -> bool:
 	var cell := cell_at(world_target)
 	if not state.is_valid(cell):
 		hide_preview()
 		return false
 
 	var cell_state := state.get_state(cell)
-	var can_apply := state.can_apply(cell, mode, _would_raise_overlap(cell, instigator))
+	var can_apply := state.can_apply(cell, mode, _would_raise_overlap(cell, instigator)) and not blocked
 	var position_cm := Vector3(0.0, 0.0, _heights_cm[cell_state] + PREVIEW_HEIGHT_CM * 0.5 + PREVIEW_LIFT_CM)
 	var cell_position := cell_local_position(cell, cell_state)
 	_preview.position = Vector3(cell_position.x, UnrealSpace.length(position_cm.z), cell_position.z)
@@ -193,6 +196,7 @@ func apply_command_at(world_target: Vector3, mode: TerrainState.ToolMode, instig
 	_update_cell_presentation(cell)
 	print("PROTOTYPE01_TERRAIN_CHANGED X=%d Y=%d State=%s" % [cell.x, cell.y, TerrainState.state_name(new_state)])
 	cell_changed.emit(cell, new_state)
+	command_applied.emit(cell, mode, new_state)
 	return true
 
 

@@ -10,13 +10,19 @@ extends Node3D
 
 signal blocked
 signal reached
+## Solo con hits_player: la sfera ha toccato il giocatore.
+signal hit_player(body: Node3D)
 
 ## Magenta acceso, lineare: distinto da personaggio e terreno.
 const HAZARD_COLOR := Color(0.95, 0.05, 0.85)
 const WORLD_STATIC_LAYER := 1
+const PLAYER_LAYER := 2
 
 @export var tuning: HazardTuning
 @export var terrain_grid: TerrainGrid
+## Nel prototipo Unreal la sfera ignora il giocatore (parita). Il Companion
+## Slice la rende una minaccia: al contatto colpisce e riparte.
+@export var hits_player := false
 
 var lane_start := Vector3.ZERO
 var lane_direction := Vector3.FORWARD
@@ -98,10 +104,29 @@ func _physics_process(delta: float) -> void:
 
 	global_position += motion
 	traveled_distance += step
+	if hits_player and _check_player_hit():
+		return
 	if traveled_distance >= lane_length:
 		print("PROTOTYPE01_TERRAIN_HAZARD_REACHED")
 		reached.emit()
 		_schedule_restart()
+
+
+func _check_player_hit() -> bool:
+	var query := PhysicsShapeQueryParameters3D.new()
+	query.shape = _shape
+	query.transform = global_transform
+	query.collision_mask = PLAYER_LAYER
+	var hits := get_world_3d().direct_space_state.intersect_shape(query, 1)
+	if hits.is_empty():
+		return false
+	var body: Node3D = hits[0].collider
+	print("PROTOTYPE01_PLAYER_HIT")
+	if body.has_method(&"on_hit"):
+		body.call(&"on_hit")
+	hit_player.emit(body)
+	_schedule_restart()
+	return true
 
 
 func _schedule_restart() -> void:

@@ -72,6 +72,8 @@ godot_console --headless --path godot --fixed-fps 60 --script res://tests/terrai
 godot_console --headless --path godot --fixed-fps 60 --script res://tests/terrain_tool_tests.gd
 godot_console --headless --path godot --fixed-fps 60 --script res://tests/slice_b_tests.gd
 godot_console --headless --path godot --fixed-fps 60 --script res://tests/live_rebuild_tests.gd
+godot_console --headless --path godot --fixed-fps 60 --script res://tests/input_events_tests.gd
+godot_console --headless --path godot --fixed-fps 60 --script res://tests/companion_tests.gd
 ```
 
 Piu semplice: `tools/godot/Invoke-GodotChecks.ps1` esegue tutte le suite presenti in `godot/tests/`.

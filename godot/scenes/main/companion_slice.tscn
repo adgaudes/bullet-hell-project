@@ -1,0 +1,23 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/main/smoke_test.tscn" id="1_base"]
+[ext_resource type="PackedScene" path="res://scenes/companion/companion.tscn" id="2_companion"]
+[ext_resource type="Script" path="res://scripts/companion/scrap_field.gd" id="3_scrap"]
+
+[node name="CompanionSlice" type="Node3D"]
+
+[node name="Base" parent="." instance=ExtResource("1_base")]
+
+[node name="TerrainHazard" parent="Base" index="2"]
+hits_player = true
+
+[node name="ScrapField" type="Node3D" parent="." node_paths=PackedStringArray("grid")]
+script = ExtResource("3_scrap")
+grid = NodePath("../Base/TerrainGrid")
+
+[node name="Companion" parent="." node_paths=PackedStringArray("player", "grid", "hazard", "scrap_field") instance=ExtResource("2_companion")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.3, 2.5)
+player = NodePath("../Base/Player")
+grid = NodePath("../Base/TerrainGrid")
+hazard = NodePath("../Base/TerrainHazard")
+scrap_field = NodePath("../ScrapField")

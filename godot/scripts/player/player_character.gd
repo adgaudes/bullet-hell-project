@@ -19,6 +19,8 @@ const STARTED_ACTIONS: Array[StringName] = [&"dash", &"terrain_tool", &"terrain_
 
 const BODY_COLOR_LINEAR := Color(1.0, 0.35, 0.02)
 const FACING_INDICATOR_COLOR_LINEAR := Color(0.0, 0.8, 1.0)
+const HIT_COLOR_LINEAR := Color(1.0, 0.02, 0.02)
+const HIT_FLASH_SECONDS := 0.3
 
 @export var tuning: PlayerTuning
 ## Griglia su cui agisce il tool (SetTerrainGrid in Unreal). Opzionale.
@@ -33,6 +35,9 @@ var is_dash_on_cooldown := false
 var terrain_tool_mode := TerrainState.ToolMode.DIG
 ## Punto mondo bersaglio del tool, aggiornato a ogni passo fisico.
 var terrain_target := Vector3.ZERO
+## Compagno macchina (Companion Slice): se presente, rialzare costa un rottame
+## e richiede il compagno vicino al bersaglio. Si registra da solo.
+var companion: Companion
 
 var _movement := PlanarMovement.new()
 ## Ultima direzione di movimento valida (normalizzata): direzione del dash.
@@ -45,6 +50,7 @@ var _held_actions: Dictionary[StringName, bool] = {}
 var _pending_actions: Array[StringName] = []
 var _body_material := StandardMaterial3D.new()
 var _base_body_scale := Vector3.ONE
+var _hit_flash_left := 0.0
 
 @onready var _body: MeshInstance3D = $Body
 @onready var _facing_indicator: MeshInstance3D = $FacingIndicator
@@ -129,6 +135,7 @@ func _physics_process(delta: float) -> void:
 
 	# Dopo il movimento, come il TimerManager Unreal che avanza a fine tick.
 	_update_dash_timers(delta)
+	_update_hit_flash(delta)
 	_update_terrain_target()
 
 
@@ -143,7 +150,12 @@ func _use_terrain_tool() -> void:
 	if terrain_grid == null:
 		return
 	_update_terrain_target()
-	terrain_grid.apply_command_at(terrain_target, terrain_tool_mode, self)
+	var raising := terrain_tool_mode == TerrainState.ToolMode.RAISE
+	if raising and companion != null 			and terrain_grid.can_apply_at(terrain_target, terrain_tool_mode, self) 			and not companion.can_supply(terrain_target):
+		print("PROTOTYPE01_TERRAIN_RAISE_NO_SCRAP")
+		return
+	if terrain_grid.apply_command_at(terrain_target, terrain_tool_mode, self) and raising and companion != null:
+		companion.spend()
 	_update_terrain_target()
 
 
@@ -163,7 +175,8 @@ func _update_terrain_target() -> void:
 		terrain_grid.hide_preview()
 		return
 	terrain_target = global_position + forward.normalized() * UnrealSpace.length(maxf(tuning.terrain_tool_range_cm, 100.0))
-	terrain_grid.update_preview(terrain_target, terrain_tool_mode, self)
+	var missing_scrap := terrain_tool_mode == TerrainState.ToolMode.RAISE 		and companion != null and not companion.can_supply(terrain_target)
+	terrain_grid.update_preview(terrain_target, terrain_tool_mode, self, missing_scrap)
 
 
 ## Sostituisce il tuning a caldo (preset di feel). Lo stato del dash in corso resta valido.
@@ -310,6 +323,25 @@ func _end_dash_cooldown() -> void:
 	_set_body_color(BODY_COLOR_LINEAR)
 	print("PROTOTYPE01_DASH_READY")
 	dash_ready.emit()
+
+
+## Colpito dalla sfera (Companion Slice): lampo rosso, nessun danno.
+func on_hit() -> void:
+	_hit_flash_left = HIT_FLASH_SECONDS
+	_body_material.albedo_color = HIT_COLOR_LINEAR.linear_to_srgb()
+
+
+func _update_hit_flash(delta: float) -> void:
+	if _hit_flash_left <= 0.0:
+		return
+	_hit_flash_left -= delta
+	if _hit_flash_left <= 0.0:
+		var color := BODY_COLOR_LINEAR
+		if is_dashing:
+			color = tuning.dash_color_linear
+		elif is_dash_on_cooldown:
+			color = tuning.dash_cooldown_color_linear
+		_set_body_color(color)
 
 
 func _set_body_color(linear_color: Color) -> void:
