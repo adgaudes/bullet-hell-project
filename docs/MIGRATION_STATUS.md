@@ -5,7 +5,7 @@
 **Ultimo aggiornamento:** 3 ottobre 2026
 **Engine:** Godot 4.7.2 stable, edizione standard/GDScript
 **Fase corrente:** 10 avviata (documenti aggiornati, branch integrato); **in attesa del proprietario**: playtest Fase 5 (feel), Test A Fase 7, Steam Deck, decisione sul progetto Unreal
-**Branch di lavoro:** `main` (`feature/godot-migration-foundation` integrato in fast-forward il 3 ottobre 2026, **non ancora pubblicato su origin**)
+**Branch di lavoro:** `main` (`feature/godot-migration-foundation` integrato in fast-forward e pubblicato su `origin` il 3 ottobre 2026)
 
 ## In una frase
 
@@ -127,7 +127,7 @@ Protocollo unico con tabelle da compilare: **`docs/PLAYTESTS/GODOT_PARITY_PLAYTE
 
 Fatto il 3 ottobre 2026:
 
-- `feature/godot-migration-foundation` integrato in `main` in fast-forward, **solo in locale**: il push su `origin` va confermato dal proprietario.
+- `feature/godot-migration-foundation` integrato in `main` in fast-forward e pubblicato su `origin` su richiesta del proprietario.
 - Documenti vivi aggiornati a Godot: `README.md`, `AGENTS.md`, `CLAUDE.md`, `PROJECT_ROADMAP.md` (tabella strumenti), `PLATFORM_AND_INPUT.md` (implementazione input), `PROJECT_BRIEF.md`, `TOOLS_AND_LICENSES.md`, `RISK_REGISTER.md` (R-011), `AI_HANDOFF_PROTOCOL.md`, `TERRAIN_SYSTEM.md`, `ART_DIRECTION.md`. Nota di aggiornamento in `PROTOTYPE_01_SPEC.md` e `BLENDER_UNREAL_ROUNDTRIP_SPEC.md`.
 - Lasciati invariati perche storici: `UNREAL_EDITOR_WORKFLOW.md`, `SMOKE_TEST_*.md`, `INPUT_MOVEMENT_SLICE_*.md`, `STORAGE_AUDIT_*.md`, i playtest, `DECISIONS.md` (le decisioni superate restano con il loro stato).
 
