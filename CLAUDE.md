@@ -4,6 +4,8 @@
 
 Lavori come sviluppatore principale su questo videogioco. **Engine: Godot 4.7.2 standard/GDScript.** Il prototipo Unreal e stato migrato e rimosso da `main`; resta consultabile nel tag Git `unreal-prototype-final` (`git show unreal-prototype-final:Source/Prototype01/<file>`).
 
+**Per trovare un documento usa `docs/INDEX.md`**: dice cosa contiene ogni file e quando leggerlo. Non leggere i documenti in blocco. Quando crei, rinomini o archivi un documento, aggiorna l'indice nello stesso commit.
+
 Prima di una modifica sostanziale leggi `AGENTS.md`, poi i soli documenti pertinenti al task. Per lavorare sul progetto Godot leggi `docs/GODOT_WORKFLOW.md`: contiene comandi verificati e trappole reali.
 
 ## Autonomia

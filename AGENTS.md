@@ -1,5 +1,8 @@
 # AGENTS.md
 
+
+**Indice dei documenti: `docs/INDEX.md`.** Consultarlo per scegliere quali documenti leggere invece di aprirli tutti; aggiornarlo nello stesso commit quando si crea, rinomina o archivia un documento.
+
 ## Progetto e obiettivo
 
 Videogioco indipendente destinato a Steam: candidato survivor-like 3D isometrico/top-down, piccolo ma rifinito, testabile e pubblicabile. Game feel, leggibilita e originalita percepibile prevalgono sulla quantita di contenuti.

@@ -28,6 +28,7 @@ Progetto indipendente in fase di ideazione, destinato alla pubblicazione su Stea
 - [`docs/PLAYTESTS/`](docs/PLAYTESTS/): protocolli e risultati dei playtest.
 - [`docs/STORAGE_AUDIT_2026-09-21.md`](docs/STORAGE_AUDIT_2026-09-21.md): spazio occupato, build da conservare e pulizia proposta ma non ancora autorizzata.
 - [`docs/TOOLS_AND_LICENSES.md`](docs/TOOLS_AND_LICENSES.md): inventario, dipendenze approvate e tool radar.
+- [`docs/INDEX.md`](docs/INDEX.md): indice di tutti i documenti, con quando leggerli.
 - [`docs/GODOT_WORKFLOW.md`](docs/GODOT_WORKFLOW.md): comandi verificati, test, export e trappole del flusso Godot.
 - [`docs/GODOT_PARITY_CHECKLIST.md`](docs/GODOT_PARITY_CHECKLIST.md): verifica di parita Unreal → Godot.
 - [`docs/BLENDER_UNREAL_ROUNDTRIP_SPEC.md`](docs/BLENDER_UNREAL_ROUNDTRIP_SPEC.md): prova di round-trip pensata per Unreal; i principi valgono, i preset vanno rifatti per Godot.
