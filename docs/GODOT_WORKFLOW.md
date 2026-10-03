@@ -82,6 +82,10 @@ Trappola verificata: `CollisionShape3D.set_deferred("disabled", ...)` lascia la 
 
 Trappola verificata: `InputEvent.is_action_pressed()` e vero per **ogni** `InputEventJoypadMotion` sopra la dead zone, e un grilletto analogico ne invia uno a ogni variazione. Per azioni "una volta per pressione" serve il rilevamento del fronte (vedi `PlayerCharacter.STARTED_ACTIONS`). Il terzo argomento `exact_match = true` blocca l'azione se e premuto un modificatore. I test che usano solo `InputEventAction` o `Input.action_press` non vedono questi casi: `tests/input_events_tests.gd` usa eventi joypad e tasti reali.
 
+Trappola verificata: nella numerazione Godot dei pulsanti joypad il **4 e Back/View**, non il dorsale sinistro (che e il 9, `JOY_BUTTON_LEFT_SHOULDER`). Usare le costanti `JOY_BUTTON_*` per controllare `project.godot`.
+
+Trappola: il progetto usa 120 passi fisici al secondo; i test fissano `Engine.physics_ticks_per_second = 60` in `_initialize` perche i valori attesi sono calcolati a 60 Hz.
+
 Per l'input nei test: `Input.action_press()` per azioni tenute; per azioni a evento (dash) usare `Input.parse_input_event()` con `InputEventAction`, perche `is_action_just_pressed` in `_physics_process` puo perdere una pressione simulata.
 
 ### Verifica visiva

@@ -13,12 +13,16 @@ var _grid: TerrainGrid
 
 
 func _initialize() -> void:
+	# I valori attesi sono calcolati a 60 passi fisici al secondo; il progetto ne usa 120.
+	Engine.physics_ticks_per_second = 60
 	await _load_scene()
 	await _test_trigger_fires_once_per_pull()
 	await _reload_scene()
 	await _test_actions_ignore_modifiers()
 	await _reload_scene()
 	await _test_move_actuation_threshold()
+	await _reload_scene()
+	await _test_tuning_switcher()
 	print("PROTOTYPE01_TESTS %s failures=%d" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -72,13 +76,35 @@ func _test_actions_ignore_modifiers() -> void:
 	Input.parse_input_event(key)
 	await _frames(1)
 
+	# Dorsale sinistro (LB): in Godot e JOY_BUTTON_LEFT_SHOULDER (9), non il 4 (Back).
+	var shoulder := InputEventJoypadButton.new()
+	shoulder.button_index = JOY_BUTTON_LEFT_SHOULDER
+	shoulder.pressed = true
+	Input.parse_input_event(shoulder)
+	await _frames(2)
+	_check(_player.terrain_tool_mode == TerrainState.ToolMode.RAISE, "dorsale sinistro cambia modalita")
+	shoulder = shoulder.duplicate()
+	shoulder.pressed = false
+	Input.parse_input_event(shoulder)
+	await _frames(1)
+	var back := InputEventJoypadButton.new()
+	back.button_index = JOY_BUTTON_BACK
+	back.pressed = true
+	Input.parse_input_event(back)
+	await _frames(2)
+	_check(_player.terrain_tool_mode == TerrainState.ToolMode.RAISE, "il tasto Back non cambia modalita")
+	back = back.duplicate()
+	back.pressed = false
+	Input.parse_input_event(back)
+	await _frames(1)
+
 	var click := InputEventMouseButton.new()
 	click.button_index = MOUSE_BUTTON_RIGHT
 	click.ctrl_pressed = true
 	click.pressed = true
 	Input.parse_input_event(click)
 	await _frames(2)
-	_check(_player.terrain_tool_mode == TerrainState.ToolMode.RAISE, "Ctrl+clic destro cambia modalita")
+	_check(_player.terrain_tool_mode == TerrainState.ToolMode.DIG, "Ctrl+clic destro cambia modalita (torna a Dig)")
 	click = click.duplicate()
 	click.pressed = false
 	Input.parse_input_event(click)
@@ -100,6 +126,31 @@ func _test_move_actuation_threshold() -> void:
 	_check(absf(_player.velocity.x - 6.0) < 0.01, "stick a 1,0: 6 m/s (got %.3f)" % _player.velocity.x)
 	_joy_motion(LEFT_X, 0.0)
 	await _frames(10)
+
+
+## Strumento di playtest: Tab e croce destra alternano i preset di feel.
+func _test_tuning_switcher() -> void:
+	print("tuning switcher")
+	var switcher: TuningSwitcher = root.get_node("Scene/TuningSwitcher")
+	_check(switcher.presets.size() == 4, "4 preset caricati (got %d)" % switcher.presets.size())
+	_check(_player.tuning.display_name == "Unreal (riferimento)", "si parte dal riferimento Unreal")
+	var tab := InputEventKey.new()
+	tab.physical_keycode = KEY_TAB
+	tab.pressed = true
+	Input.parse_input_event(tab)
+	await _frames(2)
+	_check(_player.tuning.display_name == "Scattante", "Tab -> Scattante (got %s)" % _player.tuning.display_name)
+	var dpad := InputEventJoypadButton.new()
+	dpad.button_index = JOY_BUTTON_DPAD_RIGHT
+	dpad.pressed = true
+	Input.parse_input_event(dpad)
+	await _frames(2)
+	_check(_player.tuning.display_name == "Pesante", "croce destra -> Pesante (got %s)" % _player.tuning.display_name)
+	# Il nuovo tuning agisce davvero: velocita massima Pesante 5,5 m/s.
+	Input.action_press(&"move_right")
+	await _frames(240)
+	Input.action_release(&"move_right")
+	_check(absf(_player.velocity.x - 5.5) < 0.01, "velocita del preset Pesante 5,5 m/s (got %.3f)" % _player.velocity.x)
 
 
 func _joy_motion(axis: JoyAxis, value: float) -> void:

@@ -166,6 +166,12 @@ func _update_terrain_target() -> void:
 	terrain_grid.update_preview(terrain_target, terrain_tool_mode, self)
 
 
+## Sostituisce il tuning a caldo (preset di feel). Lo stato del dash in corso resta valido.
+func apply_tuning(new_tuning: PlayerTuning) -> void:
+	tuning = new_tuning
+	_movement.configure(tuning)
+
+
 ## Volume collidente in coordinate mondo, come GetActorBounds(true) in Unreal.
 ## Usato dalla griglia terreno per non rialzare celle sopra il personaggio.
 func get_collision_aabb() -> AABB:

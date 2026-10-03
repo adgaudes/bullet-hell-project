@@ -12,6 +12,8 @@ var _hazard: TerrainHazard
 
 
 func _initialize() -> void:
+	# I valori attesi sono calcolati a 60 passi fisici al secondo; il progetto ne usa 120.
+	Engine.physics_ticks_per_second = 60
 	await _load_scene()
 	await _test_speed_penalty()
 	await _reload_scene()

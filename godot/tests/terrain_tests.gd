@@ -17,6 +17,8 @@ var _failures := 0
 
 
 func _initialize() -> void:
+	# I valori attesi sono calcolati a 60 passi fisici al secondo; il progetto ne usa 120.
+	Engine.physics_ticks_per_second = 60
 	_test_state_rules()
 	await _test_grid_structure()
 	await _test_collisions_and_overlap()

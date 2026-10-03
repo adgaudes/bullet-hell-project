@@ -4,6 +4,9 @@ extends Resource
 ## APrototype01Character (centimetri, secondi, gradi). La conversione in metri
 ## avviene una sola volta tramite UnrealSpace (D-023).
 
+## Nome mostrato quando si cambia preset in gioco.
+@export var display_name := "Unreal"
+
 @export_group("Movement")
 ## PlanarMoveSpeed, cm/s.
 @export var planar_move_speed_cm := 600.0

@@ -1,4 +1,4 @@
-[gd_scene load_steps=9 format=3]
+[gd_scene load_steps=14 format=3]
 
 [ext_resource type="Script" path="res://scripts/services/skeleton_probe.gd" id="1_probe"]
 [ext_resource type="Script" path="res://scripts/arena/arena.gd" id="2_arena"]
@@ -8,6 +8,11 @@
 [ext_resource type="Resource" path="res://resources/tuning/terrain_default.tres" id="6_terrain_tuning"]
 [ext_resource type="Script" path="res://scripts/terrain/terrain_hazard.gd" id="7_hazard"]
 [ext_resource type="Resource" path="res://resources/tuning/hazard_default.tres" id="8_hazard_tuning"]
+[ext_resource type="Script" path="res://scripts/services/tuning_switcher.gd" id="9_switcher"]
+[ext_resource type="Resource" path="res://resources/tuning/player_default.tres" id="10_feel_unreal"]
+[ext_resource type="Resource" path="res://resources/tuning/player_presets/snappy.tres" id="11_feel_snappy"]
+[ext_resource type="Resource" path="res://resources/tuning/player_presets/heavy.tres" id="12_feel_heavy"]
+[ext_resource type="Resource" path="res://resources/tuning/player_presets/dash.tres" id="13_feel_dash"]
 
 [node name="SmokeTest" type="Node3D"]
 script = ExtResource("1_probe")
@@ -31,3 +36,8 @@ terrain_grid = NodePath("../TerrainGrid")
 [node name="CameraRig" type="Node3D" parent="." node_paths=PackedStringArray("target")]
 script = ExtResource("3_camera")
 target = NodePath("../Player")
+
+[node name="TuningSwitcher" type="CanvasLayer" parent="." node_paths=PackedStringArray("player")]
+script = ExtResource("9_switcher")
+player = NodePath("../Player")
+presets = [ExtResource("10_feel_unreal"), ExtResource("11_feel_snappy"), ExtResource("12_feel_heavy"), ExtResource("13_feel_dash")]

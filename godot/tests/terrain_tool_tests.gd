@@ -14,6 +14,8 @@ var _grid: TerrainGrid
 
 
 func _initialize() -> void:
+	# I valori attesi sono calcolati a 60 passi fisici al secondo; il progetto ne usa 120.
+	Engine.physics_ticks_per_second = 60
 	var scene := SmokeTestScene.instantiate()
 	root.add_child(scene)
 	_player = scene.get_node("Player")

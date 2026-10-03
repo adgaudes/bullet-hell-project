@@ -4,6 +4,7 @@
 
 [resource]
 script = ExtResource("1_tuning")
+display_name = "Unreal (riferimento)"
 planar_move_speed_cm = 600.0
 move_acceleration_cm = 2048.0
 move_deceleration_cm = 2048.0

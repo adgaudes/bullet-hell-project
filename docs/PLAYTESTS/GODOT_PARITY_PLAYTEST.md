@@ -76,11 +76,32 @@ Poi ripetere i passi di esecuzione del Test B della Slice A: risoluzione, contro
 | Chiusura e secondo avvio | |
 | Problemi specifici | |
 
+## Parte 4 — Scelta del feel definitivo (preset)
+
+Dopo l'esito della Parte 1 (feel "quasi uguale", preferenza per Unreal, da migliorare) la build Godot ha ricevuto:
+
+- fisica a 120 Hz e antialiasing MSAA 4x (D-028), contro latenza e bordi seghettati;
+- correzione del controller: il cambio Scava/Solleva era sul tasto View/Back, ora e sul **dorsale sinistro** come in Unreal;
+- **preset di feel cambiabili in gioco** con **Tab** o con la **croce direzionale destra**: il nome compare in alto a sinistra.
+
+| Preset | Carattere |
+|---|---|
+| Unreal (riferimento) | valori del prototipo Unreal |
+| Scattante | piu veloce, accelera e frena quasi subito, rotazione pronta, stick sensibile gia da 0,25 |
+| Pesante | piu lento, accelerazioni e frenate morbide, rotazione lenta, dash lungo |
+| Dash marcato | movimento Unreal, dash molto piu lungo e frequente |
+
+| Domanda | Esito / nota |
+|---|---|
+| Il riferimento Unreal in Godot ora e alla pari della build Unreal (risposta, fluidita)? | |
+| Quale preset si avvicina di piu a quello che vuoi? | |
+| Cosa cambieresti di quel preset? (piu/meno veloce, accelerazione, rotazione, dash) | |
+
 ## Esito
 
 | Gate | Continua / Modifica | Nota |
 |---|---|---|
-| Fase 5 — feel | | |
+| Fase 5 — feel | **Continua** (3 ottobre 2026) | Proprietario: "il feel di entrambi e quasi uguale"; leggera preferenza per Unreal, causa ancora da individuare. Il feel attuale **non e quello definitivo** e va migliorato: lavoro nuovo, separato dalla parita. |
 | Fase 7 — Test A | | |
 | Steam Deck | | |
 

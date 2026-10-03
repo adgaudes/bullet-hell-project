@@ -12,6 +12,8 @@ var _failures := 0
 
 
 func _initialize() -> void:
+	# I valori attesi sono calcolati a 60 passi fisici al secondo; il progetto ne usa 120.
+	Engine.physics_ticks_per_second = 60
 	_test_movement_model()
 	await _test_player_in_scene()
 	print("PROTOTYPE01_TESTS %s failures=%d" % ["PASS" if _failures == 0 else "FAIL", _failures])
@@ -59,6 +61,11 @@ func _test_movement_model() -> void:
 	# Dash: 30 m/s imposti a ogni frame, frenati a 21.66 m/s dal modello.
 	var dash := model.calc_velocity(Vector3(0, 0, -30), Vector3.ZERO, DT)
 	_check(absf(dash.length() - 21.659) < 0.01, "velocita effettiva dash ~21.66 m/s (got %.3f)" % dash.length())
+
+	# A 120 Hz (impostazione del progetto) la frenata pesa meno per passo:
+	# v = 30 * (1 - 16/120) - 20,48/120 = 25,83 m/s, come Unreal ad alto framerate.
+	var dash_120 := model.calc_velocity(Vector3(0, 0, -30), Vector3.ZERO, 1.0 / 120.0)
+	_check(absf(dash_120.length() - 25.829) < 0.01, "dash a 120 Hz ~25.83 m/s (got %.3f)" % dash_120.length())
 
 
 func _test_player_in_scene() -> void:

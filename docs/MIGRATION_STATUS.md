@@ -115,6 +115,10 @@ Nuova suite `tests/input_events_tests.gd`. Build Windows e Linux riesportate dop
 
 Non corretto, annotato: la mira mouse usa la posizione fisica del personaggio e la camera interpolata (scarto massimo di un passo, simile a Unreal).
 
+## Esito del playtest del feel (3 ottobre 2026)
+
+Feel "quasi uguale" in Godot e Unreal: gate della Fase 5 superato. Leggera preferenza per Unreal su **risposta ai comandi** e **fluidita**, e il feel attuale non e quello definitivo. Interventi: fisica a 120 Hz e MSAA 4x (D-028), dorsale sinistro corretto (era mappato su View/Back), preset di feel alternabili in gioco (D-029, Parte 4 del protocollo di playtest). Build riesportate.
+
 ## Cosa serve dal proprietario
 
 Protocollo unico con tabelle da compilare: **`docs/PLAYTESTS/GODOT_PARITY_PLAYTEST.md`**.
