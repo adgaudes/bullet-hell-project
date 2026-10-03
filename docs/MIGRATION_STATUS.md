@@ -4,7 +4,7 @@
 
 **Ultimo aggiornamento:** 3 ottobre 2026
 **Engine:** Godot 4.7.2 stable, edizione standard/GDScript
-**Fase corrente:** 7 completata nel codice; **playtest del proprietario in sospeso** per Fase 5 (feel) e Fase 7 (Test A manuale) → prossima: Fase 8
+**Fase corrente:** 8 completata; **playtest del proprietario in sospeso** per Fase 5 (feel) e Fase 7 (Test A manuale) → prossima: Fase 9
 **Branch di lavoro:** `feature/godot-migration-foundation` (non ancora integrato in `main`)
 
 ## In una frase
@@ -23,8 +23,8 @@ Stiamo migrando a Godot un micro-prototipo Unreal gia validato da un playtest, *
 | 5 | Personaggio: movimento, mira, cambio dispositivo, dash | **fatta nel codice**, playtest del proprietario da fare |
 | 6 | Griglia terreno: stato, presentazione, collisioni | **fatta** |
 | 7 | Tool e anteprima | **fatta nel codice**, Test A manuale del proprietario da fare |
-| 8 | Slice B: penalita velocita, hazard | **prossima** |
-| 9 | Verifica di parita, export, smoke test Steam Deck | da fare |
+| 8 | Slice B: penalita velocita, hazard | **fatta** |
+| 9 | Verifica di parita, export, smoke test Steam Deck | **prossima** |
 | 10 | Pulizia documentale, destino del progetto Unreal | da fare |
 
 Dettaglio completo di ogni fase e criteri di uscita: `GODOT_MIGRATION_ANALYSIS.md`, sezione 9.
@@ -86,9 +86,23 @@ Verificato: `tests/terrain_tool_tests.gd`, 20 controlli verdi che automatizzano 
 
 **Da fare dal proprietario:** Test A di `docs/PLAYTESTS/TERRAIN_GRID_SLICE_A_2026-09-22.md`, passi 2-4 e domande percettive (corrispondenza cella/direzione, leggibilita colori, naturalezza del cambio modalita), con mouse e controller. Si avvia con F5 dall'editor Godot.
 
-## Prossimo passo concreto — Fase 8
+## Fase 8 — com'e stata chiusa
 
-**Obiettivo:** Slice B a parita con Unreal: penalita di velocita sulle celle Lowered (`UpdateTerrainSpeedModifier`, usare `PlayerCharacter.speed_multiplier` e `TerrainGrid.lowered_speed_penalty()`), hazard che percorre la corsia lungo l'asse X Unreal della griglia (`Prototype01TerrainHazardActor.cpp`, configurazione corsia in `SmokeTestGameMode.cpp`) e si ferma su un terrapieno Raised. Criterio di uscita: l'hazard si ferma su un terrapieno alzato dal giocatore.
+- Penalita di velocita: `PlayerCharacter._update_terrain_speed_modifier()` ricalcola `speed_multiplier` a ogni passo (0,5 sopra Lowered, 1 altrove), come `UpdateTerrainSpeedModifier`.
+- `scripts/terrain/terrain_hazard.gd` (`TerrainHazard`) + `hazard_tuning.gd` + `resources/tuning/hazard_default.tres`: sfera magenta 45 cm, 3,5 m/s, corsia lungo l'asse X Unreal della griglia (22 m, centro a 50 cm), sweep con `cast_motion` solo sul mondo statico, pausa nascosta di 1 s e ripartenza dallo stesso nodo. Log `PROTOTYPE01_TERRAIN_HAZARD_BLOCKED|REACHED`, `PROTOTYPE01_TERRAIN_SLICE_B_READY`.
+- Layer fisici (D-025): 1 `world_static` (arena, celle), 2 `player`, 3 `hazard`. L'hazard interroga solo il layer 1: attraversa il personaggio senza spingerlo, come in Unreal.
+
+Verificato: `tests/slice_b_tests.gd`, 19 controlli verdi, incluso il **criterio di uscita**: il giocatore rialza col tool la cella (5,3) sulla corsia e l'hazard si ferma a contatto del terrapieno (z = −3,21), a ogni ciclo, e torna ad arrivare in fondo quando la cella e riabbassata. Le altre tre suite restano verdi; cattura con l'hazard fermo contro il terrapieno.
+
+## Prossimo passo concreto — Fase 9
+
+**Obiettivo:** verifica di parita completa contro la sezione 2 di `GODOT_MIGRATION_ANALYSIS.md`, export Windows e smoke test Steam Deck.
+
+Passi:
+1. Checklist funzione per funzione della sezione 2 contro il progetto Godot.
+2. Export template di Godot 4.7.2: download gratuito ufficiale, ma va **confermato con il proprietario** prima di scaricarlo (circa 1 GB). Poi preset Windows (ed eventualmente Linux nativo per Deck, decisione aperta).
+3. Build locale in `LocalBuilds/`, avvio e cattura.
+4. Steam Deck: richiede il proprietario e il Deck fisico.
 
 ## Da non dimenticare
 

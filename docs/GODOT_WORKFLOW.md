@@ -70,6 +70,7 @@ I marker diagnostici gia in uso nel progetto (`PROTOTYPE01_INPUT_READY`, `PROTOT
 godot_console --headless --path godot --fixed-fps 60 --script res://tests/player_tests.gd
 godot_console --headless --path godot --fixed-fps 60 --script res://tests/terrain_tests.gd
 godot_console --headless --path godot --fixed-fps 60 --script res://tests/terrain_tool_tests.gd
+godot_console --headless --path godot --fixed-fps 60 --script res://tests/slice_b_tests.gd
 ```
 
 `--fixed-fps 60` rende ogni frame un passo fisico da 1/60 s: risultati deterministici. Esito su stdout (`PROTOTYPE01_TESTS PASS|FAIL`) ed exit code 0/1. Trappola verificata: in headless la posizione del cursore del viewport non segue gli eventi mouse simulati; testare la logica sulla posizione schermo esplicita.

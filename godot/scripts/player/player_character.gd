@@ -21,7 +21,8 @@ const FACING_INDICATOR_COLOR_LINEAR := Color(0.0, 0.8, 1.0)
 ## Griglia su cui agisce il tool (SetTerrainGrid in Unreal). Opzionale.
 @export var terrain_grid: TerrainGrid
 
-## Scala la velocita massima senza toccare il tuning (penalita terreno, Fase 8).
+## Scala la velocita massima senza toccare il tuning; ricalcolato a ogni passo
+## dalla cella sotto il personaggio (UpdateTerrainSpeedModifier).
 var speed_multiplier := 1.0
 var aim_device := AimDevice.GAMEPAD
 var is_dashing := false
@@ -80,6 +81,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _physics_process(delta: float) -> void:
+	_update_terrain_speed_modifier()
 	var move_direction := _read_move_direction()
 
 	var aim_input := _raw_aim_input()
@@ -106,6 +108,13 @@ func _physics_process(delta: float) -> void:
 	# Dopo il movimento, come il TimerManager Unreal che avanza a fine tick.
 	_update_dash_timers(delta)
 	_update_terrain_target()
+
+
+## Sopra una cella Lowered la velocita massima perde la penalita della griglia.
+func _update_terrain_speed_modifier() -> void:
+	speed_multiplier = 1.0
+	if terrain_grid != null and terrain_grid.cell_state_at(global_position) == TerrainState.CellState.LOWERED:
+		speed_multiplier = 1.0 - terrain_grid.lowered_speed_penalty()
 
 
 func _use_terrain_tool() -> void:

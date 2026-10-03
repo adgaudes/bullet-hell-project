@@ -1,4 +1,4 @@
-[gd_scene load_steps=7 format=3]
+[gd_scene load_steps=9 format=3]
 
 [ext_resource type="Script" path="res://scripts/services/skeleton_probe.gd" id="1_probe"]
 [ext_resource type="Script" path="res://scripts/arena/arena.gd" id="2_arena"]
@@ -6,6 +6,8 @@
 [ext_resource type="PackedScene" path="res://scenes/player/player.tscn" id="4_player"]
 [ext_resource type="Script" path="res://scripts/terrain/terrain_grid.gd" id="5_terrain"]
 [ext_resource type="Resource" path="res://resources/tuning/terrain_default.tres" id="6_terrain_tuning"]
+[ext_resource type="Script" path="res://scripts/terrain/terrain_hazard.gd" id="7_hazard"]
+[ext_resource type="Resource" path="res://resources/tuning/hazard_default.tres" id="8_hazard_tuning"]
 
 [node name="SmokeTest" type="Node3D"]
 script = ExtResource("1_probe")
@@ -16,6 +18,11 @@ script = ExtResource("2_arena")
 [node name="TerrainGrid" type="Node3D" parent="."]
 script = ExtResource("5_terrain")
 tuning = ExtResource("6_terrain_tuning")
+
+[node name="TerrainHazard" type="Node3D" parent="." node_paths=PackedStringArray("terrain_grid")]
+script = ExtResource("7_hazard")
+tuning = ExtResource("8_hazard_tuning")
+terrain_grid = NodePath("../TerrainGrid")
 
 [node name="Player" parent="." node_paths=PackedStringArray("terrain_grid") instance=ExtResource("4_player")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.88, 0)

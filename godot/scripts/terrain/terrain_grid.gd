@@ -141,6 +141,11 @@ func cell_state_at(world_position: Vector3, fallback := TerrainState.CellState.N
 	return state.get_state(cell) if state.is_valid(cell) else fallback
 
 
+## Estensione lungo l'asse X Unreal (GetGridWidthWorldExtent), in cm.
+func width_extent_cm() -> float:
+	return state.width * _cell_size_cm
+
+
 func lowered_speed_penalty() -> float:
 	return clampf(tuning.lowered_speed_penalty_percent, 0.0, 0.95)
 
