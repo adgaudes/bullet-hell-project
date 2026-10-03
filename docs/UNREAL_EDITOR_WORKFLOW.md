@@ -1,5 +1,10 @@
 # Strategia di lavoro diretto in Unreal Editor
 
+> **ARCHIVIO STORICO — NON PIU AUTOREVOLE.**
+> Superato il 3 ottobre 2026 dalla decisione D-019 (migrazione a Godot 4.7.2).
+> Il flusso di lavoro corrente e in `docs/GODOT_WORKFLOW.md`.
+> Questo documento resta solo come traccia delle verifiche svolte sulla toolchain Unreal.
+
 ## Obiettivo
 
 Permettere a Codex di modificare il progetto con il minimo intervento manuale del proprietario e mostrare i risultati nell'Editor aperto, senza sacrificare ripetibilita, versionamento o stabilita della toolchain Unreal Engine 5.8.2.
@@ -136,7 +141,7 @@ Fonti ufficiali Aura:
 
 ## Flusso operativo proposto
 
-Preferenza del proprietario: quando l'attivita lo consente, mantenere Unreal Editor aperto e rendere visibili le modifiche nella viewport o in Play In Editor durante la sessione. Questo e il ciclo di iterazione predefinito; non generare una build pacchettizzata dopo ogni piccolo cambiamento.
+Vincolo del proprietario: mantenere Unreal Editor aperto quando l'attivita lo consente. Viewport e Play In Editor devono condividere Actor, geometria, materiali, illuminazione, dati e stato iniziale persistente, senza preview manuali parallele. La corrispondenza non e richiesta per stati temporanei, procedurali o prodotti dal gameplay, come combattimento, terreno gia trasformato, eventi, inondazioni o avanzamento del ciclo giorno/notte: questi vengono verificati nel PIE pertinente. Una rappresentazione editoriale di un sistema dinamico va mantenuta soltanto quando riduce concretamente tempi o rischi e deve riusare la stessa logica o gli stessi dati del runtime. Icone, gizmo, overlay e debug propri dell'Editor restano esclusi dal confronto. Questo e il ciclo di iterazione predefinito; non generare una build pacchettizzata dopo ogni piccolo cambiamento.
 
 Per ogni incremento visivo:
 
@@ -144,9 +149,10 @@ Per ogni incremento visivo:
 2. Codex compila o esegue la validazione automatica pertinente.
 3. Unreal Editor viene aperto sul progetto con Computer Use autorizzato.
 4. Codex applica lo script o apre gli asset interessati.
-5. Il proprietario vede il risultato nella viewport o in Play In Editor.
-6. Codex controlla Output Log e comportamento, poi salva soltanto gli asset previsti.
-7. Diff, build e test restano obbligatori prima dell'integrazione.
+5. Codex confronta in Lit, Game View e PIE lo stato iniziale persistente e verifica che non esistano Actor o rappresentazioni manuali duplicate; gli stati dinamici vengono controllati nel PIE pertinente senza imporre una copia editoriale.
+6. Il proprietario vede il risultato nella Viewport e in Play In Editor.
+7. Codex controlla Output Log e comportamento, poi salva soltanto gli asset previsti.
+8. Diff, build e test restano obbligatori prima dell'integrazione.
 
 ### Cadenza delle verifiche
 

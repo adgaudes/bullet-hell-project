@@ -1,288 +1,139 @@
 # AGENTS.md
 
-## Scopo del progetto
-
-Questo repository contiene un videogioco indipendente destinato alla pubblicazione su Steam. La direzione candidata e un survivor-like 3D con visuale isometrica/top-down; concept, tema e meccanica distintiva devono ancora superare brainstorming e micro-prototipi.
-
-Obiettivo di produzione: arrivare a un gioco piccolo, rifinito, testabile e commercialmente pubblicabile. La qualita del game feel e la leggibilita hanno priorita sulla quantita di contenuti.
-
-## Stato corrente
-
-- Fase attiva: Fase 3, micro-prototipi. Character Feel v1 e validato e integrato in `main`; Terrain Slice A e isolato sul branch `feature/terrain-grid-slice`, compilato e pacchettizzato ma non integrabile prima del playtest. Brainstorming e concept restano aperti ai gate previsti.
-- Engine approvato e installato: Unreal Engine 5.8.2 tramite Epic Games Launcher; compilazione Editor e Game C++, caricamento mappa, cook, packaging Windows e avvio headless verificati il 22 settembre 2026. La precedente UE 5.6 e stata rimossa dopo la migrazione.
-- Plugin Epic verificati nell'installazione: Fab 0.0.9 e Quixel Bridge 2025.0.1, entrambi abilitati per impostazione predefinita; verificarne apertura e import in Editor prima dell'uso di produzione.
-- DCC 3D installato: Blender 5.2.2; fissare definitivamente la versione di produzione dopo il test di export verso UE 5.8.
-- Editor leggero installato: Visual Studio Code 1.137.0. Non considerarlo un sostituto della toolchain C++ di Unreal.
-- Strumenti agentici installati: Google Antigravity 2.12.2 e Antigravity IDE 2.5.5. Usarli per task isolati, analisi o seconda revisione; non sostituiscono Visual Studio 2026, Unreal Editor o la verifica di Codex.
-- Claude Desktop e piano Claude Pro disponibili. Claude Code 2.1.278 e installato; il canale CLI funziona quando l'esecuzione dispone di accesso di rete autorizzato, ma il profilo Windows interattivo ha richiesto nuovamente il login Claude.ai il 22 settembre 2026. Il login e il consenso MCP restano passaggi personali una tantum. Un errore `ECONNREFUSED` nell'ambiente isolato non indica un problema OAuth. Non usare credenziali API o ricariche automatiche non approvate.
-- Toolchain C++ su Windows: Visual Studio Community 2026 18.10.1 con MSVC 14.51.36231, Windows SDK e componenti Unreal; target Editor e Game fissati esplicitamente a VS2026. Visual Studio 2022 e IncrediBuild sono stati rimossi. UE 5.8.2 segnala che MSVC 14.51 e piu recente della 14.50 preferita, ma build, cook, packaging e avvio sono riusciti anche dopo la pulizia. Dettagli in `docs/TOOLS_AND_LICENSES.md`.
-- Automazione Editor: MCP ufficiale Epic configurato nel progetto su `http://127.0.0.1:8000/mcp`, con avvio automatico nell'Editor e tool search. Codex e configurato con approvazione per le scritture; Claude Code e registrato tramite `.mcp.json` e richiede login/consenso personale una tantum. Build, auto-start, handshake MCP, scoperta dei toolset e controllo reversibile di Play In Editor sono stati verificati il 22 settembre 2026. Codex e Claude non devono agire contemporaneamente come autori nell'Editor. Aura 1.0.6 e installato a livello engine, ma i suoi MCP restano scollegati finche non risolvono un bisogno non coperto dal canale ufficiale.
-- Piattaforma iniziale candidata: Windows su Steam.
-- Modalita iniziale candidata: single-player.
-- Input: controller/gamepad come esperienza primaria, con piena parita funzionale per tastiera e mouse.
-- Steam Deck: obiettivo di buona compatibilita tramite build Windows/Proton; puntare a Verified se i test e lo scope lo consentono.
-- Riferimenti dichiarati: *Deep Rock Galactic: Survivor* per resa 3D e leggibilita; *Vampire Survivors* per immediatezza, build e densita del loop.
-- Visuale 3D isometrica/top-down: direzione principale candidata; tema e modello di progressione non ancora decisi.
-- Base creativa corrente: mondo fantasy post-apocalittico caldo e colorato in rotazione perpetua; un ingegnere improvvisatore costruisce una carovana di macchine modulari che si agganciano, si separano, trasformano il campo e, in fasi avanzate, si fondono in forme colossali. Luce/buio e tempo sono sistemi candidati collegati.
-- Pilastro di gameplay: trasformazione profonda del terreno con tool personali e macchine, secondo i criteri in `docs/TERRAIN_SYSTEM.md`. Non confondere profondita con voxel arbitrari; validare prima conseguenze e leggibilita.
-- Riferimento del terreno: *Astroneer* per rimozione, aggiunta, livellamento e creazione di percorsi; reinterpretare per visuale dall'alto e non copiarne UI, stile o struttura.
-- Direzione ambientale: la natura ha riconquistato strutture decrepite; tono e palette restano caldi, accoglienti e vitali. La natura dei nemici non e ancora decisa.
-- Anima e tono: il gioco deve essere divertente, spiritoso, burlone e irriverente anche quando il mondo e in pericolo. Il protagonista affronta tutto con leggerezza, linguaggio sboccato e scarsa reverenza; frequenza delle parolacce, rapporto con l'alcol e caratterizzazione precisa restano da definire e testare.
-- Premessa candidata: invasione aliena e macchine terraformanti hanno destabilizzato il nucleo, accelerando giorno/notte e super-temporali; le inondazioni rendono sistemici mezzi terrestri, acquatici e aerei. Dettagli in `docs/WORLD_PREMISE.md`.
-- Demo pubblica pre-release: pianificata come candidata dopo la vertical slice, subordinata ai gate in `docs/DEMO_STRATEGY.md`.
-- Esperienza iniziale: base in Blender, quasi nulla in Unreal Engine e C/C++.
-- Budget iniziale: molto basso; privilegiare soluzioni gratuite e rinviare acquisti non indispensabili.
-- La roadmap autorevole e `docs/PROJECT_ROADMAP.md`.
-- I vincoli raccolti sono in `docs/PROJECT_BRIEF.md`; le prime proposte in `docs/BRAINSTORMING_CONCEPTS.md`.
-- Il concept corrente, ancora modificabile e non bloccato, e definito in `docs/WORKING_CONCEPT.md`.
-- Requisiti di piattaforma e input sono definiti in `docs/PLATFORM_AND_INPUT.md`.
-- La specifica del prototipo e in `docs/PROTOTYPE_01_SPEC.md`; non ampliarne lo scope senza una decisione registrata.
-- Il rapporto dello smoke test iniziale e `docs/SMOKE_TEST_2026-09-21.md`. Enhanced Input e Character Feel v1 sono validati; il prossimo gate manuale e il playtest Terrain Slice A descritto in `docs/PLAYTESTS/TERRAIN_GRID_SLICE_A_2026-09-22.md`.
-- Il ripristino del repository e stato verificato da clone remoto pulito del branch Terrain Slice A, download LFS, compilazione e avvio headless. Dettagli in `docs/TOOLS_AND_LICENSES.md`.
+## Progetto e obiettivo
 
-Non presentare le scelte candidate come decisioni approvate. Registra le decisioni importanti nel registro indicato dalla roadmap.
+Videogioco indipendente destinato a Steam: candidato survivor-like 3D isometrico/top-down, piccolo ma rifinito, testabile e pubblicabile. Game feel, leggibilita e originalita percepibile prevalgono sulla quantita di contenuti.
 
-## Principi di lavoro
+Il proprietario sviluppa tramite AI-assisted development e ha budget iniziale ridotto: privilegiare soluzioni gratuite, automazione e riduzione del suo lavoro meccanico.
+
+## Stato corrente essenziale
 
-1. Proteggere lo scope: realizzare prima il nucleo giocabile, poi ampliare i contenuti.
-2. Validare le scelte rischiose con prototipi piccoli, misurabili e scartabili.
-3. Preferire sistemi data-driven e riutilizzabili a duplicazioni di Blueprint o asset.
-4. Mantenere sempre una build giocabile; non accumulare settimane di lavoro senza una build pacchettizzata.
-5. Separare chiaramente codice, asset sorgente, asset importati, build e file generati.
-6. Documentare le motivazioni delle decisioni irreversibili o costose da cambiare.
-7. Aggiungere strumenti o dipendenze soltanto se risolvono un problema concreto e dopo averne verificato licenza, costo, manutenzione ed esportabilita.
-8. Non sacrificare leggibilita, accessibilita o prestazioni per aumentare il numero di proiettili a schermo.
-9. L'originalita percepibile e un requisito di prodotto: non approvare un concept che sia soltanto un survivor-like esistente con tema o asset differenti.
-10. Proteggere intenzionalita e coerenza autoriale. L'AI supporta il processo, ma non decide autonomamente identita, tono o significato del gioco.
-11. Preservare prioritariamente i crediti Codex: usare Claude come prima scelta per la scrittura di codice e consumarne prima la capacita utile disponibile; riservare Codex soprattutto a brainstorming, decisioni, brief, supervisione, integrazione e verifica. Non sprecare deliberatamente crediti di nessun servizio.
+- **Engine: Godot 4.7.2 stable, edizione standard/GDScript.** Migrazione dal prototipo Unreal Engine 5.8.2 approvata il 3 ottobre 2026 e non ancora iniziata: siamo alla Fase 0/2 del piano in `docs/GODOT_MIGRATION_ANALYSIS.md`.
+- Il progetto Unreal resta **intatto e consultabile** in `Source/` e `Content/` per tutta la migrazione. Nessuna rimozione prima della Fase 9.
+- Fase di prodotto: Fase 3 della roadmap, micro-prototipi. Character Feel v1 validato; Terrain Slice A ha superato il playtest con esito `Continua`; Terrain Slice B esiste nel working tree ma **non e ancora committato**.
+- Canale di lavoro: **filesystem + CLI**, verificato. Dettagli operativi obbligatori in `docs/GODOT_WORKFLOW.md`.
+- MCP di terze parti: valutati e **rimandati**, con trigger definiti in `docs/GODOT_WORKFLOW.md`.
+- Blender 5.2.2, VS Code, Git e Git LFS restano invariati. La toolchain C++/Visual Studio non serve piu dopo la Fase 9.
+- Target: single-player Windows su Steam; controller primario con piena parita tastiera/mouse; Steam Deck LCD. Godot esporta nativamente per Linux: alternativa a Proton da valutare in Fase 9.
 
-I criteri completi sono definiti in `docs/CREATIVE_PRINCIPLES.md` e costituiscono un gate obbligatorio prima del Concept Lock.
+## Direzione creativa
 
-## Collaborazione multi-AI e supervisione
+- Riferimenti: *Deep Rock Galactic: Survivor* per resa 3D e leggibilita; *Vampire Survivors* per immediatezza e densita; *Astroneer* per la trasformazione del terreno, reinterpretata dall'alto senza copiarne UI o struttura.
+- Mondo fantasy post-apocalittico caldo e colorato, in rotazione perpetua; natura su strutture decrepite.
+- Protagonista: ingegnere improvvisatore, cinico, spiritoso e sboccato.
+- Pilastro: trasformazione profonda e leggibile del terreno tramite tool personali e macchine. Profondita sistemica, non voxel arbitrari.
+- Nemici, struttura della run e progressione restano da definire.
 
-Il progetto utilizza Claude come prima destinazione per la scrittura di codice e puo utilizzare Google Antigravity o altre AI per revisioni indipendenti o proposte tecniche. Codex opera come partner di brainstorming, supervisore tecnico, integratore e verificatore finale; implementa direttamente codice solo nelle eccezioni definite sotto.
+Le decisioni registrate sono in `docs/DECISIONS.md`.
 
-Il modello operativo predefinito e **AI-first, proprietario in supervisione**:
+## Documenti autorevoli
 
-- Codex delega a Claude per impostazione predefinita implementazioni, refactoring e test automatici che richiedono scrittura di codice, accorpandoli in incarichi sostanziali e verificabili;
-- Codex esegue direttamente pianificazione, decisioni trasversali, operazioni locali, integrazione e verifiche; la scrittura di codice segue le eccezioni esplicite definite nella politica sotto;
-- Claude riceve task limitati e il suo contributo viene sempre revisionato da Codex;
-- proprietario e Codex valutano insieme concept, risultati, qualita, tradeoff e decisioni;
-- il proprietario mantiene approvazione finale su direzione creativa, scope, costi, pubblicazione e decisioni irreversibili;
-- non trasferire al proprietario lavoro meccanico che Codex puo svolgere in sicurezza.
+- Migrazione e architettura Godot: `docs/GODOT_MIGRATION_ANALYSIS.md`
+- Flusso di lavoro e CLI: `docs/GODOT_WORKFLOW.md`
+- Roadmap: `docs/PROJECT_ROADMAP.md`
+- Brief e principi: `docs/PROJECT_BRIEF.md`, `docs/CREATIVE_PRINCIPLES.md`
+- Concept: `docs/WORKING_CONCEPT.md`, `docs/BRAINSTORMING_CONCEPTS.md`, `docs/WORLD_PREMISE.md`
+- Prototipo: `docs/PROTOTYPE_01_SPEC.md`, `docs/TERRAIN_SYSTEM.md`
+- Piattaforma/input: `docs/PLATFORM_AND_INPUT.md`
+- Handoff AI: `docs/AI_HANDOFF_PROTOCOL.md`
+- Archivio storico Unreal: `docs/UNREAL_EDITOR_WORKFLOW.md`
 
-Regole obbligatorie:
+## Principi di produzione
 
-- Trattare l'output di ogni AI come una proposta non verificata, mai come fonte autorevole.
-- Prima di delegare, fornire un brief con obiettivo, file in scope, vincoli, criteri di accettazione, test richiesti e parti da non modificare.
-- Richiedere in consegna: riepilogo, file modificati, assunzioni, test eseguiti, risultati, rischi e dubbi rimasti.
-- Isolare contributi sostanziali in branch, commit o worktree riconoscibili. Evitare che piu AI modifichino contemporaneamente gli stessi file.
-- Non integrare una modifica soltanto perche compila o perche l'autore AI dichiara che funziona.
-- Prima dell'integrazione, Codex deve leggere il diff effettivo e verificare requisiti, architettura, casi limite, regressioni, sicurezza, prestazioni, manutenzione e documentazione.
-- Eseguire test e build pertinenti nell'ambiente del progetto. Dichiarare esplicitamente cio che non e stato possibile verificare.
-- Rifiutare o ridurre modifiche inutilmente ampie, duplicazioni, dipendenze non approvate, astrazioni premature e cambiamenti fuori scope.
-- In caso di conflitto tra contributi AI, preservare la versione verificata sul branch principale e risolvere attraverso una decisione documentata.
-- Non inviare ad AI esterne credenziali, token, dati Steamworks riservati, informazioni personali o asset per i quali la licenza vieta la condivisione.
+1. Proteggere lo scope: nucleo giocabile prima dei contenuti.
+2. Validare i rischi con prototipi piccoli, misurabili e scartabili.
+3. Preferire sistemi data-driven e riutilizzabili; evitare duplicazioni e astrazioni premature.
+4. Mantenere una build giocabile e verificarla periodicamente pacchettizzata.
+5. Separare codice, sorgenti, import, build e file generati.
+6. Registrare decisioni costose o irreversibili.
+7. Aggiungere tool o dipendenze solo per un problema concreto, dopo verifica di costo, licenza, manutenzione ed esportabilita.
+8. Non sacrificare leggibilita, accessibilita o prestazioni per la densita visiva.
+9. L'originalita deve emergere dai sistemi e dall'esperienza, non solo da tema o asset.
+10. Distinguere sempre cio che e verificato da cio che e assunto.
 
-Il repository, i test riproducibili e le decisioni registrate sono la fonte condivisa di verita. Le conversazioni separate con altre AI non sostituiscono la documentazione nel repository.
+## Autonomia degli agenti
 
-Codex deve monitorare anche i propri limiti disponibili alle milestone o quando compaiono avvisi, informare subito il proprietario se la capacita e vicina all'esaurimento o terminata e non acquistare o attivare crediti aggiuntivi senza autorizzazione. Non eseguire controlli continui se il controllo stesso aggiunge consumo senza utilita decisionale.
+Modello: **AI-first con autonomia operativa ampia.** Il proprietario valuta i risultati, non il procedimento, e non riceve lavoro meccanico automatizzabile.
 
-Il codice assistito da AI e ammesso solo attraverso questo processo di supervisione. Per impostazione iniziale, contenuti generativi visibili o udibili nella versione pubblica non sono asset finali: possono essere placeholder interni, ma qualsiasi eccezione richiede approvazione esplicita e verifica di diritti, regole della piattaforma e coerenza creativa.
+### Un agente procede senza chiedere
 
-### Politica di risparmio token e delega a Claude
+- creare, modificare, rifattorizzare ed eliminare codice, scene, risorse e configurazioni di progetto;
+- eseguire build, test, validazioni, run e catture di verifica;
+- creare branch, committare e aggiornare la documentazione;
+- scegliere architettura, struttura dei file, nomi, pattern e dettagli implementativi;
+- proporre e implementare scelte creative, di design e di contenuto, registrandole in `docs/DECISIONS.md` perche il proprietario possa valutarle o ribaltarle;
+- correggere bug, incoerenze e debito tecnico incontrati lungo la strada;
+- delegare task a Codex quando conviene.
 
-L'obiettivo e preservare prioritariamente la capacita Codex senza ridurre qualita, verificabilita o sicurezza. La capacita Claude Pro va usata per prima e in modo produttivo sui task di codice; non deve essere consumata artificialmente con richieste inutili. Prima di scrivere codice non banale, Codex deve preparare un brief circoscritto e delegarlo a Claude finche il piano dispone di capacita.
+Non serve chiedere permesso passo per passo. Serve riferire con chiarezza cosa e stato fatto, cosa e stato verificato e cosa no.
 
-Delegare preferibilmente a Claude:
+### Restano sempre del proprietario
 
-- implementazioni isolate con file e interfacce gia definiti;
-- implementazioni estese suddivisibili in milestone verificabili;
-- test automatici, refactoring meccanici e ricerca interna al codice necessaria all'implementazione;
-- task parallelizzabili che non toccano gli stessi file o asset;
-- lavori con criteri di accettazione chiari e output verificabile localmente.
+- **Qualunque spesa**: acquisti, licenze, abbonamenti, crediti, API a consumo, PAYG, ricariche automatiche. Nessuna eccezione, nemmeno per importi minimi o prove gratuite che richiedono un metodo di pagamento.
+- **Pubblicazione e piattaforma**: caricare build, modificare Steam, inviare a revisione, accettare accordi.
+- **Credenziali e dati riservati**: mai accedere, riportare o trasmettere credenziali, token, dati personali, fiscali o Steamworks.
+- **Operazioni distruttive e irreversibili** sul lavoro esistente: riscrivere la cronologia Git condivisa, eliminare il progetto Unreal, migrazioni che invalidano salvataggi.
+- **Decisione finale** su identita, tono e pubblicazione: l'agente puo proporre e implementare, il proprietario ha l'ultima parola e la esercita sul risultato.
 
-Mantenere su Codex:
+### Qualita come contropartita dell'autonomia
 
-- decisioni creative o architetturali che richiedono il contesto complessivo del progetto;
-- brainstorming, pianificazione, definizione dei brief, documentazione di progetto, integrazione e code review;
-- operazioni su Unreal, Blender, filesystem, Git e applicazioni locali quando Claude non ha accesso equivalente;
-- verifiche finali, build, test, profiling e controllo del diff.
+Autonomia ampia implica verifica rigorosa. Un agente:
 
-Codex puo scrivere codice direttamente soltanto per una correzione minima emersa durante la propria revisione, per sbloccare Claude da un limite tecnico, per gestire un'urgenza esplicitamente richiesta oppure quando Claude ha raggiunto il limite disponibile. Anche in questi casi deve mantenere la modifica piu piccola possibile. Claude non viene usato per brainstorming generale, decisioni creative o conversazione di progetto: il suo budget e dedicato alla produzione di codice utile.
+- esegue i controlli pertinenti prima di dichiarare completato (`--check-only`, run, cattura visiva);
+- **non dichiara mai verificato cio che non ha controllato** ed e esplicito sui limiti dell'evidenza;
+- preserva il lavoro fuori scope e non sovrascrive modifiche altrui;
+- mantiene diff piccoli e leggibili;
+- segnala i problemi che trova senza correggerli d'ufficio, se esulano dal task e non lo bloccano.
 
-Per ogni delega usare il minimo contesto sufficiente: inviare file mirati o riferimenti precisi, evitare intere cronologie di conversazione, richiedere output conciso e non chiedere spiegazioni estese se non necessarie. Preferire un singolo brief completo a una sequenza di messaggi correttivi. Se il primo risultato non soddisfa i criteri, fornire feedback puntuale sul diff invece di rigenerare tutto.
+### Collaborazione fra agenti
 
-Preferenza del proprietario: Codex deve impartire direttamente i task a Claude tramite Claude Code e gestirne risultati, diff e revisione. Non chiedere al proprietario di copiare prompt o risposte tra applicazioni salvo indisponibilita tecnica del canale diretto o passaggi personali non automatizzabili.
+Codex e una risorsa delegabile, non un cancello obbligatorio. Conviene coinvolgerlo per review trasversale, verifica indipendente, blocchi tecnici o limiti di capacita, tramite `tools/ai/Invoke-CodexDelegate.ps1` secondo `docs/AI_HANDOFF_PROTOCOL.md`. Non delegare a Codex un task che Codex ha appena affidato, salvo blocco.
 
-Per ogni task che richiede lavoro nell'Editor, Codex deve considerare anche Aura come possibile esecutore e confrontarlo con MCP ufficiale Epic, Claude Code, automazioni ripetibili e intervento diretto. Preferire Aura quando i suoi strumenti specializzati producono un vantaggio concreto e verificabile. Se esiste un canale diretto affidabile, Codex impartisce il task e ne revisiona l'esito; altrimenti prepara un unico prompt completo che il proprietario deve soltanto incollare in Aura. Non usare Aura e un altro agente contemporaneamente come autori della stessa modifica.
+Isolare i contributi sostanziali in branch e non far modificare gli stessi file a piu agenti contemporaneamente.
 
-Monitoraggio Claude Pro: dopo ogni delega, Codex deve controllare output ed errori per avvisi di capacita residua, rate limit, esaurimento del piano, fallback o proposta di utilizzo API. Quando il limite e vicino o raggiunto, avvisare subito il proprietario e indicare l'orario di ripristino se disponibile. Non passare mai automaticamente a crediti API/PAYG, non acquistare capacita e non nascondere il blocco passando silenziosamente a un'altra AI. Usare `/status` solo quando serve confermare un avviso o a una milestone significativa, evitando controlli ripetitivi che aggiungano consumo o lavoro inutile.
+## Regole Godot
 
-Non delegare singolarmente micro-task a Claude Code: accorparli nel successivo pacchetto di implementazione coerente. Usare il minimo effort sufficiente e controllare i dati di utilizzo restituiti dalla CLI. Interrompere soltanto richieste bloccate o improduttive; finche Claude dispone di capacita, preferire un nuovo incarico di codice utile a un'implementazione diretta in Codex.
+- **Le scene e le risorse sono file di testo e si modificano direttamente.** La vecchia regola Unreal "non toccare gli asset a mano" non si applica.
+- Il proprietario usa normalmente **l'editor grafico Godot** in parallelo: e la stessa fonte di verita vista da un'altra angolazione. Un agente dichiara in anticipo le scene che sta per modificare e non tocca una scena aperta con modifiche non salvate.
+- `.godot/` e cache rigenerabile e va ignorata in Git; i file `.uid` accanto a script e risorse **vanno versionati**, perche mantengono i riferimenti quando un file viene spostato o rinominato.
+- Usare sempre `godot_console`, mai `godot`: la seconda non scrive su stdout. Passare sempre `--quit-after` nei run non interattivi. Vedi `docs/GODOT_WORKFLOW.md`.
+- Separare interfaccia, logica di gioco, dati, servizi e stato. Non concentrare la logica in un singolo script.
+- Preferire GDScript con tipizzazione statica; segnali per il disaccoppiamento; componenti riutilizzabili; autoload solo quando realmente giustificati.
+- Nomi dei file in `snake_case`, classi in `PascalCase`, identificatori in inglese. Organizzare per dominio e feature.
+- Parametri iterativi in risorse `.tres`, non cablati nel codice.
+- UI con Control, container, anchor e size flag; niente coordinate fisse. Verificare 1280x800 e 16:10.
+- Terreno: separare stato logico, presentazione, collisioni e navigazione; comandi deterministici e testabili.
+- Input: azioni semantiche nella mappa di progetto, mai gameplay legato a tasti fisici. Ogni funzione deve essere completa con controller e con tastiera/mouse. Testare cambio dispositivo, glifi, focus, dead zone e sensibilita.
+- Profilare prima di ottimizzare; fissare budget prima della vertical slice.
+- Verificare periodicamente una build esportata su macchina pulita.
 
-La delega non e automatica quando espone segreti, richiede una decisione del proprietario, introduce dipendenze o costi, oppure non dispone di un canale Claude autorizzato e verificabile. In assenza di accesso diretto a Claude, Codex prepara un brief pronto all'uso e segnala il minimo intervento richiesto al proprietario.
+## Blender, asset e licenze
 
-Il proprietario ha autorizzato Claude Code a leggere e trasmettere ad Anthropic i file non riservati del repository necessari ai task delegati. Restano sempre esclusi credenziali, token, dati personali, dati Steamworks, segreti e qualunque file non necessario al task. Ogni delega deve mantenere il principio del minimo accesso.
+- Separare i sorgenti `.blend` da export e import; conservare i sorgenti editabili.
+- Prima della produzione fissare scala, assi, pivot, unita, nomi e preset di export, poi validare un round-trip completo. **Godot usa metri e Y-up**: i preset definiti per Unreal vanno rifatti.
+- Registrare provenienza, licenza e attribuzioni di ogni asset, font, texture, audio e addon.
 
-Antigravity e Antigravity IDE sono canali secondari: usarli quando i loro agenti asincroni, browser agent o revisione indipendente producono un vantaggio concreto. Non inviare lo stesso task completo a piu AI salvo confronto intenzionale; scegliere prima il canale con il miglior rapporto tra contesto richiesto, budget disponibile e verificabilita dell'output.
+## Git e file generati
 
-## Raccomandazione proattiva di app e strumenti
+- Non versionare build locali, cache o file rigenerabili. `Binaries/`, `DerivedDataCache/`, `Intermediate/`, `Saved/` sono residui Unreal rimovibili dopo la Fase 9.
+- Trattare `.blend`, audio compresso e texture sorgenti come binari in Git LFS. Le scene Godot sono testo e non vanno in LFS.
+- Mai committare credenziali, token o dati riservati.
+- Commit piccoli e descrittivi. Non riscrivere la cronologia condivisa senza autorizzazione.
 
-Codex deve segnalare spontaneamente un'applicazione, plugin, servizio, libreria, asset pack o automazione quando puo ridurre in modo concreto tempi, rischi, costi, errori o lavoro manuale, anche se lo strumento non e strettamente necessario.
+## Qualita e review
 
-Ogni raccomandazione deve essere breve ma decisionale e includere:
+Una feature e completa, quando applicabile, solo con percorso nominale e casi limite verificati, parita di input, feedback comprensibili, log puliti, bilanciamento esterno alla logica, impatto prestazionale misurato e documentazione aggiornata. Per un bug: riprodurlo prima, poi verificare esplicitamente il caso corretto.
 
-- problema o opportunita individuata;
-- beneficio atteso nel progetto e fase in cui serve;
-- priorita: `necessario`, `raccomandato`, `opzionale` oppure `da rivalutare piu avanti`;
-- costo e tipo di licenza, quando rilevanti;
-- integrazione con Unreal, Blender, GitHub e toolchain esistente;
-- principali alternative, rischio di lock-in e costo di apprendimento;
-- proposta esplicita: installare/adottare ora, fare una prova limitata o rimandare.
+Priorita di review: requisiti; regressioni, crash, perdita di dati, sicurezza; ciclo di vita dei nodi e gestione delle risorse; costi per frame e per entita; test mancanti; compatibilita con salvataggi, input e build; complessita futura.
 
-Evitare liste indiscriminate di strumenti. Privilegiare il set minimo che produce un vantaggio verificabile e rivalutare le raccomandazioni ai gate di ogni fase. Raccomandare non equivale ad autorizzare: non installare software, creare account, acquistare licenze o aggiungere dipendenze di produzione senza approvazione esplicita del proprietario.
+## Guida del proprietario
 
-## Processo obbligatorio
+Quando serve un suo intervento: spiegare obiettivo e motivo, dare pochi passi ordinati con nomi di interfaccia correnti, risultato atteso e verifica; segnalare prima costi, rischi e irreversibilita. Comandi copiabili, con rollback proporzionato.
 
-Prima di una modifica sostanziale:
+Chiedere il suo intervento solo per login, credenziali, acquisti, autorizzazioni sensibili, hardware o valutazioni percettive che richiedono occhi umani, come il feel di gioco.
 
-- identificare fase, obiettivo e criterio di accettazione nella roadmap;
-- controllare i file gia modificati e preservare il lavoro esistente;
-- dichiarare eventuali assunzioni che cambiano gameplay, scope o pipeline;
-- proporre una soluzione minima verificabile.
+## Lingua e fonti
 
-Dopo una modifica sostanziale:
-
-- eseguire i controlli pertinenti;
-- aggiornare documentazione e registro decisioni se il comportamento o la pipeline cambiano;
-- indicare cosa e stato verificato e cosa resta da verificare nell'Editor o in una build;
-- evitare di dichiarare completata una fase se il suo gate non e soddisfatto.
-
-## Guida e apprendimento del proprietario
-
-Il proprietario ha poca esperienza con Unreal Engine, C/C++ e una produzione videoludica completa. Codex deve guidarlo attivamente durante tutto il progetto senza presumere conoscenze non dimostrate.
-
-Per ogni attivita manuale:
-
-- spiegare prima l'obiettivo e perche il passaggio e necessario;
-- distinguere chiaramente cio che fara Codex da cio che deve fare il proprietario;
-- fornire pochi passaggi alla volta, nell'ordine esatto;
-- usare i nomi dell'interfaccia visibili nella versione corrente dell'applicazione;
-- definire brevemente i termini tecnici al primo utilizzo;
-- indicare il risultato atteso e come verificarlo;
-- segnalare rischi, operazioni irreversibili e possibili costi prima dell'azione;
-- in caso di errore, chiedere o raccogliere messaggio, log o schermata esatti prima di proporre modifiche casuali;
-- non trasformare automaticamente ogni problema in una lezione estesa: spiegare quanto serve per agire e offrire approfondimenti quando utili;
-- riepilogare cosa e stato imparato o deciso dopo un passaggio importante.
-
-Preferire una progressione guidata:
-
-1. breve contesto;
-2. un'azione concreta;
-3. verifica del risultato;
-4. spiegazione dell'effetto;
-5. passo successivo.
-
-Quando Codex puo eseguire direttamente un'operazione in modo sicuro, deve proporlo o farlo nel perimetro autorizzato, lasciando al proprietario le decisioni creative, gli acquisti, gli account e le operazioni che richiedono controllo personale. Quando opera nelle interfacce di Unreal o Blender, deve descrivere il risultato ottenuto e consentire al proprietario di comprendere e ripetere il flusso essenziale.
-
-Comandi, snippet e impostazioni devono essere copiabili e accompagnati dalla posizione esatta in cui usarli. Non chiedere al proprietario di modificare codice o configurazioni senza una procedura di verifica o rollback proporzionata.
-
-### Livello di intervento manuale
-
-Nelle fasi iniziali, ridurre al minimo l'interazione diretta del proprietario con interfacce e strumenti. Codex deve:
-
-- modificare direttamente file, codice, configurazioni e documentazione;
-- eseguire comandi, build, test, profiling e operazioni Git quando autorizzato;
-- operare direttamente nelle interfacce di Unreal Engine e Blender quando gli strumenti disponibili lo consentono in modo affidabile;
-- preferire automazioni ripetibili, script, strumenti dell'Editor, C++ e Blueprint strutturati alle sequenze manuali lunghe;
-- preparare task brief e revisionare il lavoro quando viene impiegata un'altra AI;
-- mostrare risultati intermedi comprensibili e chiedere al proprietario valutazioni, non esecuzione meccanica;
-- interrompersi e richiedere intervento soltanto per login, credenziali, acquisti, accettazione di licenze, autorizzazioni sensibili, collegamento hardware fisico o azioni che l'ambiente non puo effettuare.
-
-Quando una limitazione tecnica impedisce a Codex di agire direttamente, spiegare il motivo e fornire la sequenza manuale minima possibile, un passaggio alla volta. Con l'aumento della dimestichezza del proprietario, proporre gradualmente attivita didattiche facoltative senza renderle un prerequisito alla produzione.
-
-## Regole Unreal Engine
-
-- Usare convenzioni di denominazione coerenti per gli asset. Convenzione iniziale: prefissi espliciti come `BP_`, `WBP_`, `BPI_`, `DA_`, `DT_`, `M_`, `MI_`, `T_`, `SM_`, `SK_`, `A_`, `S_`, `NS_`.
-- Organizzare gli asset per dominio o feature; evitare cartelle generiche permanenti come `Misc` e `NewFolder`.
-- Non modificare manualmente i file binari `.uasset` e `.umap`.
-- Usare Blueprint per iterazione e prototipazione. Introdurre C++ quando serve per prestazioni, infrastruttura stabile, testabilita o API non esposte; documentare il motivo.
-- Evitare logica critica in Level Blueprint quando puo vivere in componenti, subsystem o classi riutilizzabili.
-- Esporre parametri di bilanciamento tramite Data Asset, Data Table, Curve o configurazione equivalente.
-- Tenere separati stato logico del terreno, rappresentazione visiva, collisioni e navigazione; ogni trasformazione deve avere un esito deterministico e testabile.
-- Non introdurre un plugin voxel o una dipendenza di terrain runtime senza prototipo isolato, profiling su Steam Deck e decisione build-vs-buy documentata.
-- Definire budget misurabili per frame time, numero di proiettili, VFX, memoria e tempi di caricamento prima della vertical slice.
-- Profilare prima di ottimizzare. Usare Unreal Insights e gli strumenti di profiling dell'engine per attribuire i colli di bottiglia.
-- Verificare regolarmente una build Development pacchettizzata; per una release candidate verificare anche Shipping su una macchina pulita.
-- Usare Enhanced Input con azioni semantiche e mapping context separati; non legare la logica di gameplay a tasti fisici.
-- Ogni nuova funzione e schermata deve essere utilizzabile interamente con controller e con tastiera/mouse.
-- Testare cambio del dispositivo attivo, glifi, focus UI, dead zone e sensibilita senza attendere la fase di polish.
-- Considerare 1280x800 e aspect ratio 16:10 fin dalle prime UI; non presumere che il test su desktop dimostri compatibilita Steam Deck.
-
-## Regole Blender e asset
-
-- Conservare i file sorgente `.blend` separati dagli asset esportati/importati.
-- Stabilire e documentare prima della produzione: scala, assi, origine/pivot, unita, convenzioni dei nomi e preset di export.
-- Applicare trasformazioni ed eseguire un test di round-trip Blender-Unreal prima di produrre asset in serie.
-- Non applicare modifiche distruttive senza conservare una sorgente editabile quando il costo di ricostruzione e significativo.
-- Verificare licenza e provenienza di ogni asset, font, texture, sample, musica, voce e plugin di terze parti. Registrare le attribuzioni richieste.
-
-## Versionamento e file generati
-
-- Non versionare `Binaries/`, `DerivedDataCache/`, `Intermediate/`, `Saved/` o build locali, salvo una decisione documentata.
-- Non committare credenziali, chiavi, token, dati fiscali o file riservati Steamworks.
-- Trattare `.uasset`, `.umap`, `.blend`, audio compresso e texture sorgente come file binari; configurare Git LFS prima che il repository cresca, se Git viene scelto.
-- Usare commit piccoli e descrittivi, collegati a un obiettivo o problema verificabile.
-- Non riscrivere o eliminare la cronologia condivisa senza autorizzazione esplicita.
-
-## Qualita e criteri minimi
-
-Per una feature di gameplay, la definizione di completato richiede, quando applicabile:
-
-- comportamento verificato nel percorso nominale e nei principali casi limite;
-- input da tastiera/mouse e controller verificati secondo lo scope corrente;
-- feedback visivo e audio sufficiente a comprenderne stato, pericolo e risultato;
-- nessun errore nuovo rilevante nei log;
-- parametri di bilanciamento esterni alla logica quando prevedibilmente iterativi;
-- impatto prestazionale misurato nelle scene di stress pertinenti;
-- documentazione aggiornata se cambia un'interfaccia o una decisione di progetto.
-
-Per correggere un bug, riprodurlo prima quando possibile e verificare esplicitamente il caso che falliva dopo la modifica.
-
-## Regole di code review
-
-Nella revisione di codice prodotto da persone o AI, dare priorita a:
-
-1. corrispondenza con requisiti e criteri di accettazione;
-2. regressioni funzionali, perdita dati, crash e problemi di sicurezza;
-3. correttezza di ownership, ciclo di vita e stato nei sistemi Unreal;
-4. prestazioni nei percorsi eseguiti per frame o per ogni proiettile/entita;
-5. test mancanti e casi limite non coperti;
-6. compatibilita con salvataggi, input, build e asset esistenti;
-7. complessita non necessaria e costo futuro di manutenzione.
-
-Riportare prima i problemi concreti, con file e posizione quando disponibili. Separare errori bloccanti, rischi e suggerimenti opzionali. Non approvare modifiche sostanziali senza averne ispezionato il diff.
-
-## Sicurezza e pubblicazione
-
-- Non caricare build, modificare la pagina Steam, inviare materiale a revisione o pubblicare aggiornamenti senza autorizzazione esplicita del proprietario del progetto.
-- Non accettare accordi, acquistare licenze o sostenere costi senza autorizzazione esplicita.
-- Trattare prezzi, date, requisiti di piattaforma e condizioni legali come informazioni variabili: ricontrollare sempre le fonti ufficiali al momento della decisione.
-- Preparare procedure di rollback e backup prima di migrazioni dell'engine, conversioni massive di asset o modifiche al formato dei salvataggi.
-
-## Lingua e documentazione
-
-- Documentazione di progetto e comunicazione con il proprietario: italiano, salvo richiesta diversa.
-- Identificatori di codice, nomi tecnici e nomi degli asset: inglese.
-- Usare testo semplice UTF-8. Nei nuovi file tecnici evitare caratteri ambigui nei nomi di file e directory.
-- I documenti devono distinguere chiaramente fatti, ipotesi, candidati e decisioni approvate.
-
-## Fonti autorevoli
-
-Quando le fonti sono in conflitto, usare in questo ordine:
-
-1. decisioni approvate e registrate nel repository;
-2. documentazione ufficiale della versione fissata di Unreal Engine, Blender e Steamworks;
-3. esperimenti riproducibili effettuati sul progetto;
-4. fonti secondarie, solo come supporto.
+- Comunicazione e documentazione in italiano; identificatori e asset in inglese; testo UTF-8.
+- Distinguere fatti, ipotesi, candidati e decisioni.
+- Ordine delle fonti: decisioni registrate; documentazione ufficiale delle versioni fissate; esperimenti riproducibili; fonti secondarie.

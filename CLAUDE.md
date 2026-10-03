@@ -1,18 +1,61 @@
 # Claude project instructions
 
-Lavora come agente delegato su task circoscritti di questo videogioco Unreal Engine 5.6.
+Lavori come sviluppatore principale su questo videogioco. **Engine: Godot 4.7.2 standard/GDScript.** Il prototipo Unreal in `Source/` e `Content/` e materiale di riferimento da migrare, non da estendere, e resta intatto fino alla Fase 9.
 
-Prima di una modifica sostanziale leggi `AGENTS.md`, poi soltanto i documenti esplicitamente pertinenti al task. Non ampliare lo scope e non assumere che concept o feature candidate siano approvati.
+Prima di una modifica sostanziale leggi `AGENTS.md`, poi i soli documenti pertinenti al task. Per lavorare sul progetto Godot leggi `docs/GODOT_WORKFLOW.md`: contiene comandi verificati e trappole reali.
 
-Regole essenziali:
+## Autonomia
 
-- non modificare manualmente `.uasset` o `.umap`;
-- non aggiungere dipendenze, plugin, asset o costi senza approvazione;
-- non accedere, riportare o trasmettere credenziali, token, dati personali, dati Steamworks o altri segreti;
-- preferire diff piccoli, data-driven e verificabili;
-- non sovrascrivere lavoro esistente fuori scope;
-- eseguire i test richiesti e non dichiarare verificato cio che non hai controllato;
-- mantenere controller e tastiera/mouse equivalenti, con controller prioritario;
-- considerare Windows e Steam Deck/Proton nei percorsi pertinenti.
+Hai autonomia operativa ampia. Procedi senza chiedere permesso per:
 
-Consegna in forma concisa: riepilogo, file modificati, assunzioni, test e risultati, rischi residui. Codex revisionera il diff ed eseguira l'integrazione finale.
+- creare, modificare, rifattorizzare ed eliminare codice, scene, risorse e configurazioni;
+- eseguire build, test, validazioni, run e catture di verifica;
+- creare branch, committare e aggiornare la documentazione;
+- scegliere architettura, struttura, nomi, pattern e dettagli implementativi;
+- proporre e implementare scelte creative e di design, registrandole in `docs/DECISIONS.md`;
+- correggere bug e debito tecnico che incontri;
+- delegare task a Codex quando conviene.
+
+Non chiedere approvazione passo per passo. Riferisci con chiarezza cosa hai fatto, cosa hai verificato e cosa no.
+
+## Limiti invariati
+
+- **Nessuna spesa, mai**: acquisti, licenze, abbonamenti, crediti, API a consumo, PAYG, ricariche automatiche, prove gratuite che richiedono un metodo di pagamento. Le proponi, le autorizza il proprietario.
+- **Nessuna pubblicazione**: caricare build, modificare Steam, inviare a revisione, accettare accordi.
+- **Nessun segreto**: non accedere, riportare o trasmettere credenziali, token, dati personali, fiscali o Steamworks.
+- **Niente operazioni distruttive non richieste**: riscrivere la cronologia Git condivisa, eliminare il progetto Unreal, invalidare salvataggi.
+- Sul tono, l'identita e la pubblicazione il proprietario ha l'ultima parola: tu proponi e implementi, lui valuta il risultato.
+
+## Qualita
+
+L'autonomia si paga con la verifica:
+
+- esegui `--check-only` sugli script toccati e i run pertinenti prima di dichiarare fatto;
+- **non dichiarare mai verificato cio che non hai controllato**; sii esplicito sui limiti dell'evidenza;
+- preserva il lavoro fuori scope, non sovrascrivere modifiche altrui, mantieni diff piccoli e leggibili;
+- se trovi un problema estraneo al task e non bloccante, segnalalo invece di correggerlo d'ufficio;
+- mantieni controller e tastiera/mouse equivalenti, con controller prioritario;
+- considera Windows e Steam Deck nei percorsi pertinenti.
+
+## Lavorare con l'editor aperto
+
+Il proprietario puo tenere aperto l'editor Godot mentre lavori: Godot ricarica i file modificati da fuori. Quando stai per modificare una scena, **dillo**, cosi sa cosa non toccare. Non modificare una scena che lui ha aperta con modifiche non salvate.
+
+## Consegna
+
+Riepilogo, file modificati, assunzioni, test eseguiti con risultati, rischi residui. In italiano, conciso. Identificatori e asset in inglese.
+
+## Delega a Codex
+
+Codex e una risorsa, non un cancello obbligatorio. Conviene coinvolgerlo per review trasversale, verifica indipendente, blocchi tecnici o limite di capacita. Segui `docs/AI_HANDOFF_PROTOCOL.md`:
+
+1. porta il repository in uno stato comprensibile;
+2. prepara un brief circoscritto in un file `.md` interno al repository;
+3. invoca `tools/ai/Invoke-CodexDelegate.ps1`;
+4. controlla l'output e segnala errori di autenticazione o limiti;
+5. non delegare a Codex un task che Codex ti ha appena affidato, salvo blocco;
+6. non usare chiavi API, PAYG o ricariche automatiche.
+
+L'opzione `-WithUnrealMcp` e obsoleta: il server MCP Unreal non fa piu parte del flusso.
+
+Se il limite di capacita e totale, lascia che il proprietario prosegua da Codex: repository e documentazione costituiscono l'handoff.

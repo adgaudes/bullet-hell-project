@@ -10,12 +10,14 @@ Principio guida:
 
 > Prima dimostriamo che e divertente. Poi dimostriamo che e producibile. Solo dopo costruiamo tutto il resto.
 
-## Stato operativo al 21 settembre 2026
+## Stato operativo al 3 ottobre 2026
 
-- Fase 0: quasi completata; repository remoto, LFS, clone pulito, compilazione e ripristino sono verificati. Restano da formalizzare disponibilita settimanale e budget massimo.
+> **Cambio di engine.** Il 3 ottobre 2026 e stata approvata la migrazione a **Godot 4.7.2** (decisione D-019). Le fasi di prodotto qui descritte restano valide: cambia la tecnologia con cui vengono realizzate, non la loro sequenza ne i loro gate. Il piano di migrazione, incrementale e con il progetto Unreal conservato intatto, e in `docs/GODOT_MIGRATION_ANALYSIS.md`. I riferimenti a Unreal, Visual Studio e MCP Epic nelle sezioni seguenti vanno letti come storici finche non riscritti.
+
+- Fase 0: quasi completata; repository remoto, LFS, clone pulito e ripristino sono verificati. Restano da formalizzare disponibilita settimanale e budget massimo.
 - Fase 1: in corso; esiste un working concept coerente e il confronto sulla promessa e preparato in `VISION_WORKSHOP.md`, ma one-page vision, promessa centrale e Concept Lock non sono approvati.
 - Fase 2: avanzata; toolchain Windows end-to-end verificata e round-trip specificato in `BLENDER_UNREAL_ROUNDTRIP_SPEC.md`. Restano l'esecuzione del test Blender-Unreal e le prime prove Fab/Quixel.
-- Fase 3: **fase attiva**. Character Feel v1 e validato e integrato; Terrain Slice A e compilato/pacchettizzato sul branch `feature/terrain-grid-slice` e attende playtest.
+- Fase 3: **fase attiva**. Character Feel v1 e validato; Terrain Slice A ha superato il playtest del proprietario con esito `Continua`; Terrain Slice B esiste nel working tree ma non e ancora committato. Il lavoro immediato e la migrazione a Godot di quanto gia validato, a parita di funzionalita, prima di aggiungere nuovi sistemi.
 - Fasi 4-14: non iniziate formalmente. Esperimenti tecnici anticipati non equivalgono al superamento dei relativi gate.
 
 Fonti operative: `DECISIONS.md`, `RISK_REGISTER.md` e i protocolli in `PLAYTESTS/`.
