@@ -89,7 +89,7 @@ Le macchine condividono la solidita e l'asimmetria dei personaggi, ma non devono
 - nessuna armatura e nessuna animazione;
 - nomi interni `tripo_*`, coerenti con un asset generato tramite Tripo.
 
-Puo servire come reference volumetrica o placeholder di scala dopo verifica della licenza e della provenienza. Non e pronto come personaggio di produzione: richiede almeno pulizia, retopology/LOD, separazione funzionale degli accessori, rig, skinning, test di deformazione e verifica dei materiali in Unreal. Non va importato stabilmente finche i diritti d'uso commerciale non sono documentati.
+Puo servire come reference volumetrica o placeholder di scala dopo verifica della licenza e della provenienza. Non e pronto come personaggio di produzione: richiede almeno pulizia, retopology/LOD, separazione funzionale degli accessori, rig, skinning, test di deformazione e verifica dei materiali in Godot. Non va importato stabilmente finche i diritti d'uso commerciale non sono documentati.
 
 ## Prima prova artistica consigliata
 

@@ -12,7 +12,7 @@ Principio guida:
 
 ## Stato operativo al 3 ottobre 2026
 
-> **Cambio di engine.** Il 3 ottobre 2026 e stata approvata la migrazione a **Godot 4.7.2** (decisione D-019). Le fasi di prodotto qui descritte restano valide: cambia la tecnologia con cui vengono realizzate, non la loro sequenza ne i loro gate. Il piano di migrazione, incrementale e con il progetto Unreal conservato intatto, e in `docs/GODOT_MIGRATION_ANALYSIS.md`. I riferimenti a Unreal, Visual Studio e MCP Epic nelle sezioni seguenti vanno letti come storici finche non riscritti.
+> **Cambio di engine.** Il 3 ottobre 2026 e stata approvata la migrazione a **Godot 4.7.2** (decisione D-019). Le fasi di prodotto qui descritte restano valide: cambia la tecnologia con cui vengono realizzate, non la loro sequenza ne i loro gate. Il piano di migrazione, incrementale e con il progetto Unreal conservato intatto, e in `docs/GODOT_MIGRATION_ANALYSIS.md`. I riferimenti a Unreal, Visual Studio e MCP Epic nelle sezioni seguenti vanno letti come storici finche non riscritti. Al 3 ottobre 2026 la migrazione e completata nel codice: stato in `docs/MIGRATION_STATUS.md`, parita in `docs/GODOT_PARITY_CHECKLIST.md`.
 
 - Fase 0: quasi completata; repository remoto, LFS, clone pulito e ripristino sono verificati. Restano da formalizzare disponibilita settimanale e budget massimo.
 - Fase 1: in corso; esiste un working concept coerente e il confronto sulla promessa e preparato in `VISION_WORKSHOP.md`, ma one-page vision, promessa centrale e Concept Lock non sono approvati.
@@ -222,7 +222,7 @@ Questo permette di usare modelli diversi come forza produttiva senza frammentare
 
 | Area | Candidato principale | Alternative | Decisione da prendere |
 |---|---|---|---|
-| Engine | Unreal Engine 5 | - | Versione esatta, Blueprint/C++ e plugin consentiti |
+| Engine | Godot 4.7.2 standard/GDScript (D-019) | - | Aggiornamenti di versione solo dopo verifica con `tools/godot/Invoke-GodotChecks.ps1` |
 | Modellazione/animazione | Blender | - | Versione fissata, scala, assi e preset di export |
 | IDE | Visual Studio 2026 | JetBrains Rider | Valutare costo, debugging e supporto UE |
 | Versionamento piccolo team | Git + Git LFS | Perforce | Stimare volume binari e necessita di file locking |
@@ -233,8 +233,8 @@ Questo permette di usare modelli diversi come forza produttiva senza frammentare
 | Audio editing | Reaper | Audacity | Valutare pipeline non distruttiva e licenza |
 | Audio middleware | Audio nativo UE | FMOD, Wwise | Usare middleware solo con un requisito concreto |
 | Task tracking | Markdown + issue tracker | Trello, Linear, Notion | Evitare duplicazione tra sistemi |
-| Profiling | Unreal Insights | RenderDoc | Definire test CPU/GPU e scena di stress |
-| Automazione build | Unreal Automation Tool | CI GitHub/altro | Introdurre CI quando esiste una build ripetibile |
+| Profiling | Profiler e monitor di Godot | RenderDoc | Definire test CPU/GPU e scena di stress |
+| Automazione build | `godot_console --export-release` + `Invoke-GodotChecks.ps1` | CI GitHub/altro | Introdurre CI quando esiste una build ripetibile |
 | Cattura trailer | OBS Studio | cattura GPU | Verificare output pulito e frame pacing |
 | Video | DaVinci Resolve | Kdenlive | Verificare hardware, codec e licenza |
 | Distribuzione | Steamworks SDK/SteamPipe | - | Onboarding, depot, branch di test e ownership |

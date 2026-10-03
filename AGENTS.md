@@ -8,13 +8,13 @@ Il proprietario sviluppa tramite AI-assisted development e ha budget iniziale ri
 
 ## Stato corrente essenziale
 
-- **Engine: Godot 4.7.2 stable, edizione standard/GDScript.** Migrazione dal prototipo Unreal Engine 5.8.2 approvata il 3 ottobre 2026 e non ancora iniziata: siamo alla Fase 0/2 del piano in `docs/GODOT_MIGRATION_ANALYSIS.md`.
-- Il progetto Unreal resta **intatto e consultabile** in `Source/` e `Content/` per tutta la migrazione. Nessuna rimozione prima della Fase 9.
+- **Engine: Godot 4.7.2 stable, edizione standard/GDScript.** Migrazione dal prototipo Unreal Engine 5.8.2 approvata il 3 ottobre 2026 e completata nel codice il giorno stesso (Fasi 0-9 del piano in `docs/GODOT_MIGRATION_ANALYSIS.md`); restano i playtest del proprietario e la Fase 10. Stato vivo: `docs/MIGRATION_STATUS.md`.
+- Il progetto Unreal resta **intatto e consultabile** in `Source/` e `Content/` come riferimento. La sua archiviazione o rimozione e una decisione del proprietario (Fase 10): nessuna rimozione senza conferma esplicita.
 - Fase di prodotto: Fase 3 della roadmap, micro-prototipi. Character Feel v1 validato; Terrain Slice A ha superato il playtest con esito `Continua`; Terrain Slice B esiste nel working tree ma **non e ancora committato**.
 - Canale di lavoro: **filesystem + CLI**, verificato. Dettagli operativi obbligatori in `docs/GODOT_WORKFLOW.md`.
 - MCP di terze parti: valutati e **rimandati**, con trigger definiti in `docs/GODOT_WORKFLOW.md`.
-- Blender 5.2.2, VS Code, Git e Git LFS restano invariati. La toolchain C++/Visual Studio non serve piu dopo la Fase 9.
-- Target: single-player Windows su Steam; controller primario con piena parita tastiera/mouse; Steam Deck LCD. Godot esporta nativamente per Linux: alternativa a Proton da valutare in Fase 9.
+- Blender 5.2.2, VS Code, Git e Git LFS restano invariati. La toolchain C++/Visual Studio non serve al progetto Godot; resta finche esiste il progetto Unreal.
+- Target: single-player Windows su Steam; controller primario con piena parita tastiera/mouse; Steam Deck LCD. Godot esporta nativamente per Linux: build Windows (Proton) e Linux nativa sono entrambe pronte, la scelta per Steam Deck e aperta.
 
 ## Direzione creativa
 
@@ -116,7 +116,7 @@ Isolare i contributi sostanziali in branch e non far modificare gli stessi file 
 
 ## Git e file generati
 
-- Non versionare build locali, cache o file rigenerabili. `Binaries/`, `DerivedDataCache/`, `Intermediate/`, `Saved/` sono residui Unreal rimovibili dopo la Fase 9.
+- Non versionare build locali, cache o file rigenerabili. `Binaries/`, `DerivedDataCache/`, `Intermediate/`, `Saved/` sono residui Unreal rigenerabili, da trattare insieme alla decisione della Fase 10.
 - Trattare `.blend`, audio compresso e texture sorgenti come binari in Git LFS. Le scene Godot sono testo e non vanno in LFS.
 - Mai committare credenziali, token o dati riservati.
 - Commit piccoli e descrittivi. Non riscrivere la cronologia condivisa senza autorizzazione.

@@ -1,5 +1,7 @@
 # Specifica del round-trip Blender-Unreal
 
+> **Nota del 3 ottobre 2026.** Specifica scritta per Unreal. Con il passaggio a Godot (D-019) obiettivi e criteri restano validi, ma unita (metri), assi (Y-up, -Z avanti), formato consigliato (glTF 2.0) e import vanno riscritti per Godot prima di eseguire la prova. Rischio R-011.
+
 ## Obiettivo
 
 Validare una pipeline ripetibile fra Blender 5.2.2 e Unreal Engine 5.8.2 prima di produrre asset. Il test misura scala, orientamento, pivot, normali, slot materiale, reimport e provenienza dei file. Non serve a creare arte definitiva.

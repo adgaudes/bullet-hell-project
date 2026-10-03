@@ -32,7 +32,7 @@ Per una consulenza senza modifiche:
 powershell -ExecutionPolicy Bypass -File tools/ai/Invoke-CodexDelegate.ps1 -PromptFile percorso\brief.md -ReadOnly
 ```
 
-Per un task che richiede davvero il controllo dell'Unreal Editor gia aperto, aggiungere `-WithUnrealMcp`. Senza questo parametro il wrapper disabilita il server MCP Unreal per quella singola esecuzione, evitando attese quando l'Editor e chiuso.
+L'opzione `-WithUnrealMcp` e obsoleta dal passaggio a Godot (D-020): non usarla. Senza di essa il wrapper disabilita il server MCP Unreal per l'esecuzione, che e il comportamento voluto.
 
 Il wrapper:
 

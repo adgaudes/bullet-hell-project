@@ -23,7 +23,7 @@ Non e ancora fissato un obiettivo di vendite. Prima di costruire un business cas
 | Originalita | Requisito centrale per attrarre il pubblico | Concept Lock subordinato a firma meccanica, fantastica e audiovisiva |
 | Percezione dell'AI | Il gioco non deve apparire generico o generato automaticamente | AI come supporto supervisionato; direzione e asset finali con intenzionalita autoriale |
 | Team | Progetto personale con supporto di Codex e possibili contributi di altre AI | Scope da solista; ogni output AI deve essere revisionato e testato |
-| Unreal Engine | Esperienza quasi nulla | Apprendimento tramite un prototipo piccolo; Blueprint prima, C++ solo dove giustificato |
+| Godot / GDScript | Esperienza da costruire (engine adottato il 3 ottobre 2026, D-019) | Apprendimento sul prototipo gia migrato; scene e script sono testo leggibile e diffabile |
 | Programmazione C/C++ | Esperienza quasi nulla | Architettura semplice, componenti piccoli, review rigorosa e niente ottimizzazioni premature |
 | Blender | Esperienza di base, non recente | Stile 3D producibile, kit modulari e pipeline di export validata prima della produzione |
 | Metodo di apprendimento | Guida continua richiesta | Un passaggio alla volta, spiegazione semplice, risultato atteso e verifica esplicita |
@@ -101,8 +101,8 @@ Salvo nuova decisione motivata, il primo prototipo non include:
 
 ## Strategia tecnica per il livello di esperienza
 
-- Imparare Unreal costruendo il micro-prototipo, non seguendo mesi di corsi generici prima di iniziare.
-- Usare Blueprint per apprendere l'engine e iterare sul gameplay visibile.
+- Imparare l'engine costruendo sul micro-prototipo, non seguendo mesi di corsi generici prima di iniziare.
+- Usare l'editor Godot per osservare e ritoccare scene e tuning (`.tres`) mentre gli agenti lavorano sui file.
 - Spostare in C++ soltanto infrastruttura stabile o percorsi misurati come critici, con Codex o altra AI che propone il codice e Codex che revisiona diff, build e test.
 - Tenere armi, modificatori, nemici e curve di bilanciamento data-driven.
 - Usare Blender inizialmente per semplici mesh graybox e un solo asset di prova; definire lo stile finale dopo aver misurato il costo reale di produzione.

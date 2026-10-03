@@ -2,7 +2,7 @@
 
 ## Scopo
 
-Questo documento registra gli strumenti rilevati, approvati, proposti o rimandati. Le versioni rilevate descrivono il computer di sviluppo al 22 settembre 2026; prima di aggiornare un componente critico verificare la compatibilita con Unreal Engine 5.8.
+Questo documento registra gli strumenti rilevati, approvati, proposti o rimandati. Le versioni rilevate descrivono il computer di sviluppo al 22 settembre 2026; prima di aggiornare un componente critico verificare la compatibilita con l'engine. **Dal 3 ottobre 2026 l'engine e Godot 4.7.2 (D-019)**: le voci Unreal e Visual Studio restano finche esiste il progetto Unreal di riferimento (decisione della Fase 10).
 
 Stati usati:
 
@@ -16,7 +16,8 @@ Stati usati:
 
 | Strumento | Versione/stato | Uso previsto | Decisione |
 |---|---|---|---|
-| Unreal Engine | 5.8.2 | Engine e packaging Windows | Installato; compilazione Editor/Game C++, caricamento mappa, cook, packaging e avvio build Windows verificati il 22 settembre 2026 |
+| Godot Engine | 4.7.2 stable, standard/GDScript, via winget | Engine, editor, test headless, export Windows e Linux | Installato e verificato il 3 ottobre 2026; export template Windows/Linux x86_64 installati. Licenza MIT, nessun costo. Vedi `GODOT_WORKFLOW.md` |
+| Unreal Engine | 5.8.2 | Riferimento del prototipo migrato | Installato; compilazione Editor/Game C++, caricamento mappa, cook, packaging e avvio build Windows verificati il 22 settembre 2026 |
 | Fab UE plugin | Incluso in UE 5.8.2 | Ricerca e import di asset Fab | Installato; apertura e import in Editor da verificare |
 | Quixel Bridge UE plugin | Incluso in UE 5.8.2 | Accesso e import dei contenuti Megascans compatibili | Installato; apertura e import in Editor da verificare |
 | Epic Games Launcher | 1.3.193.0 | Installazione e aggiornamento UE | Installato |
@@ -38,7 +39,9 @@ Spazio libero rilevato sul disco di progetto: circa 620 GB, sufficiente per la f
 
 Audit repository del 21 settembre 2026: Git LFS 3.7.1 configurato e integro; il branch remoto `feature/terrain-grid-slice` al commit `40b7682` e stato clonato in un percorso pulito, inclusa la mappa LFS, quindi compilato e avviato headless con successo. La copia temporanea e stata rimossa dopo la verifica.
 
-## Migrazione UE 5.8.2 e Visual Studio 2026
+## Migrazione UE 5.8.2 e Visual Studio 2026 (storico)
+
+Sezione storica: il progetto Godot non richiede Visual Studio ne MSVC.
 
 La precedente combinazione Unreal Engine 5.6.1 e Visual Studio 2022 e stata sostituita il 22 settembre 2026 da Unreal Engine 5.8.2 e Visual Studio Community 2026. I target `Prototype01` e `Prototype01Editor` fissano `VisualStudio2026` e la famiglia MSVC `14.51.36231`, evitando selezioni silenziose della toolchain precedente.
 
@@ -102,18 +105,18 @@ IncrediBuild, installato inizialmente come componente opzionale, e stato rimosso
 | PureRef 2.x Small Business | Rimandato, a pagamento | Quando una moodboard dedicata giustifica il costo | La licenza Personal e solo per uso personale; il progetto Steam richiede uso commerciale |
 | GitHub CLI | Opzionale | Primo flusso branch/PR con Claude | Automatizzare issue, PR e review |
 | Krita | Opzionale | Se scegliamo sprite o concept paint 2D | Produzione e modifica raster |
-| JetBrains Rider | Rimandato | Se Visual Studio rallenta il flusso C++ | Alternativa UE a pagamento |
+| MCP Godot (`tugcantopaloglu/godot-mcp`) | Rimandato | Trigger in `GODOT_WORKFLOW.md` | Ispezione di un gioco in esecuzione; non necessario oggi |
 | Substance 3D Painter | Rimandato | Dopo art direction 3D approvata | Texturing avanzato, costo ricorrente |
 | Reaper/Audacity | Rimandato | Primo audio pass | Editing audio |
-| FMOD/Wwise | Rimandato | Solo con requisito audio non coperto da UE | Evitare middleware prematuro |
+| FMOD/Wwise | Rimandato | Solo con requisito audio non coperto da Godot | Evitare middleware prematuro |
 | OBS Studio | Rimandato | Playtest registrati e materiale store | Cattura gameplay |
 | DaVinci Resolve | Rimandato | Trailer e marketing | Montaggio video |
 | Perforce | Rimandato | Solo se Git LFS/locking diventa insufficiente | Gestione di grandi volumi binari |
 | Steam Deck LCD | Disponibile; capacita da rilevare | Dalla prima build Windows pacchettizzata | Dispositivo di riferimento per test reali di Proton, prestazioni, input, UI e sospensione |
 | SteamOS Devkit Client | Rimandato, gratuito | Prima distribuzione frequente sullo Steam Deck disponibile | Distribuzione e debug della build dal PC Windows al dispositivo |
-| Soluzione terrain voxel/runtime | Da ricercare, non installare ora | Dopo il prototipo discreto e prima della vertical slice | Confronto build-vs-buy per deformazione continua; verificare UE 5.8, sorgente, licenza, Windows, Proton e Steam Deck |
-| Aura di Ramen VR (`tryaura.dev`) | 1.0.6 installato a livello engine | Solo se il MCP ufficiale non copre un bisogno concreto | Plugin commerciale con funzioni aggiuntive, costo, lock-in e superficie dati maggiori. I suoi MCP restano scollegati; nessun acquisto o piano approvato |
-| Unreal MCP ufficiale Epic | Configurato e validato | Controllo strutturato dell'Editor | Plugin sperimentali `ModelContextProtocol` e `AllToolsets` abilitati nel progetto; build, auto-start, handshake MCP `2025-06-18`, scoperta toolset e ciclo reversibile Start/Stop PIE verificati il 22 settembre 2026 su `http://127.0.0.1:8000/mcp`; Codex richiede approvazione per le scritture |
+| Soluzione terrain voxel/runtime | Da ricercare, non installare ora | Dopo il prototipo discreto e prima della vertical slice | Confronto build-vs-buy per deformazione continua; verificare Godot 4.x, sorgente, licenza, Windows, Linux/Proton e Steam Deck |
+| Aura di Ramen VR (`tryaura.dev`) | 1.0.6 installato a livello engine Unreal | Obsoleto con il passaggio a Godot | Plugin commerciale con funzioni aggiuntive, costo, lock-in e superficie dati maggiori. I suoi MCP restano scollegati; nessun acquisto o piano approvato |
+| Unreal MCP ufficiale Epic | Configurato e validato in passato | Obsoleto con il passaggio a Godot (D-020) | Plugin sperimentali `ModelContextProtocol` e `AllToolsets` abilitati nel progetto; build, auto-start, handshake MCP `2025-06-18`, scoperta toolset e ciclo reversibile Start/Stop PIE verificati il 22 settembre 2026 su `http://127.0.0.1:8000/mcp`; Codex richiede approvazione per le scritture |
 
 ## Librerie di asset esterni
 

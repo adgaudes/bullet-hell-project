@@ -7,7 +7,7 @@ Progetto indipendente in fase di ideazione, destinato alla pubblicazione su Stea
 - Fase attiva: Fase 3, micro-prototipi. Character Feel v1 e in `main`; Terrain Slice A e su branch e attende playtest. Brainstorming e concept restano aperti ai gate previsti.
 - Repository: privato, con Git LFS per gli asset binari.
 - Target iniziale candidato: Windows / Steam, single-player.
-- Engine fissato: Unreal Engine 5.6.1; toolchain C++ e packaging Windows verificati.
+- Engine: **Godot 4.7.2** standard/GDScript (D-019). Il prototipo Unreal e stato migrato a parita di funzionalita; il progetto Godot e in `godot/`. Stato: `docs/MIGRATION_STATUS.md`.
 
 ## Documentazione
 
@@ -28,8 +28,10 @@ Progetto indipendente in fase di ideazione, destinato alla pubblicazione su Stea
 - [`docs/PLAYTESTS/`](docs/PLAYTESTS/): protocolli e risultati dei playtest.
 - [`docs/STORAGE_AUDIT_2026-09-21.md`](docs/STORAGE_AUDIT_2026-09-21.md): spazio occupato, build da conservare e pulizia proposta ma non ancora autorizzata.
 - [`docs/TOOLS_AND_LICENSES.md`](docs/TOOLS_AND_LICENSES.md): inventario, dipendenze approvate e tool radar.
-- [`docs/BLENDER_UNREAL_ROUNDTRIP_SPEC.md`](docs/BLENDER_UNREAL_ROUNDTRIP_SPEC.md): prova minima di scala, pivot, materiali, reimport e animazione fra Blender e Unreal.
-- [`docs/UNREAL_EDITOR_WORKFLOW.md`](docs/UNREAL_EDITOR_WORKFLOW.md): strategia per modifiche visibili nell'Editor, automazione ripetibile e possibile MCP.
+- [`docs/GODOT_WORKFLOW.md`](docs/GODOT_WORKFLOW.md): comandi verificati, test, export e trappole del flusso Godot.
+- [`docs/GODOT_PARITY_CHECKLIST.md`](docs/GODOT_PARITY_CHECKLIST.md): verifica di parita Unreal → Godot.
+- [`docs/BLENDER_UNREAL_ROUNDTRIP_SPEC.md`](docs/BLENDER_UNREAL_ROUNDTRIP_SPEC.md): prova di round-trip pensata per Unreal; i principi valgono, i preset vanno rifatti per Godot.
+- [`docs/UNREAL_EDITOR_WORKFLOW.md`](docs/UNREAL_EDITOR_WORKFLOW.md): archivio storico del flusso Unreal.
 - [`docs/SMOKE_TEST_2026-09-21.md`](docs/SMOKE_TEST_2026-09-21.md): risultati della prima compilazione, packaging e avvio Windows.
 
 ## Avvertenza

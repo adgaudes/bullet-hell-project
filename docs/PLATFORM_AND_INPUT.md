@@ -29,9 +29,11 @@ Requisiti:
 - il gameplay non deve dipendere da combinazioni scomode o dal clic degli stick per azioni frequenti;
 - vibrazione e aim assist, se presenti, devono essere configurabili.
 
-## Implementazione Unreal candidata
+## Implementazione Godot
 
-Usare **Enhanced Input**, incluso in Unreal Engine, con azioni semantiche e mapping context separati per:
+Implementata dal 3 ottobre 2026 con la **mappa input di progetto** di Godot (`godot/project.godot`, sezione `[input]`): 12 azioni semantiche con eventi controller e tastiera/mouse e dead zone per azione. Il gameplay legge solo azioni (`Input.get_vector`, `is_action_pressed`), mai tasti fisici. Rimappatura e inversione assi si appoggeranno a `InputMap` a runtime. L'implementazione Unreal precedente usava Enhanced Input con mapping costruiti in C++.
+
+Contesti previsti, da realizzare quando servono come gruppi di azioni attivati dal gioco:
 
 - gameplay a piedi;
 - modalita costruzione;
@@ -39,7 +41,7 @@ Usare **Enhanced Input**, incluso in Unreal Engine, con azioni semantiche e mapp
 - menu e UI;
 - eventuale modalità foto o debug, non inclusa nel prototipo.
 
-Le azioni devono descrivere intenzioni (`Move`, `Aim`, `Dash`, `Build`, `RotateMachine`, `Interact`, `EnterVehicle`) e non tasti fisici. Blueprint e codice devono ascoltare le azioni, non controllare direttamente pulsanti specifici.
+Le azioni devono descrivere intenzioni (`Move`, `Aim`, `Dash`, `Build`, `RotateMachine`, `Interact`, `EnterVehicle`) e non tasti fisici. Il codice deve ascoltare le azioni, non controllare direttamente pulsanti specifici.
 
 ## Schema iniziale candidato
 
