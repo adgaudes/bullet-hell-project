@@ -19,6 +19,18 @@ Questo test non valuta ancora combattimento, collisioni dinamiche, grafica final
 - Hash SHA-256: `DE499AB9DC0AD619E5599B471AF1B54F23820680C7BE00985E217BC70EBEA755`, registrato anche nel file omonimo `.sha256` accanto all'archivio.
 - Verifica archivio: estrazione completata, eseguibile identico alla build sorgente e nessun simbolo `.pdb` incluso. La rimozione dei simboli riduce il trasferimento senza cambiare il gioco.
 
+## Verifica tecnica nell'Editor - 22 settembre 2026
+
+Una copia candidata dello Slice A e stata portata nel working tree di `main`, senza commit o merge, per riconciliarla con la mappa persistente e le modifiche Aura. Il gate creativo e il playtest manuale restano aperti.
+
+- build `Prototype01Editor Win64 Development` riuscita con UE 5.8.2 e VS2026;
+- Viewport e PIE usano la stessa arena e la stessa `PrototypeTerrainGrid` persistente;
+- conteggio verificato: un personaggio, una arena, una griglia e 49 celle, senza duplicati;
+- `PROTOTYPE01_INPUT_READY` e `PROTOTYPE01_TERRAIN_GRID_READY` presenti, senza nuovi errori runtime;
+- test MCP: dodici pressioni di `W` hanno spostato il personaggio da `X=0` a `X=1600,8`;
+- clic nella viewport registrato come `PROTOTYPE01_TERRAIN_CHANGED`, confermando l'applicazione del tool;
+- resta obbligatorio il test percettivo manuale desktop/controller e il successivo test Steam Deck.
+
 ## Regole del test
 
 - Prima osservare, poi commentare: non cercare una strategia corretta.
@@ -116,4 +128,12 @@ Scegliere un solo esito dopo il test:
 - **Modifica:** idea valida ma targeting o feedback richiedono un nuovo Slice A.
 - **Scarta/ripensa:** la grammatica discreta non consente modifiche intenzionali dalla camera scelta.
 
-Non unire `feature/terrain-grid-slice` in `main` prima di questa decisione.
+### Esito registrato
+
+- Data: 22 settembre 2026.
+- Valutatore: proprietario del progetto.
+- Decisione: **Continua**.
+- Dichiarazione ricevuta: test superato; procedere con il lavoro successivo.
+- Limite delle evidenze: non sono state raccolte risposte separate alle domande qualitative della tabella desktop e non vengono inferite retroattivamente.
+
+Il gate autorizza la specifica di Terrain Slice B. Integrazione Git, commit e pubblicazione del porting candidato restano operazioni separate da eseguire dopo review dello stato complessivo del working tree.

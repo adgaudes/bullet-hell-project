@@ -10,6 +10,7 @@
 #include "InputMappingContext.h"
 #include "InputAction.h"
 #include "InputModifiers.h"
+#include "InputTriggers.h"
 #include "InputCoreTypes.h"
 #include "Engine/LocalPlayer.h"
 #include "Materials/MaterialInterface.h"
@@ -85,13 +86,9 @@ APrototype01Character::APrototype01Character()
 	bUseControllerRotationRoll = false;
 
 	UCharacterMovementComponent* Movement = GetCharacterMovement();
-	Movement->GravityScale = 0.0f;
 	Movement->bOrientRotationToMovement = false;
 	Movement->MaxWalkSpeed = PlanarMoveSpeed;
 	Movement->MaxFlySpeed = PlanarMoveSpeed;
-	Movement->bConstrainToPlane = true;
-	Movement->SetPlaneConstraintNormal(FVector::UpVector);
-	Movement->bSnapToPlaneAtStart = true;
 }
 
 void APrototype01Character::BeginPlay()
@@ -120,8 +117,8 @@ void APrototype01Character::BeginPlay()
 	Movement->MaxWalkSpeed = PlanarMoveSpeed;
 	Movement->MaxFlySpeed = PlanarMoveSpeed;
 	Movement->MaxAcceleration = MoveAcceleration;
-	Movement->BrakingDecelerationFlying = MoveDeceleration;
-	Movement->SetMovementMode(MOVE_Flying);
+	Movement->BrakingDecelerationWalking = MoveDeceleration;
+	Movement->SetMovementMode(MOVE_Walking);
 	if (APlayerController* PC = Cast<APlayerController>(GetController()))
 	{
 		PC->bShowMouseCursor = true;
@@ -139,6 +136,14 @@ void APrototype01Character::Tick(float DeltaSeconds)
 	{
 		GetCharacterMovement()->Velocity = DashDirection * DashSpeed;
 	}
+	else if (!CurrentMoveDirection.IsNearlyZero())
+	{
+		// Movimento planare tramite il percorso standard del CharacterMovement in MOVE_Walking.
+		AddMovementInput(CurrentMoveDirection);
+	}
+
+	UpdateTerrainSpeedModifier();
+	UpdateTerrainTarget();
 }
 
 void APrototype01Character::SetupEnhancedInput()
@@ -147,12 +152,19 @@ void APrototype01Character::SetupEnhancedInput()
 	{
 		IA_Move = NewObject<UInputAction>(this, TEXT("IA_Move"));
 		IA_Move->ValueType = EInputActionValueType::Axis2D;
+		IA_Move->Triggers.Add(NewObject<UInputTriggerDown>(IA_Move));
 
 		IA_Aim = NewObject<UInputAction>(this, TEXT("IA_Aim"));
 		IA_Aim->ValueType = EInputActionValueType::Axis2D;
 
 		IA_Dash = NewObject<UInputAction>(this, TEXT("IA_Dash"));
 		IA_Dash->ValueType = EInputActionValueType::Boolean;
+
+		IA_TerrainTool = NewObject<UInputAction>(this, TEXT("IA_TerrainTool"));
+		IA_TerrainTool->ValueType = EInputActionValueType::Boolean;
+
+		IA_TerrainMode = NewObject<UInputAction>(this, TEXT("IA_TerrainMode"));
+		IA_TerrainMode->ValueType = EInputActionValueType::Boolean;
 
 		IMC_Gameplay = NewObject<UInputMappingContext>(this, TEXT("IMC_Gameplay"));
 
@@ -179,6 +191,12 @@ void APrototype01Character::SetupEnhancedInput()
 
 		IMC_Gameplay->MapKey(IA_Dash, EKeys::SpaceBar);
 		IMC_Gameplay->MapKey(IA_Dash, EKeys::Gamepad_FaceButton_Bottom);
+
+		IMC_Gameplay->MapKey(IA_TerrainTool, EKeys::LeftMouseButton);
+		IMC_Gameplay->MapKey(IA_TerrainTool, EKeys::Gamepad_RightTrigger);
+		IMC_Gameplay->MapKey(IA_TerrainMode, EKeys::RightMouseButton);
+		IMC_Gameplay->MapKey(IA_TerrainMode, EKeys::Q);
+		IMC_Gameplay->MapKey(IA_TerrainMode, EKeys::Gamepad_LeftShoulder);
 	}
 
 	if (APlayerController* PC = Cast<APlayerController>(GetController()))
@@ -204,6 +222,8 @@ void APrototype01Character::SetupPlayerInputComponent(UInputComponent* PlayerInp
 		EnhancedInputComponent->BindAction(IA_Aim, ETriggerEvent::Triggered, this, &APrototype01Character::HandleAimTriggered);
 		EnhancedInputComponent->BindAction(IA_Aim, ETriggerEvent::Completed, this, &APrototype01Character::HandleAimCompleted);
 		EnhancedInputComponent->BindAction(IA_Dash, ETriggerEvent::Started, this, &APrototype01Character::HandleDashStarted);
+		EnhancedInputComponent->BindAction(IA_TerrainTool, ETriggerEvent::Started, this, &APrototype01Character::HandleTerrainToolStarted);
+		EnhancedInputComponent->BindAction(IA_TerrainMode, ETriggerEvent::Started, this, &APrototype01Character::HandleTerrainModeStarted);
 	}
 	else
 	{
@@ -226,14 +246,14 @@ void APrototype01Character::HandleMoveTriggered(const FInputActionValue& Value)
 		return;
 	}
 
-	AddMovementInput(FVector::ForwardVector, MoveValue.Y);
-	AddMovementInput(FVector::RightVector, MoveValue.X);
+	const float InputMagnitude = FMath::Clamp(MoveValue.Size(), 0.0f, 1.0f);
+	CurrentMoveDirection = WorldMoveDirection.GetSafeNormal() * InputMagnitude;
 }
 
 void APrototype01Character::HandleMoveCompleted(const FInputActionValue& Value)
 {
 	(void)Value;
-	// Nessuna azione: AddMovementInput non viene piu chiamato quando l'azione non e Triggered.
+	CurrentMoveDirection = FVector::ZeroVector;
 }
 
 void APrototype01Character::HandleAimTriggered(const FInputActionValue& Value)
@@ -257,6 +277,27 @@ void APrototype01Character::HandleDashStarted(const FInputActionValue& Value)
 {
 	(void)Value;
 	StartDash();
+}
+
+void APrototype01Character::HandleTerrainToolStarted(const FInputActionValue& Value)
+{
+	(void)Value;
+	if (TerrainGrid)
+	{
+		UpdateTerrainTarget();
+		TerrainGrid->ApplyCommandAtWorldLocation(CurrentTerrainTarget, TerrainToolMode, this);
+	}
+}
+
+void APrototype01Character::HandleTerrainModeStarted(const FInputActionValue& Value)
+{
+	(void)Value;
+	TerrainToolMode = TerrainToolMode == EPrototypeTerrainToolMode::Dig
+		? EPrototypeTerrainToolMode::Raise
+		: EPrototypeTerrainToolMode::Dig;
+	UE_LOG(LogTemp, Log, TEXT("PROTOTYPE01_TERRAIN_MODE %s"),
+		TerrainToolMode == EPrototypeTerrainToolMode::Dig ? TEXT("Dig") : TEXT("Raise"));
+	UpdateTerrainTarget();
 }
 
 void APrototype01Character::StartDash()
@@ -323,6 +364,49 @@ void APrototype01Character::EndDashCooldown()
 	}
 
 	UE_LOG(LogTemp, Log, TEXT("PROTOTYPE01_DASH_READY"));
+}
+
+void APrototype01Character::SetTerrainGrid(APrototype01TerrainGridActor* InTerrainGrid)
+{
+	TerrainGrid = InTerrainGrid;
+	UpdateTerrainTarget();
+	UE_LOG(LogTemp, Log, TEXT("PROTOTYPE01_TERRAIN_MODE Dig"));
+}
+
+void APrototype01Character::UpdateTerrainTarget()
+{
+	if (!TerrainGrid)
+	{
+		return;
+	}
+
+	FVector Forward = GetActorForwardVector();
+	Forward.Z = 0.0f;
+	if (!Forward.Normalize())
+	{
+		TerrainGrid->HidePreview();
+		return;
+	}
+
+	CurrentTerrainTarget = GetActorLocation() + Forward * FMath::Max(TerrainToolRange, 100.0f);
+	TerrainGrid->UpdatePreview(CurrentTerrainTarget, TerrainToolMode, this);
+}
+
+void APrototype01Character::UpdateTerrainSpeedModifier()
+{
+	float SpeedMultiplier = 1.0f;
+	if (TerrainGrid)
+	{
+		bool bValidCell = false;
+		const EPrototypeTerrainCellState State = TerrainGrid->GetCellStateAtWorldLocation(GetActorLocation(), bValidCell);
+		if (bValidCell && State == EPrototypeTerrainCellState::Lowered)
+		{
+			SpeedMultiplier = 1.0f - FMath::Clamp(TerrainGrid->GetLoweredSpeedPenaltyPercent(), 0.0f, 0.95f);
+		}
+	}
+
+	// Non altera mai PlanarMoveSpeed: ricalcola MaxWalkSpeed ogni tick a partire dalla base configurata.
+	GetCharacterMovement()->MaxWalkSpeed = PlanarMoveSpeed * SpeedMultiplier;
 }
 
 void APrototype01Character::UpdateMouseAimControlMode()

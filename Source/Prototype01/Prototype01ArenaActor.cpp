@@ -133,11 +133,37 @@ APrototype01ArenaActor::APrototype01ArenaActor()
 	SkyAtmosphere->SetMobility(EComponentMobility::Movable);
 }
 
+void APrototype01ArenaActor::OnConstruction(const FTransform& Transform)
+{
+	Super::OnConstruction(Transform);
+	ApplyVisualConfiguration();
+}
+
 void APrototype01ArenaActor::BeginPlay()
 {
 	Super::BeginPlay();
+	ApplyVisualConfiguration();
+}
 
-	// Colori ad alto contrasto per distinguere a colpo d'occhio pilastri e landmark direzionale sul pavimento a griglia.
+void APrototype01ArenaActor::ApplyVisualConfiguration()
+{
+	const float HalfFloor = FloorSize * 0.5f;
+	const float CornerOffset = HalfFloor - PillarInsetFromEdge;
+	const float PillarRelativeZ = (FloorThickness * 0.5f) + (PillarHeight * 0.5f);
+	const FVector2D CornerLocalOffsets[4] =
+	{
+		FVector2D(CornerOffset, CornerOffset),
+		FVector2D(-CornerOffset, CornerOffset),
+		FVector2D(-CornerOffset, -CornerOffset),
+		FVector2D(CornerOffset, -CornerOffset)
+	};
+
+	if (FloorMesh)
+	{
+		FloorMesh->SetRelativeLocation(FVector::ZeroVector);
+		FloorMesh->SetRelativeScale3D(FVector(FloorSize / 100.0f, FloorSize / 100.0f, FloorThickness / 100.0f));
+	}
+
 	const FLinearColor CornerPillarColors[4] =
 	{
 		FLinearColor(0.9f, 0.05f, 0.05f),
@@ -146,25 +172,64 @@ void APrototype01ArenaActor::BeginPlay()
 		FLinearColor(0.95f, 0.85f, 0.05f)
 	};
 
+	auto ApplyColor = [](UStaticMeshComponent* Component, const FLinearColor& Color)
+	{
+		if (!Component)
+		{
+			return;
+		}
+
+		UMaterialInstanceDynamic* MaterialInstance = Cast<UMaterialInstanceDynamic>(Component->GetMaterial(0));
+		if (!MaterialInstance)
+		{
+			MaterialInstance = Component->CreateAndSetMaterialInstanceDynamic(0);
+		}
+
+		if (MaterialInstance)
+		{
+			MaterialInstance->SetVectorParameterValue(ColorParamName, Color);
+		}
+	};
+
 	for (int32 Index = 0; Index < CornerPillars.Num(); ++Index)
 	{
-		UStaticMeshComponent* Pillar = CornerPillars[Index];
-		if (!Pillar)
+		if (UStaticMeshComponent* Pillar = CornerPillars[Index])
 		{
-			continue;
-		}
-		if (UMaterialInstanceDynamic* PillarMID = Pillar->CreateAndSetMaterialInstanceDynamic(0))
-		{
-			PillarMID->SetVectorParameterValue(ColorParamName, CornerPillarColors[Index % 4]);
+			const FVector2D& Offset = CornerLocalOffsets[Index % 4];
+			Pillar->SetRelativeLocation(FVector(Offset.X, Offset.Y, PillarRelativeZ));
+			Pillar->SetRelativeScale3D(FVector(PillarSize / 100.0f, PillarSize / 100.0f, PillarHeight / 100.0f));
+			ApplyColor(Pillar, CornerPillarColors[Index % 4]);
 		}
 	}
 
 	if (DirectionMarker)
 	{
-		if (UMaterialInstanceDynamic* MarkerMID = DirectionMarker->CreateAndSetMaterialInstanceDynamic(0))
-		{
-			MarkerMID->SetVectorParameterValue(ColorParamName, FLinearColor(0.85f, 0.1f, 0.85f));
-		}
+		const float DirectionMarkerBaseSize = 200.0f;
+		const float DirectionMarkerRelativeZ = (FloorThickness * 0.5f) + (DirectionMarkerHeight * 0.5f);
+		DirectionMarker->SetRelativeLocation(FVector(0.0f, HalfFloor - PillarInsetFromEdge, DirectionMarkerRelativeZ));
+		DirectionMarker->SetRelativeScale3D(FVector(DirectionMarkerBaseSize / 100.0f, DirectionMarkerBaseSize / 100.0f, DirectionMarkerHeight / 100.0f));
+		ApplyColor(DirectionMarker, FLinearColor(0.85f, 0.1f, 0.85f));
+	}
+
+	if (SunLight)
+	{
+		SunLight->SetRelativeRotation(FRotator(-45.0f, -30.0f, 0.0f));
+		SunLight->Intensity = 20.0f;
+		SunLight->LightColor = FColor(255, 236, 209);
+		SunLight->CastShadows = true;
+		SunLight->SetAtmosphereSunLight(true);
+	}
+
+	if (AmbientSkyLight)
+	{
+		AmbientSkyLight->SourceType = ESkyLightSourceType::SLS_CapturedScene;
+		AmbientSkyLight->bRealTimeCapture = true;
+		AmbientSkyLight->Intensity = 1.5f;
+	}
+
+	if (SkyAtmosphere)
+	{
+		SkyAtmosphere->SetMobility(EComponentMobility::Movable);
 	}
 }
 

@@ -24,6 +24,7 @@ class PROTOTYPE01_API APrototype01ArenaActor : public AActor
 public:
 	APrototype01ArenaActor();
 
+	virtual void OnConstruction(const FTransform& Transform) override;
 	virtual void BeginPlay() override;
 
 	/**
@@ -35,6 +36,9 @@ public:
 	void AlignFloorTopToWorldLocation(const FVector& DesiredFloorTopLocation);
 
 protected:
+	/** Applies geometry, materials, colors, and lighting consistently in Editor and PIE. */
+	void ApplyVisualConfiguration();
+
 	/** Radice non scalata della gerarchia; evita che la scala del pavimento si propaghi ai figli. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Prototype01|Arena")
 	TObjectPtr<USceneComponent> ArenaRoot;
