@@ -20,6 +20,23 @@ func _ready() -> void:
 	print("PROTOTYPE01_GODOT_SKELETON_READY")
 	_report_input_map()
 	_report_scale_reference()
+	_capture_if_requested()
+
+
+## Con `-- --capture=<percorso.png>` salva un PNG del primo frame utile ed esce.
+## Richiede una finestra reale: in --headless i frame non vengono disegnati.
+func _capture_if_requested() -> void:
+	var path := ""
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--capture="):
+			path = arg.trim_prefix("--capture=")
+	if path.is_empty():
+		return
+	for i in 10:
+		await RenderingServer.frame_post_draw
+	var err := get_viewport().get_texture().get_image().save_png(path)
+	print("PROTOTYPE01_CAPTURE path=%s err=%d" % [path, err])
+	get_tree().quit()
 
 
 ## Verifica che ogni azione esista e abbia almeno un evento associato.

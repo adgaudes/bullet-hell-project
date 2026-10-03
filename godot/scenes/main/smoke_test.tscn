@@ -1,12 +1,8 @@
-[gd_scene load_steps=7 format=3]
+[gd_scene load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://scripts/services/skeleton_probe.gd" id="1_probe"]
-
-[sub_resource type="PlaneMesh" id="PlaneMesh_floor"]
-size = Vector2(60, 60)
-
-[sub_resource type="StandardMaterial3D" id="Material_floor"]
-albedo_color = Color(0.34, 0.48, 0.2, 1)
+[ext_resource type="Script" path="res://scripts/arena/arena.gd" id="2_arena"]
+[ext_resource type="Script" path="res://scripts/camera/isometric_camera_rig.gd" id="3_camera"]
 
 [sub_resource type="BoxMesh" id="BoxMesh_player"]
 size = Vector3(0.45, 0.9, 0.9)
@@ -14,33 +10,20 @@ size = Vector3(0.45, 0.9, 0.9)
 [sub_resource type="StandardMaterial3D" id="Material_player"]
 albedo_color = Color(1, 0.35, 0.02, 1)
 
-[sub_resource type="StandardMaterial3D" id="Material_marker"]
-albedo_color = Color(0.85, 0.1, 0.85, 1)
-
 [node name="SmokeTest" type="Node3D"]
 script = ExtResource("1_probe")
 
-[node name="Floor" type="MeshInstance3D" parent="."]
-mesh = SubResource("PlaneMesh_floor")
-material_override = SubResource("Material_floor")
+[node name="Arena" type="Node3D" parent="."]
+script = ExtResource("2_arena")
 
-[node name="PlayerPlaceholder" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.45, 0)
+[node name="PlayerPlaceholder" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.88, 0)
+
+[node name="Graybox" type="MeshInstance3D" parent="PlayerPlaceholder"]
+cast_shadow = 0
 mesh = SubResource("BoxMesh_player")
 material_override = SubResource("Material_player")
 
-[node name="DirectionMarker" type="MeshInstance3D" parent="."]
-transform = Transform3D(2, 0, 0, 0, 7, 0, 0, 0, 2, 0, 3.5, -26.5)
-mesh = SubResource("BoxMesh_player")
-material_override = SubResource("Material_marker")
-
-[node name="SunLight" type="DirectionalLight3D" parent="."]
-transform = Transform3D(0.866, -0.353, 0.353, 0, 0.707, 0.707, -0.5, -0.612, 0.612, 0, 10, 0)
-light_color = Color(1, 0.925, 0.82, 1)
-light_energy = 1.2
-shadow_enabled = true
-
-[node name="CameraPivot" type="Node3D" parent="."]
-
-[node name="IsometricCamera" type="Camera3D" parent="CameraPivot"]
-transform = Transform3D(1, 0, 0, 0, 0.574, 0.819, 0, -0.819, 0.574, 0, 12.3, 8.6)
+[node name="CameraRig" type="Node3D" parent="." node_paths=PackedStringArray("target")]
+script = ExtResource("3_camera")
+target = NodePath("../PlayerPlaceholder")
