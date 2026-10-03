@@ -39,7 +39,6 @@ Le decisioni registrate sono in `docs/DECISIONS.md`.
 - Concept: `docs/WORKING_CONCEPT.md`, `docs/BRAINSTORMING_CONCEPTS.md`, `docs/WORLD_PREMISE.md`
 - Prototipo: `docs/PROTOTYPE_01_SPEC.md`, `docs/TERRAIN_SYSTEM.md`
 - Piattaforma/input: `docs/PLATFORM_AND_INPUT.md`
-- Handoff AI: `docs/AI_HANDOFF_PROTOCOL.md`
 - Archivio storico Unreal: `docs/UNREAL_EDITOR_WORKFLOW.md`
 
 ## Principi di produzione
@@ -92,7 +91,7 @@ Autonomia ampia implica verifica rigorosa. Un agente:
 
 ### Collaborazione fra agenti
 
-Codex e una risorsa delegabile, non un cancello obbligatorio. Conviene coinvolgerlo per review trasversale, verifica indipendente, blocchi tecnici o limiti di capacita, tramite `tools/ai/Invoke-CodexDelegate.ps1` secondo `docs/AI_HANDOFF_PROTOCOL.md`. Non delegare a Codex un task che Codex ha appena affidato, salvo blocco.
+Codex e una risorsa delegabile, non un cancello obbligatorio. Conviene coinvolgerlo per review trasversale, verifica indipendente, blocchi tecnici o limiti di capacita, tramite il plugin Codex di Claude Code, con un worktree e un branch per task. Il suo lavoro va verificato prima dell'integrazione.
 
 Isolare i contributi sostanziali in branch e non far modificare gli stessi file a piu agenti contemporaneamente.
 

@@ -59,15 +59,4 @@ Riepilogo, file modificati, assunzioni, test eseguiti con risultati, rischi resi
 
 ## Delega a Codex
 
-Codex e una risorsa, non un cancello obbligatorio. Conviene coinvolgerlo per review trasversale, verifica indipendente, blocchi tecnici o limite di capacita. Segui `docs/AI_HANDOFF_PROTOCOL.md`:
-
-1. porta il repository in uno stato comprensibile;
-2. prepara un brief circoscritto in un file `.md` interno al repository;
-3. invoca `tools/ai/Invoke-CodexDelegate.ps1`;
-4. controlla l'output e segnala errori di autenticazione o limiti;
-5. non delegare a Codex un task che Codex ti ha appena affidato, salvo blocco;
-6. non usare chiavi API, PAYG o ricariche automatiche.
-
-L'opzione `-WithUnrealMcp` e obsoleta: il server MCP Unreal non fa piu parte del flusso.
-
-Se il limite di capacita e totale, lascia che il proprietario prosegua da Codex: repository e documentazione costituiscono l'handoff.
+Codex e una risorsa, non un cancello obbligatorio: conviene per lavoro parallelo ben delimitato, review o verifica indipendente. Si delega con il plugin Codex di Claude Code (`codex:rescue`), dando a ogni task un **worktree e un branch propri**, cosi gli agenti non modificano gli stessi file. Il risultato di Codex resta non verificato finche non lo controlli tu (diff, gate, test); l'integrazione la fai tu. Mai chiavi API, PAYG o ricariche automatiche.
