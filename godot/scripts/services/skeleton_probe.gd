@@ -3,7 +3,8 @@ extends Node3D
 ##
 ## Non e gameplay: verifica che il progetto parta, che la mappa input sia
 ## caricata e che la conversione di scala da Unreal sia quella attesa.
-## Verra rimossa quando il personaggio reale arrivera in Fase 5.
+## Il movimento ora e del personaggio reale (Fase 5); la sonda resta come
+## verifica di avvio e strumento di cattura.
 
 ## Fattore di conversione: Unreal lavora in centimetri, Godot in metri.
 const UNREAL_UNITS_TO_METERS := 0.01
@@ -76,9 +77,3 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event.is_action_pressed(&"terrain_mode"):
 		print("PROTOTYPE01_ACTION terrain_mode")
 
-
-func _process(_delta: float) -> void:
-	var move := Input.get_vector(&"move_left", &"move_right", &"move_forward", &"move_back")
-	if not move.is_zero_approx():
-		# Solo diagnostica: il movimento reale arriva in Fase 5.
-		$PlayerPlaceholder.position += Vector3(move.x, 0.0, move.y) * 6.0 * _delta

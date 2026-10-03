@@ -20,6 +20,8 @@ var _camera: Camera3D
 
 func _ready() -> void:
 	top_level = true
+	# Il rig si muove in _process: niente interpolazione propria, legge quella del bersaglio.
+	physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
 	_camera = get_node_or_null(^"Camera") as Camera3D
 	if _camera == null:
 		_camera = Camera3D.new()
@@ -34,7 +36,7 @@ func _ready() -> void:
 
 func _process(_delta: float) -> void:
 	if target != null:
-		global_position = target.global_position
+		global_position = target.get_global_transform_interpolated().origin
 
 
 func _apply() -> void:

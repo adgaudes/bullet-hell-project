@@ -64,6 +64,16 @@ La scena principale parte, `print()` arriva su stdout, l'editor non viene mai ap
 
 I marker diagnostici gia in uso nel progetto (`PROTOTYPE01_INPUT_READY`, `PROTOTYPE01_TERRAIN_CHANGED`, ...) continuano a funzionare identici: in GDScript sono semplici `print()`. Il protocollo di verifica testuale del prototipo Unreal si trasferisce invariato.
 
+### Test automatici
+
+```bash
+godot_console --headless --path godot --fixed-fps 60 --script res://tests/player_tests.gd
+```
+
+`--fixed-fps 60` rende ogni frame un passo fisico da 1/60 s: risultati deterministici. Esito su stdout (`PROTOTYPE01_TESTS PASS|FAIL`) ed exit code 0/1. Trappola verificata: in headless la posizione del cursore del viewport non segue gli eventi mouse simulati; testare la logica sulla posizione schermo esplicita.
+
+Per l'input nei test: `Input.action_press()` per azioni tenute; per azioni a evento (dash) usare `Input.parse_input_event()` con `InputEventAction`, perche `is_action_just_pressed` in `_physics_process` puo perdere una pressione simulata.
+
 ### Verifica visiva
 
 Lo script salva un PNG, che l'agente puo poi **aprire e guardare**:
@@ -78,6 +88,8 @@ img.save_png("res://capture.png")
 ```bash
 godot_console --path . --resolution 1280x800 --quit-after 180 res://scena.tscn
 ```
+
+Nel progetto e gia pronto: la sonda della scena principale accetta `-- --capture=<file.png>`, salva il frame ed esce.
 
 Verificato: PNG 1280x800 (risoluzione Steam Deck), Vulkan Forward+, `err=0`.
 

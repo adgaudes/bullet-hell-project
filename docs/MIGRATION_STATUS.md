@@ -4,7 +4,7 @@
 
 **Ultimo aggiornamento:** 3 ottobre 2026
 **Engine:** Godot 4.7.2 stable, edizione standard/GDScript
-**Fase corrente:** 4 completata → **prossima: Fase 5**
+**Fase corrente:** 5 completata nel codice, **in attesa del playtest di feel del proprietario** → prossima: Fase 6
 **Branch di lavoro:** `feature/godot-migration-foundation` (non ancora integrato in `main`)
 
 ## In una frase
@@ -17,11 +17,11 @@ Stiamo migrando a Godot un micro-prototipo Unreal gia validato da un playtest, *
 |---:|---|---|
 | 0 | Mettere in sicurezza il lavoro, installare la toolchain | **fatta** |
 | 1 | Analisi del progetto ereditato | **fatta** → `GODOT_MIGRATION_ANALYSIS.md` |
-| 2 | Architettura: conversione unita e assi, struttura | **fatta in parte**: conversione unita e assi centralizzata in `UnrealSpace` (D-023) e verificata visivamente; struttura cartelle creata. Resta da definire il formato delle risorse di tuning `.tres` |
+| 2 | Architettura: conversione unita e assi, struttura | **fatta**: conversione in `UnrealSpace` (D-023), tuning come `Resource` tipizzate in `.tres` (D-024) |
 | 3 | Scheletro: progetto, mappa input, scena avviabile | **fatta** |
 | 4 | Arena, illuminazione, camera isometrica | **fatta** |
-| 5 | Personaggio: movimento, mira, cambio dispositivo, dash | **prossima** |
-| 6 | Griglia terreno: stato, presentazione, collisioni | da fare |
+| 5 | Personaggio: movimento, mira, cambio dispositivo, dash | **fatta nel codice**, playtest del proprietario da fare |
+| 6 | Griglia terreno: stato, presentazione, collisioni | **prossima** |
 | 7 | Tool e anteprima | da fare |
 | 8 | Slice B: penalita velocita, hazard | da fare |
 | 9 | Verifica di parita, export, smoke test Steam Deck | da fare |
@@ -50,11 +50,23 @@ Verificato: `--check-only` su tutti gli script, run headless con marker `PROTOTY
 
 Non identico a Unreal, per scelta (R-G1): tonalita della luce e materiale griglia sono approssimati.
 
-## Prossimo passo concreto — Fase 5
+## Fase 5 — com'e stata chiusa
 
-**Obiettivo:** personaggio `CharacterBody3D` con movimento planare, mira (stick destro e deproiezione del mouse), cambio dispositivo e dash, a parita con `Source/Prototype01/Prototype01Character.cpp`.
+- `scenes/player/player.tscn` + `scripts/player/player_character.gd` (`PlayerCharacter`, `CharacterBody3D`): capsula 0,34/1,76 m, origine al centro capsula, graybox 0,45×0,9×0,9 con indicatore frontale ciano, senza ombre.
+- `scripts/player/planar_movement.gd` (`PlanarMovement`): porta letterale di `CalcVelocity` + `ApplyVelocityBraking` di Unreal (Walking). Anche il dash passa per la frenata, come in Unreal: velocita nominale 30 m/s, effettiva 21,66 m/s a 60 fps, ~3,97 m in 11 frame.
+- `scripts/player/player_tuning.gd` + `resources/tuning/player_default.tres`: tuning in unita Unreal (D-024).
+- Mira: stick destro con dead zone 0,2 e risposta proporzionale, oppure mouse deproiettato sul piano del personaggio; commutazione automatica (`PROTOTYPE01_AIM_DEVICE`). Stick in alto = sguardo verso l'alto dello schermo, come nella build Unreal dopo la correzione di playtest.
+- Dash a eventi (come il trigger `Started`), direzione dell'ultimo movimento valido, colori ciano/grigio/arancio, scala 1,15; durata e cooldown misurati dall'attivazione.
+- Interpolazione fisica attiva nel progetto; il rig camera legge la posizione interpolata.
+- Test automatici: `tests/player_tests.gd`, 24 controlli, tutti verdi.
 
-Note: il personaggio sostituisce `PlayerPlaceholder` come bersaglio del `CameraRig`; il diagnostico di movimento in `skeleton_probe.gd` va rimosso. Mesh graybox Unreal: cubo 0,9 (avanti) × 0,45 (lato) × 0,9 (alto), senza ombre, indicatore frontale. La parita di feel va playtestata dal proprietario.
+Non verificato da un agente: **il feel con controller e mouse reali**. Va playtestato dal proprietario: aprire il progetto ed eseguire (F5), provare movimento, mira con stick e mouse, cambio dispositivo, dash e cooldown, possibilmente confrontando con la build Unreal di riferimento.
+
+Differenze note rispetto a Unreal: dead zone del movimento radiale 0,2 di Godot invece di quella per asse di Unreal; il passo fisico e fisso a 60 Hz, quindi il dash non varia con il framerate (in Unreal si').
+
+## Prossimo passo concreto — Fase 6
+
+**Obiettivo:** griglia terreno (stato, presentazione, collisioni) a parita con `Prototype01TerrainGridActor`. Leggere `docs/TERRAIN_SYSTEM.md` e i sorgenti `Prototype01TerrainGrid*`. Il personaggio espone gia `speed_multiplier` per la penalita della Fase 8.
 
 ## Da non dimenticare
 

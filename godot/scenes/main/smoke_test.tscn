@@ -1,14 +1,9 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://scripts/services/skeleton_probe.gd" id="1_probe"]
 [ext_resource type="Script" path="res://scripts/arena/arena.gd" id="2_arena"]
 [ext_resource type="Script" path="res://scripts/camera/isometric_camera_rig.gd" id="3_camera"]
-
-[sub_resource type="BoxMesh" id="BoxMesh_player"]
-size = Vector3(0.45, 0.9, 0.9)
-
-[sub_resource type="StandardMaterial3D" id="Material_player"]
-albedo_color = Color(1, 0.35, 0.02, 1)
+[ext_resource type="PackedScene" path="res://scenes/player/player.tscn" id="4_player"]
 
 [node name="SmokeTest" type="Node3D"]
 script = ExtResource("1_probe")
@@ -16,14 +11,9 @@ script = ExtResource("1_probe")
 [node name="Arena" type="Node3D" parent="."]
 script = ExtResource("2_arena")
 
-[node name="PlayerPlaceholder" type="Node3D" parent="."]
+[node name="Player" parent="." instance=ExtResource("4_player")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.88, 0)
-
-[node name="Graybox" type="MeshInstance3D" parent="PlayerPlaceholder"]
-cast_shadow = 0
-mesh = SubResource("BoxMesh_player")
-material_override = SubResource("Material_player")
 
 [node name="CameraRig" type="Node3D" parent="." node_paths=PackedStringArray("target")]
 script = ExtResource("3_camera")
-target = NodePath("../PlayerPlaceholder")
+target = NodePath("../Player")

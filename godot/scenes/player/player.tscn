@@ -1,0 +1,30 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://scripts/player/player_character.gd" id="1_player"]
+[ext_resource type="Resource" path="res://resources/tuning/player_default.tres" id="2_tuning"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape_player"]
+radius = 0.34
+height = 1.76
+
+[sub_resource type="BoxMesh" id="BoxMesh_body"]
+size = Vector3(0.45, 0.9, 0.9)
+
+[sub_resource type="BoxMesh" id="BoxMesh_indicator"]
+size = Vector3(0.35, 0.35, 0.35)
+
+[node name="Player" type="CharacterBody3D"]
+script = ExtResource("1_player")
+tuning = ExtResource("2_tuning")
+
+[node name="Collision" type="CollisionShape3D" parent="."]
+shape = SubResource("CapsuleShape_player")
+
+[node name="Body" type="MeshInstance3D" parent="."]
+cast_shadow = 0
+mesh = SubResource("BoxMesh_body")
+
+[node name="FacingIndicator" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.25, -0.6)
+cast_shadow = 0
+mesh = SubResource("BoxMesh_indicator")
