@@ -73,7 +73,7 @@ Differenze note rispetto a Unreal: dead zone del movimento radiale 0,2 di Godot 
 
 Verificato: `tests/terrain_tests.gd`, 37 controlli verdi (regole, 49 celle senza duplicati dopo ricostruzioni, mappatura mondo→cella, collisione via raycast, rialzo rifiutato sotto il personaggio, personaggio bloccato da una cella Raised e libero quando torna Normal); `tests/player_tests.gd` sempre verde; cattura visiva con celle nei tre stati.
 
-Limite noto: modificare i valori dentro `terrain_default.tres` dall'Inspector non ricostruisce la griglia in tempo reale nell'editor; serve riaprire la scena o riassegnare la risorsa.
+Limite risolto il 3 ottobre 2026: arena, griglia (anche modificando `terrain_default.tres`) e camera si aggiornano subito quando si cambiano i parametri dall'Inspector (`tests/live_rebuild_tests.gd`).
 
 ## Fase 7 — com'e stata chiusa
 

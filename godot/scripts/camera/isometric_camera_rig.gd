@@ -8,11 +8,23 @@ extends Node3D
 ## al centro della capsula.
 
 ## Braccio Unreal 1500 uu.
-@export var arm_length_cm := 1500.0
+@export var arm_length_cm := 1500.0:
+	set(value):
+		arm_length_cm = value
+		if _camera != null:
+			_apply()
 ## Pitch Unreal del braccio, in gradi.
-@export var pitch_degrees := -55.0
+@export var pitch_degrees := -55.0:
+	set(value):
+		pitch_degrees = value
+		if _camera != null:
+			_apply()
 ## FOV orizzontale: default di UCameraComponent.
-@export var horizontal_fov_degrees := 90.0
+@export var horizontal_fov_degrees := 90.0:
+	set(value):
+		horizontal_fov_degrees = value
+		if _camera != null:
+			_apply()
 @export var target: Node3D
 
 var _camera: Camera3D

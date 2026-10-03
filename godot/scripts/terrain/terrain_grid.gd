@@ -29,9 +29,12 @@ const PREVIEW_LIFT_CM := 2.0
 
 @export var tuning: TerrainTuning:
 	set(value):
+		if tuning != null and tuning.changed.is_connected(_queue_rebuild):
+			tuning.changed.disconnect(_queue_rebuild)
 		tuning = value
-		if is_node_ready():
-			rebuild()
+		if tuning != null:
+			tuning.changed.connect(_queue_rebuild)
+		_queue_rebuild()
 
 var state := TerrainState.new()
 ## Cella sotto l'anteprima, (-1, -1) se nascosta.
@@ -46,6 +49,7 @@ var _meshes: Dictionary[int, BoxMesh] = {}
 var _shapes: Dictionary[int, BoxShape3D] = {}
 var _material: ShaderMaterial
 var _preview: MeshInstance3D
+var _rebuild_pending := false
 
 
 func _ready() -> void:
@@ -58,6 +62,7 @@ func _ready() -> void:
 
 ## Ricostruzione idempotente: rimuove sempre le celle generate in precedenza.
 func rebuild() -> void:
+	_rebuild_pending = false
 	_clamp_from_tuning()
 	for cell in _cells:
 		remove_child(cell)
@@ -122,6 +127,20 @@ func hide_preview() -> void:
 	preview_cell = Vector2i(-1, -1)
 	if _preview != null:
 		_preview.visible = false
+
+
+## Piu modifiche nello stesso frame producono una sola ricostruzione.
+func _queue_rebuild() -> void:
+	if not is_node_ready() or _rebuild_pending:
+		return
+	_rebuild_pending = true
+	_flush_rebuild.call_deferred()
+
+
+func _flush_rebuild() -> void:
+	# Una rebuild() diretta nel frattempo ha gia azzerato la richiesta.
+	if _rebuild_pending:
+		rebuild()
 
 
 ## Cella che contiene il punto mondo; usare state.is_valid() sul risultato.

@@ -5,18 +5,40 @@ extends Node3D
 ##
 ## Porta di APrototype01ArenaActor. I parametri sono quelli Unreal in centimetri,
 ## convertiti una sola volta tramite UnrealSpace. La costruzione gira anche
-## nell'editor (@tool), come OnConstruction in Unreal: editor e gioco coincidono.
+## nell'editor (@tool), come OnConstruction in Unreal: editor e gioco coincidono,
+## e si ripete a ogni modifica dei parametri dall'Inspector.
 ## Il piano superiore del pavimento e a y = 0 nello spazio locale.
 
 const GRID_SHADER := preload("res://resources/materials/world_grid.gdshader")
 
-@export var floor_size_cm := 6000.0
-@export var floor_thickness_cm := 40.0
-@export var pillar_height_cm := 500.0
-@export var pillar_size_cm := 150.0
-@export var pillar_inset_from_edge_cm := 350.0
-@export var direction_marker_height_cm := 700.0
-@export var direction_marker_size_cm := 200.0
+@export var floor_size_cm := 6000.0:
+	set(value):
+		floor_size_cm = value
+		_queue_rebuild()
+@export var floor_thickness_cm := 40.0:
+	set(value):
+		floor_thickness_cm = value
+		_queue_rebuild()
+@export var pillar_height_cm := 500.0:
+	set(value):
+		pillar_height_cm = value
+		_queue_rebuild()
+@export var pillar_size_cm := 150.0:
+	set(value):
+		pillar_size_cm = value
+		_queue_rebuild()
+@export var pillar_inset_from_edge_cm := 350.0:
+	set(value):
+		pillar_inset_from_edge_cm = value
+		_queue_rebuild()
+@export var direction_marker_height_cm := 700.0:
+	set(value):
+		direction_marker_height_cm = value
+		_queue_rebuild()
+@export var direction_marker_size_cm := 200.0:
+	set(value):
+		direction_marker_size_cm = value
+		_queue_rebuild()
 
 ## Colori lineari Unreal, nell'ordine dei pilastri (+X+Y, -X+Y, -X-Y, +X-Y in assi UE).
 const PILLAR_COLORS_LINEAR: Array[Color] = [
@@ -32,25 +54,50 @@ const SUN_PITCH_DEG := -45.0
 const SUN_YAW_DEG := -30.0
 const SUN_COLOR := Color8(255, 236, 209)
 
-var _built := false
+## Nodi generati: non hanno owner, quindi non vengono salvati nella scena.
+var _generated: Array[Node] = []
+var _rebuild_pending := false
 
 
 func _ready() -> void:
-	_build()
+	rebuild()
 	if not Engine.is_editor_hint():
+		print("PROTOTYPE01_EXPOSURE_READY")
 		var landmark := UnrealSpace.position(Vector3(0.0, _corner_offset_cm(), 0.0))
 		print("PROTOTYPE01_ARENA_READY floor=%.1fm pillars=4 landmark=(%.1f, %.1f)"
 			% [UnrealSpace.length(floor_size_cm), landmark.x, landmark.z])
+
+
+## Piu modifiche nello stesso frame producono una sola ricostruzione.
+func _queue_rebuild() -> void:
+	if not is_node_ready() or _rebuild_pending:
+		return
+	_rebuild_pending = true
+	_flush_rebuild.call_deferred()
+
+
+func _flush_rebuild() -> void:
+	# Una rebuild() diretta nel frattempo ha gia azzerato la richiesta.
+	if _rebuild_pending:
+		rebuild()
+
+
+func _add_generated(node: Node) -> void:
+	add_child(node)
+	_generated.append(node)
 
 
 func _corner_offset_cm() -> float:
 	return floor_size_cm * 0.5 - pillar_inset_from_edge_cm
 
 
-func _build() -> void:
-	if _built:
-		return
-	_built = true
+## Ricostruzione idempotente: rimuove sempre i nodi generati in precedenza.
+func rebuild() -> void:
+	_rebuild_pending = false
+	for node in _generated:
+		remove_child(node)
+		node.queue_free()
+	_generated.clear()
 
 	var floor_extent := UnrealSpace.length(floor_size_cm)
 	var floor_thickness := UnrealSpace.length(floor_thickness_cm)
@@ -86,7 +133,7 @@ func _add_box(node_name: String, size: Vector3, pos: Vector3, material: Material
 	var body := StaticBody3D.new()
 	body.name = node_name
 	body.position = pos
-	add_child(body)
+	_add_generated(body)
 
 	var mesh := BoxMesh.new()
 	mesh.size = size
@@ -120,7 +167,7 @@ func _add_sun() -> void:
 	sun.light_color = SUN_COLOR
 	sun.light_energy = 1.2
 	sun.shadow_enabled = true
-	add_child(sun)
+	_add_generated(sun)
 
 
 func _add_environment() -> void:
@@ -143,6 +190,4 @@ func _add_environment() -> void:
 	world_environment.name = "WorldEnvironment"
 	world_environment.environment = environment
 	world_environment.camera_attributes = camera_attributes
-	add_child(world_environment)
-	if not Engine.is_editor_hint():
-		print("PROTOTYPE01_EXPOSURE_READY")
+	_add_generated(world_environment)
