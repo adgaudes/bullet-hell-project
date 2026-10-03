@@ -1,0 +1,67 @@
+extends Node3D
+## Sonda dello scheletro di progetto (Fase 3 della migrazione).
+##
+## Non e gameplay: verifica che il progetto parta, che la mappa input sia
+## caricata e che la conversione di scala da Unreal sia quella attesa.
+## Verra rimossa quando il personaggio reale arrivera in Fase 5.
+
+## Fattore di conversione: Unreal lavora in centimetri, Godot in metri.
+const UNREAL_UNITS_TO_METERS := 0.01
+
+## Azioni semantiche attese. Il gameplay non deve mai leggere tasti fisici.
+const EXPECTED_ACTIONS: Array[StringName] = [
+	&"move_forward", &"move_back", &"move_left", &"move_right",
+	&"aim_up", &"aim_down", &"aim_left", &"aim_right",
+	&"dash", &"terrain_tool", &"terrain_mode", &"pause",
+]
+
+
+func _ready() -> void:
+	print("PROTOTYPE01_GODOT_SKELETON_READY")
+	_report_input_map()
+	_report_scale_reference()
+
+
+## Verifica che ogni azione esista e abbia almeno un evento associato.
+func _report_input_map() -> void:
+	var missing: Array[StringName] = []
+	var unbound: Array[StringName] = []
+	for action in EXPECTED_ACTIONS:
+		if not InputMap.has_action(action):
+			missing.append(action)
+		elif InputMap.action_get_events(action).is_empty():
+			unbound.append(action)
+
+	print("PROTOTYPE01_INPUT_ACTIONS total=%d missing=%d unbound=%d"
+		% [EXPECTED_ACTIONS.size(), missing.size(), unbound.size()])
+	if not missing.is_empty():
+		push_error("Azioni mancanti nella mappa input: %s" % str(missing))
+	if not unbound.is_empty():
+		push_warning("Azioni senza eventi: %s" % str(unbound))
+
+
+## Rende esplicita la conversione di scala, principale fonte di errore
+## della migrazione (vedi R-G6 in GODOT_MIGRATION_ANALYSIS.md).
+func _report_scale_reference() -> void:
+	var arena_side_m := 6000.0 * UNREAL_UNITS_TO_METERS
+	var camera_arm_m := 1500.0 * UNREAL_UNITS_TO_METERS
+	var cell_size_m := 240.0 * UNREAL_UNITS_TO_METERS
+	print("PROTOTYPE01_SCALE arena=%.1fm camera_arm=%.1fm cell=%.2fm"
+		% [arena_side_m, camera_arm_m, cell_size_m])
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	# Riscontro immediato quando il proprietario prova i controlli nell'editor.
+	if event.is_action_pressed(&"dash"):
+		print("PROTOTYPE01_ACTION dash")
+	elif event.is_action_pressed(&"terrain_tool"):
+		print("PROTOTYPE01_ACTION terrain_tool")
+	elif event.is_action_pressed(&"terrain_mode"):
+		print("PROTOTYPE01_ACTION terrain_mode")
+
+
+func _process(_delta: float) -> void:
+	var move := Input.get_vector(&"move_left", &"move_right", &"move_forward", &"move_back")
+	if not move.is_zero_approx():
+		# Solo diagnostica: il movimento reale arriva in Fase 5.
+		$PlayerPlaceholder.position += Vector3(move.x, 0.0, move.y) * 6.0 * _delta
