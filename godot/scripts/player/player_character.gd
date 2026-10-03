@@ -209,7 +209,12 @@ func _read_move_direction() -> Vector3:
 
 ## Stick destro senza dead zone di azione: la dead zone e applicata come in Unreal.
 func _raw_aim_input() -> Vector2:
-	return Input.get_vector(&"aim_left", &"aim_right", &"aim_up", &"aim_down", 0.0)
+	var aim_input := Input.get_vector(&"aim_left", &"aim_right", &"aim_up", &"aim_down", 0.0)
+	if GameSettings.invert_aim_x:
+		aim_input.x = -aim_input.x
+	if GameSettings.invert_aim_y:
+		aim_input.y = -aim_input.y
+	return aim_input
 
 
 func _set_aim_device(device: AimDevice) -> void:
