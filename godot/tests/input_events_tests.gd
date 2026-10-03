@@ -16,6 +16,7 @@ func _initialize() -> void:
 	# I valori attesi sono calcolati a 60 passi fisici al secondo; il progetto ne usa 120.
 	Engine.physics_ticks_per_second = 60
 	await _load_scene()
+	_test_ui_actions_have_joypad()
 	await _test_trigger_fires_once_per_pull()
 	await _reload_scene()
 	await _test_actions_ignore_modifiers()
@@ -60,6 +61,20 @@ func _test_trigger_fires_once_per_pull() -> void:
 		"rilascio e nuova pressione: secondo passo (got %d)" % changes[0])
 	_joy_motion(TRIGGER_RIGHT, 0.0)
 	await _frames(1)
+
+
+## I menu devono funzionare col solo controller: Godot 4.7 non lega A e B a
+## ui_accept e ui_cancel di default, il progetto si.
+func _test_ui_actions_have_joypad() -> void:
+	print("ui joypad bindings")
+	var a := InputEventJoypadButton.new()
+	a.button_index = JOY_BUTTON_A
+	a.pressed = true
+	var b := InputEventJoypadButton.new()
+	b.button_index = JOY_BUTTON_B
+	b.pressed = true
+	_check(a.is_action(&"ui_accept"), "A conferma nei menu (ui_accept)")
+	_check(b.is_action(&"ui_cancel"), "B torna indietro nei menu (ui_cancel)")
 
 
 ## In Unreal MapKey ignora i modificatori: Shift+Spazio fa comunque il dash.

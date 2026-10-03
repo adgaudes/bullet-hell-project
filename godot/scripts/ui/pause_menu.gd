@@ -55,7 +55,7 @@ func open_settings() -> void:
 
 
 func is_open() -> bool:
-	return _overlay.visible
+	return _overlay != null and _overlay.visible
 
 
 func focused_control() -> Control:

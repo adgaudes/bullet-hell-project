@@ -17,13 +17,13 @@ Principio guida:
 - Fase 0: quasi completata; repository remoto, LFS, clone pulito e ripristino sono verificati. Restano da formalizzare disponibilita settimanale e budget massimo.
 - Fase 1: in corso; one-page vision, promessa centrale e Concept Lock non sono approvati. Una proposta con visione draft, promesse alternative e domande prioritarie e in preparazione (`docs/VISION_PROPOSAL_2026-10-03.md`, branch `docs/vision-proposal`, da revisionare).
 - Fase 2: toolchain **Godot 4.7.2** verificata end-to-end (editor, test headless, export Windows/Linux, gate `tools/godot/Invoke-GodotChecks.ps1`). Resta il round-trip Blender → Godot (R-011).
-- Fase 3: **fase attiva**. Migrazione a Godot completata a parita (feel "quasi uguale", preset **Scattante** scelto come base, fisica e rendering a 120). Slice A e B portate e testate in automatico. In corso il **Companion Slice** (primo compagno macchina, `docs/COMPANION_SLICE_SPEC.md`, branch `feature/companion-prototype`) e, delegati a Codex, **menu Impostazioni e pausa** (branch `feature/settings-pause`).
+- Fase 3: **fase attiva**. Migrazione a Godot completata a parita (feel "quasi uguale", preset **Scattante** scelto come base, fisica e rendering a 120). Slice A e B portate e testate in automatico. Fatti e integrati il 3 ottobre 2026: **Companion Slice** (primo compagno macchina, `docs/COMPANION_SLICE_SPEC.md`, ora scena principale) e **menu pausa e Impostazioni** (grafica e inversione assi, salvati su disco; Esc o Start).
 - Fasi 4-14: non iniziate formalmente. Esperimenti tecnici anticipati non equivalgono al superamento dei relativi gate.
 
 **Prossimo passo:**
 
-1. Integrare Companion Slice e menu Impostazioni/pausa dopo verifica, poi playtest del proprietario sul Companion Slice (domande nella specifica).
-2. Revisione della proposta di visione con il proprietario per chiudere la Fase 1.
+1. **Playtest del proprietario sul Companion Slice** (domande in `docs/COMPANION_SLICE_SPEC.md`): Continua / Modifica / Scarta.
+2. **Visione:** il proprietario risponde alle 8 domande di `docs/VISION_PROPOSAL_2026-10-03.md` per chiudere la Fase 1.
 3. Ancora aperti dal proprietario: Test A percettivo e test su Steam Deck (`docs/PLAYTESTS/GODOT_PARITY_PLAYTEST.md`).
 
 Fonti operative: `DECISIONS.md`, `RISK_REGISTER.md` e i protocolli in `PLAYTESTS/`.

@@ -49,9 +49,15 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func cycle_vsync() -> void:
-	var current := VSYNC_MODES.find(GameSettings.vsync_mode)
+	var current := VSYNC_MODES.find(DisplayServer.window_get_vsync_mode())
 	var next := posmod(current + 1, VSYNC_MODES.size())
-	GameSettings.set_vsync_mode(VSYNC_MODES[next])
+	# Passa da GameSettings (salva la scelta) se l'autoload c'e; a runtime, non per nome
+	# globale, perche i test precaricano le scene prima degli autoload.
+	var settings := get_node_or_null(^"/root/GameSettings")
+	if settings != null:
+		settings.set_vsync_mode(VSYNC_MODES[next])
+	else:
+		DisplayServer.window_set_vsync_mode(VSYNC_MODES[next])
 	# Il driver puo non supportare la modalita richiesta: si mostra quella effettiva.
 	_show("VSync: %s   F2 / croce sinistra" % _vsync_name())
 	print("PROTOTYPE01_VSYNC %s" % _vsync_name())

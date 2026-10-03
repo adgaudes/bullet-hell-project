@@ -210,10 +210,14 @@ func _read_move_direction() -> Vector3:
 ## Stick destro senza dead zone di azione: la dead zone e applicata come in Unreal.
 func _raw_aim_input() -> Vector2:
 	var aim_input := Input.get_vector(&"aim_left", &"aim_right", &"aim_up", &"aim_down", 0.0)
-	if GameSettings.invert_aim_x:
-		aim_input.x = -aim_input.x
-	if GameSettings.invert_aim_y:
-		aim_input.y = -aim_input.y
+	# Autoload cercato a runtime: i test precaricano le scene prima che gli
+	# autoload esistano, e il nome globale non compilerebbe.
+	var settings := get_node_or_null(^"/root/GameSettings")
+	if settings != null:
+		if settings.invert_aim_x:
+			aim_input.x = -aim_input.x
+		if settings.invert_aim_y:
+			aim_input.y = -aim_input.y
 	return aim_input
 
 

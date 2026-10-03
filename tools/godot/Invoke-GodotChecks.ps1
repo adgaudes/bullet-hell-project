@@ -35,15 +35,27 @@ $expectedMarkers = @(
     "PROTOTYPE01_TERRAIN_SLICE_B_READY"
 )
 
-function Invoke-Captured([string]$file, [string[]]$arguments) {
-    # In PowerShell 5.1 lo stderr dei nativi arriva come ErrorRecord: con Stop
-    # interromperebbe lo script, quindi si converte tutto in testo.
-    $previous = $ErrorActionPreference
-    $ErrorActionPreference = "Continue"
-    $output = & $file @arguments 2>&1 | ForEach-Object { "$_" }
-    $code = $LASTEXITCODE
-    $ErrorActionPreference = $previous
-    return @{ Code = $code; Text = ($output -join "`n") }
+function Invoke-Captured([string]$file, [string[]]$arguments, [int]$timeoutSeconds = 300) {
+    # Processo separato con timeout: un test che non chiama quit() non deve
+    # bloccare il gate per sempre (successo davvero, vedi GODOT_WORKFLOW.md).
+    $outFile = [System.IO.Path]::GetTempFileName()
+    $errFile = [System.IO.Path]::GetTempFileName()
+    $quoted = $arguments | ForEach-Object { if ($_ -match '\s') { '"' + $_ + '"' } else { $_ } }
+    $process = Start-Process -FilePath $file -ArgumentList $quoted -NoNewWindow -PassThru `
+        -RedirectStandardOutput $outFile -RedirectStandardError $errFile
+    # PowerShell 5.1: senza aprire subito l'handle, ExitCode resta vuoto dopo l'uscita.
+    $null = $process.Handle
+    $finished = $process.WaitForExit($timeoutSeconds * 1000)
+    if (-not $finished) {
+        # Il launcher godot_console avvia un processo figlio: chiudere l'albero intero.
+        & taskkill /F /T /PID $process.Id 2>&1 | Out-Null
+    }
+    $text = ((Get-Content $outFile -Raw) + "`n" + (Get-Content $errFile -Raw))
+    Remove-Item $outFile, $errFile -ErrorAction SilentlyContinue
+    if (-not $finished) {
+        return @{ Code = 124; Text = "TIMEOUT dopo $timeoutSeconds s`n$text" }
+    }
+    return @{ Code = $process.ExitCode; Text = $text }
 }
 
 function Test-Markers([string]$text) {
@@ -81,8 +93,8 @@ Get-ChildItem -Path (Join-Path $project "tests") -Filter *.gd | ForEach-Object {
     $summary = ($result.Text -split "`n" | Where-Object { $_ -match "PROTOTYPE01_TESTS" }) -join ""
     if ($result.Code -ne 0 -or -not $summary.Contains("PASS")) {
         $failures++
-        Write-Host "  FAIL $resPath"
-        $result.Text -split "`n" | Where-Object { $_ -match "FAIL|ERROR" } | ForEach-Object { Write-Host "       $_" }
+        Write-Host "  FAIL $resPath (exit $($result.Code))"
+        $result.Text -split "`n" | Where-Object { $_ -match "FAIL|SCRIPT ERROR|TIMEOUT" } | ForEach-Object { Write-Host "       $_" }
     } else {
         Write-Host "  ok   $resPath $summary"
     }

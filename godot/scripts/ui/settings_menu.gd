@@ -12,6 +12,7 @@ signal back_requested
 @onready var _invert_x: CheckButton = %InvertX
 @onready var _invert_y: CheckButton = %InvertY
 @onready var _back_button: Button = %BackButton
+@onready var _settings: GameSettingsService = get_node(^"/root/GameSettings")
 
 const RENDER_SCALES: Array[float] = [0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
 
@@ -23,8 +24,8 @@ func _ready() -> void:
 	_msaa_option.item_selected.connect(_on_msaa_selected)
 	_window_option.item_selected.connect(_on_window_selected)
 	_scale_option.item_selected.connect(_on_scale_selected)
-	_invert_x.toggled.connect(GameSettings.set_invert_aim_x)
-	_invert_y.toggled.connect(GameSettings.set_invert_aim_y)
+	_invert_x.toggled.connect(_settings.set_invert_aim_x)
+	_invert_y.toggled.connect(_settings.set_invert_aim_y)
 	_back_button.pressed.connect(func(): back_requested.emit())
 
 
@@ -53,33 +54,33 @@ func _add_items(option: OptionButton, labels: Array[String]) -> void:
 
 
 func _sync_from_settings() -> void:
-	_fps_option.select(GameSettings.FPS_CAPS.find(GameSettings.fps_cap))
-	_vsync_option.select(GameSettings.VSYNC_MODES.find(GameSettings.vsync_mode))
-	_msaa_option.select(GameSettings.MSAA_MODES.find(GameSettings.msaa_3d))
-	_window_option.select(GameSettings.WINDOW_MODES.find(GameSettings.window_mode))
-	_scale_option.select(_closest_scale_index(GameSettings.render_scale))
-	_invert_x.set_pressed_no_signal(GameSettings.invert_aim_x)
-	_invert_y.set_pressed_no_signal(GameSettings.invert_aim_y)
+	_fps_option.select(GameSettingsService.FPS_CAPS.find(_settings.fps_cap))
+	_vsync_option.select(GameSettingsService.VSYNC_MODES.find(_settings.vsync_mode))
+	_msaa_option.select(GameSettingsService.MSAA_MODES.find(_settings.msaa_3d))
+	_window_option.select(GameSettingsService.WINDOW_MODES.find(_settings.window_mode))
+	_scale_option.select(_closest_scale_index(_settings.render_scale))
+	_invert_x.set_pressed_no_signal(_settings.invert_aim_x)
+	_invert_y.set_pressed_no_signal(_settings.invert_aim_y)
 
 
 func _on_fps_selected(index: int) -> void:
-	GameSettings.set_fps_cap(GameSettings.FPS_CAPS[index])
+	_settings.set_fps_cap(GameSettingsService.FPS_CAPS[index])
 
 
 func _on_vsync_selected(index: int) -> void:
-	GameSettings.set_vsync_mode(GameSettings.VSYNC_MODES[index])
+	_settings.set_vsync_mode(GameSettingsService.VSYNC_MODES[index])
 
 
 func _on_msaa_selected(index: int) -> void:
-	GameSettings.set_msaa_3d(GameSettings.MSAA_MODES[index])
+	_settings.set_msaa_3d(GameSettingsService.MSAA_MODES[index])
 
 
 func _on_window_selected(index: int) -> void:
-	GameSettings.set_window_mode(GameSettings.WINDOW_MODES[index])
+	_settings.set_window_mode(GameSettingsService.WINDOW_MODES[index])
 
 
 func _on_scale_selected(index: int) -> void:
-	GameSettings.set_render_scale(RENDER_SCALES[index])
+	_settings.set_render_scale(RENDER_SCALES[index])
 
 
 func _closest_scale_index(value: float) -> int:

@@ -18,6 +18,11 @@ func _initialize() -> void:
 	quit(1 if _failures > 0 else 0)
 
 
+## Autoload a runtime: nel test runner il nome globale non esiste ancora in compilazione.
+func _settings() -> Node:
+	return root.get_node("GameSettings")
+
+
 func _check(condition: bool, label: String) -> void:
 	if condition:
 		print("  ok   %s" % label)
@@ -47,7 +52,7 @@ func _test_apply() -> void:
 	_check(Engine.max_fps == 90, "applica Engine.max_fps")
 	_check(root.msaa_3d == Viewport.MSAA_2X, "applica MSAA al viewport")
 	_check(is_equal_approx(root.scaling_3d_scale, 0.7), "applica scala 3D al viewport")
-	GameSettings.apply_settings(root)
+	_settings().apply_settings(root)
 	settings.free()
 
 
@@ -101,7 +106,9 @@ func _test_pause_and_focus() -> void:
 	root.add_child(player)
 	pause_menu.pause_game()
 	await process_frame
+	# Pressione e rilascio in frame distinti, come un dito reale.
 	_send_joypad_button(JOY_BUTTON_A, true)
+	await process_frame
 	_send_joypad_button(JOY_BUTTON_A, false)
 	await process_frame
 	await physics_frame
@@ -114,25 +121,25 @@ func _test_aim_inversion() -> void:
 	print("aim inversion")
 	var player: PlayerCharacter = PlayerScene.instantiate()
 	root.add_child(player)
-	GameSettings.invert_aim_x = false
-	GameSettings.invert_aim_y = false
+	_settings().invert_aim_x = false
+	_settings().invert_aim_y = false
 	_send_joypad_axis(JOY_AXIS_RIGHT_X, 0.8)
 	await process_frame
 	var normal_x: Vector2 = player.call("_raw_aim_input")
-	GameSettings.invert_aim_x = true
+	_settings().invert_aim_x = true
 	var inverted_x: Vector2 = player.call("_raw_aim_input")
 	_check(normal_x.x > 0.0 and is_equal_approx(inverted_x.x, -normal_x.x), "inversione X ribalta lo stick destro")
 	_send_joypad_axis(JOY_AXIS_RIGHT_X, 0.0)
 	_send_joypad_axis(JOY_AXIS_RIGHT_Y, 0.8)
 	await process_frame
-	GameSettings.invert_aim_y = false
+	_settings().invert_aim_y = false
 	var normal_y: Vector2 = player.call("_raw_aim_input")
-	GameSettings.invert_aim_y = true
+	_settings().invert_aim_y = true
 	var inverted_y: Vector2 = player.call("_raw_aim_input")
 	_check(normal_y.y > 0.0 and is_equal_approx(inverted_y.y, -normal_y.y), "inversione Y ribalta lo stick destro")
 	_send_joypad_axis(JOY_AXIS_RIGHT_Y, 0.0)
-	GameSettings.invert_aim_x = false
-	GameSettings.invert_aim_y = false
+	_settings().invert_aim_x = false
+	_settings().invert_aim_y = false
 	player.queue_free()
 	await process_frame
 

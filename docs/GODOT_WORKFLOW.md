@@ -88,6 +88,12 @@ Trappola verificata: nella numerazione Godot dei pulsanti joypad il **4 e Back/V
 
 Trappola: il progetto usa 120 passi fisici al secondo; i test fissano `Engine.physics_ticks_per_second = 60` in `_initialize` perche i valori attesi sono calcolati a 60 Hz.
 
+Trappola verificata: **il nome globale di un autoload non esiste** in `--check-only` ne nei test con `--script` (le scene precaricate dallo script di test si compilano prima che gli autoload siano registrati). Uno script che scrive `GameSettings.x` non compila e il test resta appeso senza `quit()`. Raggiungere l'autoload a runtime con `get_node("/root/GameSettings")`, tipizzato con la `class_name` `GameSettingsService`.
+
+Trappola verificata: in Godot 4.7 le azioni predefinite **`ui_accept` e `ui_cancel` non hanno pulsanti joypad**. Il progetto le ridefinisce con A e B: senza, i menu non si confermano col controller.
+
+Il gate (`Invoke-GodotChecks.ps1`) ha un timeout di 300 s per processo: un test appeso risulta FAIL con exit 124 invece di bloccare tutto.
+
 Per l'input nei test: `Input.action_press()` per azioni tenute; per azioni a evento (dash) usare `Input.parse_input_event()` con `InputEventAction`, perche `is_action_just_pressed` in `_physics_process` puo perdere una pressione simulata.
 
 ### Verifica visiva

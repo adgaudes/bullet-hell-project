@@ -1,5 +1,9 @@
+class_name GameSettingsService
 extends Node
 ## Impostazioni persistenti del gioco e loro applicazione ai servizi Godot.
+## Registrato come autoload `GameSettings`; altri script lo raggiungono con
+## `get_node("/root/GameSettings")` tipizzato `GameSettingsService`, perche il nome
+## globale dell'autoload non esiste in --check-only ne nei test.
 
 signal changed
 
