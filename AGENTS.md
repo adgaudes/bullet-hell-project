@@ -9,12 +9,12 @@ Il proprietario sviluppa tramite AI-assisted development e ha budget iniziale ri
 ## Stato corrente essenziale
 
 - **Engine: Godot 4.7.2 stable, edizione standard/GDScript.** Migrazione dal prototipo Unreal Engine 5.8.2 approvata il 3 ottobre 2026 e completata nel codice il giorno stesso (Fasi 0-9 del piano in `docs/GODOT_MIGRATION_ANALYSIS.md`); restano i playtest del proprietario e la Fase 10. Stato vivo: `docs/MIGRATION_STATUS.md`.
-- Il progetto Unreal resta **intatto e consultabile** in `Source/` e `Content/` come riferimento. La sua archiviazione o rimozione e una decisione del proprietario (Fase 10): nessuna rimozione senza conferma esplicita.
+- Il progetto Unreal e stato rimosso da `main` il 3 ottobre 2026 su decisione del proprietario (Fase 10). Resta consultabile nel tag Git `unreal-prototype-final` (`git show unreal-prototype-final:Source/Prototype01/<file>`).
 - Fase di prodotto: Fase 3 della roadmap, micro-prototipi. Character Feel v1 validato; Terrain Slice A ha superato il playtest con esito `Continua`; Terrain Slice B esiste nel working tree ma **non e ancora committato**.
 - Canale di lavoro: **filesystem + CLI**, verificato. Dettagli operativi obbligatori in `docs/GODOT_WORKFLOW.md`.
 - MCP di terze parti: valutati e **rimandati**, con trigger definiti in `docs/GODOT_WORKFLOW.md`.
 - Blender 5.2.2, VS Code, Git e Git LFS restano invariati. La toolchain C++/Visual Studio non serve al progetto Godot; resta finche esiste il progetto Unreal.
-- Target: single-player Windows su Steam; controller primario con piena parita tastiera/mouse; Steam Deck LCD. Godot esporta nativamente per Linux: build Windows (Proton) e Linux nativa sono entrambe pronte, la scelta per Steam Deck e aperta.
+- Target: single-player Windows su Steam; controller primario con piena parita tastiera/mouse; Steam Deck LCD. **La build Windows e la build primaria**, anche per Steam Deck via Proton (D-026); la build Linux nativa resta esportabile come alternativa.
 
 ## Direzione creativa
 

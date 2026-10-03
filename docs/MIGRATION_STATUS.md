@@ -4,7 +4,7 @@
 
 **Ultimo aggiornamento:** 3 ottobre 2026
 **Engine:** Godot 4.7.2 stable, edizione standard/GDScript
-**Fase corrente:** 10 avviata (documenti aggiornati, branch integrato); **in attesa del proprietario**: playtest Fase 5 (feel), Test A Fase 7, Steam Deck, decisione sul progetto Unreal
+**Fase corrente:** 10 quasi chiusa (codice Unreal rimosso, tag `unreal-prototype-final`); **in attesa del proprietario**: playtest di parita (feel, Test A, Steam Deck), poi eliminazione di `LocalBuilds/Prototype01-TerrainGrid-Win64-v1`
 **Branch di lavoro:** `main` (`feature/godot-migration-foundation` integrato in fast-forward e pubblicato su `origin` il 3 ottobre 2026)
 
 ## In una frase
@@ -131,6 +131,44 @@ Fatto il 3 ottobre 2026:
 - Documenti vivi aggiornati a Godot: `README.md`, `AGENTS.md`, `CLAUDE.md`, `PROJECT_ROADMAP.md` (tabella strumenti), `PLATFORM_AND_INPUT.md` (implementazione input), `PROJECT_BRIEF.md`, `TOOLS_AND_LICENSES.md`, `RISK_REGISTER.md` (R-011), `AI_HANDOFF_PROTOCOL.md`, `TERRAIN_SYSTEM.md`, `ART_DIRECTION.md`. Nota di aggiornamento in `PROTOTYPE_01_SPEC.md` e `BLENDER_UNREAL_ROUNDTRIP_SPEC.md`.
 - Lasciati invariati perche storici: `UNREAL_EDITOR_WORKFLOW.md`, `SMOKE_TEST_*.md`, `INPUT_MOVEMENT_SLICE_*.md`, `STORAGE_AUDIT_*.md`, i playtest, `DECISIONS.md` (le decisioni superate restano con il loro stato).
 
+### Decisioni del proprietario sul progetto Unreal (3 ottobre 2026)
+
+- **Codice Unreal rimosso da `main`** (`Source/`, `Content/`, `Config/`, `Prototype01.uproject`, `Scripts/CreateSmokeMap.py`), dopo il tag annotato `unreal-prototype-final` pubblicato su `origin`. Per leggere un sorgente: `git show unreal-prototype-final:Source/Prototype01/Prototype01Character.cpp`.
+- **`LocalBuilds/Prototype01-CharacterFeel-Win64-v4` eliminata.** `Prototype01-TerrainGrid-Win64-v1` va eliminata **dopo il playtest di parita**, dove serve da confronto.
+- **Unreal Engine resta installato.** Visual Studio Community 2026 disinstallato su richiesta del proprietario.
+- **Build Windows primaria** (D-026), anche per Steam Deck via Proton.
+- Le regole `.gitignore` per i residui Unreal restano: innocue, e utili finche UE e installato.
+- `dev/` e `output/`: nessuna decisione ancora.
+
+## Review indipendente del 3 ottobre 2026
+
+Review del codice Godot fatta da un agente separato. Corretto:
+
+- **grilletto destro**: applicava il tool piu volte per pressione (ogni variazione analogica era un nuovo comando); ora una volta per pressione, come `Started`. Bug reale su controller e Deck, invisibile ai test basati su azioni simulate;
+- **modificatori**: Shift/Ctrl bloccavano dash e tool; ora ignorati come in Unreal;
+- **soglia dello stick di movimento**: 0,5 sul modulo grezzo come il trigger `Down` di `IA_Move` (prima 0,2 con riscalatura);
+- comandi del tool eseguiti nel passo fisico; corsia dell'hazard ricalcolata quando la griglia si ricostruisce e corretta su griglia scalata; il rig camera non riscrive piu la propria trasformazione nell'editor.
+
+Nuova suite `tests/input_events_tests.gd`. Build Windows e Linux riesportate dopo le correzioni.
+
+Non corretto, annotato: la mira mouse usa la posizione fisica del personaggio e la camera interpolata (scarto massimo di un passo, simile a Unreal).
+
+## Cosa serve dal proprietario
+
+Protocollo unico con tabelle da compilare: **`docs/PLAYTESTS/GODOT_PARITY_PLAYTEST.md`**.
+
+1. **Feel del personaggio** (Fase 5): F5 dall'editor, oppure la build Windows.
+2. **Test A percettivo** (Fase 7): `docs/PLAYTESTS/TERRAIN_GRID_SLICE_A_2026-09-22.md`.
+3. **Steam Deck**: scegliere Proton (build Windows) o Linux nativa (`Prototype01.x86_64`, decisione aperta) e ripetere il Test B dello stesso documento.
+
+## Fase 10 — stato
+
+Fatto il 3 ottobre 2026:
+
+- `feature/godot-migration-foundation` integrato in `main` in fast-forward e pubblicato su `origin` su richiesta del proprietario.
+- Documenti vivi aggiornati a Godot: `README.md`, `AGENTS.md`, `CLAUDE.md`, `PROJECT_ROADMAP.md` (tabella strumenti), `PLATFORM_AND_INPUT.md` (implementazione input), `PROJECT_BRIEF.md`, `TOOLS_AND_LICENSES.md`, `RISK_REGISTER.md` (R-011), `AI_HANDOFF_PROTOCOL.md`, `TERRAIN_SYSTEM.md`, `ART_DIRECTION.md`. Nota di aggiornamento in `PROTOTYPE_01_SPEC.md` e `BLENDER_UNREAL_ROUNDTRIP_SPEC.md`.
+- Lasciati invariati perche storici: `UNREAL_EDITOR_WORKFLOW.md`, `SMOKE_TEST_*.md`, `INPUT_MOVEMENT_SLICE_*.md`, `STORAGE_AUDIT_*.md`, i playtest, `DECISIONS.md` (le decisioni superate restano con il loro stato).
+
 ### Proposta sul progetto Unreal (da decidere)
 
 Inventario: `Source/` (94 KB, 15 file), `Content/` (400 KB, la sola mappa), `Config/` (4 file), `Prototype01.uproject`, `Scripts/CreateSmokeMap.py`: meno di 1 MB versionato. Fuori da Git: `LocalBuilds/Prototype01-TerrainGrid-Win64-v1` (872 MB), `LocalBuilds/Prototype01-CharacterFeel-Win64-v4` (871 MB), `Artifacts/Playtests` (274 MB, da conservare comunque).
@@ -148,7 +186,7 @@ Nessuno di questi passi e stato eseguito.
 
 - **Non estendere il progetto Unreal.** E materiale di riferimento da leggere, non da far evolvere.
 - **Il riferimento Unreal si legge dal codice sorgente**, non avviando editor o build: il proprietario non vuole che si apra Unreal.
-- **Non cancellare `Source/`, `Content/`, `Config/`, `Prototype01.uproject` senza conferma esplicita del proprietario**: vedi la proposta della Fase 10.
+- **Il codice Unreal non e piu in `main`**: si legge dal tag `unreal-prototype-final`, non va ripristinato nel working tree.
 - **Quando arrivera la UI:** l'azione predefinita `ui_accept` usa Spazio e il pulsante A, gli stessi del dash. I Control di gioco vanno tenuti con `focus_mode = NONE` oppure `ui_accept` va rimappata, o un Control con focus si prendera il dash.
 - **Non cancellare `Artifacts/Playtests/`**: unica evidenza con hash del playtest Slice A superato, non ricostruibile dopo la rimozione di Unreal.
 - La parita di feel del personaggio (Fase 5) **va playtestata dal proprietario**, non dichiarata da un agente.
@@ -181,7 +219,5 @@ Usare sempre `godot_console`, mai `godot`, per i comandi non interattivi: il sec
 ## Decisioni aperte
 
 - formato delle risorse di tuning `.tres` (chiusura della Fase 2);
-- destino del progetto Unreal dopo la Fase 9: archiviare o rimuovere;
 - `LocalBuilds/` Unreal (1,74 GB), `dev/` e `output/`: da conservare, ignorare o rimuovere (proposta Fase 10);
-- build Linux nativa o Windows via Proton per Steam Deck: entrambe esportate, da provare sul Deck;
 - se e quando installare un MCP Godot: trigger in `GODOT_WORKFLOW.md`.

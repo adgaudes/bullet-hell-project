@@ -16,7 +16,7 @@ Non e un test di divertimento ne di grafica: la resa e volutamente graybox e la 
 |---|---|---|
 | Godot Windows | `LocalBuilds/Prototype01-Godot-Win64/Prototype01.exe` | 109 MB, file unico, smoke test superato |
 | Godot Linux | `LocalBuilds/Prototype01-Godot-Linux/Prototype01.x86_64` | 74 MB, file unico, **mai eseguita**: il Deck e il primo sistema Linux |
-| Unreal di riferimento | `LocalBuilds/Prototype01-TerrainGrid-Win64-v1/Windows/Prototype01.exe` | per il confronto A/B |
+| Unreal di riferimento | `LocalBuilds/Prototype01-TerrainGrid-Win64-v1/Windows/Prototype01.exe` | per il confronto A/B; da eliminare dopo questo playtest |
 
 In alternativa alla build: aprire `godot/project.godot` nell'editor e premere F5.
 
@@ -54,10 +54,10 @@ Ripetere i passi 3-9 del Test A di `TERRAIN_GRID_SLICE_A_2026-09-22.md` sulla bu
 
 ## Parte 3 — Steam Deck LCD, 10-15 minuti
 
-Scegliere una delle due strade (la scelta e una decisione aperta: annotare quale si e usata).
+Strada primaria: **Windows via Proton** (D-026). La Linux nativa e un'alternativa da provare solo se Proton da problemi.
 
-- **Linux nativa**: copiare `Prototype01.x86_64` sul Deck (Desktop Mode, chiavetta o rete), renderlo eseguibile (Proprieta → Permessi, oppure `chmod +x`), aggiungerlo a Steam come gioco non Steam e avviarlo in Game Mode **senza** forzare Proton.
-- **Windows via Proton**: come per la Slice A, con `Prototype01.exe` e Steam Play attivo.
+- **Linux nativa (alternativa)**: copiare `Prototype01.x86_64` sul Deck (Desktop Mode, chiavetta o rete), renderlo eseguibile (Proprieta → Permessi, oppure `chmod +x`), aggiungerlo a Steam come gioco non Steam e avviarlo in Game Mode **senza** forzare Proton.
+- **Windows via Proton (primaria)**: come per la Slice A, con `Prototype01.exe` e Steam Play attivo.
 
 Per distribuzioni ripetute vale la procedura SteamOS Devkit Client descritta nel documento della Slice A: va installato solo con conferma del proprietario.
 

@@ -2,7 +2,7 @@
 
 ## Scopo
 
-Questo documento registra gli strumenti rilevati, approvati, proposti o rimandati. Le versioni rilevate descrivono il computer di sviluppo al 22 settembre 2026; prima di aggiornare un componente critico verificare la compatibilita con l'engine. **Dal 3 ottobre 2026 l'engine e Godot 4.7.2 (D-019)**: le voci Unreal e Visual Studio restano finche esiste il progetto Unreal di riferimento (decisione della Fase 10).
+Questo documento registra gli strumenti rilevati, approvati, proposti o rimandati. Le versioni rilevate descrivono il computer di sviluppo al 22 settembre 2026; prima di aggiornare un componente critico verificare la compatibilita con l'engine. **Dal 3 ottobre 2026 l'engine e Godot 4.7.2 (D-019)**: il codice Unreal e stato rimosso da `main` (tag `unreal-prototype-final`), Unreal Engine resta installato e Visual Studio e stato disinstallato (D-027).
 
 Stati usati:
 
@@ -31,7 +31,7 @@ Stati usati:
 | Git LFS | 3.7.1 | Asset binari | Installato e configurato nel repository |
 | Git Credential Manager | 2.9.1 | Autenticazione remota | Installato |
 | Visual Studio Community 2022 | Rimossa il 22 settembre 2026 | Precedente toolchain UE 5.6 | Non piu necessaria; rimozione verificata con `vswhere` e build successiva |
-| Visual Studio Community 2026 | 18.10.1, MSVC 14.51.36231 | Compilazione e debugging UE 5.8 C++ | Toolchain primaria, completa e verificata con build Editor/Game, cook e packaging. UE avvisa che MSVC 14.51 e piu recente della 14.50 preferita, senza errori rilevati nel progetto |
+| Visual Studio Community 2026 | Disinstallato il 3 ottobre 2026 su richiesta del proprietario | Toolchain C++ del prototipo Unreal | Non serve al progetto Godot. Verificato: `vswhere` non rileva istanze, cartella di installazione assente. Senza Visual Studio il codice C++ Unreal (tag `unreal-prototype-final`) non e piu compilabile su questo PC; Unreal Engine resta installato |
 | IncrediBuild | Rimosso il 22 settembre 2026 | Accelerazione distribuita di build, shader e cook | Non necessario nella fase corrente con un solo PC e poco codice; riproporre solo se tempi misurati diventano un collo di bottiglia |
 | GitHub CLI | Non installato/rilevato, verifica del 21 settembre 2026 | Issue, pull request e automazione GitHub | Opzionale; non serve ora perche Git e Git Credential Manager coprono il flusso corrente |
 

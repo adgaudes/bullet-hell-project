@@ -8,7 +8,7 @@ Documento di riferimento per la Fase 1 ("Analisi del software esistente") del pi
 
 Il progetto ereditato e un micro-prototipo Unreal Engine 5.8.2 in C++ puro, fermo alla Fase 3 della roadmap. Non e un gioco: e un graybox tecnico che verifica una sola domanda di design, se modificare il terreno a celle da visuale isometrica sia leggibile e preciso con controller e mouse.
 
-- **Codice:** 7 classi C++, circa 1.350 righe, in `Source/Prototype01/`.
+- **Codice:** 7 classi C++, circa 1.350 righe, in `Source/Prototype01/` (rimosso da `main` il 3 ottobre 2026, consultabile nel tag Git `unreal-prototype-final` (`git show unreal-prototype-final:Source/Prototype01/<file>`)).
 - **Contenuto:** **un solo asset binario**, `Content/Maps/SmokeTest.umap`. Nessuna mesh, texture, materiale, audio, font, Blueprint o widget di progetto.
 - **Documentazione:** 24 documenti in `docs/`, circa 4.000 righe. E l'asset piu prezioso del progetto e **non dipende dall'engine**: sopravvive integralmente.
 - **Resto del repository:** circa 9,5 GB fra `Binaries/`, `DerivedDataCache/`, `Intermediate/`, `Saved/`, `LocalBuilds/`, tutto rigenerabile e gia escluso da Git.
