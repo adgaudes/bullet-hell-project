@@ -1,0 +1,205 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/pause_menu.gd" id="1_pause"]
+[ext_resource type="Script" path="res://scripts/ui/settings_menu.gd" id="2_settings"]
+
+[node name="PauseMenu" type="CanvasLayer"]
+layer = 100
+process_mode = 3
+script = ExtResource("1_pause")
+
+[node name="Overlay" type="ColorRect" parent="."]
+unique_name_in_owner = true
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+color = Color(0.02, 0.025, 0.035, 0.88)
+
+[node name="Center" type="CenterContainer" parent="Overlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="PausePanel" type="PanelContainer" parent="Overlay/Center"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(420, 0)
+layout_mode = 2
+
+[node name="Margin" type="MarginContainer" parent="Overlay/Center/PausePanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 36
+theme_override_constants/margin_top = 32
+theme_override_constants/margin_right = 36
+theme_override_constants/margin_bottom = 32
+
+[node name="Buttons" type="VBoxContainer" parent="Overlay/Center/PausePanel/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="Title" type="Label" parent="Overlay/Center/PausePanel/Margin/Buttons"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 32
+text = "PAUSA"
+horizontal_alignment = 1
+
+[node name="ResumeButton" type="Button" parent="Overlay/Center/PausePanel/Margin/Buttons"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 52)
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "Riprendi"
+
+[node name="SettingsButton" type="Button" parent="Overlay/Center/PausePanel/Margin/Buttons"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 52)
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "Impostazioni"
+
+[node name="QuitButton" type="Button" parent="Overlay/Center/PausePanel/Margin/Buttons"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 52)
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "Esci"
+
+[node name="SettingsPanel" type="PanelContainer" parent="Overlay/Center"]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(720, 0)
+layout_mode = 2
+script = ExtResource("2_settings")
+
+[node name="Margin" type="MarginContainer" parent="Overlay/Center/SettingsPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 32
+theme_override_constants/margin_top = 24
+theme_override_constants/margin_right = 32
+theme_override_constants/margin_bottom = 24
+
+[node name="Content" type="VBoxContainer" parent="Overlay/Center/SettingsPanel/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Title" type="Label" parent="Overlay/Center/SettingsPanel/Margin/Content"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+text = "IMPOSTAZIONI"
+horizontal_alignment = 1
+
+[node name="GraphicsHeader" type="Label" parent="Overlay/Center/SettingsPanel/Margin/Content"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "Grafica"
+
+[node name="FpsRow" type="HBoxContainer" parent="Overlay/Center/SettingsPanel/Margin/Content"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Overlay/Center/SettingsPanel/Margin/Content/FpsRow"]
+custom_minimum_size = Vector2(280, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Limite FPS"
+
+[node name="FpsOption" type="OptionButton" parent="Overlay/Center/SettingsPanel/Margin/Content/FpsRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(300, 40)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+
+[node name="VsyncRow" type="HBoxContainer" parent="Overlay/Center/SettingsPanel/Margin/Content"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Overlay/Center/SettingsPanel/Margin/Content/VsyncRow"]
+custom_minimum_size = Vector2(280, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Sincronizzazione verticale"
+
+[node name="VsyncOption" type="OptionButton" parent="Overlay/Center/SettingsPanel/Margin/Content/VsyncRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(300, 40)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+
+[node name="MsaaRow" type="HBoxContainer" parent="Overlay/Center/SettingsPanel/Margin/Content"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Overlay/Center/SettingsPanel/Margin/Content/MsaaRow"]
+custom_minimum_size = Vector2(280, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Anti-aliasing MSAA 3D"
+
+[node name="MsaaOption" type="OptionButton" parent="Overlay/Center/SettingsPanel/Margin/Content/MsaaRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(300, 40)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+
+[node name="WindowRow" type="HBoxContainer" parent="Overlay/Center/SettingsPanel/Margin/Content"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Overlay/Center/SettingsPanel/Margin/Content/WindowRow"]
+custom_minimum_size = Vector2(280, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Modalita finestra"
+
+[node name="WindowOption" type="OptionButton" parent="Overlay/Center/SettingsPanel/Margin/Content/WindowRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(300, 40)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+
+[node name="ScaleRow" type="HBoxContainer" parent="Overlay/Center/SettingsPanel/Margin/Content"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Overlay/Center/SettingsPanel/Margin/Content/ScaleRow"]
+custom_minimum_size = Vector2(280, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Scala rendering 3D"
+
+[node name="ScaleOption" type="OptionButton" parent="Overlay/Center/SettingsPanel/Margin/Content/ScaleRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(300, 40)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+
+[node name="ControlsHeader" type="Label" parent="Overlay/Center/SettingsPanel/Margin/Content"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "Controller"
+
+[node name="InvertX" type="CheckButton" parent="Overlay/Center/SettingsPanel/Margin/Content"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Inverti asse X della mira con stick destro"
+
+[node name="InvertY" type="CheckButton" parent="Overlay/Center/SettingsPanel/Margin/Content"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Inverti asse Y della mira con stick destro"
+
+[node name="BackButton" type="Button" parent="Overlay/Center/SettingsPanel/Margin/Content"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "Indietro"

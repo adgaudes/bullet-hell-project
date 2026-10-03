@@ -49,9 +49,9 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func cycle_vsync() -> void:
-	var current := VSYNC_MODES.find(DisplayServer.window_get_vsync_mode())
+	var current := VSYNC_MODES.find(GameSettings.vsync_mode)
 	var next := posmod(current + 1, VSYNC_MODES.size())
-	DisplayServer.window_set_vsync_mode(VSYNC_MODES[next])
+	GameSettings.set_vsync_mode(VSYNC_MODES[next])
 	# Il driver puo non supportare la modalita richiesta: si mostra quella effettiva.
 	_show("VSync: %s   F2 / croce sinistra" % _vsync_name())
 	print("PROTOTYPE01_VSYNC %s" % _vsync_name())
