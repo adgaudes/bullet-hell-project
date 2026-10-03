@@ -13,7 +13,7 @@ Il proprietario sviluppa tramite AI-assisted development e ha budget iniziale ri
 
 - **Engine: Godot 4.7.2 stable, edizione standard/GDScript.** Migrazione dal prototipo Unreal Engine 5.8.2 approvata il 3 ottobre 2026 e completata nel codice il giorno stesso (Fasi 0-9 del piano in `docs/GODOT_MIGRATION_ANALYSIS.md`); restano i playtest del proprietario e la Fase 10. Stato vivo: `docs/MIGRATION_STATUS.md`.
 - Il progetto Unreal e stato rimosso da `main` il 3 ottobre 2026 su decisione del proprietario (Fase 10). Resta consultabile nel tag Git `unreal-prototype-final` (`git show unreal-prototype-final:Source/Prototype01/<file>`).
-- Fase di prodotto: Fase 3 della roadmap, micro-prototipi. Character Feel v1 validato; Terrain Slice A ha superato il playtest con esito `Continua`; Terrain Slice B esiste nel working tree ma **non e ancora committato**.
+- Fase di prodotto: Fase 3 della roadmap, micro-prototipi. Stato e prossimo passo sempre in `docs/PROJECT_ROADMAP.md`, sezione "Stato operativo".
 - Canale di lavoro: **filesystem + CLI**, verificato. Dettagli operativi obbligatori in `docs/GODOT_WORKFLOW.md`.
 - MCP di terze parti: valutati e **rimandati**, con trigger definiti in `docs/GODOT_WORKFLOW.md`.
 - Blender 5.2.2, VS Code, Git e Git LFS restano invariati. La toolchain C++/Visual Studio non serve al progetto Godot; resta finche esiste il progetto Unreal.
@@ -50,7 +50,8 @@ Le decisioni registrate sono in `docs/DECISIONS.md`.
 4. Mantenere una build giocabile e verificarla periodicamente pacchettizzata.
 5. Separare codice, sorgenti, import, build e file generati.
 6. Registrare decisioni costose o irreversibili.
-7. Aggiungere tool o dipendenze solo per un problema concreto, dopo verifica di costo, licenza, manutenzione ed esportabilita.
+7. Aggiungere tool o dipendenze solo per un problema concreto, dopo verifica di costo, licenza, manutenzione ed esportabilita. **Valutare pero sempre**, per l'obiettivo e per ogni task, se esistono tool esterni, addon Godot, estensioni, plugin o server MCP utili, e proporli (dettagli in `CLAUDE.md`, sezione "Strumenti esterni").
+8. **Tenere aggiornata la sezione "Stato operativo" di `docs/PROJECT_ROADMAP.md`** a ogni avanzamento, con il prossimo passo esplicito.
 8. Non sacrificare leggibilita, accessibilita o prestazioni per la densita visiva.
 9. L'originalita deve emergere dai sistemi e dall'esperienza, non solo da tema o asset.
 10. Distinguere sempre cio che e verificato da cio che e assunto.

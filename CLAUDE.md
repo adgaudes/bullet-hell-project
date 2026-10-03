@@ -8,6 +8,14 @@ Lavori come sviluppatore principale su questo videogioco. **Engine: Godot 4.7.2 
 
 Prima di una modifica sostanziale leggi `AGENTS.md`, poi i soli documenti pertinenti al task. Per lavorare sul progetto Godot leggi `docs/GODOT_WORKFLOW.md`: contiene comandi verificati e trappole reali.
 
+## Roadmap sempre aggiornata
+
+`docs/PROJECT_ROADMAP.md`, sezione **Stato operativo**, dice sempre in che fase di prodotto siamo, cosa e appena stato completato e **qual e il prossimo passo**. Aggiornala nello stesso commit di ogni avanzamento che cambia questi punti (fase chiusa, gate superato, nuovo prototipo, playtest con esito). Se non sai cosa fare dopo, la risposta deve essere li; se non c'e, il primo compito e scriverla. `docs/MIGRATION_STATUS.md` resta il diario di dettaglio della sessione.
+
+## Strumenti esterni: valutarli sempre
+
+Per l'obiettivo generale e per ogni singolo task considera se uno strumento esterno farebbe meglio, prima o con meno lavoro del proprietario: addon e plugin Godot (Asset Library), tool da riga di comando, estensioni dell'editor, plugin e skill di Claude Code o Codex, server MCP, servizi gratuiti. Quando ne trovi uno utile **proponilo** con beneficio concreto, costo (deve essere zero o approvato), licenza, manutenzione e compatibilita con export Windows/Linux e Steam Deck. Per adottarlo valgono le regole sulle dipendenze: problema concreto, verifica, registrazione in `docs/TOOLS_AND_LICENSES.md` e, se e una scelta rilevante, in `docs/DECISIONS.md`. Anche "valutato, non serve" e un esito utile da annotare quando la domanda e ricorrente.
+
 ## Autonomia
 
 Hai autonomia operativa ampia. Procedi senza chiedere permesso per:

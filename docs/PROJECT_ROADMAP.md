@@ -15,10 +15,16 @@ Principio guida:
 > **Cambio di engine.** Il 3 ottobre 2026 e stata approvata la migrazione a **Godot 4.7.2** (decisione D-019). Le fasi di prodotto qui descritte restano valide: cambia la tecnologia con cui vengono realizzate, non la loro sequenza ne i loro gate. Il piano di migrazione, incrementale e con il progetto Unreal conservato intatto, e in `docs/GODOT_MIGRATION_ANALYSIS.md`. I riferimenti a Unreal, Visual Studio e MCP Epic nelle sezioni seguenti vanno letti come storici finche non riscritti. Al 3 ottobre 2026 la migrazione e completata nel codice: stato in `docs/MIGRATION_STATUS.md`, parita in `docs/GODOT_PARITY_CHECKLIST.md`.
 
 - Fase 0: quasi completata; repository remoto, LFS, clone pulito e ripristino sono verificati. Restano da formalizzare disponibilita settimanale e budget massimo.
-- Fase 1: in corso; esiste un working concept coerente e il confronto sulla promessa e preparato in `VISION_WORKSHOP.md`, ma one-page vision, promessa centrale e Concept Lock non sono approvati.
-- Fase 2: avanzata; toolchain Windows end-to-end verificata e round-trip specificato in `BLENDER_UNREAL_ROUNDTRIP_SPEC.md`. Restano l'esecuzione del test Blender-Unreal e le prime prove Fab/Quixel.
-- Fase 3: **fase attiva**. Character Feel v1 e validato; Terrain Slice A ha superato il playtest del proprietario con esito `Continua`; Terrain Slice B esiste nel working tree ma non e ancora committato. Il lavoro immediato e la migrazione a Godot di quanto gia validato, a parita di funzionalita, prima di aggiungere nuovi sistemi.
+- Fase 1: in corso; one-page vision, promessa centrale e Concept Lock non sono approvati. Una proposta con visione draft, promesse alternative e domande prioritarie e in preparazione (`docs/VISION_PROPOSAL_2026-10-03.md`, branch `docs/vision-proposal`, da revisionare).
+- Fase 2: toolchain **Godot 4.7.2** verificata end-to-end (editor, test headless, export Windows/Linux, gate `tools/godot/Invoke-GodotChecks.ps1`). Resta il round-trip Blender → Godot (R-011).
+- Fase 3: **fase attiva**. Migrazione a Godot completata a parita (feel "quasi uguale", preset **Scattante** scelto come base, fisica e rendering a 120). Slice A e B portate e testate in automatico. In corso il **Companion Slice** (primo compagno macchina, `docs/COMPANION_SLICE_SPEC.md`, branch `feature/companion-prototype`) e, delegati a Codex, **menu Impostazioni e pausa** (branch `feature/settings-pause`).
 - Fasi 4-14: non iniziate formalmente. Esperimenti tecnici anticipati non equivalgono al superamento dei relativi gate.
+
+**Prossimo passo:**
+
+1. Integrare Companion Slice e menu Impostazioni/pausa dopo verifica, poi playtest del proprietario sul Companion Slice (domande nella specifica).
+2. Revisione della proposta di visione con il proprietario per chiudere la Fase 1.
+3. Ancora aperti dal proprietario: Test A percettivo e test su Steam Deck (`docs/PLAYTESTS/GODOT_PARITY_PLAYTEST.md`).
 
 Fonti operative: `DECISIONS.md`, `RISK_REGISTER.md` e i protocolli in `PLAYTESTS/`.
 
