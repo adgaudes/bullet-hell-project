@@ -14,6 +14,7 @@ config/name="Prototype01"
 config/description="Survivor-like 3D isometrico. Prototipo di trasformazione del terreno."
 run/main_scene="res://scenes/main/smoke_test.tscn"
 config/features=PackedStringArray("4.7", "Forward Plus")
+run/max_fps=120
 
 [display]
 

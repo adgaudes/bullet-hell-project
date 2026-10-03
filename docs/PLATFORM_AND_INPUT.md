@@ -29,6 +29,10 @@ Requisiti:
 - il gameplay non deve dipendere da combinazioni scomode o dal clic degli stick per azioni frequenti;
 - vibrazione e aim assist, se presenti, devono essere configurabili.
 
+## Impostazioni grafiche (requisito della versione definitiva)
+
+Il gioco avra un menu Impostazioni con le opzioni grafiche (D-031): limite di fps (default 120), VSync (Mailbox, classico, off), antialiasing, risoluzione e modalita finestra, eventuale scala di rendering, con preset adatti a Steam Deck. Oggi questi valori sono fissi in `godot/project.godot`; F2 alterna la VSync solo come strumento di playtest.
+
 ## Implementazione Godot
 
 Implementata dal 3 ottobre 2026 con la **mappa input di progetto** di Godot (`godot/project.godot`, sezione `[input]`): 12 azioni semantiche con eventi controller e tastiera/mouse e dead zone per azione. Il gameplay legge solo azioni (`Input.get_vector`, `is_action_pressed`), mai tasti fisici. Rimappatura e inversione assi si appoggeranno a `InputMap` a runtime. L'implementazione Unreal precedente usava Enhanced Input con mapping costruiti in C++.
