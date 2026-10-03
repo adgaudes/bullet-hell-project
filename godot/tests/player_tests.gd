@@ -73,6 +73,7 @@ func _test_player_in_scene() -> void:
 	var scene := SmokeTestScene.instantiate()
 	root.add_child(scene)
 	var player: PlayerCharacter = scene.get_node("Player")
+	_use_reference_tuning(player)
 	await _frames(10)
 	_check(player.is_on_floor(), "il personaggio poggia sul pavimento")
 	_check(absf(player.global_position.y - 0.88) < 0.02, "centro capsula a 0.88 m (got %.3f)" % player.global_position.y)
@@ -174,6 +175,11 @@ func _send_dash() -> void:
 		event.action = &"dash"
 		event.pressed = pressed
 		Input.parse_input_event(event)
+
+
+## I valori attesi sono quelli del riferimento Unreal, non del preset di default.
+func _use_reference_tuning(player: PlayerCharacter) -> void:
+	player.apply_tuning(load("res://resources/tuning/player_default.tres"))
 
 
 func _frames(count: int) -> void:

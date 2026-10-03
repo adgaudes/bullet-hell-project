@@ -94,8 +94,8 @@ Dopo l'esito della Parte 1 (feel "quasi uguale", preferenza per Unreal, da migli
 | Domanda | Esito / nota |
 |---|---|
 | Il riferimento Unreal in Godot ora e alla pari della build Unreal (risposta, fluidita)? | |
-| Quale preset si avvicina di piu a quello che vuoi? | |
-| Cosa cambieresti di quel preset? (piu/meno veloce, accelerazione, rotazione, dash) | |
+| Quale preset si avvicina di piu a quello che vuoi? | **Scattante** (3 ottobre 2026), diventato il default. "Per adesso lasciamolo cosi" |
+| Cosa cambieresti di quel preset? (piu/meno veloce, accelerazione, rotazione, dash) | In generale **meno ritardo**: VSync Mailbox e coda di 1 frame (D-030), confronto in gioco con F2 |
 
 ## Esito
 

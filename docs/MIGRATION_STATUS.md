@@ -119,6 +119,8 @@ Non corretto, annotato: la mira mouse usa la posizione fisica del personaggio e 
 
 Feel "quasi uguale" in Godot e Unreal: gate della Fase 5 superato. Leggera preferenza per Unreal su **risposta ai comandi** e **fluidita**, e il feel attuale non e quello definitivo. Interventi: fisica a 120 Hz e MSAA 4x (D-028), dorsale sinistro corretto (era mappato su View/Back), preset di feel alternabili in gioco (D-029, Parte 4 del protocollo di playtest). Build riesportate.
 
+Preset scelto: **Scattante**, ora default (D-030). Per ridurre ancora il ritardo: VSync Mailbox e coda di 1 frame, con F2 o croce sinistra per confrontare in gioco Mailbox, Classico e Off.
+
 ## Cosa serve dal proprietario
 
 Protocollo unico con tabelle da compilare: **`docs/PLAYTESTS/GODOT_PARITY_PLAYTEST.md`**.

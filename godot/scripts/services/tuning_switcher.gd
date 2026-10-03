@@ -1,15 +1,23 @@
 class_name TuningSwitcher
 extends CanvasLayer
 ## Strumento di playtest: alterna preset di PlayerTuning a caldo con l'azione
-## `debug_next_tuning` (Tab, croce destra) e mostra il nome per qualche secondo.
-## Serve a scegliere il feel provando invece che descrivendo. Non e UI di gioco.
+## `debug_next_tuning` (Tab, croce destra) e la modalita VSync con
+## `debug_cycle_vsync` (F2, croce sinistra), mostrando lo stato per qualche secondo.
+## Serve a scegliere provando invece che descrivendo. Non e UI di gioco.
 
 @export var player: PlayerCharacter
-## Il primo e il riferimento Unreal; l'ordine e quello di rotazione.
+## Il primo e il default (Scattante); l'ordine e quello di rotazione.
 @export var presets: Array[PlayerTuning] = []
 @export var label_seconds := 2.5
 
 var current_index := 0
+
+const VSYNC_MODES: Array[DisplayServer.VSyncMode] = [
+	DisplayServer.VSYNC_MAILBOX, DisplayServer.VSYNC_ENABLED, DisplayServer.VSYNC_DISABLED,
+]
+const VSYNC_NAMES: Array[String] = [
+	"Mailbox (default)", "Classico", "Off: latenza minima, possibile tearing",
+]
 
 var _label: Label
 var _label_left := 0.0
@@ -29,21 +37,43 @@ func _ready() -> void:
 	add_child(_label)
 	if player != null and not presets.is_empty():
 		current_index = maxi(presets.find(player.tuning), 0)
+	# Modalita effettiva: il driver puo rifiutare Mailbox e ripiegare su un'altra.
+	print("PROTOTYPE01_VSYNC %s" % _vsync_name())
 
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed(&"debug_next_tuning") and not presets.is_empty() and player != null:
 		select(posmod(current_index + 1, presets.size()))
+	elif event.is_action_pressed(&"debug_cycle_vsync"):
+		cycle_vsync()
+
+
+func cycle_vsync() -> void:
+	var current := VSYNC_MODES.find(DisplayServer.window_get_vsync_mode())
+	var next := posmod(current + 1, VSYNC_MODES.size())
+	DisplayServer.window_set_vsync_mode(VSYNC_MODES[next])
+	# Il driver puo non supportare la modalita richiesta: si mostra quella effettiva.
+	_show("VSync: %s   F2 / croce sinistra" % _vsync_name())
+	print("PROTOTYPE01_VSYNC %s" % _vsync_name())
+
+
+func _vsync_name() -> String:
+	var actual := VSYNC_MODES.find(DisplayServer.window_get_vsync_mode())
+	return VSYNC_NAMES[actual] if actual >= 0 else "sconosciuta"
 
 
 func select(index: int) -> void:
 	current_index = index
 	var preset := presets[index]
 	player.apply_tuning(preset)
-	_label.text = "Feel: %s  (%d/%d)   Tab / croce destra" % [preset.display_name, index + 1, presets.size()]
+	_show("Feel: %s  (%d/%d)   Tab / croce destra" % [preset.display_name, index + 1, presets.size()])
+	print("PROTOTYPE01_TUNING %s" % preset.display_name)
+
+
+func _show(text: String) -> void:
+	_label.text = text
 	_label.visible = true
 	_label_left = label_seconds
-	print("PROTOTYPE01_TUNING %s" % preset.display_name)
 
 
 func _process(delta: float) -> void:

@@ -40,4 +40,4 @@ target = NodePath("../Player")
 [node name="TuningSwitcher" type="CanvasLayer" parent="." node_paths=PackedStringArray("player")]
 script = ExtResource("9_switcher")
 player = NodePath("../Player")
-presets = [ExtResource("10_feel_unreal"), ExtResource("11_feel_snappy"), ExtResource("12_feel_heavy"), ExtResource("13_feel_dash")]
+presets = [ExtResource("11_feel_snappy"), ExtResource("10_feel_unreal"), ExtResource("12_feel_heavy"), ExtResource("13_feel_dash")]

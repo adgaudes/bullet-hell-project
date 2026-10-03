@@ -123,6 +123,7 @@ func _load_scene() -> void:
 	_player = scene.get_node("Player")
 	_grid = scene.get_node("TerrainGrid")
 	_hazard = scene.get_node("TerrainHazard")
+	_use_reference_tuning(_player)
 	await _frames(2)
 
 
@@ -145,6 +146,11 @@ func _wait_until(condition: Callable, max_frames: int) -> void:
 		if condition.call():
 			return
 		await physics_frame
+
+
+## I valori attesi sono quelli del riferimento Unreal, non del preset di default.
+func _use_reference_tuning(player: PlayerCharacter) -> void:
+	player.apply_tuning(load("res://resources/tuning/player_default.tres"))
 
 
 func _frames(count: int) -> void:

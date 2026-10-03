@@ -20,6 +20,7 @@ func _initialize() -> void:
 	await _reload_scene()
 	await _test_actions_ignore_modifiers()
 	await _reload_scene()
+	_use_reference_tuning(_player)
 	await _test_move_actuation_threshold()
 	await _reload_scene()
 	await _test_tuning_switcher()
@@ -133,13 +134,13 @@ func _test_tuning_switcher() -> void:
 	print("tuning switcher")
 	var switcher: TuningSwitcher = root.get_node("Scene/TuningSwitcher")
 	_check(switcher.presets.size() == 4, "4 preset caricati (got %d)" % switcher.presets.size())
-	_check(_player.tuning.display_name == "Unreal (riferimento)", "si parte dal riferimento Unreal")
+	_check(_player.tuning.display_name == "Scattante", "si parte da Scattante, il default")
 	var tab := InputEventKey.new()
 	tab.physical_keycode = KEY_TAB
 	tab.pressed = true
 	Input.parse_input_event(tab)
 	await _frames(2)
-	_check(_player.tuning.display_name == "Scattante", "Tab -> Scattante (got %s)" % _player.tuning.display_name)
+	_check(_player.tuning.display_name == "Unreal (riferimento)", "Tab -> Unreal (got %s)" % _player.tuning.display_name)
 	var dpad := InputEventJoypadButton.new()
 	dpad.button_index = JOY_BUTTON_DPAD_RIGHT
 	dpad.pressed = true
@@ -173,6 +174,11 @@ func _load_scene() -> void:
 func _reload_scene() -> void:
 	root.get_node("Scene").free()
 	await _load_scene()
+
+
+## I valori attesi sono quelli del riferimento Unreal, non del preset di default.
+func _use_reference_tuning(player: PlayerCharacter) -> void:
+	player.apply_tuning(load("res://resources/tuning/player_default.tres"))
 
 
 func _frames(count: int) -> void:

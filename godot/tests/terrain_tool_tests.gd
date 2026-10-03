@@ -20,6 +20,7 @@ func _initialize() -> void:
 	root.add_child(scene)
 	_player = scene.get_node("Player")
 	_grid = scene.get_node("TerrainGrid")
+	_use_reference_tuning(_player)
 	await _frames(2)
 
 	print("target and preview")
@@ -127,6 +128,11 @@ func _count_cells() -> int:
 		if child is StaticBody3D:
 			count += 1
 	return count
+
+
+## I valori attesi sono quelli del riferimento Unreal, non del preset di default.
+func _use_reference_tuning(player: PlayerCharacter) -> void:
+	player.apply_tuning(load("res://resources/tuning/player_default.tres"))
 
 
 func _frames(count: int) -> void:

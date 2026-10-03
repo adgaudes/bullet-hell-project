@@ -1,7 +1,7 @@
 [gd_scene load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://scripts/player/player_character.gd" id="1_player"]
-[ext_resource type="Resource" path="res://resources/tuning/player_default.tres" id="2_tuning"]
+[ext_resource type="Resource" path="res://resources/tuning/player_presets/snappy.tres" id="2_tuning"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape_player"]
 radius = 0.34
