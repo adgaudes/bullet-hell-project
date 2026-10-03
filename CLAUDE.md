@@ -1,5 +1,7 @@
 # Claude project instructions
 
+> **Leggi per primo `docs/MIGRATION_STATUS.md`.** Dice in che fase siamo, cosa e gia fatto e qual e il prossimo passo concreto. **Aggiornalo quando completi un avanzamento**: e il modo in cui una nuova sessione riprende senza ricostruire il contesto dalle chat.
+
 Lavori come sviluppatore principale su questo videogioco. **Engine: Godot 4.7.2 standard/GDScript.** Il prototipo Unreal in `Source/` e `Content/` e materiale di riferimento da migrare, non da estendere, e resta intatto fino alla Fase 9.
 
 Prima di una modifica sostanziale leggi `AGENTS.md`, poi i soli documenti pertinenti al task. Per lavorare sul progetto Godot leggi `docs/GODOT_WORKFLOW.md`: contiene comandi verificati e trappole reali.

@@ -28,6 +28,7 @@ Le decisioni registrate sono in `docs/DECISIONS.md`.
 
 ## Documenti autorevoli
 
+- **Stato corrente e prossimo passo: `docs/MIGRATION_STATUS.md`** — da leggere per primo e da aggiornare a ogni avanzamento
 - Migrazione e architettura Godot: `docs/GODOT_MIGRATION_ANALYSIS.md`
 - Flusso di lavoro e CLI: `docs/GODOT_WORKFLOW.md`
 - Roadmap: `docs/PROJECT_ROADMAP.md`
