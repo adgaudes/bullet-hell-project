@@ -124,7 +124,7 @@ Regole operative che ne derivano:
 
 ### Export
 
-Verificato il 3 ottobre 2026. Template in `%APPDATA%\Godot\export_templates.7.2.stable\` (installati solo Windows e Linux x86_64 dal `.tpz` ufficiale, SHA-512 verificato). Preset in `godot/export_presets.cfg`.
+Verificato il 3 ottobre 2026. Template in `%APPDATA%\Godot\export_templates\4.7.2.stable\` (installati solo Windows e Linux x86_64 dal `.tpz` ufficiale, SHA-512 verificato). Preset in `godot/export_presets.cfg`.
 
 ```bash
 godot_console --headless --path godot --export-release "Windows Desktop" ../LocalBuilds/Prototype01-Godot-Win64/Prototype01.exe
