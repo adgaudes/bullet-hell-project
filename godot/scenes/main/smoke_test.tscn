@@ -1,15 +1,21 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://scripts/services/skeleton_probe.gd" id="1_probe"]
 [ext_resource type="Script" path="res://scripts/arena/arena.gd" id="2_arena"]
 [ext_resource type="Script" path="res://scripts/camera/isometric_camera_rig.gd" id="3_camera"]
 [ext_resource type="PackedScene" path="res://scenes/player/player.tscn" id="4_player"]
+[ext_resource type="Script" path="res://scripts/terrain/terrain_grid.gd" id="5_terrain"]
+[ext_resource type="Resource" path="res://resources/tuning/terrain_default.tres" id="6_terrain_tuning"]
 
 [node name="SmokeTest" type="Node3D"]
 script = ExtResource("1_probe")
 
 [node name="Arena" type="Node3D" parent="."]
 script = ExtResource("2_arena")
+
+[node name="TerrainGrid" type="Node3D" parent="."]
+script = ExtResource("5_terrain")
+tuning = ExtResource("6_terrain_tuning")
 
 [node name="Player" parent="." instance=ExtResource("4_player")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.88, 0)

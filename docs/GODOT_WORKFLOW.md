@@ -68,9 +68,12 @@ I marker diagnostici gia in uso nel progetto (`PROTOTYPE01_INPUT_READY`, `PROTOT
 
 ```bash
 godot_console --headless --path godot --fixed-fps 60 --script res://tests/player_tests.gd
+godot_console --headless --path godot --fixed-fps 60 --script res://tests/terrain_tests.gd
 ```
 
 `--fixed-fps 60` rende ogni frame un passo fisico da 1/60 s: risultati deterministici. Esito su stdout (`PROTOTYPE01_TESTS PASS|FAIL`) ed exit code 0/1. Trappola verificata: in headless la posizione del cursore del viewport non segue gli eventi mouse simulati; testare la logica sulla posizione schermo esplicita.
+
+Trappola verificata: `CollisionShape3D.set_deferred("disabled", ...)` lascia la forma attiva per un frame; se applicato in costruzione spinge via i corpi sovrapposti. In costruzione impostarlo direttamente, a runtime differito.
 
 Per l'input nei test: `Input.action_press()` per azioni tenute; per azioni a evento (dash) usare `Input.parse_input_event()` con `InputEventAction`, perche `is_action_just_pressed` in `_physics_process` puo perdere una pressione simulata.
 

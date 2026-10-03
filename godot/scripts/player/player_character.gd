@@ -36,6 +36,7 @@ var _base_body_scale := Vector3.ONE
 
 @onready var _body: MeshInstance3D = $Body
 @onready var _facing_indicator: MeshInstance3D = $FacingIndicator
+@onready var _collision: CollisionShape3D = $Collision
 
 
 func _ready() -> void:
@@ -91,6 +92,14 @@ func _physics_process(delta: float) -> void:
 
 	# Dopo il movimento, come il TimerManager Unreal che avanza a fine tick.
 	_update_dash_timers(delta)
+
+
+## Volume collidente in coordinate mondo, come GetActorBounds(true) in Unreal.
+## Usato dalla griglia terreno per non rialzare celle sopra il personaggio.
+func get_collision_aabb() -> AABB:
+	var capsule := _collision.shape as CapsuleShape3D
+	var extent := Vector3(capsule.radius, capsule.height * 0.5, capsule.radius)
+	return AABB(_collision.global_position - extent, extent * 2.0)
 
 
 ## Legge il movimento e aggiorna l'ultima direzione valida, come HandleMoveTriggered.

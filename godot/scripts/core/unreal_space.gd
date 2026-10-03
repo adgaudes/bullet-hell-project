@@ -19,6 +19,11 @@ static func position(unreal_cm: Vector3) -> Vector3:
 	return Vector3(unreal_cm.y, unreal_cm.z, -unreal_cm.x) * CM_TO_M
 
 
+## Inversa di position(): metri e assi Godot -> centimetri e assi Unreal.
+static func to_unreal_position(godot_m: Vector3) -> Vector3:
+	return Vector3(-godot_m.z, godot_m.x, godot_m.y) / CM_TO_M
+
+
 ## Direzione "forward" di un FRotator Unreal (pitch, yaw in gradi), in assi Godot.
 static func rotator_forward(pitch_deg: float, yaw_deg: float) -> Vector3:
 	var pitch := deg_to_rad(pitch_deg)

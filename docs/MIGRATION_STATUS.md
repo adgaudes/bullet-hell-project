@@ -4,7 +4,7 @@
 
 **Ultimo aggiornamento:** 3 ottobre 2026
 **Engine:** Godot 4.7.2 stable, edizione standard/GDScript
-**Fase corrente:** 5 completata nel codice, **in attesa del playtest di feel del proprietario** → prossima: Fase 6
+**Fase corrente:** 6 completata; Fase 5 **in attesa del playtest di feel del proprietario** → prossima: Fase 7
 **Branch di lavoro:** `feature/godot-migration-foundation` (non ancora integrato in `main`)
 
 ## In una frase
@@ -21,8 +21,8 @@ Stiamo migrando a Godot un micro-prototipo Unreal gia validato da un playtest, *
 | 3 | Scheletro: progetto, mappa input, scena avviabile | **fatta** |
 | 4 | Arena, illuminazione, camera isometrica | **fatta** |
 | 5 | Personaggio: movimento, mira, cambio dispositivo, dash | **fatta nel codice**, playtest del proprietario da fare |
-| 6 | Griglia terreno: stato, presentazione, collisioni | **prossima** |
-| 7 | Tool e anteprima | da fare |
+| 6 | Griglia terreno: stato, presentazione, collisioni | **fatta** |
+| 7 | Tool e anteprima | **prossima** |
 | 8 | Slice B: penalita velocita, hazard | da fare |
 | 9 | Verifica di parita, export, smoke test Steam Deck | da fare |
 | 10 | Pulizia documentale, destino del progetto Unreal | da fare |
@@ -64,9 +64,20 @@ Non verificato da un agente: **il feel con controller e mouse reali**. Va playte
 
 Differenze note rispetto a Unreal: dead zone del movimento radiale 0,2 di Godot invece di quella per asse di Unreal; il passo fisico e fisso a 60 Hz, quindi il dash non varia con il framerate (in Unreal si').
 
-## Prossimo passo concreto — Fase 6
+## Fase 6 — com'e stata chiusa
 
-**Obiettivo:** griglia terreno (stato, presentazione, collisioni) a parita con `Prototype01TerrainGridActor`. Leggere `docs/TERRAIN_SYSTEM.md` e i sorgenti `Prototype01TerrainGrid*`. Il personaggio espone gia `speed_multiplier` per la penalita della Fase 8.
+- `scripts/terrain/terrain_state.gd` (`TerrainState`): stato logico puro. Tre stati, transizioni di un livello per passo, cella protetta (0,0), rifiuto per occupazione distinto. Coordinate di cella **come in Unreal** (X avanti, Y destra): i log `PROTOTYPE01_TERRAIN_*` restano confrontabili con il protocollo di playtest Slice A.
+- `scripts/terrain/terrain_grid.gd` (`TerrainGrid`, `@tool`): presentazione (una cella = `StaticBody3D` con mesh e collisione), colore per istanza su un solo materiale (`resources/materials/terrain_cell.gdshader`), collisione solo su Raised, controllo anti-intrappolamento sul volume del personaggio (`PlayerCharacter.get_collision_aabb()`), API `cell_at`, `cell_state_at`, `can_apply_at`, `apply_command_at`, `lowered_speed_penalty`.
+- `scripts/terrain/terrain_tuning.gd` + `resources/tuning/terrain_default.tres`: 7×7, celle 240 cm, gap 12, altezze 4/12/120, penalita 0,5.
+- Il nodo `TerrainGrid` sta in `smoke_test.tscn`, centrato sotto il personaggio.
+
+Verificato: `tests/terrain_tests.gd`, 37 controlli verdi (regole, 49 celle senza duplicati dopo ricostruzioni, mappatura mondo→cella, collisione via raycast, rialzo rifiutato sotto il personaggio, personaggio bloccato da una cella Raised e libero quando torna Normal); `tests/player_tests.gd` sempre verde; cattura visiva con celle nei tre stati.
+
+Limite noto: modificare i valori dentro `terrain_default.tres` dall'Inspector non ricostruisce la griglia in tempo reale nell'editor; serve riaprire la scena o riassegnare la risorsa.
+
+## Prossimo passo concreto — Fase 7
+
+**Obiettivo:** tool terreno e anteprima, a parita con `APrototype01Character` (`UpdateTerrainTarget`, `HandleTerrainTool*`, `HandleTerrainMode*`) e `UpdatePreview`/`HidePreview` di `Prototype01TerrainGridActor.cpp`. Bersaglio a 480 cm davanti al personaggio, modalita Dig/Raise alternata da `terrain_mode`, anteprima 72% della cella colorata ciano/giallo/rosso. Criterio di uscita: ripercorrere invariato il Test A di `docs/PLAYTESTS/TERRAIN_GRID_SLICE_A_2026-09-22.md`. Rimuovere dalla sonda i log `PROTOTYPE01_ACTION terrain_*` quando il tool reale li sostituisce.
 
 ## Da non dimenticare
 
