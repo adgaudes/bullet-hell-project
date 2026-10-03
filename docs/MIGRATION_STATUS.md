@@ -104,6 +104,8 @@ Verificato: `tests/slice_b_tests.gd`, 19 controlli verdi, incluso il **criterio 
 
 ## Cosa serve dal proprietario
 
+Protocollo unico con tabelle da compilare: **`docs/PLAYTESTS/GODOT_PARITY_PLAYTEST.md`**.
+
 1. **Feel del personaggio** (Fase 5): F5 dall'editor, oppure la build Windows.
 2. **Test A percettivo** (Fase 7): `docs/PLAYTESTS/TERRAIN_GRID_SLICE_A_2026-09-22.md`.
 3. **Steam Deck**: scegliere Proton (build Windows) o Linux nativa (`Prototype01.x86_64`, decisione aperta) e ripetere il Test B dello stesso documento.
