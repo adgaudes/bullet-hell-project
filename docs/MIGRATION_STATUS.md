@@ -2,7 +2,7 @@
 
 > **File vivo.** Va aggiornato a ogni avanzamento. Chi apre una nuova sessione legge questo e sa esattamente dove siamo e cosa fare.
 
-**Ultimo aggiornamento:** 3 ottobre 2026
+**Ultimo aggiornamento:** 3 ottobre 2026, fine sessione. **Il prossimo passo di prodotto e nella roadmap** (`docs/PROJECT_ROADMAP.md`, "Stato operativo"); questo file resta il diario della migrazione.
 **Engine:** Godot 4.7.2 stable, edizione standard/GDScript
 **Fase corrente:** 10 quasi chiusa (codice Unreal rimosso, tag `unreal-prototype-final`); **in attesa del proprietario**: playtest di parita (feel, Test A, Steam Deck), poi eliminazione di `LocalBuilds/Prototype01-TerrainGrid-Win64-v1`
 **Branch di lavoro:** `main` (`feature/godot-migration-foundation` integrato in fast-forward e pubblicato su `origin` il 3 ottobre 2026)

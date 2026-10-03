@@ -10,21 +10,30 @@ Principio guida:
 
 > Prima dimostriamo che e divertente. Poi dimostriamo che e producibile. Solo dopo costruiamo tutto il resto.
 
-## Stato operativo al 3 ottobre 2026
+## Stato operativo al 3 ottobre 2026 (fine sessione)
 
-> **Cambio di engine.** Il 3 ottobre 2026 e stata approvata la migrazione a **Godot 4.7.2** (decisione D-019). Le fasi di prodotto qui descritte restano valide: cambia la tecnologia con cui vengono realizzate, non la loro sequenza ne i loro gate. Il piano di migrazione, incrementale e con il progetto Unreal conservato intatto, e in `docs/GODOT_MIGRATION_ANALYSIS.md`. I riferimenti a Unreal, Visual Studio e MCP Epic nelle sezioni seguenti vanno letti come storici finche non riscritti. Al 3 ottobre 2026 la migrazione e completata nel codice: stato in `docs/MIGRATION_STATUS.md`, parita in `docs/GODOT_PARITY_CHECKLIST.md`.
+> **Engine: Godot 4.7.2** (D-019). Le fasi di prodotto qui descritte restano valide: cambia la tecnologia, non la sequenza ne i gate. I riferimenti a Unreal, Visual Studio e MCP Epic nelle sezioni successive sono storici; il codice Unreal e nel tag `unreal-prototype-final`. Dettaglio della migrazione: `docs/MIGRATION_STATUS.md`; parita: `docs/GODOT_PARITY_CHECKLIST.md`.
 
-- Fase 0: quasi completata; repository remoto, LFS, clone pulito e ripristino sono verificati. Restano da formalizzare disponibilita settimanale e budget massimo.
-- Fase 1: in corso; one-page vision, promessa centrale e Concept Lock non sono approvati. Una proposta con visione draft, promesse alternative e domande prioritarie e in preparazione (`docs/VISION_PROPOSAL_2026-10-03.md`, branch `docs/vision-proposal`, da revisionare).
-- Fase 2: toolchain **Godot 4.7.2** verificata end-to-end (editor, test headless, export Windows/Linux, gate `tools/godot/Invoke-GodotChecks.ps1`). Resta il round-trip Blender → Godot (R-011).
-- Fase 3: **fase attiva**. Migrazione a Godot completata a parita (feel "quasi uguale", preset **Scattante** scelto come base, fisica e rendering a 120). Slice A e B portate e testate in automatico. Fatti e integrati il 3 ottobre 2026: **Companion Slice** (primo compagno macchina, `docs/COMPANION_SLICE_SPEC.md`, ora scena principale) e **menu pausa e Impostazioni** (grafica e inversione assi, salvati su disco; Esc o Start).
-- Fasi 4-14: non iniziate formalmente. Esperimenti tecnici anticipati non equivalgono al superamento dei relativi gate.
+- **Fase 0:** quasi completata. Restano da formalizzare disponibilita settimanale e budget massimo.
+- **Fase 1:** in corso. Pronta la proposta `docs/VISION_PROPOSAL_2026-10-03.md` (visione draft, tre promesse alternative, checklist Concept Lock, 8 domande con default); attende le risposte del proprietario. Vision e Concept Lock non approvati.
+- **Fase 2:** toolchain Godot verificata end-to-end: editor, test headless, export Windows (primario, D-026) e Linux, gate unico `tools/godot/Invoke-GodotChecks.ps1`. Resta il round-trip Blender → Godot (R-011).
+- **Fase 3: fase attiva.** Fatto il 3 ottobre 2026:
+  - migrazione a Godot completata a parita; feel "quasi uguale" a Unreal, preset **Scattante** scelto come base (D-030), fisica e rendering a 120 (D-028, D-031);
+  - **Companion Slice** (D-032, `docs/COMPANION_SLICE_SPEC.md`): primo compagno macchina, ora scena principale; **non ancora playtestato**;
+  - **menu pausa e Impostazioni** (grafica, inversione assi, salvataggio; Esc o Start, A conferma e B indietro);
+  - 8 suite di test automatici, tutte verdi; build Windows e Linux aggiornate in `LocalBuilds/`.
+- **Fasi 4-14:** non iniziate formalmente. Esperimenti tecnici anticipati non equivalgono al superamento dei relativi gate.
 
-**Prossimo passo:**
+**Prossimo passo (in ordine):**
 
-1. **Playtest del proprietario sul Companion Slice** (domande in `docs/COMPANION_SLICE_SPEC.md`): Continua / Modifica / Scarta.
-2. **Visione:** il proprietario risponde alle 8 domande di `docs/VISION_PROPOSAL_2026-10-03.md` per chiudere la Fase 1.
-3. Ancora aperti dal proprietario: Test A percettivo e test su Steam Deck (`docs/PLAYTESTS/GODOT_PARITY_PLAYTEST.md`).
+1. **Playtest del Companion Slice** (proprietario): build `LocalBuilds/Prototype01-Godot-Win64/Prototype01.exe`, domande in fondo a `docs/COMPANION_SLICE_SPEC.md`. Esito Continua / Modifica / Scarta: decide se il compagno diventa la base del prossimo prototipo o va rivisto.
+2. **Chiusura della Fase 1** (proprietario): risposte alle 8 domande di `docs/VISION_PROPOSAL_2026-10-03.md`; poi l'agente aggiorna visione, promessa (D-011) e Concept Lock.
+3. **Dopo i due esiti** (agente): micro-prototipo successivo coerente con la promessa scelta, prima candidata la prova della promessa A (corridoio apribile e barriera rialzabile con vantaggio e costo leggibili), con i primi nemici semplici.
+4. **In sospeso, senza urgenza:**
+   - Test A percettivo e test su Steam Deck via Proton (`docs/PLAYTESTS/GODOT_PARITY_PLAYTEST.md`); dopo, eliminare la build Unreal `LocalBuilds/Prototype01-TerrainGrid-Win64-v1` (872 MB);
+   - decidere cosa fare di `dev/` e `output/` (non versionate);
+   - eliminare a mano le cartelle vuote `Desktop/Videogame-settings` e `Desktop/Videogame-vision` (worktree di Codex) dopo aver chiuso Codex;
+   - round-trip Blender → Godot prima di produrre asset (R-011).
 
 Fonti operative: `DECISIONS.md`, `RISK_REGISTER.md` e i protocolli in `PLAYTESTS/`.
 
