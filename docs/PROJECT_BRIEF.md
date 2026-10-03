@@ -24,7 +24,7 @@ Non e ancora fissato un obiettivo di vendite. Prima di costruire un business cas
 | Percezione dell'AI | Il gioco non deve apparire generico o generato automaticamente | AI come supporto supervisionato; direzione e asset finali con intenzionalita autoriale |
 | Team | Progetto personale con supporto di Codex e possibili contributi di altre AI | Scope da solista; ogni output AI deve essere revisionato e testato |
 | Godot / GDScript | Esperienza da costruire (engine adottato il 3 ottobre 2026, D-019) | Apprendimento sul prototipo gia migrato; scene e script sono testo leggibile e diffabile |
-| Programmazione C/C++ | Esperienza quasi nulla | Architettura semplice, componenti piccoli, review rigorosa e niente ottimizzazioni premature |
+| Programmazione (GDScript) | Esperienza quasi nulla | Architettura semplice, componenti piccoli, test automatici, review rigorosa e niente ottimizzazioni premature |
 | Blender | Esperienza di base, non recente | Stile 3D producibile, kit modulari e pipeline di export validata prima della produzione |
 | Metodo di apprendimento | Guida continua richiesta | Un passaggio alla volta, spiegazione semplice, risultato atteso e verifica esplicita |
 | Divisione del lavoro | Codex o altre AI svolgono il grosso dell'implementazione | Proprietario e Codex valutano insieme; intervento manuale del proprietario minimo nelle fasi iniziali |
@@ -103,7 +103,7 @@ Salvo nuova decisione motivata, il primo prototipo non include:
 
 - Imparare l'engine costruendo sul micro-prototipo, non seguendo mesi di corsi generici prima di iniziare.
 - Usare l'editor Godot per osservare e ritoccare scene e tuning (`.tres`) mentre gli agenti lavorano sui file.
-- Spostare in C++ soltanto infrastruttura stabile o percorsi misurati come critici, con Codex o altra AI che propone il codice e Codex che revisiona diff, build e test.
+- Restare in GDScript tipizzato; valutare C# o GDExtension (C++) solo per percorsi misurati come critici. Il codice scritto da un agente e verificato da test, gate (`tools/godot/Invoke-GodotChecks.ps1`) e, quando utile, da una review indipendente.
 - Tenere armi, modificatori, nemici e curve di bilanciamento data-driven.
 - Usare Blender inizialmente per semplici mesh graybox e un solo asset di prova; definire lo stile finale dopo aver misurato il costo reale di produzione.
 
@@ -117,7 +117,7 @@ Salvo nuova decisione motivata, il primo prototipo non include:
 - struttura di morte, estrazione e ricompensa;
 - profondita e forma della meta-progressione;
 - dosaggio della comicita, del linguaggio esplicito e dell'eventuale rapporto del protagonista con l'alcol;
-- target hardware minimo e obiettivo di frame rate;
+- target hardware minimo (l'obiettivo di frame rate e 120 fps, D-031; Steam Deck LCD 60);
 - schema definitivo per controller e tastiera/mouse;
 - livello di compatibilita Steam Deck dimostrabile e possibile obiettivo Verified;
 - prezzo e obiettivo commerciale.
