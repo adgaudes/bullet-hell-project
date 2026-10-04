@@ -1,5 +1,7 @@
 # Proposta di visione — 3 ottobre 2026
 
+> **Aggiornamento 4 ottobre 2026:** il proprietario ha risposto alle domande principali, vedi sezione 5. Concept Lock e Vision Lock restano aperti.
+>
 > **DRAFT per il proprietario.** Questo documento propone una sintesi per chiudere la Fase 1; non approva Vision Lock, Concept Lock, identità o tono.
 
 ## 1. Stato
@@ -62,6 +64,18 @@ Il Concept Lock richiede inoltre i test vincolanti di `CREATIVE_PRINCIPLES.md`; 
 6. Combattimento: auto-fire, mira manuale o ibrido? **Default: ibrido, base automatica e tool/abilità mirati.**
 7. Il primo anno deve promettere mezzi pilotabili al pubblico? **Default: no; solo se il telaio terrestre supera il gate.**
 8. Il linguaggio esplicito deve essere raro, moderato o frequente? **Default: moderato e contestuale.**
+
+### Risposte del proprietario (4 ottobre 2026)
+
+| # | Risposta | Stato |
+|---:|---|---|
+| 1 | **A** come promessa primaria; B struttura, C payoff come da default. | Decisa (D-033) |
+| 2 | **Ingegno sotto pressione.** | Decisa (D-033) |
+| 3-4 | **Arena continua con estrazione** (non spedizione a tappe). | Decisa (D-034) |
+| 5 | Durata: non discussa, resta il default di 25 minuti. | Provvisoria |
+| 6 | Combattimento: non risposto in modo esplicito; le "armi aggiuntive" da level-up sono coerenti con l'ibrido (base automatica + tool mirati). | Provvisoria |
+| 7-8 | Mezzi pilotabili e linguaggio esplicito: non discussi, restano i default. | Provvisoria |
+| + | **Progressione nella run**: ogni nemico sconfitto rilascia esperienza; a ogni livello si sceglie fra tre upgrade (armi, pezzi per costruire i compagni, altro da definire insieme) con rarita diverse. Logica di estrazione da decidere. | Decisa nella forma (D-035), logica proposta |
 
 ## 6. Incoerenze e lacune documentali
 

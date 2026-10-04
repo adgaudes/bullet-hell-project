@@ -10,12 +10,12 @@ Principio guida:
 
 > Prima dimostriamo che e divertente. Poi dimostriamo che e producibile. Solo dopo costruiamo tutto il resto.
 
-## Stato operativo al 3 ottobre 2026 (fine sessione)
+## Stato operativo al 4 ottobre 2026
 
 > **Engine: Godot 4.7.2** (D-019). Le fasi di prodotto qui descritte restano valide: cambia la tecnologia, non la sequenza ne i gate. I riferimenti a Unreal, Visual Studio e MCP Epic nelle sezioni successive sono storici; il codice Unreal e nel tag `unreal-prototype-final`. Dettaglio della migrazione: `docs/MIGRATION_STATUS.md`; parita: `docs/GODOT_PARITY_CHECKLIST.md`.
 
 - **Fase 0:** quasi completata. Restano da formalizzare disponibilita settimanale e budget massimo.
-- **Fase 1:** in corso. Pronta la proposta `docs/VISION_PROPOSAL_2026-10-03.md` (visione draft, tre promesse alternative, checklist Concept Lock, 8 domande con default); attende le risposte del proprietario. Vision e Concept Lock non approvati.
+- **Fase 1:** in corso. Il 4 ottobre 2026 il proprietario ha scelto la **promessa A** e l'emozione "ingegno sotto pressione" (D-033), la run ad **arena continua con estrazione** (D-034) e la **progressione a esperienza con tre upgrade per livello e rarita** (D-035, logica proposta in `docs/PROGRESSION_SPEC.md`). Restano provvisori combattimento, durata, mezzi pilotabili e linguaggio. Vision e Concept Lock non ancora approvati.
 - **Fase 2:** toolchain Godot verificata end-to-end: editor, test headless, export Windows (primario, D-026) e Linux, gate unico `tools/godot/Invoke-GodotChecks.ps1`. Resta il round-trip Blender → Godot (R-011).
 - **Fase 3: fase attiva.** Fatto il 3 ottobre 2026:
   - migrazione a Godot completata a parita; feel "quasi uguale" a Unreal, preset **Scattante** scelto come base (D-030), fisica e rendering a 120 (D-028, D-031);
@@ -26,9 +26,9 @@ Principio guida:
 
 **Prossimo passo (in ordine):**
 
-1. **Playtest del Companion Slice** (proprietario): build `LocalBuilds/Prototype01-Godot-Win64/Prototype01.exe`, domande in fondo a `docs/COMPANION_SLICE_SPEC.md`. Esito Continua / Modifica / Scarta: decide se il compagno diventa la base del prossimo prototipo o va rivisto.
-2. **Chiusura della Fase 1** (proprietario): risposte alle 8 domande di `docs/VISION_PROPOSAL_2026-10-03.md`; poi l'agente aggiorna visione, promessa (D-011) e Concept Lock.
-3. **Dopo i due esiti** (agente): micro-prototipo successivo coerente con la promessa scelta, prima candidata la prova della promessa A (corridoio apribile e barriera rialzabile con vantaggio e costo leggibili), con i primi nemici semplici.
+1. **Logica degli upgrade** (proprietario): confermare o correggere la proposta di `docs/PROGRESSION_SPEC.md` (casuale pesato con regole) e le categorie oltre ad armi e pezzi compagno.
+2. **Prototipo della promessa A in arena** (agente): primi nemici semplici che rilasciano esperienza, arma automatica di base, level-up con tre scelte, corridoio apribile e barriera rialzabile con vantaggio e costo leggibili. Costruito sul Companion Slice.
+3. **Playtest del Companion Slice** (proprietario, rimandato il 4 ottobre 2026): puo confluire nel playtest del prototipo al punto 2.
 4. **In sospeso, senza urgenza:**
    - Test A percettivo e test su Steam Deck via Proton (`docs/PLAYTESTS/GODOT_PARITY_PLAYTEST.md`); dopo, eliminare la build Unreal `LocalBuilds/Prototype01-TerrainGrid-Win64-v1` (872 MB);
    - decidere cosa fare di `dev/` e `output/` (non versionate);
