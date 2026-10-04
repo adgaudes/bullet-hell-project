@@ -1,0 +1,694 @@
+@tool
+class_name OvergrownArena
+extends Node3D
+## Arena di gioco: piazza urbana in rovina riconquistata dalla natura (D-036).
+##
+## Tutto e generato da primitive e shader, senza asset esterni, con un seme fisso:
+## editor e gioco mostrano la stessa arena (D-017). Unita native Godot (metri).
+## Orientamento: la camera guarda verso -Z. A nord (-Z) torri alte e skyline,
+## ai lati edifici medi e un treno arrugginito, a sud solo elementi bassi per
+## non coprire il giocatore. Il quadrato centrale resta libero per la griglia
+## del terreno e la corsia dell'hazard.
+## Il piano del suolo e a y = 0 nello spazio locale; il nodo va lasciato in origine
+## perche gli shader lavorano in coordinate mondo.
+
+const GROUND_SHADER := preload("res://resources/materials/ruins_ground.gdshader")
+const RUIN_SHADER := preload("res://resources/materials/ruin_overgrown.gdshader")
+const RUST_SHADER := preload("res://resources/materials/rusted_metal.gdshader")
+const FOLIAGE_SHADER := preload("res://resources/materials/foliage.gdshader")
+
+const WORLD_STATIC_LAYER := 1
+
+@export var layout_seed := 20261004:
+	set(value):
+		layout_seed = value
+		_queue_rebuild()
+## Mezzo lato dell'area giocabile; oltre c'e un muro invisibile.
+@export var play_half_extent := 24.0:
+	set(value):
+		play_half_extent = value
+		_queue_rebuild()
+## Mezzo lato del quadrato centrale tenuto libero (griglia 11x11 + corsia hazard).
+@export var clear_half_extent := 16.8:
+	set(value):
+		clear_half_extent = value
+		_queue_rebuild()
+@export_range(0, 20000, 100) var grass_tufts := 9000:
+	set(value):
+		grass_tufts = value
+		_queue_rebuild()
+@export_range(0, 5000, 50) var flowers := 1400:
+	set(value):
+		flowers = value
+		_queue_rebuild()
+
+const CONCRETE_TINTS: Array[Color] = [
+	Color(0.70, 0.64, 0.55), Color(0.62, 0.58, 0.52), Color(0.74, 0.60, 0.48),
+	Color(0.56, 0.54, 0.50), Color(0.68, 0.56, 0.44),
+]
+const CAR_PAINTS: Array[Color] = [
+	Color(0.62, 0.20, 0.14), Color(0.18, 0.45, 0.46), Color(0.82, 0.76, 0.60),
+	Color(0.86, 0.64, 0.16), Color(0.30, 0.36, 0.52),
+]
+const LEAF_TINTS: Array[Color] = [
+	Color(0.22, 0.42, 0.10), Color(0.34, 0.50, 0.12), Color(0.17, 0.34, 0.09),
+	Color(0.44, 0.54, 0.15),
+]
+const FLOWER_COLORS: Array[Color] = [
+	Color(0.95, 0.45, 0.35), Color(0.45, 0.55, 0.95), Color(0.98, 0.82, 0.25),
+	Color(0.95, 0.92, 0.85), Color(0.75, 0.40, 0.85),
+]
+const SUN_COLOR := Color(1.0, 0.86, 0.66)
+
+var _generated: Array[Node] = []
+var _rebuild_pending := false
+var _rng := RandomNumberGenerator.new()
+var _ruin_material: ShaderMaterial
+var _rust_material: ShaderMaterial
+var _foliage_material: ShaderMaterial
+var _trunk_material: StandardMaterial3D
+var _dark_material: StandardMaterial3D
+## Statistiche dell'ultima costruzione, per log e test.
+var stats := {}
+
+
+func _ready() -> void:
+	rebuild()
+	if not Engine.is_editor_hint():
+		print("PROTOTYPE01_EXPOSURE_READY")
+		print("PROTOTYPE01_ARENA_READY style=overgrown_ruins play=%.0fm blocks=%d props=%d trees=%d"
+			% [play_half_extent * 2.0, stats.blocks, stats.props, stats.trees])
+
+
+func _queue_rebuild() -> void:
+	if not is_node_ready() or _rebuild_pending:
+		return
+	_rebuild_pending = true
+	_flush_rebuild.call_deferred()
+
+
+func _flush_rebuild() -> void:
+	if _rebuild_pending:
+		rebuild()
+
+
+## Ricostruzione idempotente e deterministica.
+func rebuild() -> void:
+	_rebuild_pending = false
+	for node in _generated:
+		remove_child(node)
+		node.queue_free()
+	_generated.clear()
+	stats = {"blocks": 0, "props": 0, "trees": 0, "tufts": 0, "flowers": 0}
+	_rng.seed = layout_seed
+	_make_materials()
+
+	_build_ground()
+	_build_boundary()
+	_build_north()
+	_build_skyline()
+	_build_east()
+	_build_west_train()
+	_build_south_edge()
+	_build_ring_props()
+	_build_ground_cover()
+	_add_sun()
+	_add_environment()
+
+
+# --- Materiali -----------------------------------------------------------------
+
+func _make_materials() -> void:
+	_ruin_material = ShaderMaterial.new()
+	_ruin_material.shader = RUIN_SHADER
+	_rust_material = ShaderMaterial.new()
+	_rust_material.shader = RUST_SHADER
+	_foliage_material = ShaderMaterial.new()
+	_foliage_material.shader = FOLIAGE_SHADER
+	_trunk_material = StandardMaterial3D.new()
+	_trunk_material.albedo_color = Color(0.33, 0.25, 0.18)
+	_trunk_material.roughness = 0.95
+	_dark_material = StandardMaterial3D.new()
+	_dark_material.albedo_color = Color(0.06, 0.06, 0.05)
+	_dark_material.roughness = 0.6
+
+
+# --- Mattoni di base -------------------------------------------------------------
+
+func _add_generated(node: Node) -> void:
+	add_child(node)
+	_generated.append(node)
+
+
+func _static_body(node_name: String, xform: Transform3D) -> StaticBody3D:
+	var body := StaticBody3D.new()
+	body.name = node_name
+	body.transform = xform
+	body.collision_layer = WORLD_STATIC_LAYER
+	body.collision_mask = 0
+	_add_generated(body)
+	return body
+
+
+func _mesh_child(parent: Node3D, mesh: Mesh, material: Material, local := Transform3D.IDENTITY) -> MeshInstance3D:
+	var mi := MeshInstance3D.new()
+	mi.mesh = mesh
+	mi.material_override = material
+	mi.transform = local
+	parent.add_child(mi)
+	return mi
+
+
+func _box_shape_child(parent: Node3D, size: Vector3, local := Transform3D.IDENTITY) -> void:
+	var shape := BoxShape3D.new()
+	shape.size = size
+	var collision := CollisionShape3D.new()
+	collision.shape = shape
+	collision.transform = local
+	parent.add_child(collision)
+
+
+func _box(size: Vector3) -> BoxMesh:
+	var mesh := BoxMesh.new()
+	mesh.size = size
+	return mesh
+
+
+func _pick(colors: Array[Color]) -> Color:
+	return colors[_rng.randi_range(0, colors.size() - 1)]
+
+
+## Blocco di rovina con collisione. `base` e il centro della base, nel piano locale.
+func _ruin_block(node_name: String, base: Vector3, size: Vector3, yaw_deg: float,
+		tint: Color, overgrowth: float, windows := 1.0, collide := true) -> StaticBody3D:
+	var xform := Transform3D(Basis(Vector3.UP, deg_to_rad(yaw_deg)), base + Vector3(0.0, size.y * 0.5, 0.0))
+	var body := _static_body(node_name, xform)
+	var mi := _mesh_child(body, _box(size), _ruin_material)
+	mi.set_instance_shader_parameter(&"base_tint", tint)
+	mi.set_instance_shader_parameter(&"top_y", base.y + size.y)
+	mi.set_instance_shader_parameter(&"overgrowth", overgrowth)
+	mi.set_instance_shader_parameter(&"windows", windows)
+	if collide:
+		_box_shape_child(body, size)
+	stats.blocks += 1
+	return body
+
+
+## Torre spezzata: corpo principale, gradoni rotti in cima, rampicanti in facciata.
+func _tower(node_name: String, center: Vector2, footprint: Vector2, height: float,
+		overgrowth: float, facade_vines := true) -> void:
+	var tint := _pick(CONCRETE_TINTS)
+	var yaw := _rng.randf_range(-4.0, 4.0)
+	_ruin_block(node_name, Vector3(center.x, 0.0, center.y), Vector3(footprint.x, height, footprint.y),
+		yaw, tint, overgrowth)
+	# Sommita crollata: due o tre blocchi decrescenti, sfalsati.
+	var top := height
+	var w := footprint.x
+	var d := footprint.y
+	for i in _rng.randi_range(1, 3):
+		w *= _rng.randf_range(0.45, 0.75)
+		d *= _rng.randf_range(0.5, 0.85)
+		var h := _rng.randf_range(2.0, 6.0)
+		var offset := Vector2(_rng.randf_range(-0.3, 0.3) * footprint.x, _rng.randf_range(-0.3, 0.3) * footprint.y)
+		_ruin_block("%sTop%d" % [node_name, i], Vector3(center.x + offset.x, top, center.y + offset.y),
+			Vector3(w, h, d), yaw + _rng.randf_range(-6.0, 6.0), tint, minf(overgrowth + 0.1, 1.0), 1.0, false)
+		top += h
+	# Chioma sul tetto: la natura sopra le rovine.
+	for i in _rng.randi_range(2, 4):
+		var p := Vector3(center.x + _rng.randf_range(-0.35, 0.35) * footprint.x, height,
+			center.y + _rng.randf_range(-0.35, 0.35) * footprint.y)
+		_bush(p, _rng.randf_range(1.4, 2.6), false)
+	if facade_vines:
+		_facade_vines(center, footprint, height)
+
+
+## Rampicanti pendenti sulla facciata sud (quella vista dalla camera).
+func _facade_vines(center: Vector2, footprint: Vector2, height: float) -> void:
+	var count := int(footprint.x * 1.2)
+	var mm := MultiMesh.new()
+	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.use_colors = true
+	mm.mesh = _box(Vector3(1.0, 1.0, 1.0))
+	mm.instance_count = count
+	var face_z := center.y + footprint.y * 0.5 + 0.08
+	for i in count:
+		var length := _rng.randf_range(2.0, height * 0.6)
+		var width := _rng.randf_range(0.25, 0.9)
+		var x := center.x + _rng.randf_range(-0.48, 0.48) * footprint.x
+		var basis := Basis.from_scale(Vector3(width, length, 0.12))
+		mm.set_instance_transform(i, Transform3D(basis, Vector3(x, height - length * 0.5, face_z)))
+		mm.set_instance_color(i, _pick(LEAF_TINTS) * _rng.randf_range(0.5, 0.8))
+	var mmi := MultiMeshInstance3D.new()
+	mmi.name = "FacadeVines"
+	mmi.multimesh = mm
+	mmi.material_override = _foliage_material
+	mmi.set_instance_shader_parameter(&"tint", Color(1, 1, 1))
+	_add_generated(mmi)
+
+
+func _tree(base: Vector3, scale: float) -> void:
+	var trunk_h := 3.2 * scale
+	var body := _static_body("Tree", Transform3D(Basis(), base))
+	var trunk := CylinderMesh.new()
+	trunk.top_radius = 0.16 * scale
+	trunk.bottom_radius = 0.3 * scale
+	trunk.height = trunk_h
+	trunk.radial_segments = 7
+	_mesh_child(body, trunk, _trunk_material, Transform3D(Basis(), Vector3(0.0, trunk_h * 0.5, 0.0)))
+	var shape := CylinderShape3D.new()
+	shape.radius = 0.35 * scale
+	shape.height = trunk_h
+	var collision := CollisionShape3D.new()
+	collision.shape = shape
+	collision.position = Vector3(0.0, trunk_h * 0.5, 0.0)
+	body.add_child(collision)
+	var tint := _pick(LEAF_TINTS)
+	for i in _rng.randi_range(3, 5):
+		var r := _rng.randf_range(1.0, 1.7) * scale
+		var sphere := SphereMesh.new()
+		sphere.radius = r
+		sphere.height = r * 1.6
+		sphere.radial_segments = 10
+		sphere.rings = 6
+		var offset := Vector3(_rng.randf_range(-1.0, 1.0) * scale, trunk_h + _rng.randf_range(-0.2, 1.2) * scale,
+			_rng.randf_range(-1.0, 1.0) * scale)
+		var mi := _mesh_child(body, sphere, _foliage_material, Transform3D(Basis(), offset))
+		mi.set_instance_shader_parameter(&"tint", tint * _rng.randf_range(0.85, 1.1))
+	stats.trees += 1
+
+
+## Cespuglio: sfere schiacciate, senza collisione.
+func _bush(base: Vector3, size: float, count_as_prop := true) -> void:
+	var root := Node3D.new()
+	root.name = "Bush"
+	root.position = base
+	_add_generated(root)
+	var tint := _pick(LEAF_TINTS)
+	for i in _rng.randi_range(2, 4):
+		var r := size * _rng.randf_range(0.35, 0.6)
+		var sphere := SphereMesh.new()
+		sphere.radius = r
+		sphere.height = r * 1.2
+		sphere.radial_segments = 9
+		sphere.rings = 5
+		var offset := Vector3(_rng.randf_range(-0.5, 0.5) * size, r * 0.35, _rng.randf_range(-0.5, 0.5) * size)
+		var mi := _mesh_child(root, sphere, _foliage_material, Transform3D(Basis(), offset))
+		mi.set_instance_shader_parameter(&"tint", tint * _rng.randf_range(0.8, 1.1))
+	if count_as_prop:
+		stats.props += 1
+
+
+## Auto arrugginita: scocca, abitacolo, vetri scuri; affondata nel terreno.
+func _car(base: Vector3, yaw_deg: float) -> void:
+	var tilt := Basis(Vector3.FORWARD, deg_to_rad(_rng.randf_range(-4.0, 4.0)))
+	var basis := Basis(Vector3.UP, deg_to_rad(yaw_deg)) * tilt
+	var body := _static_body("WreckedCar", Transform3D(basis, base + Vector3(0.0, 0.42, 0.0)))
+	var paint := _pick(CAR_PAINTS)
+	var shell := _mesh_child(body, _box(Vector3(1.8, 0.75, 4.3)), _rust_material)
+	var cabin := _mesh_child(body, _box(Vector3(1.55, 0.6, 2.1)), _rust_material,
+		Transform3D(Basis(), Vector3(0.0, 0.66, -0.2)))
+	for mi: MeshInstance3D in [shell, cabin]:
+		mi.set_instance_shader_parameter(&"paint", paint)
+		mi.set_instance_shader_parameter(&"rust", _rng.randf_range(0.45, 0.8))
+		mi.set_instance_shader_parameter(&"overgrowth", _rng.randf_range(0.3, 0.8))
+	_mesh_child(body, _box(Vector3(1.58, 0.42, 2.0)), _dark_material, Transform3D(Basis(), Vector3(0.0, 0.66, -0.2)))
+	_box_shape_child(body, Vector3(1.8, 1.4, 4.3), Transform3D(Basis(), Vector3(0.0, 0.3, 0.0)))
+	_bush(base + basis * Vector3(0.9, 0.0, 1.6), 1.1, false)
+	stats.props += 1
+
+
+## Mucchio di macerie: lastre e blocchi inclinati.
+func _rubble(center: Vector3, spread: float) -> void:
+	var body := _static_body("Rubble", Transform3D(Basis(), center))
+	for i in _rng.randi_range(5, 8):
+		var size := Vector3(_rng.randf_range(0.6, 2.2), _rng.randf_range(0.3, 1.2), _rng.randf_range(0.6, 2.0))
+		var basis := Basis.from_euler(Vector3(_rng.randf_range(-0.35, 0.35), _rng.randf_range(0.0, TAU),
+			_rng.randf_range(-0.35, 0.35)))
+		var pos := Vector3(_rng.randf_range(-spread, spread), size.y * 0.35, _rng.randf_range(-spread, spread))
+		var mi := _mesh_child(body, _box(size), _ruin_material, Transform3D(basis, pos))
+		mi.set_instance_shader_parameter(&"base_tint", _pick(CONCRETE_TINTS))
+		mi.set_instance_shader_parameter(&"top_y", center.y + pos.y + size.y)
+		mi.set_instance_shader_parameter(&"overgrowth", 0.7)
+		mi.set_instance_shader_parameter(&"windows", 0.0)
+		_box_shape_child(body, size, Transform3D(basis, pos))
+	stats.props += 1
+
+
+## Lampione storto.
+func _lamp_post(base: Vector3) -> void:
+	var lean := Basis.from_euler(Vector3(_rng.randf_range(-0.25, 0.25), _rng.randf_range(0.0, TAU),
+		_rng.randf_range(-0.25, 0.25)))
+	var body := _static_body("LampPost", Transform3D(lean, base))
+	var pole := CylinderMesh.new()
+	pole.top_radius = 0.07
+	pole.bottom_radius = 0.11
+	pole.height = 5.5
+	pole.radial_segments = 6
+	var pole_mi := _mesh_child(body, pole, _rust_material, Transform3D(Basis(), Vector3(0.0, 2.75, 0.0)))
+	var arm_mi := _mesh_child(body, _box(Vector3(0.12, 0.12, 1.6)), _rust_material,
+		Transform3D(Basis(), Vector3(0.0, 5.4, 0.7)))
+	for mi: MeshInstance3D in [pole_mi, arm_mi]:
+		mi.set_instance_shader_parameter(&"paint", Color(0.28, 0.34, 0.30))
+		mi.set_instance_shader_parameter(&"rust", 0.6)
+	var shape := CylinderShape3D.new()
+	shape.radius = 0.15
+	shape.height = 5.5
+	var collision := CollisionShape3D.new()
+	collision.shape = shape
+	collision.position = Vector3(0.0, 2.75, 0.0)
+	body.add_child(collision)
+	stats.props += 1
+
+
+## Vagone ferroviario arrugginito con tetto bombato e finestrini.
+func _carriage(base: Vector3, yaw_deg: float, roll_deg: float, paint: Color) -> void:
+	var basis := Basis(Vector3.UP, deg_to_rad(yaw_deg)) * Basis(Vector3.BACK, deg_to_rad(roll_deg))
+	var size := Vector3(2.9, 2.8, 13.0)
+	var body := _static_body("TrainCarriage", Transform3D(basis, base + Vector3(0.0, size.y * 0.5 + 0.1, 0.0)))
+	var shell := _mesh_child(body, _box(size), _rust_material)
+	var roof := CylinderMesh.new()
+	roof.top_radius = 1.45
+	roof.bottom_radius = 1.45
+	roof.height = size.z
+	roof.radial_segments = 14
+	var roof_basis := Basis.from_scale(Vector3(1.0, 0.3, 1.0)) * Basis(Vector3.RIGHT, PI * 0.5)
+	var roof_mi := _mesh_child(body, roof, _rust_material, Transform3D(roof_basis, Vector3(0.0, size.y * 0.5, 0.0)))
+	for mi: MeshInstance3D in [shell, roof_mi]:
+		mi.set_instance_shader_parameter(&"paint", paint)
+		mi.set_instance_shader_parameter(&"rust", _rng.randf_range(0.35, 0.65))
+		mi.set_instance_shader_parameter(&"overgrowth", 0.9)
+	for side in [-1.0, 1.0]:
+		_mesh_child(body, _box(Vector3(0.06, 0.9, size.z - 2.0)), _dark_material,
+			Transform3D(Basis(), Vector3(side * size.x * 0.5, 0.35, 0.0)))
+	_box_shape_child(body, size + Vector3(0.0, 0.6, 0.0))
+	# Felci sul tetto.
+	for i in _rng.randi_range(2, 4):
+		var local := Vector3(_rng.randf_range(-0.8, 0.8), size.y * 0.5 + 0.35, _rng.randf_range(-5.5, 5.5))
+		_bush(body.transform * local, _rng.randf_range(0.9, 1.6), false)
+	stats.props += 1
+
+
+# --- Composizione ----------------------------------------------------------------
+
+func _build_ground() -> void:
+	var size := Vector3(220.0, 0.4, 220.0)
+	var body := _static_body("Ground", Transform3D(Basis(), Vector3(0.0, -0.2, 0.0)))
+	var material := ShaderMaterial.new()
+	material.shader = GROUND_SHADER
+	material.set_shader_parameter(&"plaza_radius", play_half_extent * 0.85)
+	var plane := PlaneMesh.new()
+	plane.size = Vector2(size.x, size.z)
+	_mesh_child(body, plane, material, Transform3D(Basis(), Vector3(0.0, 0.2, 0.0)))
+	_box_shape_child(body, size)
+
+
+## Muri invisibili sul perimetro giocabile.
+func _build_boundary() -> void:
+	var h := 6.0
+	var e := play_half_extent
+	var t := 1.0
+	var walls := [
+		[Vector3(0.0, h * 0.5, -e - t * 0.5), Vector3(e * 2.0 + t * 2.0, h, t)],
+		[Vector3(0.0, h * 0.5, e + t * 0.5), Vector3(e * 2.0 + t * 2.0, h, t)],
+		[Vector3(-e - t * 0.5, h * 0.5, 0.0), Vector3(t, h, e * 2.0)],
+		[Vector3(e + t * 0.5, h * 0.5, 0.0), Vector3(t, h, e * 2.0)],
+	]
+	for i in walls.size():
+		var body := _static_body("Boundary%d" % i, Transform3D(Basis(), walls[i][0]))
+		_box_shape_child(body, walls[i][1])
+
+
+## Fila nord: torri alte con una strada che si apre verso il landmark.
+func _build_north() -> void:
+	var z := -play_half_extent - 9.0
+	var specs := [
+		[Vector2(-34.0, z - 1.0), Vector2(13.0, 14.0), 26.0],
+		[Vector2(-19.0, z + 0.5), Vector2(12.0, 13.0), 34.0],
+		[Vector2(-6.5, z - 2.0), Vector2(9.0, 15.0), 21.0],
+		[Vector2(15.0, z), Vector2(13.0, 14.0), 38.0],
+		[Vector2(30.0, z - 1.5), Vector2(14.0, 15.0), 24.0],
+	]
+	for i in specs.size():
+		_tower("NorthTower%d" % i, specs[i][0], specs[i][1], specs[i][2], _rng.randf_range(0.45, 0.85))
+	# Macerie nella strada che porta verso nord, fuori dall'area giocabile.
+	_rubble(Vector3(3.5, 0.0, -play_half_extent - 5.0), 2.5)
+
+
+## Skyline lontano: grattacieli sommersi dal verde, sfumati dalla foschia.
+func _build_skyline() -> void:
+	var specs := [
+		[Vector2(4.0, -110.0), Vector2(16.0, 16.0), 78.0],
+		[Vector2(-40.0, -95.0), Vector2(18.0, 14.0), 55.0],
+		[Vector2(45.0, -100.0), Vector2(15.0, 15.0), 62.0],
+		[Vector2(-70.0, -80.0), Vector2(16.0, 16.0), 40.0],
+		[Vector2(75.0, -75.0), Vector2(18.0, 16.0), 46.0],
+		[Vector2(-15.0, -70.0), Vector2(14.0, 12.0), 32.0],
+		[Vector2(28.0, -65.0), Vector2(12.0, 12.0), 28.0],
+	]
+	for i in specs.size():
+		_tower("Skyline%d" % i, specs[i][0], specs[i][1], specs[i][2], _rng.randf_range(0.6, 0.95), false)
+
+
+## Lato est: edifici medi, uno crollato a gradoni.
+func _build_east() -> void:
+	var x := play_half_extent + 8.0
+	_tower("EastBlock0", Vector2(x, -12.0), Vector2(12.0, 14.0), 16.0, 0.7)
+	_tower("EastBlock1", Vector2(x + 2.0, 6.0), Vector2(14.0, 12.0), 11.0, 0.8)
+	_ruin_block("EastCollapsed", Vector3(x - 1.0, 0.0, 19.0), Vector3(10.0, 4.0, 9.0), 6.0,
+		_pick(CONCRETE_TINTS), 0.9)
+	_rubble(Vector3(play_half_extent + 1.5, 0.0, 15.0), 2.5)
+	_tree(Vector3(x - 3.0, 4.0, 18.0), 1.2)
+
+
+## Lato ovest: treno arrugginito deragliato, edifici dietro.
+func _build_west_train() -> void:
+	var x := -play_half_extent - 4.0
+	_carriage(Vector3(x, 0.0, -15.0), 2.0, 0.0, Color(0.88, 0.68, 0.14))
+	_carriage(Vector3(x + 0.6, 0.0, -1.5), -7.0, 4.0, Color(0.72, 0.32, 0.12))
+	_carriage(Vector3(x + 2.0, 0.0, 11.5), -24.0, 12.0, Color(0.88, 0.68, 0.14))
+	_tower("WestBlock0", Vector2(x - 14.0, -10.0), Vector2(14.0, 16.0), 22.0, 0.75)
+	_tower("WestBlock1", Vector2(x - 12.0, 10.0), Vector2(12.0, 14.0), 13.0, 0.85)
+
+
+## Lato sud: solo elementi bassi (muretti, cespugli), la camera guarda da qui.
+func _build_south_edge() -> void:
+	var z := play_half_extent + 1.6
+	var x := -play_half_extent - 2.0
+	while x < play_half_extent + 2.0:
+		var length := _rng.randf_range(2.5, 6.0)
+		if _rng.randf() < 0.75:
+			_ruin_block("SouthWall", Vector3(x + length * 0.5, 0.0, z + _rng.randf_range(-0.4, 0.4)),
+				Vector3(length, _rng.randf_range(0.6, 1.4), 0.5), _rng.randf_range(-6.0, 6.0),
+				_pick(CONCRETE_TINTS), 0.8, 0.0)
+		else:
+			_bush(Vector3(x + length * 0.5, 0.0, z), _rng.randf_range(1.2, 2.0))
+		x += length + _rng.randf_range(0.2, 1.5)
+
+
+## Anello fra il quadrato libero e il perimetro: auto, macerie, alberi, lampioni.
+func _build_ring_props() -> void:
+	var e := play_half_extent
+	var c := clear_half_extent
+	var mid := (e + c) * 0.5
+	_car(Vector3(-mid, 0.0, -mid + 1.0), 35.0)
+	_car(Vector3(mid + 0.5, 0.0, -2.0), 88.0)
+	_car(Vector3(-mid - 0.5, 0.0, 4.5), -80.0)
+	_car(Vector3(10.0, 0.0, -mid), 12.0)
+	_car(Vector3(-9.0, 0.0, mid - 0.5), 100.0)
+	_rubble(Vector3(mid, 0.0, mid), 2.0)
+	_rubble(Vector3(-4.0, 0.0, -mid - 0.5), 1.8)
+	_rubble(Vector3(-mid, 0.0, -9.0), 1.6)
+	# Alberi solo a nord e ai lati: a sud coprirebbero il giocatore.
+	_tree(Vector3(-mid + 0.5, 0.0, -mid - 2.0), 1.3)
+	_tree(Vector3(mid - 1.0, 0.0, -mid), 1.15)
+	_tree(Vector3(18.0, 0.0, -9.0), 0.95)
+	_tree(Vector3(-mid, 0.0, 12.0), 1.0)
+	_tree(Vector3(2.5, 0.0, -mid - 1.0), 1.25)
+	_lamp_post(Vector3(-mid + 2.0, 0.0, -5.0))
+	_lamp_post(Vector3(mid - 1.5, 0.0, 9.0))
+	_lamp_post(Vector3(-15.0, 0.0, -mid))
+	_bush(Vector3(mid, 0.0, 15.0), 1.8)
+	_bush(Vector3(-mid + 1.0, 0.0, 18.0), 1.6)
+	_bush(Vector3(14.0, 0.0, mid + 0.5), 1.4)
+	_bush(Vector3(5.0, 0.0, mid + 1.0), 1.2)
+
+
+# --- Copertura vegetale ----------------------------------------------------------
+
+## Stessa formula del suolo (ruins_ground.gdshader): i ciuffi crescono dove il suolo e verde.
+func ground_cover_at(p: Vector2) -> float:
+	var plaza_radius := play_half_extent * 0.85
+	var edge := smoothstep(plaza_radius * 0.55, plaza_radius * 1.25, p.length())
+	return _fbm(p * 0.09 + Vector2(3.7, 1.3)) + edge * 0.45 - 0.08 + (_value_noise(p * 2.7) - 0.5) * 0.08
+
+
+func _build_ground_cover() -> void:
+	var limit := play_half_extent + 14.0
+	var tuft_xforms: Array[Transform3D] = []
+	var tuft_colors: Array[Color] = []
+	var flower_xforms: Array[Transform3D] = []
+	var flower_colors: Array[Color] = []
+	var attempts := (grass_tufts + flowers) * 4
+	for i in attempts:
+		if tuft_xforms.size() >= grass_tufts and flower_xforms.size() >= flowers:
+			break
+		var p := Vector2(_rng.randf_range(-limit, limit), _rng.randf_range(-limit, limit))
+		# Le celle del terreno cambiano altezza: niente vegetazione sopra la griglia.
+		if absf(p.x) < clear_half_extent - 2.6 and absf(p.y) < clear_half_extent - 2.6:
+			continue
+		var cover := ground_cover_at(p)
+		if cover < 0.5 + _rng.randf_range(-0.04, 0.06):
+			continue
+		var yaw := _rng.randf_range(0.0, TAU)
+		if _rng.randf() < float(flowers) / float(grass_tufts + flowers) and flower_xforms.size() < flowers:
+			var s := _rng.randf_range(0.7, 1.3)
+			flower_xforms.append(Transform3D(Basis(Vector3.UP, yaw).scaled(Vector3(s, s, s)), Vector3(p.x, 0.0, p.y)))
+			flower_colors.append(_pick(FLOWER_COLORS))
+		elif tuft_xforms.size() < grass_tufts:
+			var s := _rng.randf_range(0.7, 1.5)
+			tuft_xforms.append(Transform3D(Basis(Vector3.UP, yaw).scaled(Vector3(s, s * _rng.randf_range(0.8, 1.4), s)),
+				Vector3(p.x, 0.0, p.y)))
+			tuft_colors.append(_pick(LEAF_TINTS) * _rng.randf_range(0.7, 1.0))
+	_add_multimesh("GrassTufts", _tuft_mesh(), tuft_xforms, tuft_colors)
+	_add_multimesh("Flowers", _flower_mesh(), flower_xforms, flower_colors)
+	stats.tufts = tuft_xforms.size()
+	stats.flowers = flower_xforms.size()
+
+
+func _add_multimesh(node_name: String, mesh: Mesh, xforms: Array[Transform3D], colors: Array[Color]) -> void:
+	var mm := MultiMesh.new()
+	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.use_colors = true
+	mm.mesh = mesh
+	mm.instance_count = xforms.size()
+	for i in xforms.size():
+		mm.set_instance_transform(i, xforms[i])
+		mm.set_instance_color(i, colors[i])
+	var mmi := MultiMeshInstance3D.new()
+	mmi.name = node_name
+	mmi.multimesh = mm
+	mmi.material_override = _foliage_material
+	mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_add_generated(mmi)
+
+
+## Ciuffo: tre lame triangolari incrociate.
+func _tuft_mesh() -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for k in 3:
+		var a := TAU * float(k) / 3.0
+		var side := Vector3(cos(a), 0.0, sin(a)) * 0.09
+		var lean := Vector3(-sin(a), 0.0, cos(a)) * 0.08
+		st.set_normal(Vector3.UP)
+		st.set_color(Color(0.7, 0.7, 0.7))
+		st.add_vertex(-side)
+		st.set_color(Color(0.7, 0.7, 0.7))
+		st.add_vertex(side)
+		st.set_color(Color(1.0, 1.0, 0.9))
+		st.add_vertex(Vector3(0.0, 0.32, 0.0) + lean)
+	return st.commit()
+
+
+## Fiore: piccolo bocciolo su uno stelo.
+func _flower_mesh() -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var head := SphereMesh.new()
+	head.radius = 0.07
+	head.height = 0.1
+	head.radial_segments = 6
+	head.rings = 3
+	st.append_from(head, 0, Transform3D(Basis(), Vector3(0.0, 0.28, 0.0)))
+	return st.commit()
+
+
+# --- Rumore (porta di noise.gdshaderinc) ------------------------------------------
+
+static func _fract(v: float) -> float:
+	return v - floorf(v)
+
+
+static func _hash12(p: Vector2) -> float:
+	var p3 := Vector3(_fract(p.x * 0.1031), _fract(p.y * 0.1031), _fract(p.x * 0.1031))
+	var d := p3.dot(Vector3(p3.y, p3.z, p3.x) + Vector3(33.33, 33.33, 33.33))
+	p3 += Vector3(d, d, d)
+	return _fract((p3.x + p3.y) * p3.z)
+
+
+static func _value_noise(p: Vector2) -> float:
+	var i := Vector2(floorf(p.x), floorf(p.y))
+	var f := p - i
+	var u := f * f * (Vector2(3.0, 3.0) - 2.0 * f)
+	var a := _hash12(i)
+	var b := _hash12(i + Vector2(1.0, 0.0))
+	var c := _hash12(i + Vector2(0.0, 1.0))
+	var d := _hash12(i + Vector2(1.0, 1.0))
+	return lerpf(lerpf(a, b, u.x), lerpf(c, d, u.x), u.y)
+
+
+static func _fbm(p: Vector2) -> float:
+	var v := 0.0
+	var a := 0.5
+	for k in 5:
+		v += a * _value_noise(p)
+		p = p * 2.03 + Vector2(17.1, 9.2)
+		a *= 0.5
+	return v
+
+
+# --- Luce e atmosfera --------------------------------------------------------------
+
+func _add_sun() -> void:
+	var sun := DirectionalLight3D.new()
+	sun.name = "SunLight"
+	# Luce bassa e dorata da ovest-sud-ovest: ombre lunghe verso est, leggibili dall'alto.
+	var direction := Vector3(0.78, -0.52, -0.35).normalized()
+	sun.basis = Basis.looking_at(direction, Vector3.UP)
+	sun.light_color = SUN_COLOR
+	sun.light_energy = 1.4
+	sun.shadow_enabled = true
+	sun.directional_shadow_max_distance = 90.0
+	_add_generated(sun)
+
+
+func _add_environment() -> void:
+	var sky_material := ProceduralSkyMaterial.new()
+	sky_material.sky_top_color = Color(0.30, 0.50, 0.80)
+	sky_material.sky_horizon_color = Color(0.76, 0.80, 0.80)
+	sky_material.ground_horizon_color = Color(0.70, 0.66, 0.54)
+	sky_material.ground_bottom_color = Color(0.30, 0.32, 0.22)
+	var sky := Sky.new()
+	sky.sky_material = sky_material
+
+	var environment := Environment.new()
+	environment.background_mode = Environment.BG_SKY
+	environment.sky = sky
+	environment.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
+	environment.ambient_light_energy = 0.45
+	environment.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+	environment.tonemap_white = 6.0
+	# Foschia calda solo in lontananza: il campo di gioco resta nitido.
+	environment.fog_enabled = true
+	environment.fog_mode = Environment.FOG_MODE_DEPTH
+	environment.fog_light_color = Color(0.74, 0.79, 0.76)
+	environment.fog_density = 0.55
+	environment.fog_depth_begin = 45.0
+	environment.fog_depth_end = 160.0
+	environment.fog_depth_curve = 1.6
+	environment.fog_sun_scatter = 0.15
+	environment.ssao_enabled = true
+	environment.ssao_radius = 1.6
+	environment.ssao_intensity = 1.6
+	environment.glow_enabled = true
+	environment.glow_intensity = 0.4
+	environment.glow_bloom = 0.05
+
+	var camera_attributes := CameraAttributesPractical.new()
+	camera_attributes.auto_exposure_enabled = false
+
+	var world_environment := WorldEnvironment.new()
+	world_environment.name = "WorldEnvironment"
+	world_environment.environment = environment
+	world_environment.camera_attributes = camera_attributes
+	_add_generated(world_environment)

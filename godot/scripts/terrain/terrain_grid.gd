@@ -39,6 +39,20 @@ const PREVIEW_LIFT_CM := 2.0
 		if tuning != null:
 			tuning.changed.connect(_queue_rebuild)
 		_queue_rebuild()
+## Celle col suolo dell'arena in rovina, tinte dallo stato (D-036). Spento = colori
+## pieni del prototipo Unreal, usati dalla scena di parita.
+@export var natural_ground := false:
+	set(value):
+		natural_ground = value
+		_queue_rebuild()
+
+## Quanto il colore di stato copre il suolo naturale: Normal resta quasi suolo.
+const NATURAL_STATE_TINT := {
+	TerrainState.CellState.NORMAL: 0.12,
+	TerrainState.CellState.LOWERED: 0.85,
+	TerrainState.CellState.RAISED: 0.8,
+}
+const NATURAL_PROTECTED_TINT := 0.75
 
 var state := TerrainState.new()
 ## Cella sotto l'anteprima, (-1, -1) se nascosta.
@@ -268,6 +282,9 @@ func _apply_presentation(body: StaticBody3D, cell: Vector2i, deferred: bool) -> 
 	elif cell_state == TerrainState.CellState.RAISED:
 		color = RAISED_COLOR
 	mesh_instance.set_instance_shader_parameter(&"cell_color", color.linear_to_srgb())
+	mesh_instance.set_instance_shader_parameter(&"natural", 1.0 if natural_ground else 0.0)
+	var tint: float = NATURAL_PROTECTED_TINT if state.is_protected(cell) else NATURAL_STATE_TINT[cell_state]
+	mesh_instance.set_instance_shader_parameter(&"state_tint", tint)
 
 	# Collisione coerente con la geometria visibile: solo Raised blocca.
 	# A runtime e differita (un comando puo arrivare durante una query fisica);

@@ -104,6 +104,10 @@ Produrre una sola scena graybox/stylized-lighting, non un personaggio finale:
 
 Il test ha successo se una schermata muta comunica insieme mondo post-apocalittico vitale, ingegneria improvvisata, tono non solenne e gerarchia di gameplay.
 
+## Arena "rovine riconquistate" (4 ottobre 2026, D-036)
+
+Prima applicazione della direzione nel gioco: piazza con strada spaccata, lastre invase dall'erba, torri coperte di muschio e rampicanti, treno e auto arrugginiti, alberi, cespugli, fiori corallo/blu/giallo, foschia in lontananza e sole basso dorato. Reference del proprietario in `Screenshots/World/arena_reference_2026-10-04/` (fuori repo; alcune generate con AI, una firmata: solo ispirazione, mai asset). Oggi e un impianto a primitive e shader procedurali; mancano modelli veri (Blender), texture, fogliame denso e acqua.
+
 ## Questioni aperte prima dell'Art Lock
 
 - grado esatto di caricatura delle proporzioni;

@@ -21,14 +21,16 @@ Principio guida:
   - migrazione a Godot completata a parita; feel "quasi uguale" a Unreal, preset **Scattante** scelto come base (D-030), fisica e rendering a 120 (D-028, D-031);
   - **Companion Slice** (D-032, `docs/COMPANION_SLICE_SPEC.md`): primo compagno macchina, ora scena principale; **non ancora playtestato**;
   - **menu pausa e Impostazioni** (grafica, inversione assi, salvataggio; Esc o Start, A conferma e B indietro);
-  - 8 suite di test automatici, tutte verdi; build Windows e Linux aggiornate in `LocalBuilds/`.
+  - 8 suite di test automatici, tutte verdi; build Windows e Linux aggiornate in `LocalBuilds/`;
+  - 4 ottobre 2026: **arena "rovine riconquistate"** (D-036), nuova scena principale con compagno e griglia 11x11 integrata nel suolo; impianto a primitive, modelli Blender da fare. 9 suite verdi. Build non riesportate.
 - **Fasi 4-14:** non iniziate formalmente. Esperimenti tecnici anticipati non equivalgono al superamento dei relativi gate.
 
 **Prossimo passo (in ordine):**
 
 1. **Logica degli upgrade** (proprietario): confermare o correggere la proposta di `docs/PROGRESSION_SPEC.md` (casuale pesato con regole) e le categorie oltre ad armi e pezzi compagno.
-2. **Prototipo della promessa A in arena** (agente): primi nemici semplici che rilasciano esperienza, arma automatica di base, level-up con tre scelte, corridoio apribile e barriera rialzabile con vantaggio e costo leggibili. Costruito sul Companion Slice.
-3. **Playtest del Companion Slice** (proprietario, rimandato il 4 ottobre 2026): puo confluire nel playtest del prototipo al punto 2.
+2. **Arena, seconda passata** (agente): round-trip Blender-Godot (R-011) con un primo modello scriptato (auto o vagone), poi sostituzione progressiva delle primitive; prova a 1280x800 e misura del costo su Steam Deck (SSAO, 10.000 ciuffi d'erba).
+3. **Prototipo della promessa A in arena** (agente): primi nemici semplici che rilasciano esperienza, arma automatica di base, level-up con tre scelte, corridoio apribile e barriera rialzabile con vantaggio e costo leggibili. Costruito sul Companion Slice.
+4. **Playtest del Companion Slice** (proprietario, rimandato il 4 ottobre 2026): puo confluire nel playtest del prototipo al punto 3; il compagno e gia nell'arena.
 4. **In sospeso, senza urgenza:**
    - Test A percettivo e test su Steam Deck via Proton (`docs/PLAYTESTS/GODOT_PARITY_PLAYTEST.md`); dopo, eliminare la build Unreal `LocalBuilds/Prototype01-TerrainGrid-Win64-v1` (872 MB);
    - decidere cosa fare di `dev/` e `output/` (non versionate);

@@ -92,6 +92,10 @@ Trappola verificata: **il nome globale di un autoload non esiste** in `--check-o
 
 Trappola verificata: in Godot 4.7 le azioni predefinite **`ui_accept` e `ui_cancel` non hanno pulsanti joypad**. Il progetto le ridefinisce con A e B: senza, i menu non si confermano col controller.
 
+Trappola verificata (4 ottobre 2026): una **nuova `class_name`** non e visibile a `--check-only` ne ai test finche la cache delle classi globali non e aggiornata (`Could not find type ...`). Aggiornarla con `godot_console --headless --path godot --editor --quit`, oppure aprendo l'editor una volta.
+
+Catture multiple dell'arena (vista di gioco, panoramica, nord, ovest, nord-est), con finestra reale: `godot_console --path godot --resolution 1280x800 --script res://tests/tools/capture_arena.gd -- --out=../output/arena`. Gli script in `tests/tools/` non sono suite: il gate non li esegue.
+
 Il gate (`Invoke-GodotChecks.ps1`) ha un timeout di 300 s per processo: un test appeso risulta FAIL con exit 124 invece di bloccare tutto.
 
 Per l'input nei test: `Input.action_press()` per azioni tenute; per azioni a evento (dash) usare `Input.parse_input_event()` con `InputEventAction`, perche `is_action_just_pressed` in `_physics_process` puo perdere una pressione simulata.
