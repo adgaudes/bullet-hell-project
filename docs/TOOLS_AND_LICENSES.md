@@ -21,7 +21,7 @@ Stati usati:
 | Fab UE plugin | Incluso in UE 5.8.2 | Ricerca e import di asset Fab | Installato; apertura e import in Editor da verificare |
 | Quixel Bridge UE plugin | Incluso in UE 5.8.2 | Accesso e import dei contenuti Megascans compatibili | Installato; apertura e import in Editor da verificare |
 | Epic Games Launcher | 1.3.193.0 | Installazione e aggiornamento UE | Installato |
-| Blender | 5.2.2 LTS (`C:\Program Files\Blender Foundation\Blender 5.2lender.exe`) | Asset statici generati da script (`tools/blender/`), export `.glb` | In uso dal 4 ottobre 2026 (D-037); GPL, gli asset prodotti sono nostri |
+| Blender | 5.2.2 LTS (`C:/Program Files/Blender Foundation/Blender 5.2/blender.exe`) | Asset statici generati da script (`tools/blender/`), export `.glb` | In uso dal 4 ottobre 2026 (D-037); GPL, gli asset prodotti sono nostri |
 | Visual Studio Code | 1.137.0 x64 | Testo, configurazioni e modifiche leggere | Installato; non IDE primario UE C++ |
 | Claude Desktop | Installato; versione da rilevare | Confronto, pianificazione e revisione con Claude | Disponibile con piano Claude Pro |
 | Claude Code CLI | 2.1.278 | Delega controllata di implementazione, test e documentazione | Installato e autenticato con Claude.ai Pro; `doctor` non rileva problemi. I `ConnectionRefused` del 21 settembre 2026 erano causati dall'esecuzione nel sandbox senza rete: il canale funziona con autorizzazione di rete esplicita. Nessuna API PAYG configurata |
