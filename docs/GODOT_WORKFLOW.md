@@ -94,6 +94,8 @@ Trappola verificata: in Godot 4.7 le azioni predefinite **`ui_accept` e `ui_canc
 
 Trappola verificata (4 ottobre 2026): una **nuova `class_name`** non e visibile a `--check-only` ne ai test finche la cache delle classi globali non e aggiornata (`Could not find type ...`). Aggiornarla con `godot_console --headless --path godot --editor --quit`, oppure aprendo l'editor una volta.
 
+Asset Blender (D-037): `"/c/Program Files/Blender Foundation/Blender 5.2/blender.exe" -b --factory-startup --python tools/blender/build_arena_assets.py -- [nome ...]`, poi `godot_console --headless --path godot --editor --quit` per importare i `.glb` (genera i `.import`, da versionare). Le righe `ASSET_EXPORTED` riportano misure e triangoli.
+
 Catture multiple dell'arena (vista di gioco, panoramica, nord, ovest, nord-est), con finestra reale: `godot_console --path godot --resolution 1280x800 --script res://tests/tools/capture_arena.gd -- --out=../output/arena`. Gli script in `tests/tools/` non sono suite: il gate non li esegue.
 
 Il gate (`Invoke-GodotChecks.ps1`) ha un timeout di 300 s per processo: un test appeso risulta FAIL con exit 124 invece di bloccare tutto.

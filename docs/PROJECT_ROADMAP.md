@@ -28,7 +28,7 @@ Principio guida:
 **Prossimo passo (in ordine):**
 
 1. **Logica degli upgrade** (proprietario): confermare o correggere la proposta di `docs/PROGRESSION_SPEC.md` (casuale pesato con regole) e le categorie oltre ad armi e pezzi compagno.
-2. **Arena, seconda passata** (agente): round-trip Blender-Godot (R-011) con un primo modello scriptato (auto o vagone), poi sostituzione progressiva delle primitive; prova a 1280x800 e misura del costo su Steam Deck (SSAO, 10.000 ciuffi d'erba).
+2. **Arena, seconda passata** (agente): pipeline Blender scriptata attiva (D-037; auto, vagone, albero, barriera). Restano: modelli degli edifici in rovina, rampicanti e fogliame migliori, misura del costo su Steam Deck (SSAO, 10.000 ciuffi d'erba).
 3. **Prototipo della promessa A in arena** (agente): primi nemici semplici che rilasciano esperienza, arma automatica di base, level-up con tre scelte, corridoio apribile e barriera rialzabile con vantaggio e costo leggibili. Costruito sul Companion Slice.
 4. **Playtest del Companion Slice** (proprietario, rimandato il 4 ottobre 2026): puo confluire nel playtest del prototipo al punto 3; il compagno e gia nell'arena.
 4. **In sospeso, senza urgenza:**

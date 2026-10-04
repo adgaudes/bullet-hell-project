@@ -11,6 +11,8 @@ const VIEWS := [
 	["north", Vector3(0, 9, 14), Vector3(0, 8, -40)],
 	["west", Vector3(10, 8, 6), Vector3(-28, 2, -2)],
 	["corner_ne", Vector3(-6, 10, 10), Vector3(22, 1, -20)],
+	["close_train", Vector3(-16, 4, 6), Vector3(-27, 1.5, -2)],
+	["close_car", Vector3(-14, 3.5, -12), Vector3(-20.4, 0.6, -19.4)],
 ]
 
 

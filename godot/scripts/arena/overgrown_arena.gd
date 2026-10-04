@@ -16,6 +16,11 @@ const GROUND_SHADER := preload("res://resources/materials/ruins_ground.gdshader"
 const RUIN_SHADER := preload("res://resources/materials/ruin_overgrown.gdshader")
 const RUST_SHADER := preload("res://resources/materials/rusted_metal.gdshader")
 const FOLIAGE_SHADER := preload("res://resources/materials/foliage.gdshader")
+## Modelli generati da tools/blender/build_arena_assets.py (D-037).
+const CAR_MODEL := preload("res://assets/models/wrecked_car.glb")
+const CARRIAGE_MODEL := preload("res://assets/models/train_carriage.glb")
+const TREE_MODEL := preload("res://assets/models/overgrown_tree.glb")
+const BARRIER_MODEL := preload("res://assets/models/concrete_barrier.glb")
 
 const WORLD_STATIC_LAYER := 1
 
@@ -66,6 +71,9 @@ var _rng := RandomNumberGenerator.new()
 var _ruin_material: ShaderMaterial
 var _rust_material: ShaderMaterial
 var _foliage_material: ShaderMaterial
+var _canopy_material: ShaderMaterial
+var _metal_material: StandardMaterial3D
+var _tire_material: StandardMaterial3D
 var _trunk_material: StandardMaterial3D
 var _dark_material: StandardMaterial3D
 ## Statistiche dell'ultima costruzione, per log e test.
@@ -125,8 +133,19 @@ func _make_materials() -> void:
 	_rust_material.shader = RUST_SHADER
 	_foliage_material = ShaderMaterial.new()
 	_foliage_material.shader = FOLIAGE_SHADER
+	# Le chiome alte oscillano poco: lo spostamento cresce con la quota locale.
+	_canopy_material = ShaderMaterial.new()
+	_canopy_material.shader = FOLIAGE_SHADER
+	_canopy_material.set_shader_parameter(&"sway", 0.012)
+	_metal_material = StandardMaterial3D.new()
+	_metal_material.albedo_color = Color(0.30, 0.22, 0.17)
+	_metal_material.metallic = 0.4
+	_metal_material.roughness = 0.8
+	_tire_material = StandardMaterial3D.new()
+	_tire_material.albedo_color = Color(0.07, 0.07, 0.07)
+	_tire_material.roughness = 0.95
 	_trunk_material = StandardMaterial3D.new()
-	_trunk_material.albedo_color = Color(0.33, 0.25, 0.18)
+	_trunk_material.albedo_color = Color(0.46, 0.36, 0.26)
 	_trunk_material.roughness = 0.95
 	_dark_material = StandardMaterial3D.new()
 	_dark_material.albedo_color = Color(0.06, 0.06, 0.05)
@@ -172,6 +191,38 @@ func _box(size: Vector3) -> BoxMesh:
 	var mesh := BoxMesh.new()
 	mesh.size = size
 	return mesh
+
+
+## Istanzia un modello Blender e rimappa i materiali semantici sugli shader dell'arena.
+## `params` sono gli instance uniform da impostare su ogni mesh del modello.
+func _model(scene: PackedScene, parent: Node3D, local: Transform3D, params: Dictionary) -> Node3D:
+	var model := scene.instantiate() as Node3D
+	model.transform = local
+	parent.add_child(model)
+	for mi: MeshInstance3D in model.find_children("*", "MeshInstance3D", true, false):
+		for surface in mi.mesh.get_surface_count():
+			var source := mi.mesh.surface_get_material(surface)
+			mi.set_surface_override_material(surface, _material_for(source.resource_name if source else ""))
+		for key: StringName in params:
+			mi.set_instance_shader_parameter(key, params[key])
+	return model
+
+
+func _material_for(semantic: String) -> Material:
+	match semantic:
+		"paint":
+			return _rust_material
+		"concrete":
+			return _ruin_material
+		"leaves":
+			return _canopy_material
+		"bark":
+			return _trunk_material
+		"metal":
+			return _metal_material
+		"tire":
+			return _tire_material
+	return _dark_material
 
 
 func _pick(colors: Array[Color]) -> Color:
@@ -247,33 +298,16 @@ func _facade_vines(center: Vector2, footprint: Vector2, height: float) -> void:
 
 
 func _tree(base: Vector3, scale: float) -> void:
-	var trunk_h := 3.2 * scale
-	var body := _static_body("Tree", Transform3D(Basis(), base))
-	var trunk := CylinderMesh.new()
-	trunk.top_radius = 0.16 * scale
-	trunk.bottom_radius = 0.3 * scale
-	trunk.height = trunk_h
-	trunk.radial_segments = 7
-	_mesh_child(body, trunk, _trunk_material, Transform3D(Basis(), Vector3(0.0, trunk_h * 0.5, 0.0)))
+	var body := _static_body("Tree", Transform3D(Basis(Vector3.UP, _rng.randf_range(0.0, TAU)), base))
+	var tint := _pick(LEAF_TINTS) * 1.6
+	_model(TREE_MODEL, body, Transform3D(Basis.from_scale(Vector3.ONE * scale), Vector3.ZERO), {&"tint": tint})
 	var shape := CylinderShape3D.new()
-	shape.radius = 0.35 * scale
-	shape.height = trunk_h
+	shape.radius = 0.4 * scale
+	shape.height = 3.0 * scale
 	var collision := CollisionShape3D.new()
 	collision.shape = shape
-	collision.position = Vector3(0.0, trunk_h * 0.5, 0.0)
+	collision.position = Vector3(0.1 * scale, 1.5 * scale, 0.0)
 	body.add_child(collision)
-	var tint := _pick(LEAF_TINTS)
-	for i in _rng.randi_range(3, 5):
-		var r := _rng.randf_range(1.0, 1.7) * scale
-		var sphere := SphereMesh.new()
-		sphere.radius = r
-		sphere.height = r * 1.6
-		sphere.radial_segments = 10
-		sphere.rings = 6
-		var offset := Vector3(_rng.randf_range(-1.0, 1.0) * scale, trunk_h + _rng.randf_range(-0.2, 1.2) * scale,
-			_rng.randf_range(-1.0, 1.0) * scale)
-		var mi := _mesh_child(body, sphere, _foliage_material, Transform3D(Basis(), offset))
-		mi.set_instance_shader_parameter(&"tint", tint * _rng.randf_range(0.85, 1.1))
 	stats.trees += 1
 
 
@@ -298,21 +332,17 @@ func _bush(base: Vector3, size: float, count_as_prop := true) -> void:
 		stats.props += 1
 
 
-## Auto arrugginita: scocca, abitacolo, vetri scuri; affondata nel terreno.
+## Auto abbandonata (modello Blender), leggermente inclinata.
 func _car(base: Vector3, yaw_deg: float) -> void:
-	var tilt := Basis(Vector3.FORWARD, deg_to_rad(_rng.randf_range(-4.0, 4.0)))
+	var tilt := Basis(Vector3.FORWARD, deg_to_rad(_rng.randf_range(-3.0, 3.0)))
 	var basis := Basis(Vector3.UP, deg_to_rad(yaw_deg)) * tilt
-	var body := _static_body("WreckedCar", Transform3D(basis, base + Vector3(0.0, 0.42, 0.0)))
-	var paint := _pick(CAR_PAINTS)
-	var shell := _mesh_child(body, _box(Vector3(1.8, 0.75, 4.3)), _rust_material)
-	var cabin := _mesh_child(body, _box(Vector3(1.55, 0.6, 2.1)), _rust_material,
-		Transform3D(Basis(), Vector3(0.0, 0.66, -0.2)))
-	for mi: MeshInstance3D in [shell, cabin]:
-		mi.set_instance_shader_parameter(&"paint", paint)
-		mi.set_instance_shader_parameter(&"rust", _rng.randf_range(0.45, 0.8))
-		mi.set_instance_shader_parameter(&"overgrowth", _rng.randf_range(0.3, 0.8))
-	_mesh_child(body, _box(Vector3(1.58, 0.42, 2.0)), _dark_material, Transform3D(Basis(), Vector3(0.0, 0.66, -0.2)))
-	_box_shape_child(body, Vector3(1.8, 1.4, 4.3), Transform3D(Basis(), Vector3(0.0, 0.3, 0.0)))
+	var body := _static_body("WreckedCar", Transform3D(basis, base))
+	_model(CAR_MODEL, body, Transform3D.IDENTITY, {
+		&"paint": _pick(CAR_PAINTS),
+		&"rust": _rng.randf_range(0.45, 0.8),
+		&"overgrowth": _rng.randf_range(0.3, 0.8),
+	})
+	_box_shape_child(body, Vector3(1.8, 1.5, 4.3), Transform3D(Basis(), Vector3(0.0, 0.75, 0.0)))
 	_bush(base + basis * Vector3(0.9, 0.0, 1.6), 1.1, false)
 	stats.props += 1
 
@@ -360,31 +390,33 @@ func _lamp_post(base: Vector3) -> void:
 	stats.props += 1
 
 
-## Vagone ferroviario arrugginito con tetto bombato e finestrini.
+## Vagone ferroviario arrugginito (modello Blender), con felci sul tetto.
 func _carriage(base: Vector3, yaw_deg: float, roll_deg: float, paint: Color) -> void:
 	var basis := Basis(Vector3.UP, deg_to_rad(yaw_deg)) * Basis(Vector3.BACK, deg_to_rad(roll_deg))
-	var size := Vector3(2.9, 2.8, 13.0)
-	var body := _static_body("TrainCarriage", Transform3D(basis, base + Vector3(0.0, size.y * 0.5 + 0.1, 0.0)))
-	var shell := _mesh_child(body, _box(size), _rust_material)
-	var roof := CylinderMesh.new()
-	roof.top_radius = 1.45
-	roof.bottom_radius = 1.45
-	roof.height = size.z
-	roof.radial_segments = 14
-	var roof_basis := Basis.from_scale(Vector3(1.0, 0.3, 1.0)) * Basis(Vector3.RIGHT, PI * 0.5)
-	var roof_mi := _mesh_child(body, roof, _rust_material, Transform3D(roof_basis, Vector3(0.0, size.y * 0.5, 0.0)))
-	for mi: MeshInstance3D in [shell, roof_mi]:
-		mi.set_instance_shader_parameter(&"paint", paint)
-		mi.set_instance_shader_parameter(&"rust", _rng.randf_range(0.35, 0.65))
-		mi.set_instance_shader_parameter(&"overgrowth", 0.9)
-	for side in [-1.0, 1.0]:
-		_mesh_child(body, _box(Vector3(0.06, 0.9, size.z - 2.0)), _dark_material,
-			Transform3D(Basis(), Vector3(side * size.x * 0.5, 0.35, 0.0)))
-	_box_shape_child(body, size + Vector3(0.0, 0.6, 0.0))
-	# Felci sul tetto.
+	var body := _static_body("TrainCarriage", Transform3D(basis, base))
+	_model(CARRIAGE_MODEL, body, Transform3D.IDENTITY, {
+		&"paint": paint,
+		&"rust": _rng.randf_range(0.35, 0.65),
+		&"overgrowth": 0.9,
+	})
+	_box_shape_child(body, Vector3(2.9, 3.3, 13.0), Transform3D(Basis(), Vector3(0.0, 1.65, 0.0)))
 	for i in _rng.randi_range(2, 4):
-		var local := Vector3(_rng.randf_range(-0.8, 0.8), size.y * 0.5 + 0.35, _rng.randf_range(-5.5, 5.5))
+		var local := Vector3(_rng.randf_range(-0.8, 0.8), 3.2, _rng.randf_range(-5.5, 5.5))
 		_bush(body.transform * local, _rng.randf_range(0.9, 1.6), false)
+	stats.props += 1
+
+
+## Barriera New Jersey in cemento (modello Blender): copertura bassa.
+func _barrier(base: Vector3, yaw_deg: float) -> void:
+	var basis := Basis(Vector3.UP, deg_to_rad(yaw_deg))
+	var body := _static_body("ConcreteBarrier", Transform3D(basis, base))
+	_model(BARRIER_MODEL, body, Transform3D.IDENTITY, {
+		&"base_tint": _pick(CONCRETE_TINTS),
+		&"top_y": base.y + 0.82,
+		&"overgrowth": _rng.randf_range(0.4, 0.8),
+		&"windows": 0.0,
+	})
+	_box_shape_child(body, Vector3(0.6, 0.85, 3.0), Transform3D(Basis(), Vector3(0.0, 0.42, 0.0)))
 	stats.props += 1
 
 
@@ -476,7 +508,11 @@ func _build_south_edge() -> void:
 	var x := -play_half_extent - 2.0
 	while x < play_half_extent + 2.0:
 		var length := _rng.randf_range(2.5, 6.0)
-		if _rng.randf() < 0.75:
+		var roll := _rng.randf()
+		if roll < 0.25:
+			_barrier(Vector3(x + 1.5, 0.0, z), 90.0 + _rng.randf_range(-8.0, 8.0))
+			length = 3.0
+		elif roll < 0.75:
 			_ruin_block("SouthWall", Vector3(x + length * 0.5, 0.0, z + _rng.randf_range(-0.4, 0.4)),
 				Vector3(length, _rng.randf_range(0.6, 1.4), 0.5), _rng.randf_range(-6.0, 6.0),
 				_pick(CONCRETE_TINTS), 0.8, 0.0)
@@ -507,6 +543,9 @@ func _build_ring_props() -> void:
 	_lamp_post(Vector3(-mid + 2.0, 0.0, -5.0))
 	_lamp_post(Vector3(mid - 1.5, 0.0, 9.0))
 	_lamp_post(Vector3(-15.0, 0.0, -mid))
+	_barrier(Vector3(mid - 0.5, 0.0, -14.0), 8.0)
+	_barrier(Vector3(-6.0, 0.0, -mid + 1.0), 84.0)
+	_barrier(Vector3(13.5, 0.0, mid - 1.0), 100.0)
 	_bush(Vector3(mid, 0.0, 15.0), 1.8)
 	_bush(Vector3(-mid + 1.0, 0.0, 18.0), 1.6)
 	_bush(Vector3(14.0, 0.0, mid + 0.5), 1.4)
@@ -665,7 +704,10 @@ func _add_environment() -> void:
 	environment.background_mode = Environment.BG_SKY
 	environment.sky = sky
 	environment.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
-	environment.ambient_light_energy = 0.45
+	environment.ambient_light_energy = 0.5
+	# Ombre calde: il cielo da solo le renderebbe azzurre.
+	environment.ambient_light_color = Color(0.62, 0.58, 0.46)
+	environment.ambient_light_sky_contribution = 0.45
 	environment.tonemap_mode = Environment.TONE_MAPPER_FILMIC
 	environment.tonemap_white = 6.0
 	# Foschia calda solo in lontananza: il campo di gioco resta nitido.
