@@ -1,6 +1,6 @@
 # Progressione nella run — specifica proposta
 
-> **Stato: PROPOSTA** (D-035, 4 ottobre 2026). La forma (esperienza, level-up, tre scelte, rarita) e decisa dal proprietario; la **logica di estrazione** qui sotto e proposta dall'agente e va confermata.
+> **Stato: APPROVATA** (D-035). Forma decisa dal proprietario il 4 ottobre 2026; logica di estrazione proposta dall'agente e **confermata dal proprietario il 5 ottobre 2026**. Valori e categorie restano rivedibili dopo il primo playtest.
 
 ## 1. Cosa e deciso
 
