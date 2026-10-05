@@ -34,7 +34,6 @@ Principio guida:
 4. **Arena, seconda passata** (agente): modelli degli edifici in rovina, rampicanti e fogliame, costo di SSAO ed erba su Steam Deck.
 5. **In sospeso, senza urgenza:**
    - Test A percettivo e test su Steam Deck via Proton (`docs/PLAYTESTS/GODOT_PARITY_PLAYTEST.md`); dopo, eliminare la build Unreal `LocalBuilds/Prototype01-TerrainGrid-Win64-v1` (872 MB);
-   - decidere cosa fare di `dev/` e `output/` (non versionate);
    - eliminare a mano le cartelle vuote `Desktop/Videogame-settings` e `Desktop/Videogame-vision` (worktree di Codex) dopo aver chiuso Codex;
    - round-trip Blender → Godot prima di produrre asset (R-011).
 

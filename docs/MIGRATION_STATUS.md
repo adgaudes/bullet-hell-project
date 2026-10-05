@@ -144,7 +144,7 @@ Fatto il 3 ottobre 2026:
 - **Unreal Engine resta installato.** Visual Studio Community 2026 disinstallato su richiesta del proprietario.
 - **Build Windows primaria** (D-026), anche per Steam Deck via Proton.
 - Le regole `.gitignore` per i residui Unreal restano: innocue, e utili finche UE e installato.
-- `dev/` e `output/`: nessuna decisione ancora.
+- `dev/` e `output/`: risolto il 5 ottobre 2026. `dev/` (copia vagante degli hook LFS) e i documenti Unreal in `output/` eliminati; `output/` resta come cartella delle catture, ignorata da Git.
 
 ## Review indipendente del 3 ottobre 2026
 
@@ -225,5 +225,5 @@ Usare sempre `godot_console`, mai `godot`, per i comandi non interattivi: il sec
 ## Decisioni aperte
 
 - formato delle risorse di tuning `.tres` (chiusura della Fase 2);
-- `LocalBuilds/` Unreal (1,74 GB), `dev/` e `output/`: da conservare, ignorare o rimuovere (proposta Fase 10);
+- `LocalBuilds/` Unreal (1,74 GB): da conservare o rimuovere (proposta Fase 10);
 - se e quando installare un MCP Godot: trigger in `GODOT_WORKFLOW.md`.

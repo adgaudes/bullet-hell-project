@@ -60,6 +60,8 @@ Releases/
 Screenshots/
 StagedBuilds/
 Temp/
+# Catture di verifica degli script in godot/tests/tools/ (rigenerabili)
+output/
 
 # Local environment and secrets
 .env
