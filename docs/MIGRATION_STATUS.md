@@ -2,10 +2,10 @@
 
 > **File vivo.** Va aggiornato a ogni avanzamento. Chi apre una nuova sessione legge questo e sa esattamente dove siamo e cosa fare.
 
-**Ultimo aggiornamento:** 5 ottobre 2026: logica di progressione approvata (D-035); **prototipo della promessa A** implementato e ora scena principale (D-038, `arena_run.tscn`), in attesa del playtest del proprietario. Il proprietario ha indicato che l'arena definitiva sara molto piu grande. **Il prossimo passo di prodotto e nella roadmap** (`docs/PROJECT_ROADMAP.md`, "Stato operativo"); questo file resta il diario della migrazione.
+**Ultimo aggiornamento:** 5 ottobre 2026: logica di progressione approvata (D-035); **prototipo della promessa A** implementato e ora scena principale (D-038, `arena_run.tscn`), playtest rimandato dal proprietario. Struttura del gioco fissata: campagne a livelli, arene molto grandi, boss (D-040); campo di percorso a finestra e comparsa ad anello pronti per l'arena grande (D-039). **Il prossimo passo di prodotto e nella roadmap** (`docs/PROJECT_ROADMAP.md`, "Stato operativo"); questo file resta il diario della migrazione.
 **Engine:** Godot 4.7.2 stable, edizione standard/GDScript
 **Fase corrente:** 10 quasi chiusa (codice Unreal rimosso, tag `unreal-prototype-final`); **in attesa del proprietario**: playtest di parita (feel, Test A, Steam Deck), poi eliminazione di `LocalBuilds/Prototype01-TerrainGrid-Win64-v1`
-**Branch di lavoro:** `main` (`feature/godot-migration-foundation` integrato in fast-forward e pubblicato su `origin` il 3 ottobre 2026)
+**Branch di lavoro:** `feature/arena-run` (dal 5 ottobre 2026; `main` resta al prototipo della promessa A, da unire quando il livello con boss supera il playtest)
 
 ## In una frase
 

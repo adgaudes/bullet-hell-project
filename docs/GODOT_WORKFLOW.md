@@ -76,6 +76,7 @@ godot_console --headless --path godot --fixed-fps 60 --script res://tests/input_
 godot_console --headless --path godot --fixed-fps 60 --script res://tests/companion_tests.gd
 godot_console --headless --path godot --fixed-fps 60 --script res://tests/run_progression_tests.gd
 godot_console --headless --path godot --fixed-fps 60 --script res://tests/arena_run_tests.gd
+godot_console --headless --path godot --fixed-fps 60 --script res://tests/path_field_tests.gd
 ```
 
 Piu semplice: `tools/godot/Invoke-GodotChecks.ps1` esegue tutte le suite presenti in `godot/tests/`.
@@ -99,6 +100,8 @@ Trappola verificata (4 ottobre 2026): una **nuova `class_name`** non e visibile 
 Asset Blender (D-037): `"/c/Program Files/Blender Foundation/Blender 5.2/blender.exe" -b --factory-startup --python tools/blender/build_arena_assets.py -- [nome ...]`, poi `godot_console --headless --path godot --editor --quit` per importare i `.glb` (genera i `.import`, da versionare). Le righe `ASSET_EXPORTED` riportano misure e triangoli.
 
 Catture multiple dell'arena (vista di gioco, panoramica, nord, ovest, nord-est), con finestra reale: `godot_console --path godot --resolution 1280x800 --script res://tests/tools/capture_arena.gd -- --out=../output/arena`. Gli script in `tests/tools/` non sono suite: il gate non li esegue.
+
+Benchmark del campo di percorso su un'arena sintetica grande (D-039): `godot_console --headless --path godot --fixed-fps 60 --script res://tests/tools/benchmark_path_field.gd -- --extent=240 --walls=400 --window=64` (righe `BENCH`; con `extent` fino a 240 confronta anche il campo intero).
 
 Catture della run (combattimento e level-up): `godot_console --path godot --resolution 1280x800 --fixed-fps 60 --script res://tests/tools/capture_run.gd -- --out=../output/run`.
 

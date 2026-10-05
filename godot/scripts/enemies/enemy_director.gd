@@ -1,7 +1,8 @@
 class_name EnemyDirector
 extends Node3D
-## Orda lenta (D-038): fa nascere i rottamatori dai bordi dell'arena con ritmo
-## crescente e li muove tutti in un solo passo fisico. Ogni nemico segue il
+## Orda lenta (D-038): fa nascere i rottamatori in un anello attorno al
+## giocatore, fuori dallo schermo (D-039), con ritmo crescente e li muove tutti
+## in un solo passo fisico. Chi resta troppo indietro torna sull'anello. Ogni nemico segue il
 ## PathField verso il giocatore (aggira le mura, passa dai varchi); se il
 ## giocatore e irraggiungibile punta dritto e si ammassa contro le mura.
 ## Le celle Lowered lo rallentano come rallentano il giocatore.
@@ -24,6 +25,8 @@ const ACCELERATION := 18.0
 
 var enemies: Array[Enemy] = []
 var kills := 0
+## Nemici riportati sull'anello di comparsa perche troppo lontani.
+var leashed := 0
 var elapsed := 0.0
 ## Danno da contatto con le celle Raised (upgrade Terrapieni spinati); 0 = spento.
 var spike_damage := 0
@@ -111,21 +114,18 @@ func _spawn_batch() -> void:
 		spawn_at(point)
 
 
-## Punto libero vicino al bordo dell'area, lontano dal giocatore.
+## Punto libero sull'anello di comparsa attorno al giocatore, riportato dentro
+## l'area giocabile; null se dopo alcuni tentativi non ne trova uno.
 func _find_spawn_point() -> Variant:
 	var e := (path_field.half_extent if path_field != null else 24.0) - 1.5
+	var center := player.global_position
 	for attempt in 12:
-		var side := rng.randi_range(0, 3)
-		var along := rng.randf_range(-e, e)
-		var point := Vector3(along, 0.0, -e)
-		match side:
-			1:
-				point = Vector3(along, 0.0, e)
-			2:
-				point = Vector3(-e, 0.0, along)
-			3:
-				point = Vector3(e, 0.0, along)
-		if _planar(point - player.global_position).length() < tuning.spawn_min_player_distance:
+		var angle := rng.randf_range(0.0, TAU)
+		var radius := rng.randf_range(tuning.spawn_ring_min, tuning.spawn_ring_max)
+		var point := Vector3(
+			clampf(center.x + cos(angle) * radius, -e, e), 0.0,
+			clampf(center.z + sin(angle) * radius, -e, e))
+		if _planar(point - center).length() < tuning.spawn_min_player_distance:
 			continue
 		if path_field != null and not path_field.is_walkable(point):
 			continue
@@ -149,6 +149,8 @@ func _move_enemies(delta: float) -> void:
 		enemy.tick_visuals(delta)
 		var pos := enemy.global_position
 		var to_player := _planar(player.global_position - pos)
+		if to_player.length() > tuning.enemy_leash_distance and _leash(enemy):
+			continue
 		var direction := Vector3.ZERO
 		if to_player.length() > DIRECT_CHASE_DISTANCE and path_field != null:
 			var waypoint: Variant = path_field.next_waypoint(pos)
@@ -167,6 +169,17 @@ func _move_enemies(delta: float) -> void:
 		if planar.length() > 0.2:
 			enemy.rotation.y = atan2(-planar.x, -planar.z)
 		_apply_contacts(enemy)
+
+
+## Riporta un nemico disperso sull'anello di comparsa. False se non c'e posto.
+func _leash(enemy: Enemy) -> bool:
+	var point: Variant = _find_spawn_point()
+	if point == null:
+		return false
+	enemy.global_position = Vector3(point.x, Enemy.spawn_height(), point.z)
+	enemy.velocity = Vector3.ZERO
+	leashed += 1
+	return true
 
 
 func _apply_contacts(enemy: Enemy) -> void:

@@ -15,7 +15,7 @@ Principio guida:
 > **Engine: Godot 4.7.2** (D-019). Le fasi di prodotto qui descritte restano valide: cambia la tecnologia, non la sequenza ne i gate. I riferimenti a Unreal, Visual Studio e MCP Epic nelle sezioni successive sono storici; il codice Unreal e nel tag `unreal-prototype-final`. Dettaglio della migrazione: `docs/MIGRATION_STATUS.md`; parita: `docs/GODOT_PARITY_CHECKLIST.md`.
 
 - **Fase 0:** quasi completata. Restano da formalizzare disponibilita settimanale e budget massimo.
-- **Fase 1:** in corso. Il 4 ottobre 2026 il proprietario ha scelto la **promessa A** e l'emozione "ingegno sotto pressione" (D-033), la run ad **arena continua con estrazione** (D-034) e la **progressione a esperienza con tre upgrade per livello e rarita** (D-035, logica in `docs/PROGRESSION_SPEC.md` approvata il 5 ottobre 2026). L'arena definitiva sara **molto piu grande** dell'attuale (indicazione del 5 ottobre 2026). Restano provvisori combattimento, durata, mezzi pilotabili e linguaggio. Vision e Concept Lock non ancora approvati.
+- **Fase 1:** in corso. Il 4 ottobre 2026 il proprietario ha scelto la **promessa A** e l'emozione "ingegno sotto pressione" (D-033), la run ad **arena continua** (D-034, struttura poi sostituita da D-040) e la **progressione a esperienza con tre upgrade per livello e rarita** (D-035, logica in `docs/PROGRESSION_SPEC.md` approvata il 5 ottobre 2026). Il 5 ottobre 2026 il proprietario ha fissato la **struttura**: campagne con percorso a livelli, arene molto grandi (riferimento Vampire Survivors e DRG: Survivor) e boss di fine livello (D-040). Restano provvisori combattimento, durata, mezzi pilotabili e linguaggio. Vision e Concept Lock non ancora approvati.
 - **Fase 2:** toolchain Godot verificata end-to-end: editor, test headless, export Windows (primario, D-026) e Linux, gate unico `tools/godot/Invoke-GodotChecks.ps1`. Resta il round-trip Blender → Godot (R-011).
 - **Fase 3: fase attiva.** Fatto il 3 ottobre 2026:
   - migrazione a Godot completata a parita; feel "quasi uguale" a Unreal, preset **Scattante** scelto come base (D-030), fisica e rendering a 120 (D-028, D-031);
@@ -23,19 +23,20 @@ Principio guida:
   - **menu pausa e Impostazioni** (grafica, inversione assi, salvataggio; Esc o Start, A conferma e B indietro);
   - 8 suite di test automatici, tutte verdi; build Windows e Linux aggiornate in `LocalBuilds/`;
   - 4 ottobre 2026: **arena "rovine riconquistate"** (D-036), nuova scena principale con compagno e griglia 11x11 integrata nel suolo; impianto a primitive, modelli Blender da fare. 9 suite verdi. Build non riesportate.
-  - 5 ottobre 2026: **prototipo della promessa A** (D-038, `docs/PROMISE_A_PROTOTYPE_SPEC.md`), nuova scena principale `arena_run.tscn`: cortile con mura e varchi, orda lenta, chiodatrice, esperienza, level-up a tre carte, 11 upgrade, vita e fine run. 11 suite verdi. **Non ancora playtestato**; build non riesportate.
+  - 5 ottobre 2026: **prototipo della promessa A** (D-038, `docs/PROMISE_A_PROTOTYPE_SPEC.md`), nuova scena principale `arena_run.tscn`: cortile con mura e varchi, orda lenta, chiodatrice, esperienza, level-up a tre carte, 11 upgrade, vita e fine run. **Playtest rimandato dal proprietario**; build non riesportate.
+  - 5 ottobre 2026: **scala dell'arena, parte tecnica** (D-039): campo di percorso a finestra con cache dei chunk (2,3 ms per calcolo anche a 1 km di lato) e comparsa dei nemici ad anello attorno al giocatore. 12 suite verdi. Misura su Steam Deck da fare. Backlog creativo in `docs/FEATURE_IDEAS.md`.
 - **Fasi 4-14:** non iniziate formalmente. Esperimenti tecnici anticipati non equivalgono al superamento dei relativi gate.
 
 **Prossimo passo (in ordine):**
 
-1. **Playtest del prototipo della promessa A** (proprietario): almeno tre run, domande in `docs/PROMISE_A_PROTOTYPE_SPEC.md`, sezione "Playtest". Assorbe il playtest del Companion Slice. Esito: Continua / Modifica / Scarta.
-2. **Dopo il playtest** (agente): correzioni e bilanciamento; poi estrazione a tempo per chiudere la run (D-034) e un secondo tipo di nemico che metta alla prova le mura.
-3. **Scala dell'arena** (agente, prima di allargarla): riprogettare campo di percorso e comparsa dei nemici per un'arena molto piu grande, misurando il costo su Steam Deck.
-4. **Arena, seconda passata** (agente): modelli degli edifici in rovina, rampicanti e fogliame, costo di SSAO ed erba su Steam Deck.
+1. **Specifica della struttura di campagna** (agente, poi conferma del proprietario): cosa persiste fra i livelli, durata di un livello, cosa e un boss in un gioco in cui la firma e il terreno (D-033), prima campagna minima (2-3 livelli). Risponde alle domande aperte di D-040.
+2. **Arena grande giocabile** (agente): prima arena di almeno 200x200 m con la griglia terreno estesa (o piu griglie), punti di interesse e varianti del cortile; misurare celle e collisioni, su PC e Steam Deck. Seconda passata artistica (edifici in rovina, rampicanti, SSAO ed erba) solo dopo.
+3. **Primo boss di fine livello** (agente): un boss che mette alla prova le mura (puo assorbire l'idea 1 di `FEATURE_IDEAS.md`, i rottamatori che smontano i terrapieni) e chiude il livello.
+4. **Playtest del proprietario** (rimandato il 5 ottobre 2026): quando c'e un livello completo con boss, almeno tre run con le domande in `docs/PROMISE_A_PROTOTYPE_SPEC.md`. Esito: Continua / Modifica / Scarta.
 5. **In sospeso, senza urgenza:**
    - Test A percettivo e test su Steam Deck via Proton (`docs/PLAYTESTS/GODOT_PARITY_PLAYTEST.md`); dopo, eliminare la build Unreal `LocalBuilds/Prototype01-TerrainGrid-Win64-v1` (872 MB);
    - eliminare a mano le cartelle vuote `Desktop/Videogame-settings` e `Desktop/Videogame-vision` (worktree di Codex) dopo aver chiuso Codex;
-   - round-trip Blender → Godot prima di produrre asset (R-011).
+   - round-trip Blender -> Godot gia riuscito per asset statici (D-037); resta la pipeline per personaggi animati.
 
 Fonti operative: `DECISIONS.md`, `RISK_REGISTER.md` e i protocolli in `PLAYTESTS/`.
 

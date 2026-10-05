@@ -47,12 +47,18 @@ Tutti in `godot/resources/tuning/run_default.tres` (`RunTuning`): vita 5, nemici
 
 ## Scala: l'arena definitiva sara molto piu grande
 
-Indicazione del proprietario (5 ottobre 2026): l'arena del gioco finale sara **molto, molto piu grande** di quella attuale (48x48 m). Questo prototipo misura il loop in uno spazio piccolo; non fissa la scala. Conseguenze tecniche da affrontare quando si allarga:
+Indicazione del proprietario (5 ottobre 2026, poi D-040): le arene del gioco finale saranno **molto grandi**, come in Vampire Survivors o Deep Rock Galactic: Survivor. Questo prototipo misura il loop in uno spazio piccolo (48x48 m); non fissa la scala.
 
-- `PathField` ricalcola tutto il campo (1.600 celle) quando il giocatore cambia cella: su un'arena dieci volte piu lunga sono 100 volte le celle. Servira un campo locale attorno al giocatore, celle piu grandi lontano, o `NavigationServer3D`.
-- La comparsa dai bordi dell'arena non regge: i nemici dovranno nascere in un anello attorno al giocatore, fuori dallo schermo.
-- La griglia terreno 11x11 al centro dovra diventare una griglia estesa o piu griglie, con costo di celle e collisioni da misurare (Steam Deck).
+Fatto il 5 ottobre 2026 (D-039), senza cambiare il comportamento nell'arena attuale:
+
+- `PathField` risolve una **finestra** di 64x64 celle (76,8 m) che segue il giocatore; gli ostacoli statici sono letti una volta per chunk e tenuti in cache. Costo per calcolo 2,3 ms a prescindere dalla dimensione dell'arena (benchmark: `tests/tools/benchmark_path_field.gd`, 480 m e 1000 m di lato). Fuori finestra i nemici puntano dritto.
+- I nemici nascono su un **anello di 17-23 m attorno al giocatore**, fuori schermo, riportato dentro l'area giocabile (nell'arena piccola cadono quindi sui bordi come prima). Un nemico oltre 40 m viene riportato sull'anello (`enemy_leash_distance`).
+
+Da fare quando si allarga:
+
+- La griglia terreno 11x11 al centro dovra diventare una griglia estesa o piu griglie (`PathField` oggi ne legge una), con costo di celle e collisioni da misurare su Steam Deck.
 - Il cortile con le mura diventa un punto di interesse fra tanti, non l'intera arena.
+- Misurare su Steam Deck: i valori sopra sono del PC del proprietario.
 
 ## Fuori scope
 

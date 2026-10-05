@@ -30,6 +30,15 @@ extends Resource
 @export var batch_max := 3
 ## Nessun nemico nasce piu vicino di cosi al giocatore.
 @export var spawn_min_player_distance := 11.0
+## Anello di comparsa attorno al giocatore (D-039), in metri: oltre il bordo
+## dello schermo a 1280x800 (circa 15 m in orizzontale), ma non troppo lontano.
+## I punti sono riportati dentro l'area giocabile, quindi in un'arena piccola
+## cadono sui bordi come prima.
+@export var spawn_ring_min := 17.0
+@export var spawn_ring_max := 23.0
+## Un nemico piu lontano di cosi dal giocatore viene riportato sull'anello di
+## comparsa: in un'arena grande l'orda non si disperde dietro le spalle.
+@export var enemy_leash_distance := 40.0
 
 @export_group("Weapon")
 @export var fire_interval := 0.5
