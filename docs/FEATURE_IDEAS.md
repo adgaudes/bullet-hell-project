@@ -1,0 +1,24 @@
+# Idee di feature per differenziare il gioco
+
+**Stato:** backlog creativo, nessuna idea approvata. Proposte dall'agente il 5 ottobre 2026 su richiesta del proprietario ("che non sia il solito survivor su Steam"). Un'idea entra in sviluppo solo con una decisione in `DECISIONS.md`.
+
+Criterio di selezione: ogni idea deve **rafforzare la firma** (D-033: il terreno modificato e le macchine vivono nel mondo, con vantaggio e costo leggibili) ed essere **riconoscibile in una GIF di 10 secondi** sulla pagina Steam. Se un'idea e solo "un altro bonus nel menu", e scartata.
+
+| # | Idea | Perche differenzia | Costo | Quando |
+|---|---|---|---|---|
+| 1 | **Rottamatori che smontano le tue mura.** I nemici non spingono contro i terrapieni: li rosicchiano e portano via i rottami per costruire le loro barricate sulle rotte d'accesso. Il campo diventa un cantiere conteso. | Nessun survivor ha nemici che usano il tuo stesso sistema contro di te. E il "secondo nemico che mette alla prova le mura" gia in roadmap. | medio | subito dopo il playtest |
+| 2 | **Eventi che deformano l'arena.** Ogni 2-3 minuti un evento annunciato cambia il terreno: terremoto che rialza una fila, pioggia che allaga i fossati (rallentano di piu, conducono elettricita con la torretta), il treno arrugginito che passa e spiana tutto sui binari. | Il mondo e un avversario attivo, non un fondale. Da ritmo e telegraph alla run continua (D-034). | medio | fase 4 |
+| 3 | **Piazzola di estrazione da costruire.** L'estrazione non arriva in un punto fisso: devi spianare e difendere un 3x3 dove vuoi tu, sotto pressione, e il mezzo atterra solo se la piazzola e integra. | Chiude la run con la firma stessa del gioco invece di un timer. Realizza D-034. | basso | con l'estrazione |
+| 4 | **Upgrade che cambiano le regole del terreno.** Fossati che si riempiono d'olio (fuoco), celle magnetiche che attirano i rottamatori, terrapieni che crollano a comando come trappola, "scavo a catena". | Rende gli upgrade visibili nel mondo (vincolo di D-035) e moltiplica le soluzioni alla stessa pressione. | basso per upgrade | progressivo |
+| 5 | **Fusione dei compagni in una macchina assurda.** Due compagni con pezzi si saldano in un mezzo piu grande: piu potente, ma lento, ingombrante, non passa dai varchi stretti e consuma rottami. Si puo separare. | E la promessa C come payoff. Silhouette che cresce = GIF perfetta. | alto | fase 5+ |
+| 6 | **Mezzo pilotabile come "ultimate".** Per 10 secondi sali sul compagno trasformato in ruspa: spiani celle e travolgi nemici, poi si rompe e va riparato con rottami. | Momento di potere raro e fisico, legato al terreno. Anticipa i veicoli di D-012 senza impegnare la carovana. | medio | dopo 5 o in alternativa |
+| 7 | **La tua arena a fine run.** Schermata finale con vista dall'alto dell'arena scolpita (muri, fossati, barricate nemiche, percorsi dei nemici), stats sovrapposte, un pulsante per salvare lo screenshot. | Ogni run lascia una mappa unica: materiale gratuito per community e pagina Steam. Costo quasi nullo. | basso | subito |
+| 8 | **Flusso dei nemici leggibile.** Opzione (o upgrade "Binocolo") che mostra per qualche secondo le impronte del campo di percorso: dove passera l'orda dopo la tua modifica. | "Ingegno sotto pressione" richiede che il giocatore possa prevedere. Aiuta anche il playtest. | basso | subito |
+| 9 | **Compagno con carattere.** Battute brevi e contestuali (si lamenta quando e carico, protesta quando lo chiudi fuori, commenta i muri inutili), gesti con il corpo, nomi dei pezzi irriverenti. | Tono D-010/D-013 incarnato in gameplay, non in cutscene. Riconoscibilita come Hades o Borderlands. | medio (scrittura) | dopo il Vision Lock |
+| 10 | **Contratti di run.** All'inizio scegli 1-2 vincoli spaziali ("niente muri", "solo 20 celle modificabili", "il compagno non puo alzare") con ricompensa in rarita. | Rigiocabilita senza contenuti nuovi; i vincoli sono sul terreno, quindi sulla firma. Seed per run gia presente: abilita sfide giornaliere. | basso | dopo la prima run completa |
+
+## Consiglio di priorita
+
+Per la pagina Steam servono tre cose mostrabili: **nemici che smontano le mura** (1), **arena deformata dagli eventi** (2) e **macchina che cresce** (5 o 6). Le idee 7 e 8 costano poco e aiutano il playtest: si possono fare subito.
+
+Scartate in partenza: modalita "cantiere" con pausa fra le ondate (contraddice l'arena continua, D-034); upgrade puramente numerici; nemici volanti che ignorano il terreno (annullano la firma).
