@@ -29,7 +29,7 @@ Principio guida:
 
 **Prossimo passo (in ordine):**
 
-1. **Specifica della struttura di campagna** (agente, poi conferma del proprietario): cosa persiste fra i livelli, durata di un livello, cosa e un boss in un gioco in cui la firma e il terreno (D-033), prima campagna minima (2-3 livelli). Risponde alle domande aperte di D-040.
+1. **Specifica della struttura di campagna**: scritta il 5 ottobre 2026 (`docs/CAMPAIGN_STRUCTURE_SPEC.md`, D-041 upgrade di livello e permanenti). **In attesa delle risposte del proprietario** alle 4 domande della sezione 8; senza risposta si procede con le proposte.
 2. **Arena grande giocabile** (agente): prima arena di almeno 200x200 m con la griglia terreno estesa (o piu griglie), punti di interesse e varianti del cortile; misurare celle e collisioni, su PC e Steam Deck. Seconda passata artistica (edifici in rovina, rampicanti, SSAO ed erba) solo dopo.
 3. **Primo boss di fine livello** (agente): un boss che mette alla prova le mura (puo assorbire l'idea 1 di `FEATURE_IDEAS.md`, i rottamatori che smontano i terrapieni) e chiude il livello.
 4. **Playtest del proprietario** (rimandato il 5 ottobre 2026): quando c'e un livello completo con boss, almeno tre run con le domande in `docs/PROMISE_A_PROTOTYPE_SPEC.md`. Esito: Continua / Modifica / Scarta.
