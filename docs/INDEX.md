@@ -33,7 +33,8 @@ Legenda stato: **vivo** = aggiornato e autorevole; **riferimento** = stabile, si
 | File | Contenuto | Leggilo quando | Stato |
 |---|---|---|---|
 | `docs/COMPANION_SLICE_SPEC.md` | Primo compagno macchina: loop scava-raccogli-paga-difendi, regole e valori, domande di playtest | per lavorare sul compagno | vivo |
-| `docs/PROGRESSION_SPEC.md` | Progressione nella run: esperienza, level-up con tre upgrade, rarita, logica di estrazione proposta | per upgrade, armi, pezzi dei compagni | vivo |
+| `docs/PROGRESSION_SPEC.md` | Progressione nella run: esperienza, level-up con tre upgrade, rarita, logica di estrazione (approvata) | per upgrade, armi, pezzi dei compagni | vivo |
+| `docs/PROMISE_A_PROTOTYPE_SPEC.md` | Prototipo della promessa A: cortile, orda, chiodatrice, level-up, upgrade, scala futura dell'arena, domande di playtest | per lavorare sulla run, sui nemici o per il playtest | vivo |
 | `docs/TERRAIN_SYSTEM.md` | Visione e regole della trasformazione del terreno, gate tecnici, terreno volumetrico rimandato | per qualunque cosa tocchi il terreno | vivo |
 | `docs/PROTOTYPE_01_SPEC.md` | Specifica del prototipo 01 "Terreno sotto pressione" (scritta per Unreal, contenuti validi) | per scope e criteri del prototipo attuale | riferimento |
 | `docs/WORKING_CONCEPT.md` | Concept di lavoro completo: high concept, mondo, tono, fantasia, tre firme, carovana | per contesto creativo ampio (lungo: cercare la sezione) | vivo |

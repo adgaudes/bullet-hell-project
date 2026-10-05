@@ -32,7 +32,9 @@ $expectedMarkers = @(
     "PROTOTYPE01_CHARACTER_READY",
     "PROTOTYPE01_TERRAIN_MODE Dig",
     "PROTOTYPE01_CAMERA_READY",
-    "PROTOTYPE01_TERRAIN_SLICE_B_READY"
+    "PROTOTYPE01_COMPANION_READY",
+    "PROTOTYPE01_RUN_START",
+    "PROTOTYPE01_PATH_FIELD_READY"
 )
 
 function Invoke-Captured([string]$file, [string[]]$arguments, [int]$timeoutSeconds = 300) {

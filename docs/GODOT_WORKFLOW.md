@@ -74,6 +74,8 @@ godot_console --headless --path godot --fixed-fps 60 --script res://tests/slice_
 godot_console --headless --path godot --fixed-fps 60 --script res://tests/live_rebuild_tests.gd
 godot_console --headless --path godot --fixed-fps 60 --script res://tests/input_events_tests.gd
 godot_console --headless --path godot --fixed-fps 60 --script res://tests/companion_tests.gd
+godot_console --headless --path godot --fixed-fps 60 --script res://tests/run_progression_tests.gd
+godot_console --headless --path godot --fixed-fps 60 --script res://tests/arena_run_tests.gd
 ```
 
 Piu semplice: `tools/godot/Invoke-GodotChecks.ps1` esegue tutte le suite presenti in `godot/tests/`.
@@ -97,6 +99,10 @@ Trappola verificata (4 ottobre 2026): una **nuova `class_name`** non e visibile 
 Asset Blender (D-037): `"/c/Program Files/Blender Foundation/Blender 5.2/blender.exe" -b --factory-startup --python tools/blender/build_arena_assets.py -- [nome ...]`, poi `godot_console --headless --path godot --editor --quit` per importare i `.glb` (genera i `.import`, da versionare). Le righe `ASSET_EXPORTED` riportano misure e triangoli.
 
 Catture multiple dell'arena (vista di gioco, panoramica, nord, ovest, nord-est), con finestra reale: `godot_console --path godot --resolution 1280x800 --script res://tests/tools/capture_arena.gd -- --out=../output/arena`. Gli script in `tests/tools/` non sono suite: il gate non li esegue.
+
+Catture della run (combattimento e level-up): `godot_console --path godot --resolution 1280x800 --fixed-fps 60 --script res://tests/tools/capture_run.gd -- --out=../output/run`.
+
+Trappola verificata (5 ottobre 2026): in un test `extends SceneTree`, la scena aggiunta in `_initialize` riceve `_ready` solo al primo frame, e `_ready` riattiva il passo fisico dei nodi che definiscono `_physics_process`. Un `set_physics_process(false)` va quindi chiamato **dopo** aver atteso almeno un frame.
 
 Il gate (`Invoke-GodotChecks.ps1`) ha un timeout di 300 s per processo: un test appeso risulta FAIL con exit 124 invece di bloccare tutto.
 

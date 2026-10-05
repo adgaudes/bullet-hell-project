@@ -54,6 +54,16 @@ const NATURAL_STATE_TINT := {
 }
 const NATURAL_PROTECTED_TINT := 0.75
 
+## Colore delle celle Raised al posto di RAISED_COLOR (upgrade Terrapieni spinati);
+## trasparente = nessuna sostituzione.
+var raised_color_override := Color(0, 0, 0, 0):
+	set(value):
+		raised_color_override = value
+		for i in _cells.size():
+			var cell := Vector2i(i % state.width, i / state.width)
+			if state.get_state(cell) == TerrainState.CellState.RAISED:
+				_update_cell_presentation(cell)
+
 var state := TerrainState.new()
 ## Cella sotto l'anteprima, (-1, -1) se nascosta.
 var preview_cell := Vector2i(-1, -1)
@@ -214,6 +224,16 @@ func apply_command_at(world_target: Vector3, mode: TerrainState.ToolMode, instig
 	return true
 
 
+## Disposizione iniziale (es. le mura del cortile, D-038): imposta lo stato senza
+## regole ne segnali di comando. Da chiamare prima che qualcuno stia sulle celle.
+func set_cell_states(cells: Array[Vector2i], cell_state: TerrainState.CellState) -> void:
+	for cell in cells:
+		if state.is_valid(cell) and not state.is_protected(cell):
+			state.set_state(cell, cell_state)
+			_apply_presentation(_cells[cell.y * state.width + cell.x], cell, false)
+			cell_changed.emit(cell, cell_state)
+
+
 ## Centro della cella nello spazio locale, alla meta dell'altezza dello stato.
 func cell_local_position(cell: Vector2i, cell_state: TerrainState.CellState) -> Vector3:
 	var half_width := (state.width - 1) * 0.5
@@ -280,7 +300,7 @@ func _apply_presentation(body: StaticBody3D, cell: Vector2i, deferred: bool) -> 
 	elif cell_state == TerrainState.CellState.LOWERED:
 		color = LOWERED_COLOR
 	elif cell_state == TerrainState.CellState.RAISED:
-		color = RAISED_COLOR
+		color = RAISED_COLOR if raised_color_override.a <= 0.0 else raised_color_override
 	mesh_instance.set_instance_shader_parameter(&"cell_color", color.linear_to_srgb())
 	mesh_instance.set_instance_shader_parameter(&"natural", 1.0 if natural_ground else 0.0)
 	var tint: float = NATURAL_PROTECTED_TINT if state.is_protected(cell) else NATURAL_STATE_TINT[cell_state]

@@ -11,6 +11,8 @@ extends CharacterBody3D
 signal dash_started
 signal dash_ready
 signal aim_device_changed(device: AimDevice)
+signal health_changed(health: int, max_health: int)
+signal died
 
 enum AimDevice { GAMEPAD, MOUSE }
 
@@ -38,6 +40,14 @@ var terrain_target := Vector3.ZERO
 ## Compagno macchina (Companion Slice): se presente, rialzare costa un rottame
 ## e richiede il compagno vicino al bersaglio. Si registra da solo.
 var companion: Companion
+## Punti vita (prototipo della promessa A, D-038). Senza un ArenaRun che li
+## imposta il personaggio non muore: le altre scene restano invariate.
+var max_health := 0
+var health := 0
+var invulnerability_seconds := 0.8
+## Moltiplicatore permanente della velocita (upgrade), combinato col terreno.
+var speed_bonus := 1.0
+var _invulnerable_left := 0.0
 
 var _movement := PlanarMovement.new()
 ## Ultima direzione di movimento valida (normalizzata): direzione del dash.
@@ -136,14 +146,15 @@ func _physics_process(delta: float) -> void:
 	# Dopo il movimento, come il TimerManager Unreal che avanza a fine tick.
 	_update_dash_timers(delta)
 	_update_hit_flash(delta)
+	_invulnerable_left = maxf(_invulnerable_left - delta, 0.0)
 	_update_terrain_target()
 
 
 ## Sopra una cella Lowered la velocita massima perde la penalita della griglia.
 func _update_terrain_speed_modifier() -> void:
-	speed_multiplier = 1.0
+	speed_multiplier = speed_bonus
 	if terrain_grid != null and terrain_grid.cell_state_at(global_position) == TerrainState.CellState.LOWERED:
-		speed_multiplier = 1.0 - terrain_grid.lowered_speed_penalty()
+		speed_multiplier *= 1.0 - terrain_grid.lowered_speed_penalty()
 
 
 func _use_terrain_tool() -> void:
@@ -332,6 +343,30 @@ func _end_dash_cooldown() -> void:
 	_set_body_color(BODY_COLOR_LINEAR)
 	print("PROTOTYPE01_DASH_READY")
 	dash_ready.emit()
+
+
+func set_max_health(value: int, heal_full := true) -> void:
+	max_health = maxi(value, 1)
+	health = max_health if heal_full else mini(health, max_health)
+	health_changed.emit(health, max_health)
+
+
+func is_alive() -> bool:
+	return max_health <= 0 or health > 0
+
+
+## Danno con breve invulnerabilita. Restituisce true se il colpo e andato a segno.
+func take_damage(amount: int) -> bool:
+	if max_health <= 0 or health <= 0 or _invulnerable_left > 0.0:
+		return false
+	health = maxi(health - amount, 0)
+	_invulnerable_left = invulnerability_seconds
+	on_hit()
+	print("PROTOTYPE01_PLAYER_DAMAGED health=%d" % health)
+	health_changed.emit(health, max_health)
+	if health == 0:
+		died.emit()
+	return true
 
 
 ## Colpito dalla sfera (Companion Slice): lampo rosso, nessun danno.

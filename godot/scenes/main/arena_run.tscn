@@ -1,0 +1,92 @@
+[gd_scene load_steps=18 format=3]
+
+[ext_resource type="Script" path="res://scripts/services/skeleton_probe.gd" id="1_probe"]
+[ext_resource type="Script" path="res://scripts/arena/overgrown_arena.gd" id="2_arena"]
+[ext_resource type="Script" path="res://scripts/camera/isometric_camera_rig.gd" id="3_camera"]
+[ext_resource type="PackedScene" path="res://scenes/player/player.tscn" id="4_player"]
+[ext_resource type="Script" path="res://scripts/terrain/terrain_grid.gd" id="5_terrain"]
+[ext_resource type="Resource" path="res://resources/tuning/terrain_arena.tres" id="6_terrain_tuning"]
+[ext_resource type="PackedScene" path="res://scenes/companion/companion.tscn" id="7_companion"]
+[ext_resource type="Script" path="res://scripts/companion/scrap_field.gd" id="8_scrap"]
+[ext_resource type="Script" path="res://scripts/navigation/path_field.gd" id="9_path"]
+[ext_resource type="Script" path="res://scripts/enemies/enemy_director.gd" id="10_director"]
+[ext_resource type="Resource" path="res://resources/tuning/run_default.tres" id="11_run_tuning"]
+[ext_resource type="Script" path="res://scripts/combat/auto_weapon.gd" id="12_weapon"]
+[ext_resource type="Script" path="res://scripts/progression/xp_field.gd" id="13_xp"]
+[ext_resource type="Script" path="res://scripts/run/arena_run.gd" id="14_run"]
+[ext_resource type="Script" path="res://scripts/ui/run_hud.gd" id="15_hud"]
+[ext_resource type="Script" path="res://scripts/ui/level_up_menu.gd" id="16_level_up"]
+[ext_resource type="Script" path="res://scripts/ui/game_over_panel.gd" id="17_game_over"]
+
+[node name="ArenaRun" type="Node3D"]
+script = ExtResource("1_probe")
+
+[node name="OvergrownArena" type="Node3D" parent="."]
+script = ExtResource("2_arena")
+
+[node name="TerrainGrid" type="Node3D" parent="."]
+script = ExtResource("5_terrain")
+tuning = ExtResource("6_terrain_tuning")
+natural_ground = true
+
+[node name="Player" parent="." node_paths=PackedStringArray("terrain_grid") instance=ExtResource("4_player")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.88, 0)
+terrain_grid = NodePath("../TerrainGrid")
+
+[node name="CameraRig" type="Node3D" parent="." node_paths=PackedStringArray("target")]
+script = ExtResource("3_camera")
+target = NodePath("../Player")
+
+[node name="PathField" type="Node3D" parent="." node_paths=PackedStringArray("target", "grid")]
+script = ExtResource("9_path")
+target = NodePath("../Player")
+grid = NodePath("../TerrainGrid")
+
+[node name="ScrapField" type="Node3D" parent="." node_paths=PackedStringArray("grid")]
+script = ExtResource("8_scrap")
+grid = NodePath("../TerrainGrid")
+
+[node name="Companion" parent="." node_paths=PackedStringArray("player", "grid", "scrap_field", "path_field") instance=ExtResource("7_companion")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.3, 2.5)
+player = NodePath("../Player")
+grid = NodePath("../TerrainGrid")
+scrap_field = NodePath("../ScrapField")
+path_field = NodePath("../PathField")
+
+[node name="EnemyDirector" type="Node3D" parent="." node_paths=PackedStringArray("player", "path_field", "grid")]
+script = ExtResource("10_director")
+tuning = ExtResource("11_run_tuning")
+player = NodePath("../Player")
+path_field = NodePath("../PathField")
+grid = NodePath("../TerrainGrid")
+
+[node name="PlayerWeapon" type="Node3D" parent="." node_paths=PackedStringArray("shooter", "director")]
+script = ExtResource("12_weapon")
+shooter = NodePath("../Player")
+director = NodePath("../EnemyDirector")
+
+[node name="XpField" type="Node3D" parent="." node_paths=PackedStringArray("player")]
+script = ExtResource("13_xp")
+player = NodePath("../Player")
+
+[node name="RunHud" type="CanvasLayer" parent="."]
+script = ExtResource("15_hud")
+
+[node name="LevelUpMenu" type="CanvasLayer" parent="."]
+script = ExtResource("16_level_up")
+
+[node name="GameOverPanel" type="CanvasLayer" parent="."]
+script = ExtResource("17_game_over")
+
+[node name="Run" type="Node" parent="." node_paths=PackedStringArray("player", "companion", "grid", "director", "weapon", "xp_field", "hud", "level_up_menu", "game_over")]
+script = ExtResource("14_run")
+tuning = ExtResource("11_run_tuning")
+player = NodePath("../Player")
+companion = NodePath("../Companion")
+grid = NodePath("../TerrainGrid")
+director = NodePath("../EnemyDirector")
+weapon = NodePath("../PlayerWeapon")
+xp_field = NodePath("../XpField")
+hud = NodePath("../RunHud")
+level_up_menu = NodePath("../LevelUpMenu")
+game_over = NodePath("../GameOverPanel")

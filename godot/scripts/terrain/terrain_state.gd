@@ -74,6 +74,11 @@ func apply(cell: Vector2i, mode: ToolMode) -> CellState:
 	return state
 
 
+## Imposta lo stato senza regole: solo per la disposizione iniziale di una scena.
+func set_state(cell: Vector2i, state: CellState) -> void:
+	_states[_index(cell)] = state
+
+
 static func state_name(state: CellState) -> String:
 	match state:
 		CellState.LOWERED:

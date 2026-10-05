@@ -17,16 +17,23 @@ const CARGO_SIZE := 0.22
 @export var grid: TerrainGrid
 @export var hazard: TerrainHazard
 @export var scrap_field: ScrapField
+## Opzionale: per raggiungere il giocatore aggirando mura e terrapieni (D-038).
+@export var path_field: PathField
 
 var carried := 0
+## Copia della capacita del tuning: gli upgrade la aumentano senza toccare la risorsa.
+var capacity := 0
 var _assist_cooldown := 0.0
 var _cargo: Array[MeshInstance3D] = []
+var _cargo_mesh: BoxMesh
+var _cargo_material: StandardMaterial3D
 
 
 func _ready() -> void:
 	if tuning == null:
 		tuning = CompanionTuning.new()
-	carried = clampi(tuning.starting_scrap, 0, tuning.capacity)
+	capacity = tuning.capacity
+	carried = clampi(tuning.starting_scrap, 0, capacity)
 	_build_visuals()
 	if player != null:
 		player.companion = self
@@ -77,10 +84,15 @@ func _physics_process(delta: float) -> void:
 ## Rottame vicino al giocatore se c'e posto nel cassone, altrimenti il punto
 ## di inseguimento dietro al giocatore.
 func _choose_destination() -> Vector3:
-	if scrap_field != null and carried < tuning.capacity:
+	if scrap_field != null and carried < capacity:
 		var scrap: Variant = scrap_field.nearest(player.global_position, tuning.pickup_radius_from_player)
 		if scrap != null:
 			return scrap
+	# Lontano dal giocatore segue il campo di percorso, che aggira le mura.
+	if path_field != null and path_field.is_ready() 			and _planar_distance(global_position, player.global_position) > tuning.follow_distance + 1.5:
+		var waypoint: Variant = path_field.next_waypoint(global_position)
+		if waypoint != null:
+			return waypoint
 	var back := global_position - player.global_position
 	var player_planar := Vector3(player.velocity.x, 0.0, player.velocity.z)
 	if player_planar.length() > 1.0:
@@ -92,9 +104,9 @@ func _choose_destination() -> Vector3:
 
 
 func _collect_scrap() -> void:
-	if scrap_field == null or carried >= tuning.capacity:
+	if scrap_field == null or carried >= capacity:
 		return
-	var taken := scrap_field.take_near(global_position, tuning.collect_radius, tuning.capacity - carried)
+	var taken := scrap_field.take_near(global_position, tuning.collect_radius, capacity - carried)
 	if taken > 0:
 		carried += taken
 		_refresh_cargo()
@@ -159,14 +171,38 @@ func _build_visuals() -> void:
 	cargo_mesh.size = Vector3.ONE * CARGO_SIZE
 	var cargo_material := StandardMaterial3D.new()
 	cargo_material.albedo_color = ScrapField.SCRAP_COLOR.linear_to_srgb()
-	for i in tuning.capacity:
+	_cargo_mesh = cargo_mesh
+	_cargo_material = cargo_material
+	_add_cargo_slots(capacity)
+
+
+func _add_cargo_slots(count: int) -> void:
+	for n in count:
+		var i := _cargo.size()
 		var cube := MeshInstance3D.new()
-		cube.mesh = cargo_mesh
-		cube.material_override = cargo_material
+		cube.mesh = _cargo_mesh
+		cube.material_override = _cargo_material
 		# Due file sopra il cassone.
 		cube.position = Vector3((i % 2) * 0.28 - 0.14, 0.42 + (i / 2) * 0.24, 0.1)
 		add_child(cube)
 		_cargo.append(cube)
+
+
+## Upgrade Cassone rinforzato: piu capacita, piu cubetti visibili.
+func add_capacity(extra: int, bonus_scrap := 0) -> void:
+	capacity += extra
+	_add_cargo_slots(extra)
+	carried = mini(carried + bonus_scrap, capacity)
+	_refresh_cargo()
+
+
+## Monta un pezzo visibile (upgrade): una sola istanza per nome.
+func mount_part(part_name: StringName, part: Node3D) -> void:
+	var old := get_node_or_null(NodePath(part_name))
+	if old != null:
+		old.queue_free()
+	part.name = part_name
+	add_child(part)
 
 
 func _refresh_cargo() -> void:

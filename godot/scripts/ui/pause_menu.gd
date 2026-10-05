@@ -22,8 +22,11 @@ func _input(event: InputEvent) -> void:
 	if event.is_echo():
 		return
 	if event.is_action_pressed(&"pause"):
+		# Gioco fermato da altro (level-up, fine run): la pausa non lo riattiva.
+		if get_tree().paused and not is_open():
+			return
 		get_viewport().set_input_as_handled()
-		if get_tree().paused:
+		if is_open():
 			resume_game()
 		else:
 			pause_game()
