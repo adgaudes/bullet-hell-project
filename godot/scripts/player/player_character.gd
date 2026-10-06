@@ -27,12 +27,7 @@ const HIT_FLASH_SECONDS := 0.3
 
 # --- Movimento procedurale (ActorMotion): solo sul nodo visivo `Model`. La scala del
 # dash resta su `_body` (figlio di `Model`) e i colori sul materiale: si compongono.
-## Radianti di fase per metro: il passo segue la strada fatta (circa 3,5 passi/s in corsa).
-const STRIDE_RADIANS_PER_METER := 1.7
-## Altezza (m) del saltello a ogni passo, a piena velocita di cammino.
-const STRIDE_BOB := 0.07
-## Velocita (1/s) con cui il saltello entra ed esce (anche quando parte il dash).
-const STRIDE_BLEND_RATE := 10.0
+# Il passo non e qui: lo fanno le animazioni dello scheletro (`_animator`, D-060).
 ## Inclinazione (rad) verso la direzione di marcia a piena velocita di cammino, e tetto
 ## del rapporto di velocita: nel dash si piega di piu, ma non oltre LEAN_ANGLE * LEAN_SPEED_CAP.
 const LEAN_ANGLE := 0.12
@@ -96,10 +91,8 @@ var _pending_actions: Array[StringName] = []
 var _body_material := StandardMaterial3D.new()
 var _base_body_scale := Vector3.ONE
 var _hit_flash_left := 0.0
-## Stato del movimento procedurale (vedi le costanti STRIDE_*, LEAN_*, DASH_*, RECOIL_*, FLINCH_*).
+## Stato del movimento procedurale (vedi le costanti LEAN_*, DASH_*, RECOIL_*, FLINCH_*).
 var _model_rest := Transform3D.IDENTITY
-var _stride_phase := 0.0
-var _stride_weight := 0.0
 var _lean_pitch := 0.0
 var _lean_roll := 0.0
 var _was_dashing := false
@@ -117,6 +110,8 @@ var _motion_at_rest := true
 @onready var _collision: CollisionShape3D = $Collision
 ## Radice del modello: l'unico nodo mosso dal movimento procedurale.
 @onready var _model: Node3D = $Model
+## Animazioni dello scheletro (corsa, mira, colpo, morte); null se il modello non ne ha.
+@onready var _animator: CharacterAnimator = CharacterAnimator.attach($Model)
 
 
 func _ready() -> void:
@@ -436,6 +431,8 @@ func take_damage(amount: int) -> bool:
 	print("PROTOTYPE01_PLAYER_DAMAGED health=%d" % health)
 	health_changed.emit(health, max_health)
 	if health == 0:
+		if _animator != null:
+			_animator.play_death()
 		died.emit()
 	return true
 
@@ -445,6 +442,8 @@ func on_hit() -> void:
 	_hit_flash_left = HIT_FLASH_SECONDS
 	_body_material.albedo_color = HIT_COLOR_LINEAR.linear_to_srgb()
 	_flinch = 1.0
+	if _animator != null:
+		_animator.play_hit()
 
 
 func _update_hit_flash(delta: float) -> void:
@@ -480,24 +479,20 @@ func _on_recoil_source_fired(_count: int = 1) -> void:
 	kick(-(shot as Vector3) if shot is Vector3 else Vector3.ZERO)
 
 
-## Passo, inclinazione, impulsi del dash, rinculo e sussulto, sommati in una sola
+## Inclinazione, impulsi del dash, rinculo e sussulto, sommati in una sola
 ## trasformazione di `Model` a partire dalla posa di riposo. Legge lo stato di gioco,
 ## non lo cambia.
 func _update_motion(delta: float) -> void:
+	var walk_speed := maxf(UnrealSpace.length(tuning.planar_move_speed_cm), 0.01)
+	# Velocita nello spazio del personaggio: guarda e si muove in direzioni indipendenti.
+	var local_velocity := Vector3(velocity.x, 0.0, velocity.z) * global_basis
+	if _animator != null:
+		_animator.set_locomotion(local_velocity, walk_speed)
 	if not ActorMotion.enabled:
 		if not _motion_at_rest:
 			_model.transform = _model_rest
 			_motion_at_rest = true
 		return
-	var walk_speed := maxf(UnrealSpace.length(tuning.planar_move_speed_cm), 0.01)
-	# Velocita nello spazio del personaggio: guarda e si muove in direzioni indipendenti.
-	var local_velocity := Vector3(velocity.x, 0.0, velocity.z) * global_basis
-	var planar_speed := Vector2(local_velocity.x, local_velocity.z).length()
-
-	_stride_weight = move_toward(_stride_weight,
-		0.0 if is_dashing else minf(planar_speed / walk_speed, 1.0), STRIDE_BLEND_RATE * delta)
-	_stride_phase = fmod(_stride_phase + minf(planar_speed, walk_speed) * STRIDE_RADIANS_PER_METER * delta, TAU)
-	var bob := absf(sin(_stride_phase)) * STRIDE_BOB * _stride_weight
 
 	var lean := local_velocity.limit_length(walk_speed * LEAN_SPEED_CAP) / walk_speed * LEAN_ANGLE
 	# Avanti e -Z: beccheggio negativo = busto in avanti; rollio negativo = verso destra.
@@ -529,5 +524,5 @@ func _update_motion(delta: float) -> void:
 
 	var width := 1.0 - (height - 1.0) * 0.5
 	var pose := Basis.from_euler(Vector3(pitch, 0.0, roll)).scaled_local(Vector3(width, height, width))
-	_model.transform = _model_rest * Transform3D(pose, Vector3(slide.x, bob, slide.z))
+	_model.transform = _model_rest * Transform3D(pose, Vector3(slide.x, 0.0, slide.z))
 	_motion_at_rest = false

@@ -22,6 +22,7 @@ Stati usati:
 | Quixel Bridge UE plugin | Incluso in UE 5.8.2 | Accesso e import dei contenuti Megascans compatibili | Installato; apertura e import in Editor da verificare |
 | Epic Games Launcher | 1.3.193.0 | Installazione e aggiornamento UE | Installato |
 | Blender | 5.2.2 LTS (`C:/Program Files/Blender Foundation/Blender 5.2/blender.exe`) | Asset statici generati da script (`tools/blender/`), export `.glb` | In uso dal 4 ottobre 2026 (D-037); GPL, gli asset prodotti sono nostri |
+| Universal Animation Library (Quaternius) | Standard 1.0, variante Godot, dal Godot Asset Store (6 ottobre 2026) | Scheletro umanoide e animazioni dei personaggi (`tools/blender/build_character_assets.py`, D-060) | In uso; **CC0 1.0**, nessun costo, nessuna attribuzione dovuta (autore: Quaternius, https://quaternius.com). Sorgente in `tools/blender/third_party/quaternius_ual/` con `License.txt`; non e un addon: nelle build entrano solo le animazioni dentro i `.glb`. La versione Pro (a pagamento, 120+ animazioni, corsa in 8 direzioni) non e acquistata |
 | Visual Studio Code | 1.137.0 x64 | Testo, configurazioni e modifiche leggere | Installato; non IDE primario UE C++ |
 | Claude Desktop | Installato; versione da rilevare | Confronto, pianificazione e revisione con Claude | Disponibile con piano Claude Pro |
 | Claude Code CLI | 2.1.278 | Delega controllata di implementazione, test e documentazione | Installato e autenticato con Claude.ai Pro; `doctor` non rileva problemi. I `ConnectionRefused` del 21 settembre 2026 erano causati dall'esecuzione nel sandbox senza rete: il canale funziona con autorizzazione di rete esplicita. Nessuna API PAYG configurata |
@@ -127,6 +128,10 @@ IncrediBuild, installato inizialmente come componente opzionale, e stato rimosso
 | GitHub CLI | Opzionale | Primo flusso branch/PR con Claude | Automatizzare issue, PR e review |
 | Krita | Opzionale | Se scegliamo sprite o concept paint 2D | Produzione e modifica raster |
 | MCP Godot (`tugcantopaloglu/godot-mcp`) | Rimandato | Trigger in `GODOT_WORKFLOW.md` | Ispezione di un gioco in esecuzione; non necessario oggi |
+| Blender MCP (`ahujasid/blender-mcp`, MIT) | Valutato, non installato | Se servira modellare in modo interattivo con Blender aperto | Il flusso a script con catture Godot da gia il riscontro visivo (D-060); richiede Blender in esecuzione con un addon, esegue codice arbitrario e ha telemetria anonima attiva di default |
+| Rigify (incluso in Blender) | Valutato, non usato | Se servira uno scheletro non umanoide o controlli di animazione a mano | Lo scheletro della libreria Quaternius deriva gia da Rigify (ossa `DEF-*`) |
+| Mixamo | Valutato, non usato | Se mancano animazioni non presenti nella libreria CC0 | Gratuito ma richiede un account Adobe; solo umanoidi |
+| Generatori 3D AI (Tripo, Meshy) | Rimandato, a pagamento per uso commerciale | Se i pezzi rigidi non bastano per volti e forme organiche | Licenze dei piani gratuiti da verificare; il modello generato va comunque ripulito e riggato |
 | Substance 3D Painter | Rimandato | Dopo art direction 3D approvata | Texturing avanzato, costo ricorrente |
 | Reaper/Audacity | Rimandato | Primi file audio veri (il primo audio, D-048, e sintetizzato nel codice e non ha asset) | Editing audio |
 | FMOD/Wwise | Rimandato | Solo con requisito audio non coperto da Godot | Evitare middleware prematuro |

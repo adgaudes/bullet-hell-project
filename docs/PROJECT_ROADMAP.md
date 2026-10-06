@@ -39,6 +39,7 @@ Principio guida:
   - 6 ottobre 2026: **quattro addon Godot installati** (D-057): Debug Menu (F3, per la misura su Steam Deck), Controller Icons (glifi dei tasti, non ancora nell'interfaccia), Debug Draw 3D, SimpleGrassTextured (spento, per la seconda passata artistica). 21 suite verdi. Build in `LocalBuilds/` non riesportate.
   - 6 ottobre 2026: **glifi dei tasti nell'interfaccia** (D-059): suggerimenti "icona + testo" in menu, Officina, pausa, level-up e fine livello, e i quattro comandi di gioco nell'HUD; seguono controller o tastiera e mouse. Nuova suite `button_prompts_tests.gd`. Build in `LocalBuilds/` non riesportate.
   - 6 ottobre 2026: **specifica del ciclo giorno/notte approvata** (D-058, `docs/DAY_NIGHT_SPEC.md`): una notte per livello, rottamatori piu forti al buio, torcia e faro con upgrade, lampioni piazzabili. **Solo documento, nessun codice.**
+  - 6 ottobre 2026: **primo personaggio con scheletro e animazioni** (D-060): l'ingegnere corre, mira, incassa e cade con animazioni CC0 (Quaternius) su un modello a pezzi rigidi generato da script Blender; gambe girate verso la marcia, busto sulla mira. Gate verde. **Resa da giudicare dal proprietario nel playtest**; build non riesportate.
 - **Fasi 4-14:** non iniziate formalmente. Esperimenti tecnici anticipati non equivalgono al superamento dei relativi gate.
 
 **Prossimo passo (in ordine):**
@@ -51,7 +52,7 @@ Principio guida:
 6. **In sospeso, senza urgenza:**
    - Test A percettivo e test su Steam Deck via Proton (`docs/PLAYTESTS/GODOT_PARITY_PLAYTEST.md`); dopo, eliminare la build Unreal `LocalBuilds/Prototype01-TerrainGrid-Win64-v1` (872 MB);
    - eliminare a mano le cartelle vuote `Desktop/Videogame-settings` e `Desktop/Videogame-vision` (worktree di Codex) dopo aver chiuso Codex;
-   - round-trip Blender -> Godot gia riuscito per asset statici (D-037); resta la pipeline per personaggi animati.
+   - pipeline dei personaggi animati avviata (D-060, ingegnere); dopo il giudizio del proprietario: animazioni di dash, scavo e tiro, altri personaggi del roster, volti e forme organiche.
 7. **Ciclo giorno/notte** (D-058, richiesto dal proprietario il 6 ottobre 2026): il proprietario rivede `docs/DAY_NIGHT_SPEC.md`; poi l'agente scrive il piano e implementa la tappa 1 (notte giocabile: ciclo, luce, nemici al buio, due carte), quindi la tappa 2 (lampioni). Non blocca il playtest del punto 4: prima del tramonto il livello resta identico.
 
 Fonti operative: `DECISIONS.md`, `RISK_REGISTER.md` e i protocolli in `PLAYTESTS/`.

@@ -1,4 +1,6 @@
-"""Genera i modelli statici low-poly dei quattro attori e li esporta in glTF (pipeline D-037).
+"""Genera i modelli statici low-poly degli attori senza scheletro (compagno, rottamatore,
+Demolitore) e li esporta in glTF (pipeline D-037). L'ingegnere, con scheletro e animazioni,
+sta in build_character_assets.py (D-060).
 
 Eseguire (Blender 5.2.2, senza interfaccia):
     blender -b --factory-startup --python tools/blender/build_actor_assets.py -- [nome ...]
@@ -16,8 +18,7 @@ Convenzioni (come build_arena_assets.py):
   indicatori dalle UV: `UV.x = 1` la faccia emette luce (occhi, fari), `UV.y = 1` la
   faccia e "vernice" e viene moltiplicata per la tinta decisa dal codice di gioco;
 - i nomi dei materiali sono semantici e li rimappa il codice: `detail` (shader a colori
-  di vertice), `suit` (tuta dell'ingegnere: il codice ne cambia il colore per dash e
-  colpi), `stripe` (striscia gialla del compagno).
+  di vertice), `stripe` (striscia gialla del compagno).
 """
 
 import math
@@ -171,56 +172,6 @@ def export(obj, asset_name):
 
 # --- Attori ------------------------------------------------------------------------
 
-def build_player_engineer():
-    """Ingegnere: alto 1,76 m come la capsula. Tuta (materiale `suit`, colorata dal codice),
-    elmetto crema con lampada ciano, zaino-officina verde petrolio con rotolo e antenna,
-    attrezzo da terreno puntato in avanti con la punta ciano: il fronte si legge anche
-    da dietro, lo zaino asimmetrico e la sagoma vista dalla camera."""
-    b = Builder(["suit", "detail"])
-    # Stivali e gambe.
-    for x in (-0.16, 0.16):
-        b.box((0.24, 0.36, 0.18), (x, 0.04, 0.09), BOOT, front=(0.9, 0.7))
-        b.box((0.23, 0.26, 0.4), (x, 0.0, 0.38), shade(0.55), mat="suit")
-    # Busto largo, spalle piu ampie dei fianchi.
-    b.box((0.6, 0.4, 0.62), (0.0, 0.0, 0.89), shade(1.0), mat="suit", bottom=(0.86, 0.9))
-    b.box((0.56, 0.4, 0.1), (0.0, 0.0, 0.63), LEATHER)
-    b.box((0.16, 0.1, 0.16), (-0.2, 0.22, 0.66), CANVAS)
-    # Petto: pettorina piu scura con una toppa.
-    b.box((0.34, 0.04, 0.3), (0.0, 0.205, 0.93), shade(0.6), mat="suit")
-    # Braccio sinistro lungo il fianco, guanto.
-    b.box((0.18, 0.22, 0.46), (-0.41, 0.02, 0.95), shade(0.8), mat="suit", rot=(-8.0, 0.0, 0.0))
-    b.box((0.2, 0.22, 0.14), (-0.41, 0.07, 0.68), LEATHER)
-    # Braccio destro teso in avanti che regge l'attrezzo.
-    b.box((0.18, 0.22, 0.2), (0.41, 0.0, 1.08), shade(0.8), mat="suit")
-    b.box((0.17, 0.4, 0.17), (0.41, 0.24, 1.02), shade(0.8), mat="suit")
-    b.box((0.2, 0.16, 0.2), (0.41, 0.46, 1.02), LEATHER)
-    # Attrezzo da terreno: serbatoio, canna, punta luminosa.
-    b.cyl(0.11, 0.3, (0.41, 0.2, 0.84), COPPER, axis="y", sides=6)
-    b.box((0.13, 0.62, 0.13), (0.41, 0.52, 0.86), DARK_METAL)
-    b.box((0.22, 0.12, 0.22), (0.41, 0.86, 0.86), CYAN_LIGHT, emit=True, front=(0.6, 0.6))
-    # Sciarpa, testa, occhialoni.
-    b.box((0.44, 0.42, 0.1), (0.0, 0.0, 1.24), CORAL)
-    b.box((0.36, 0.34, 0.28), (0.0, 0.02, 1.41), SKIN)
-    b.box((0.38, 0.08, 0.1), (0.0, 0.17, 1.44), DARK_METAL)
-    b.box((0.3, 0.1, 0.12), (0.0, 0.16, 1.31), shade(0.75))
-    # Elmetto: tesa, calotta, lampada frontale.
-    b.cyl(0.33, 0.05, (0.0, 0.03, 1.55), CREAM, sides=8)
-    b.cyl(0.27, 0.2, (0.0, 0.0, 1.66), CREAM, sides=8, radius_top=0.19)
-    b.box((0.14, 0.1, 0.12), (0.0, 0.27, 1.66), CYAN_LIGHT, emit=True)
-    # Spallacci della tuta: dall'alto e da dietro il colore di stato resta visibile.
-    for x in (-0.4, 0.4):
-        b.box((0.26, 0.34, 0.12), (x, -0.02, 1.2), shade(1.0), mat="suit", top=(0.8, 0.8))
-    # Zaino-officina basso (lascia scoperte le spalle): corpo, tasca, rotolo sotto,
-    # bombola di lato, antenna con bandierina.
-    b.box((0.46, 0.3, 0.46), (0.0, -0.34, 0.9), TEAL, top=(0.9, 0.9))
-    b.box((0.26, 0.06, 0.2), (0.04, -0.51, 0.88), CANVAS)
-    b.cyl(0.11, 0.6, (0.0, -0.36, 0.6), CANVAS, axis="x", sides=6)
-    b.cyl(0.08, 0.44, (0.3, -0.36, 0.9), COPPER, sides=6)
-    b.box((0.04, 0.04, 0.75), (-0.2, -0.44, 1.45), DARK_METAL)
-    b.box((0.04, 0.2, 0.13), (-0.2, -0.55, 1.76), CORAL)
-    return b.to_object("PlayerEngineer")
-
-
 def build_companion_cart():
     """Compagno: carretto improvvisato di 0,8 x 1,0 m. Cofano chiaro davanti (ci si monta
     la torretta, a y = 0,25 e z = 0,65), cassone di assi dietro col pianale a z = 0,60
@@ -337,7 +288,6 @@ def build_demolisher_blade():
 
 
 ASSETS = {
-    "player_engineer": build_player_engineer,
     "companion_cart": build_companion_cart,
     "scavenger": build_scavenger,
     "demolisher": build_demolisher,

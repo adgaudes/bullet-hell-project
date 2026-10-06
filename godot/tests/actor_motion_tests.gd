@@ -157,9 +157,10 @@ func _test_player() -> void:
 		min_bob = minf(min_bob, offset.y)
 		max_tilt = maxf(max_tilt, model.transform.basis.y.angle_to(Vector3.UP))
 		poses[snappedf(offset.y, 0.001)] = true
-	_check(max_bob > PlayerCharacter.STRIDE_BOB * 0.5 and max_bob <= PlayerCharacter.STRIDE_BOB + EPSILON and min_bob >= -EPSILON,
-		"camminando saltella entro STRIDE_BOB, mai sotto terra (max %.3f)" % max_bob)
-	_check(poses.size() > 8, "pose diverse fra un passo e l'altro (%d)" % poses.size())
+	# Il passo lo fanno le animazioni dello scheletro (character_animator_tests.gd): il modello non saltella.
+	_check(absf(max_bob) < EPSILON and absf(min_bob) < EPSILON, "camminando il modello non sale ne scende (max %.3f)" % max_bob)
+	_check(_player._animator != null and _player._animator.move_blend() > 0.5,
+		"camminando l'animatore passa alla corsa (%.2f)" % (_player._animator.move_blend() if _player._animator != null else -1.0))
 	_check(max_tilt > PlayerCharacter.LEAN_ANGLE * 0.7 and max_tilt <= PlayerCharacter.LEAN_ANGLE + EPSILON,
 		"si inclina in avanti entro LEAN_ANGLE (%.3f rad)" % max_tilt)
 	_check((model.transform.basis.y.normalized()).z < -0.05, "l'inclinazione va nella direzione di marcia (avanti = -Z)")

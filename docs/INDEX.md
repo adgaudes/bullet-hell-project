@@ -26,6 +26,7 @@ Legenda stato: **vivo** = aggiornato e autorevole; **riferimento** = stabile, si
 | `docs/PLATFORM_AND_INPUT.md` | Requisiti Steam Deck, parita controller/tastiera, schema input, impostazioni grafiche richieste | per input, controlli, impostazioni, Steam Deck | vivo |
 | `docs/TOOLS_AND_LICENSES.md` | Strumenti installati, versioni, licenze, strumenti rimandati | prima di installare o aggiornare un tool | vivo |
 | `tools/blender/build_arena_assets.py` | Generatore degli asset Blender dell'arena; convenzioni di scala, assi e materiali in testa al file (non e un documento) | prima di creare o modificare un modello | vivo |
+| `tools/blender/build_character_assets.py` | Generatore dei personaggi con scheletro e animazioni (D-060): riproporziona lo scheletro CC0 di `third_party/quaternius_ual/`, pezzi rigidi, export `.glb`; convenzioni in testa al file (non e un documento) | prima di creare o modificare un personaggio animato | vivo |
 | `tools/godot/Invoke-GodotChecks.ps1` | Gate di qualita unico (non e un documento: commento in testa al file) | prima di dichiarare finito un lavoro | vivo |
 
 ## Design e gameplay
