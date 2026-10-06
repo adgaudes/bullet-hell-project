@@ -80,6 +80,8 @@ godot_console --headless --path godot --fixed-fps 60 --script res://tests/path_f
 godot_console --headless --path godot --fixed-fps 60 --script res://tests/audio_tests.gd
 godot_console --headless --path godot --fixed-fps 60 --script res://tests/workshop_tests.gd
 godot_console --headless --path godot --fixed-fps 60 --script res://tests/menu_tests.gd
+godot_console --headless --path godot --fixed-fps 60 --script res://tests/flow_preview_tests.gd
+godot_console --headless --path godot --fixed-fps 60 --script res://tests/actor_motion_tests.gd
 ```
 
 Piu semplice: `tools/godot/Invoke-GodotChecks.ps1` esegue tutte le suite presenti in `godot/tests/`.
@@ -121,6 +123,10 @@ Modelli degli attori (D-050): `"/c/Program Files/Blender Foundation/Blender 5.2/
 La scena principale e il **menu iniziale** (D-051): un run senza argomenti si ferma li. Per arrivare al livello da riga di comando aggiungere `-- --autostart` (lo fanno il gate e lo smoke test delle build); `--seed=`, `--boss-at=` e `--capture=` lo implicano.
 
 Trappola verificata (6 ottobre 2026): un `Image` RGBA8 arrotonda i colori a 8 bit, quindi `get_pixel(...).is_equal_approx(colore)` e quasi sempre falso. Confrontare con una tolleranza (`RunMap.same_color`).
+
+Impronte dell'orda (cortile aperto, varco nord chiuso, cortile sigillato): `godot_console --path godot --resolution 1280x800 --fixed-fps 60 --script res://tests/tools/capture_flow.gd -- --out=../output/flow`. Sequenze di fotogrammi del movimento degli attori: `... --script res://tests/tools/capture_motion.gd -- --out=../output/motion`. Costo del movimento, acceso e spento nello stesso processo: `benchmark_arena.gd -- --enemies=70 --motion-ab`.
+
+Simulazione di run con bot (D-055): `godot_console --headless --path godot --fixed-fps 60 --script res://tests/tools/simulate_runs.gd -- --bots=passive,novice,kiter,scrapper --seeds=1-10 --max-seconds=1200` (righe `PROTOTYPE01_SIM`, `PROTOTYPE01_SIM_SUMMARY`, `PROTOTYPE01_SIM_AFFORD`; `--profile=base_health:2,cargo:1` simula un profilo con acquisti). Una run fino al boss costa 2,5-6 minuti di orologio: per molte run conviene un processo per coppia bot/seme in parallelo. **Mentre girano simulazioni le misure di `benchmark_arena.gd` non sono attendibili** (osservato: tempi quasi doppi).
 
 Catture di Officina, mappa di fine livello e menu iniziale: `godot_console --path godot --resolution 1280x800 --fixed-fps 60 --script res://tests/tools/capture_workshop.gd -- --out=../output/workshop`. Sotto `--script` l'autoload `PlayerProfile` non legge ne scrive `user://profile.cfg`: test e catture impostano il profilo in memoria.
 

@@ -18,6 +18,10 @@ Scena `godot/scenes/main/arena_run.tscn`, ora scena principale. L'arena "rovine 
 - **Compagno e rottami** come nel Companion Slice: scavare produce rottami, rialzare costa un rottame e richiede il compagno vicino. Il compagno usa lo stesso campo di percorso e non resta chiuso fuori dalle mura.
 - **Senza sfera hazard** (scelta del proprietario): un solo tipo di pericolo per misurare nemici e terreno.
 
+## Impronte dell'orda (D-053)
+
+Dopo ogni scavo o rialzo, per 3 secondi, galloni magenta a terra mostrano da dove arrivera l'orda con il terreno com'e adesso. Piu scie confluiscono, piu i galloni sono grandi. Se il cortile e sigillato le scie finiscono contro le mura con una sbarra bianca.
+
 ## Le soluzioni che il terreno offre
 
 | Mossa | Vantaggio | Costo o pericolo |
@@ -112,16 +116,18 @@ A fine livello, vinto o perso, i rottami portati fuori vanno nel profilo (`user:
 | Riflessi da officina | 5, 10 | +0,2 s di invulnerabilita dopo un colpo |
 | Cassone saldato | 4, 8, 12 | il compagno porta 2 rottami in piu |
 | Scorta | 3, 7 | il compagno parte con 2 rottami in piu |
-| Torretta fissa | 18 | il compagno parte con la chiodatrice montata |
+| Torretta fissa | 30 | il compagno parte con la chiodatrice montata |
 | Paracadute per rottami | 10 | morendo si salvano tre quarti del cassone |
 
-**Costi non bilanciati.** L'Officina si raggiunge dal menu iniziale (D-051) e dalla schermata di fine livello, che mostra anche la mappa del campo scolpito (D-052).
+**Rottami portati fuori** (D-055): quelli nel cassone, piu **uno per ogni minuto di livello**, piu 5 se batti il boss; morendo si salva meta di cassone e minuti. Prezzi tarati con bot simulati (`tests/tools/simulate_runs.gd`), non da un giocatore: per un principiante simulato ogni upgrade costa 1-3 run, la Torretta 6. L'Officina si raggiunge dal menu iniziale (D-051) e dalla schermata di fine livello, che mostra anche la mappa del campo scolpito (D-052).
 
 Domande di playtest in piu:
 
 15. Dopo la prima run, in Officina c'era qualcosa che volevi e potevi quasi permetterti? I prezzi sono un obiettivo o un muro?
 16. Un upgrade permanente ha cambiato come hai giocato il livello dopo, o solo i numeri?
 
+19. Impronte dell'orda (D-053): le guardi prima di decidere dove scavare o murare? Aiutano a prevedere, o distraggono?
+20. Movimento dei personaggi (D-054): qualcosa si muove troppo, troppo poco, o in modo che stona?
 18. Mappa di fine livello (D-052): l'hai guardata? Ti ha aiutato a capire cosa ha funzionato e perche sei morto?
 17. Modelli (D-050): capisci sempre dove guardano tu, il compagno e i rottamatori? Qualcuno stona o si confonde con lo sfondo?
 
