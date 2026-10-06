@@ -37,6 +37,7 @@ Principio guida:
   - 6 ottobre 2026: **impronte dell'orda** dopo ogni modifica al terreno (D-053), **movimento procedurale degli attori** (D-054), **primo bilanciamento dell'economia con run simulate** (D-055: un rottame al minuto, Torretta a 30). 19 suite verdi, 120 fps invariati su PC, build Windows e Linux riesportate.
   - 6 ottobre 2026: **corretti i cinque problemi emersi dalla simulazione** (D-056): rottami solo dalle celle rialzate, carta Cassone ridimensionata, reddito per livelli invece che per tempo, rottamatori veloci e carte ripetibili, level-up aperto a fine passo. 20 suite verdi, build riesportate.
   - 6 ottobre 2026: **quattro addon Godot installati** (D-057): Debug Menu (F3, per la misura su Steam Deck), Controller Icons (glifi dei tasti, non ancora nell'interfaccia), Debug Draw 3D, SimpleGrassTextured (spento, per la seconda passata artistica). 21 suite verdi. Build in `LocalBuilds/` non riesportate.
+  - 6 ottobre 2026: **specifica del ciclo giorno/notte approvata** (D-058, `docs/DAY_NIGHT_SPEC.md`): una notte per livello, rottamatori piu forti al buio, torcia e faro con upgrade, lampioni piazzabili. **Solo documento, nessun codice.**
 - **Fasi 4-14:** non iniziate formalmente. Esperimenti tecnici anticipati non equivalgono al superamento dei relativi gate.
 
 **Prossimo passo (in ordine):**
@@ -50,6 +51,7 @@ Principio guida:
    - Test A percettivo e test su Steam Deck via Proton (`docs/PLAYTESTS/GODOT_PARITY_PLAYTEST.md`); dopo, eliminare la build Unreal `LocalBuilds/Prototype01-TerrainGrid-Win64-v1` (872 MB);
    - eliminare a mano le cartelle vuote `Desktop/Videogame-settings` e `Desktop/Videogame-vision` (worktree di Codex) dopo aver chiuso Codex;
    - round-trip Blender -> Godot gia riuscito per asset statici (D-037); resta la pipeline per personaggi animati.
+7. **Ciclo giorno/notte** (D-058, richiesto dal proprietario il 6 ottobre 2026): il proprietario rivede `docs/DAY_NIGHT_SPEC.md`; poi l'agente scrive il piano e implementa la tappa 1 (notte giocabile: ciclo, luce, nemici al buio, due carte), quindi la tappa 2 (lampioni). Non blocca il playtest del punto 4: prima del tramonto il livello resta identico.
 
 Fonti operative: `DECISIONS.md`, `RISK_REGISTER.md` e i protocolli in `PLAYTESTS/`.
 
