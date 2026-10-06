@@ -1,4 +1,4 @@
-[gd_scene load_steps=20 format=3]
+[gd_scene load_steps=21 format=3]
 
 [ext_resource type="Script" path="res://scripts/services/skeleton_probe.gd" id="1_probe"]
 [ext_resource type="Script" path="res://scripts/arena/ruins_district.gd" id="2_arena"]
@@ -19,6 +19,7 @@
 [ext_resource type="Script" path="res://scripts/ui/game_over_panel.gd" id="17_game_over"]
 [ext_resource type="Script" path="res://scripts/audio/run_audio.gd" id="18_audio"]
 [ext_resource type="Script" path="res://scripts/ui/workshop_panel.gd" id="19_workshop"]
+[ext_resource type="Script" path="res://scripts/navigation/flow_preview.gd" id="20_flow"]
 
 [node name="ArenaRun" type="Node3D"]
 script = ExtResource("1_probe")
@@ -115,3 +116,8 @@ companion = NodePath("../Companion")
 level_up_menu = NodePath("../LevelUpMenu")
 run = NodePath("../Run")
 workshop = NodePath("../WorkshopPanel")
+
+[node name="FlowPreview" type="Node3D" parent="." node_paths=PackedStringArray("path_field", "grid")]
+script = ExtResource("20_flow")
+path_field = NodePath("../PathField")
+grid = NodePath("../TerrainGrid")
