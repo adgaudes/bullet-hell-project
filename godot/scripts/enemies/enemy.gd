@@ -14,6 +14,37 @@ const RADIUS := 0.32
 const FLASH_SECONDS := 0.08
 const CARGO_SIZE := 0.36
 
+# --- Movimento procedurale (ActorMotion): solo sul visual `_body`, mai sul corpo fisico.
+## Sotto questa velocita planare (m/s) il rottamatore e fermo: niente andatura.
+const GAIT_MIN_SPEED := 0.25
+## Radianti di fase per metro percorso: l'andatura segue la strada fatta, non il tempo.
+const GAIT_RADIANS_PER_METER := 6.5
+## Rollio massimo (rad) dell'andatura a papera, alternato sui due cingoli.
+const GAIT_ROLL := 0.11
+## Saltello (m) in piu a ogni mezzo passo, oltre al sollevamento dovuto al rollio.
+const GAIT_BOB := 0.025
+## Velocita (1/s) con cui l'andatura entra ed esce quando parte o si ferma.
+const GAIT_BLEND_RATE := 8.0
+## Sfasamento fra un rottamatore e il successivo (angolo aureo): l'orda non marcia a tempo.
+const GAIT_PHASE_STEP := 2.399963
+## Mezza carreggiata e mezza lunghezza (m) dell'impronta: il visual si alza di
+## |angolo| x braccio, cosi inclinandosi non entra nel terreno.
+const FOOTPRINT_HALF_WIDTH := 0.3
+const FOOTPRINT_HALF_LENGTH := 0.4
+## Affondo a contatto col giocatore: durata dello scatto e pausa prima del successivo (s).
+const LUNGE_SECONDS := 0.2
+const LUNGE_PAUSE := 0.35
+## Affondo: avanzamento (m) e beccheggio in avanti (rad) al culmine.
+const LUNGE_REACH := 0.2
+const LUNGE_PITCH := 0.2
+## Barcollamento quando e colpito: durata (s), arretramento (m), muso in su (rad).
+const STAGGER_SECONDS := 0.2
+const STAGGER_BACK := 0.16
+const STAGGER_PITCH := 0.28
+
+## Contatore per lo sfasamento dell'andatura: deterministico, non consuma l'rng dell'orda.
+static var _gait_serial := 0
+
 var health := 2
 var max_health := 2
 var is_dead := false
@@ -33,6 +64,14 @@ var _flash_left := 0.0
 var _body: MeshInstance3D
 var _base_material: Material
 var _flash_material: Material
+## Stato del movimento procedurale (vedi le costanti GAIT_*, LUNGE_*, STAGGER_*).
+var _body_rest := Transform3D.IDENTITY
+var _gait_phase := 0.0
+var _gait_weight := 0.0
+var _lunge_left := 0.0
+## 1 appena colpito, scende a 0 in STAGGER_SECONDS.
+var _stagger := 0.0
+var _at_rest := true
 
 
 ## Mesh e materiali condivisi da tutta l'orda. Il modello (`scavenger`) ha una sola
@@ -56,6 +95,9 @@ func setup(hp: int, body_mesh: Mesh, base_material: Material, flash_material: Ma
 	# Origine del modello a terra, quella del nemico al centro della capsula.
 	_body.position.y = -HEIGHT * 0.5
 	add_child(_body)
+	_body_rest = _body.transform
+	_gait_serial += 1
+	_gait_phase = fmod(_gait_serial * GAIT_PHASE_STEP, TAU)
 
 
 ## Restituisce true se il colpo lo uccide.
@@ -65,6 +107,7 @@ func take_damage(amount: int) -> bool:
 	health -= amount
 	_flash_left = FLASH_SECONDS
 	_body.material_override = _flash_material
+	_stagger = 1.0
 	if health <= 0:
 		is_dead = true
 		died.emit(self)
@@ -91,9 +134,10 @@ func set_carrying(value: bool) -> void:
 		_cargo = MeshInstance3D.new()
 		_cargo.mesh = mesh
 		_cargo.material_override = material
-		# Sul portapacchi del modello (0,66 m da terra).
-		_cargo.position = Vector3(0.0, 0.35, 0.06)
-		add_child(_cargo)
+		# Sul portapacchi del modello (0,66 m da terra). Figlio del visual: ne segue
+		# andatura e barcollamento invece di restare sospeso sopra.
+		_cargo.position = Vector3(0.0, 0.35, 0.06) - _body_rest.origin
+		_body.add_child(_cargo)
 	if _cargo != null:
 		_cargo.visible = value
 
@@ -109,6 +153,61 @@ func tick_visuals(delta: float) -> void:
 		_flash_left -= delta
 		if _flash_left <= 0.0:
 			_body.material_override = _base_material
+	if ActorMotion.enabled:
+		_animate(delta)
+	elif not _at_rest:
+		_reset_pose()
+
+
+## Il giocatore e a portata di contatto (lo dice l'EnemyDirector): parte un affondo,
+## solo visivo, se il precedente e finito.
+func notify_contact() -> void:
+	if _lunge_left <= 0.0:
+		_lunge_left = LUNGE_SECONDS + LUNGE_PAUSE
+
+
+## Fase dell'andatura (rad), sfasata per ogni rottamatore.
+func gait_phase() -> float:
+	return _gait_phase
+
+
+## Andatura, affondo e barcollamento: pochi float e una sola scrittura sul visual.
+## Chiamata per ogni nemico a ogni passo fisico: niente allocazioni, niente tween.
+func _animate(delta: float) -> void:
+	var speed_sq := velocity.x * velocity.x + velocity.z * velocity.z
+	if speed_sq > GAIT_MIN_SPEED * GAIT_MIN_SPEED:
+		_gait_phase += sqrt(speed_sq) * GAIT_RADIANS_PER_METER * delta
+		_gait_weight = minf(_gait_weight + GAIT_BLEND_RATE * delta, 1.0)
+	elif _gait_weight > 0.0:
+		_gait_weight = maxf(_gait_weight - GAIT_BLEND_RATE * delta, 0.0)
+	elif _stagger <= 0.0 and _lunge_left <= 0.0:
+		if not _at_rest:
+			_reset_pose()
+		return
+	var swing := sin(_gait_phase)
+	var roll := swing * GAIT_ROLL * _gait_weight
+	var pitch := 0.0
+	var slide := 0.0
+	if _stagger > 0.0:
+		_stagger = maxf(_stagger - delta / STAGGER_SECONDS, 0.0)
+		var hit := _stagger * _stagger
+		slide = STAGGER_BACK * hit
+		pitch = STAGGER_PITCH * hit
+	if _lunge_left > 0.0:
+		_lunge_left -= delta
+		if _lunge_left > LUNGE_PAUSE:
+			var thrust := sin(PI * (_lunge_left - LUNGE_PAUSE) / LUNGE_SECONDS)
+			slide -= LUNGE_REACH * thrust
+			pitch -= LUNGE_PITCH * thrust
+	var lift := absf(roll) * FOOTPRINT_HALF_WIDTH + absf(pitch) * FOOTPRINT_HALF_LENGTH 		+ absf(swing) * GAIT_BOB * _gait_weight
+	_body.transform = Transform3D(Basis.from_euler(Vector3(pitch, 0.0, roll)),
+		Vector3(_body_rest.origin.x, _body_rest.origin.y + lift, _body_rest.origin.z + slide))
+	_at_rest = false
+
+
+func _reset_pose() -> void:
+	_body.transform = _body_rest
+	_at_rest = true
 
 
 ## Corpo sopra il pavimento: l'origine e al centro della capsula.

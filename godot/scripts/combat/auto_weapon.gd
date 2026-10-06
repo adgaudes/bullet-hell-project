@@ -26,6 +26,8 @@ const MAX_NAILS := 64
 @export var projectiles := 1
 @export var spread_degrees := 12.0
 
+## Direzione planare (unitaria) dell'ultimo colpo: chi ascolta `fired` la usa per il rinculo.
+var last_fire_direction := Vector3.ZERO
 var _cooldown := 0.3
 var _nails: Array[Dictionary] = []
 var _mesh := BoxMesh.new()
@@ -83,6 +85,7 @@ func nail_count() -> int:
 func _fire_at(target: Enemy) -> void:
 	var origin := muzzle()
 	var forward := Vector3(target.global_position.x - origin.x, 0.0, target.global_position.z - origin.z).normalized()
+	last_fire_direction = forward
 	var count := maxi(projectiles, 1)
 	for i in count:
 		if _nails.size() >= MAX_NAILS:

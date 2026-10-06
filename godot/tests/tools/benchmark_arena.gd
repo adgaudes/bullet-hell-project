@@ -4,6 +4,8 @@ extends SceneTree
 ## (script e fisica); con finestra anche il frame completo e le draw call:
 ##   godot_console --path godot --resolution 1280x800 --script res://tests/tools/benchmark_arena.gd -- --enemies=70
 ## `--enemies=N` (default: max_alive del tuning) per isolare il costo dell'orda.
+## `--no-motion` spegne il movimento procedurale degli attori (ActorMotion) per confronto;
+## `--motion-ab` misura nello stesso processo il passo del direttore con e senza (riga `motion_ab`).
 ## Marker: PROTOTYPE01_ARENA_BENCH ...
 
 const WARMUP_FRAMES := 120
@@ -25,6 +27,9 @@ func _initialize() -> void:
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--enemies="):
 			enemy_target = arg.trim_prefix("--enemies=").to_int()
+		elif arg == "--no-motion":
+			# Senza il movimento procedurale degli attori: misura quanto costa.
+			ActorMotion.enabled = false
 	director.spawning = false
 	# Il campo di percorso legge gli ostacoli dopo due passi fisici.
 	for i in 5:
@@ -111,4 +116,18 @@ func _initialize() -> void:
 				Performance.get_monitor(Performance.RENDER_VIDEO_MEM_USED) / 1048576.0])
 	print("PROTOTYPE01_ARENA_BENCH path solve_ms=%.2f recenter_ms=%.2f chunks=%d leashed=%d"
 		% [path.last_solve_usec / 1000.0, path.last_recenter_usec / 1000.0, path.chunks_scanned, director.leashed])
+	if OS.get_cmdline_user_args().has("--motion-ab"):
+		# Stesso processo, blocchi alternati con e senza movimento procedurale: il
+		# rumore della macchina pesa uguale sui due lati.
+		director.set_physics_process(false)
+		var totals := [0, 0]
+		for block in 40:
+			ActorMotion.enabled = block % 2 == 0
+			var b0 := Time.get_ticks_usec()
+			for i in 30:
+				director._physics_process(step)
+			totals[block % 2] += Time.get_ticks_usec() - b0
+		ActorMotion.enabled = true
+		print("PROTOTYPE01_ARENA_BENCH motion_ab enemies=%d director_on_ms=%.3f director_off_ms=%.3f delta=%.1f%%"
+			% [director.enemies.size(), totals[0] / 600000.0, totals[1] / 600000.0, (float(totals[0]) / totals[1] - 1.0) * 100.0])
 	quit()

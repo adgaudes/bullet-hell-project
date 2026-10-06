@@ -215,6 +215,7 @@ func _apply_contacts(enemy: Enemy) -> void:
 		return
 	if _planar(player.global_position - enemy.global_position).length() <= tuning.contact_radius:
 		player.take_damage(tuning.contact_damage)
+		enemy.notify_contact()
 	if spike_damage > 0 and enemy.spike_cooldown <= 0.0 and grid != null:
 		for i in enemy.get_slide_collision_count():
 			var collider := enemy.get_slide_collision(i).get_collider() as Node

@@ -42,6 +42,42 @@ const RETARGET_SECONDS := 0.4
 ## Sotto questa distanza dal giocatore punta dritto, senza waypoint.
 const DIRECT_CHASE_DISTANCE := 3.0
 
+# --- Movimento procedurale (ActorMotion): solo sul telaio visivo `_rig`, che porta
+# scafo e lama; il corpo fisico e `_blade.position` restano del codice di gioco.
+## Punto d'appoggio a terra del telaio, nello spazio del boss (origine al centro della capsula).
+const RIG_GROUND := Vector3(0.0, -BODY_HEIGHT * 0.5, 0.0)
+## Mezza lunghezza e mezza larghezza (m) dei cingoli: inclinandosi il telaio si alza
+## di |angolo| x braccio e non entra nel terreno.
+const TRACK_HALF_LENGTH := 1.05
+const TRACK_HALF_WIDTH := 0.95
+## Vibrazione dei cingoli in marcia: frequenze (Hz), sobbalzo (m) e rollio (rad) a piena velocita.
+const RUMBLE_HZ := 9.0
+const RUMBLE_ROLL_HZ := 5.3
+const RUMBLE_HEIGHT := 0.035
+const RUMBLE_ROLL := 0.02
+## Spostamento del peso: velocita angolare (rad/s) data al beccheggio per ogni m/s di
+## cambio di velocita in avanti (parte: muso in su; si ferma: muso in giu).
+const SHIFT_KICK := 0.45
+## Molla che riporta il beccheggio a zero (rigidezza 1/s^2, smorzamento 1/s) e suo limite (rad).
+const SHIFT_STIFFNESS := 90.0
+const SHIFT_DAMPING := 9.0
+const SHIFT_MAX := 0.06
+## Caricamento del colpo di lama: mentre la lama sale lo scafo alza il muso (rad) e
+## arretra (m); quando la lama cala torna giu con lei.
+const WINDUP_PITCH := 0.05
+const WINDUP_BACK := 0.06
+## Velocita (1/s) con cui il caricamento entra ed esce a inizio e fine demolizione.
+const WINDUP_BLEND_RATE := 8.0
+## Barcollamento pesante quando e colpito: durata (s), arretramento (m), muso in su (rad),
+## e scossone laterale (rad) alla frequenza indicata (Hz).
+const HEAVY_STAGGER_SECONDS := 0.32
+const HEAVY_STAGGER_BACK := 0.1
+const HEAVY_STAGGER_PITCH := 0.04
+const HEAVY_STAGGER_SHAKE := 0.02
+const HEAVY_STAGGER_SHAKE_HZ := 6.0
+## Frequenza del martello in `_tick_demolition` (rad/s): la stessa formula, per caricare a tempo.
+const BLADE_HAMMER_RATE := 14.0
+
 var player: PlayerCharacter
 var grid: TerrainGrid
 var path_field: PathField
@@ -78,6 +114,13 @@ var _crew: Dictionary[Enemy, float] = {}
 var _site_cell := NO_CELL
 var _site_scrap := 0
 var _site_marker: MeshInstance3D
+## Telaio visivo: genitore di scafo e lama, l'unico nodo mosso dal movimento procedurale.
+var _rig: Node3D
+var _motion_time := 0.0
+var _last_forward_speed := 0.0
+## Beccheggio da spostamento del peso: (angolo, velocita angolare).
+var _shift := Vector2.ZERO
+var _windup_weight := 0.0
 
 
 func setup_demolisher(hp: int, flash_material: Material) -> void:
@@ -104,13 +147,16 @@ func setup_demolisher(hp: int, flash_material: Material) -> void:
 	_body.mesh = ActorModel.mesh_of(BODY_MODEL)
 	_body.material_override = _base_material
 	_body.position.y = -BODY_HEIGHT * 0.5
-	add_child(_body)
+	_rig = Node3D.new()
+	_rig.name = "Rig"
+	add_child(_rig)
+	_rig.add_child(_body)
 	# La lama resta un nodo a parte: il codice la fa martellare.
 	_blade = MeshInstance3D.new()
 	_blade.mesh = ActorModel.mesh_of(BLADE_MODEL)
 	_blade.material_override = ActorModel.paint_material(Color.WHITE, 0.0, 0.5)
 	_blade.position = BLADE_REST
-	add_child(_blade)
+	_rig.add_child(_blade)
 
 
 func _ready() -> void:
@@ -218,7 +264,7 @@ func _tick_demolition(delta: float) -> void:
 		return
 	_demolish_left -= delta
 	# La lama martella: telegraph del colpo.
-	_blade.position.y = BLADE_REST.y + absf(sin(_demolish_left * 14.0)) * BLADE_HAMMER_LIFT
+	_blade.position.y = BLADE_REST.y + absf(sin(_demolish_left * BLADE_HAMMER_RATE)) * BLADE_HAMMER_LIFT
 	var facing := _planar(_cell_center(demolish_cell) - global_position)
 	if facing.length() > 0.1:
 		rotation.y = lerp_angle(rotation.y, atan2(-facing.x, -facing.z), minf(delta * 8.0, 1.0))
@@ -485,3 +531,49 @@ func _cell_center(cell: Vector2i) -> Vector3:
 
 static func _planar(v: Vector3) -> Vector3:
 	return Vector3(v.x, 0.0, v.z)
+
+
+# --- Movimento procedurale ---------------------------------------------------------------
+
+## Vibrazione dei cingoli, spostamento del peso, caricamento del colpo e barcollamento:
+## tutto sommato in una sola trasformazione del telaio. La lama e figlia del telaio e
+## continua a martellare in `_blade.position.y`, quindi i due movimenti si compongono.
+func _animate(delta: float) -> void:
+	_motion_time += delta
+	var forward := -global_basis.z
+	var forward_speed := velocity.x * forward.x + velocity.z * forward.z
+	var moving := clampf(Vector2(velocity.x, velocity.z).length() / maxf(speed, 0.01), 0.0, 1.0)
+
+	_shift.y += (forward_speed - _last_forward_speed) * SHIFT_KICK
+	_last_forward_speed = forward_speed
+	_shift = ActorMotion.spring(_shift, SHIFT_STIFFNESS, SHIFT_DAMPING, delta)
+	var pitch := clampf(_shift.x, -SHIFT_MAX, SHIFT_MAX)
+	var roll := sin(_motion_time * TAU * RUMBLE_ROLL_HZ) * RUMBLE_ROLL * moving
+	var rise := (0.5 + 0.5 * sin(_motion_time * TAU * RUMBLE_HZ)) * RUMBLE_HEIGHT * moving
+	var slide := 0.0
+
+	_windup_weight = move_toward(_windup_weight, 1.0 if is_demolishing() else 0.0, WINDUP_BLEND_RATE * delta)
+	if _windup_weight > 0.0:
+		# Stessa fase della lama: 1 con la lama in alto, 0 quando batte.
+		var raised := absf(sin(_demolish_left * BLADE_HAMMER_RATE)) * _windup_weight
+		pitch += WINDUP_PITCH * raised
+		slide += WINDUP_BACK * raised
+
+	if _stagger > 0.0:
+		_stagger = maxf(_stagger - delta / HEAVY_STAGGER_SECONDS, 0.0)
+		var hit := _stagger * _stagger
+		slide += HEAVY_STAGGER_BACK * hit
+		pitch += HEAVY_STAGGER_PITCH * hit
+		roll += sin(_motion_time * TAU * HEAVY_STAGGER_SHAKE_HZ) * HEAVY_STAGGER_SHAKE * hit
+
+	var pose := ActorMotion.tilt_on_ground(RIG_GROUND, pitch, roll, TRACK_HALF_LENGTH, TRACK_HALF_WIDTH)
+	pose.origin += Vector3(0.0, rise, slide)
+	_rig.transform = pose
+	_at_rest = false
+
+
+func _reset_pose() -> void:
+	_rig.transform = Transform3D.IDENTITY
+	_shift = Vector2.ZERO
+	_last_forward_speed = 0.0
+	_at_rest = true

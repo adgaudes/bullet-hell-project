@@ -22,6 +22,8 @@ func _initialize() -> void:
 		if arg.begins_with("--out="):
 			_out = arg.trim_prefix("--out=")
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("res://").path_join(_out))
+	# Pose ferme e ripetibili: niente movimento procedurale (per quello c'e capture_motion.gd).
+	ActorMotion.enabled = false
 	_scene = preload("res://scenes/main/arena_run.tscn").instantiate()
 	root.add_child(_scene)
 	var run: ArenaRun = _scene.get_node(^"Run")

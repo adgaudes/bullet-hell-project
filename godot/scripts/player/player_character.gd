@@ -25,9 +25,41 @@ const BODY_COLOR_LINEAR := Color(1.0, 0.35, 0.02)
 const HIT_COLOR_LINEAR := Color(1.0, 0.02, 0.02)
 const HIT_FLASH_SECONDS := 0.3
 
+# --- Movimento procedurale (ActorMotion): solo sul nodo visivo `Model`. La scala del
+# dash resta su `_body` (figlio di `Model`) e i colori sul materiale: si compongono.
+## Radianti di fase per metro: il passo segue la strada fatta (circa 3,5 passi/s in corsa).
+const STRIDE_RADIANS_PER_METER := 1.7
+## Altezza (m) del saltello a ogni passo, a piena velocita di cammino.
+const STRIDE_BOB := 0.07
+## Velocita (1/s) con cui il saltello entra ed esce (anche quando parte il dash).
+const STRIDE_BLEND_RATE := 10.0
+## Inclinazione (rad) verso la direzione di marcia a piena velocita di cammino, e tetto
+## del rapporto di velocita: nel dash si piega di piu, ma non oltre LEAN_ANGLE * LEAN_SPEED_CAP.
+const LEAN_ANGLE := 0.12
+const LEAN_SPEED_CAP := 1.8
+## Velocita (1/s) con cui l'inclinazione insegue il movimento.
+const LEAN_RATE := 14.0
+## Dash: schiacciamento alla partenza e allungamento all'arrivo (frazione dell'altezza),
+## durata dell'impulso (s). La larghezza compensa di meta, per conservare il volume a occhio.
+const DASH_SQUASH := 0.2
+const DASH_STRETCH := 0.14
+const DASH_PULSE_SECONDS := 0.13
+## Rinculo della chiodatrice: durata (s), arretramento (m) e inclinazione (rad) opposti al colpo.
+const RECOIL_SECONDS := 0.1
+const RECOIL_BACK := 0.07
+const RECOIL_TILT := 0.07
+## Sussulto quando e colpito: durata (s), schiacciamento (frazione), arretramento (m), busto indietro (rad).
+const FLINCH_SECONDS := 0.24
+const FLINCH_SQUASH := 0.14
+const FLINCH_BACK := 0.1
+const FLINCH_PITCH := 0.16
+
 @export var tuning: PlayerTuning
 ## Griglia su cui agisce il tool (SetTerrainGrid in Unreal). Opzionale.
 @export var terrain_grid: TerrainGrid
+## Opzionale: nodo col segnale `fired` (la chiodatrice). Se presente ogni colpo da un
+## rinculo visivo; se ha `last_fire_direction` il rinculo e opposto al colpo.
+@export var recoil_source: Node
 
 ## Scala la velocita massima senza toccare il tuning; ricalcolato a ogni passo
 ## dalla cella sotto il personaggio (UpdateTerrainSpeedModifier).
@@ -64,11 +96,27 @@ var _pending_actions: Array[StringName] = []
 var _body_material := StandardMaterial3D.new()
 var _base_body_scale := Vector3.ONE
 var _hit_flash_left := 0.0
+## Stato del movimento procedurale (vedi le costanti STRIDE_*, LEAN_*, DASH_*, RECOIL_*, FLINCH_*).
+var _model_rest := Transform3D.IDENTITY
+var _stride_phase := 0.0
+var _stride_weight := 0.0
+var _lean_pitch := 0.0
+var _lean_roll := 0.0
+var _was_dashing := false
+## Negativo = schiacciato (partenza del dash), positivo = allungato (arrivo); torna a 0.
+var _dash_pulse := 0.0
+var _recoil := 0.0
+## Direzione del rinculo nello spazio del personaggio (unitaria).
+var _recoil_direction := Vector3.BACK
+var _flinch := 0.0
+var _motion_at_rest := true
 
 ## Mesh del modello (tools/blender/build_actor_assets.py, `player_engineer`): la tuta
 ## e la superficie `suit`, colorata da `_body_material`; il resto ha colori fissi.
 @onready var _body: MeshInstance3D = ActorModel.mesh_instance_of($Model)
 @onready var _collision: CollisionShape3D = $Collision
+## Radice del modello: l'unico nodo mosso dal movimento procedurale.
+@onready var _model: Node3D = $Model
 
 
 func _ready() -> void:
@@ -86,6 +134,9 @@ func _ready() -> void:
 	})
 	_base_body_scale = _body.scale
 	_set_body_color(BODY_COLOR_LINEAR)
+	_model_rest = _model.transform
+	if recoil_source != null and recoil_source.has_signal(&"fired"):
+		recoil_source.connect(&"fired", _on_recoil_source_fired)
 
 	print("PROTOTYPE01_CHARACTER_READY")
 	if terrain_grid != null:
@@ -156,6 +207,7 @@ func _physics_process(delta: float) -> void:
 	_update_hit_flash(delta)
 	_invulnerable_left = maxf(_invulnerable_left - delta, 0.0)
 	_update_terrain_target()
+	_update_motion(delta)
 
 
 ## Sopra una cella Lowered la velocita massima perde la penalita della griglia.
@@ -384,6 +436,7 @@ func take_damage(amount: int) -> bool:
 func on_hit() -> void:
 	_hit_flash_left = HIT_FLASH_SECONDS
 	_body_material.albedo_color = HIT_COLOR_LINEAR.linear_to_srgb()
+	_flinch = 1.0
 
 
 func _update_hit_flash(delta: float) -> void:
@@ -401,3 +454,72 @@ func _update_hit_flash(delta: float) -> void:
 
 func _set_body_color(linear_color: Color) -> void:
 	_body_material.albedo_color = linear_color.linear_to_srgb()
+
+
+# --- Movimento procedurale ---------------------------------------------------------------
+
+## Rinculo visivo di un colpo. [param world_direction] e la direzione in cui il corpo
+## viene spinto (opposta al colpo); se e zero, all'indietro rispetto a dove guarda.
+## Non conosce l'arma: lo chiama chi la collega (vedi anche `recoil_source`).
+func kick(world_direction := Vector3.ZERO) -> void:
+	var local := Vector3(world_direction.x, 0.0, world_direction.z) * global_basis
+	_recoil_direction = local.normalized() if local.length_squared() > 1e-6 else Vector3.BACK
+	_recoil = 1.0
+
+
+func _on_recoil_source_fired(_count: int = 1) -> void:
+	var shot: Variant = recoil_source.get(&"last_fire_direction")
+	kick(-(shot as Vector3) if shot is Vector3 else Vector3.ZERO)
+
+
+## Passo, inclinazione, impulsi del dash, rinculo e sussulto, sommati in una sola
+## trasformazione di `Model` a partire dalla posa di riposo. Legge lo stato di gioco,
+## non lo cambia.
+func _update_motion(delta: float) -> void:
+	if not ActorMotion.enabled:
+		if not _motion_at_rest:
+			_model.transform = _model_rest
+			_motion_at_rest = true
+		return
+	var walk_speed := maxf(UnrealSpace.length(tuning.planar_move_speed_cm), 0.01)
+	# Velocita nello spazio del personaggio: guarda e si muove in direzioni indipendenti.
+	var local_velocity := Vector3(velocity.x, 0.0, velocity.z) * global_basis
+	var planar_speed := Vector2(local_velocity.x, local_velocity.z).length()
+
+	_stride_weight = move_toward(_stride_weight,
+		0.0 if is_dashing else minf(planar_speed / walk_speed, 1.0), STRIDE_BLEND_RATE * delta)
+	_stride_phase = fmod(_stride_phase + minf(planar_speed, walk_speed) * STRIDE_RADIANS_PER_METER * delta, TAU)
+	var bob := absf(sin(_stride_phase)) * STRIDE_BOB * _stride_weight
+
+	var lean := local_velocity.limit_length(walk_speed * LEAN_SPEED_CAP) / walk_speed * LEAN_ANGLE
+	# Avanti e -Z: beccheggio negativo = busto in avanti; rollio negativo = verso destra.
+	_lean_pitch = ActorMotion.smooth(_lean_pitch, lean.z, LEAN_RATE, delta)
+	_lean_roll = ActorMotion.smooth(_lean_roll, -lean.x, LEAN_RATE, delta)
+	var pitch := _lean_pitch
+	var roll := _lean_roll
+	var slide := Vector3.ZERO
+
+	if is_dashing != _was_dashing:
+		_was_dashing = is_dashing
+		_dash_pulse = -1.0 if is_dashing else 1.0
+	_dash_pulse = move_toward(_dash_pulse, 0.0, delta / DASH_PULSE_SECONDS)
+	var pulse := _dash_pulse * _dash_pulse
+	var height := 1.0 + (pulse * DASH_STRETCH if _dash_pulse > 0.0 else -pulse * DASH_SQUASH)
+
+	if _recoil > 0.0:
+		_recoil = maxf(_recoil - delta / RECOIL_SECONDS, 0.0)
+		var punch := _recoil * _recoil
+		slide += _recoil_direction * (RECOIL_BACK * punch)
+		pitch += _recoil_direction.z * RECOIL_TILT * punch
+		roll -= _recoil_direction.x * RECOIL_TILT * punch
+	if _flinch > 0.0:
+		_flinch = maxf(_flinch - delta / FLINCH_SECONDS, 0.0)
+		var hurt := _flinch * _flinch
+		height *= 1.0 - FLINCH_SQUASH * hurt
+		slide.z += FLINCH_BACK * hurt
+		pitch += FLINCH_PITCH * hurt
+
+	var width := 1.0 - (height - 1.0) * 0.5
+	var pose := Basis.from_euler(Vector3(pitch, 0.0, roll)).scaled_local(Vector3(width, height, width))
+	_model.transform = _model_rest * Transform3D(pose, Vector3(slide.x, bob, slide.z))
+	_motion_at_rest = false
