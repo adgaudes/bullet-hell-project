@@ -30,6 +30,8 @@ const EYE_COLOR := Color(1.0, 0.2, 0.05)
 const BARRICADE_COLOR := Color(0.07, 0.06, 0.09)
 const SITE_COLOR := Color(1.0, 0.35, 0.08, 0.6)
 const NO_CELL := Vector2i(-1, -1)
+## Terra dei terrapieni (RG_EARTH dello shader del suolo), per i frammenti.
+const EARTH_COLOR := Color(0.44, 0.33, 0.21)
 const ACCELERATION := 10.0
 const RETARGET_SECONDS := 0.4
 ## Sotto questa distanza dal giocatore punta dritto, senza waypoint.
@@ -254,6 +256,7 @@ func _tick_demolition(delta: float) -> void:
 	if was_barricade:
 		return
 	walls_demolished += 1
+	DebrisBurst.spawn(get_parent(), _cell_center(cell) + Vector3(0.0, 0.6, 0.0), EARTH_COLOR, 14, 5.0, 0.22)
 	print("PROTOTYPE01_BOSS_WALL_DEMOLISHED X=%d Y=%d total=%d" % [cell.x, cell.y, walls_demolished])
 	wall_demolished.emit(cell)
 	if scrap_field != null:
@@ -482,6 +485,7 @@ func _raise_barricade(cell: Vector2i) -> void:
 	barricades[cell] = true
 	grid.set_raised_tint(cell, BARRICADE_COLOR)
 	grid.force_cell_state(cell, TerrainState.CellState.RAISED)
+	DebrisBurst.spawn(get_parent(), _cell_center(cell) + Vector3(0.0, 1.2, 0.0), BARRICADE_COLOR, 12, 4.0, 0.2)
 	print("PROTOTYPE01_BOSS_BARRICADE X=%d Y=%d standing=%d" % [cell.x, cell.y, barricades.size()])
 	barricade_built.emit(cell)
 

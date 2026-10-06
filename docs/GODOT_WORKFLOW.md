@@ -97,6 +97,8 @@ Trappola verificata: in Godot 4.7 le azioni predefinite **`ui_accept` e `ui_canc
 
 Trappola verificata (6 ottobre 2026): in `--headless` il renderer fittizio **non conserva colori e dati custom dei MultiMesh** (`get_instance_color` e `get_instance_custom_data` restituiscono zero; le trasformazioni si). Un test headless puo verificare `use_colors`, `use_custom_data` e i conteggi, non i valori: per quelli serve una cattura con finestra.
 
+Trappola verificata (6 ottobre 2026): un `CPUParticles3D` creato da codice va **posizionato prima di `add_child`** (`top_level = true` e `position`): con `global_position` impostata dopo l'ingresso nell'albero i frammenti di un'emissione `one_shot` partono dall'origine. Nessun test headless lo vede: l'ha mostrato una cattura.
+
 Trappola verificata (4 ottobre 2026): una **nuova `class_name`** non e visibile a `--check-only` ne ai test finche la cache delle classi globali non e aggiornata (`Could not find type ...`). Aggiornarla con `godot_console --headless --path godot --editor --quit`, oppure aprendo l'editor una volta.
 
 Asset Blender (D-037): `"/c/Program Files/Blender Foundation/Blender 5.2/blender.exe" -b --factory-startup --python tools/blender/build_arena_assets.py -- [nome ...]`, poi `godot_console --headless --path godot --editor --quit` per importare i `.glb` (genera i `.import`, da versionare). Le righe `ASSET_EXPORTED` riportano misure e triangoli.

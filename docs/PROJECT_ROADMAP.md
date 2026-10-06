@@ -29,7 +29,7 @@ Principio guida:
   - 6 ottobre 2026: **primo boss, il Demolitore, e fine del livello** (D-043): chiamata a 12 minuti con direzione annunciata, boss che smonta i terrapieni e li trasforma in barricate, barra vita, schermata "Livello completato" con i rottami portati fuori. 14 suite verdi. Valori non bilanciati. **C'e ora un livello completo da giocare.**
   - 6 ottobre 2026: **indicatori a bordo schermo** per cortili, depositi di rottami e boss (D-044); **build Windows e Linux riesportate**, smoke test della build Windows superato.
   - 6 ottobre 2026, rifiniture del livello in attesa del playtest (scelta del proprietario): **i rottamatori portano i rottami del Demolitore al cantiere della barricata** (D-045): rottami contesi con il compagno, portatori da abbattere, cantiere visibile da sabotare. 14 suite verdi.
-  - 6 ottobre 2026: **passata artistica dell'arena, primo passo** (D-046): rovine basse sventrate senza tetto al posto dei cubi, terrapieni con fianchi di terra a strati; stesse collisioni, stesse prestazioni su PC.
+  - 6 ottobre 2026: **passata artistica dell'arena, primo passo** (D-046): rovine basse sventrate senza tetto al posto dei cubi, terrapieni con fianchi di terra a strati; stesse collisioni, stesse prestazioni su PC. **Frammenti sui colpi** (D-047): rottamatori abbattuti, scavo e rialzo, muri smontati.
 - **Fasi 4-14:** non iniziate formalmente. Esperimenti tecnici anticipati non equivalgono al superamento dei relativi gate.
 
 **Prossimo passo (in ordine):**

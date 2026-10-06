@@ -183,6 +183,14 @@ func _test_weapon_kills_and_drops_xp() -> void:
 	_check(not is_instance_valid(enemy) or enemy.is_dead, "la chiodatrice abbatte un rottamatore a 5 m")
 	_check(_director.kills == kills + 1, "uccisione contata")
 	_check(_xp.count() == fragments + 1, "rilascia un frammento di esperienza")
+	# Frammenti a perdere (D-047): nascono dove muore e si liberano da soli.
+	var victim := _director.spawn_at(Vector3(-6.0, 0.0, 3.0))
+	victim.take_damage(victim.health)
+	var bursts := _director.get_children().filter(func(n: Node) -> bool:
+		return n is CPUParticles3D and (n as CPUParticles3D).global_position.distance_to(Vector3(-6.0, 0.5, 3.0)) < 0.6)
+	_check(bursts.size() == 1, "un rottamatore abbattuto schizza frammenti nel punto in cui muore")
+	await _frames(90)
+	_check(bursts.all(func(n: Variant) -> bool: return not is_instance_valid(n)), "i frammenti si liberano da soli")
 	_director.set_physics_process(true)
 	await _frames(2)
 	_clear_enemies()

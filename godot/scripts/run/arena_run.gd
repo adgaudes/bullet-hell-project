@@ -415,9 +415,12 @@ func _upgrade_companion_turret(new_level: int) -> void:
 
 ## Scavo esplosivo: ogni passo di scavo colpisce i nemici attorno alla cella.
 func _on_terrain_command(cell: Vector2i, mode: TerrainState.ToolMode, new_state: TerrainState.CellState) -> void:
+	var center := grid.to_global(grid.cell_local_position(cell, new_state))
+	# Zolle che saltano a ogni colpo di tool: dalla cima della cella.
+	DebrisBurst.spawn(get_parent(), Vector3(center.x, center.y * 2.0 - grid.global_position.y + 0.1, center.z),
+		Demolisher.EARTH_COLOR, 8, 3.2, 0.16)
 	if mode != TerrainState.ToolMode.DIG or dig_blast_radius <= 0.0:
 		return
-	var center := grid.to_global(grid.cell_local_position(cell, new_state))
 	center.y = 0.1
 	for enemy in director.enemies_near(center, dig_blast_radius):
 		enemy.take_damage(2)

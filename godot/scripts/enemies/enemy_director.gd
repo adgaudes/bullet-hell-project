@@ -255,6 +255,10 @@ func _on_enemy_died(enemy: Enemy) -> void:
 	var tween := enemy.create_tween()
 	tween.tween_property(enemy, ^"scale", Vector3.ONE * 0.05, 0.12)
 	tween.tween_callback(enemy.queue_free)
+	if enemy.self_driven:
+		DebrisBurst.spawn(self, pos, Demolisher.BODY_COLOR, 28, 7.0, 0.3)
+	else:
+		DebrisBurst.spawn(self, pos, BODY_COLOR, 6)
 	print("PROTOTYPE01_ENEMY_KILLED total=%d" % kills)
 	enemy_killed.emit(pos, kills)
 
