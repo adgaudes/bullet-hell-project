@@ -110,7 +110,7 @@ var _motion_at_rest := true
 @onready var _collision: CollisionShape3D = $Collision
 ## Radice del modello: l'unico nodo mosso dal movimento procedurale.
 @onready var _model: Node3D = $Model
-## Animazioni dello scheletro (corsa, mira, colpo, morte); null se il modello non ne ha.
+## Animazioni dello scheletro (corsa, mira, scavo, schivata, colpo, morte); null se il modello non ne ha.
 @onready var _animator: CharacterAnimator = CharacterAnimator.attach($Model)
 
 
@@ -223,8 +223,11 @@ func _use_terrain_tool() -> void:
 		return
 	if not terrain_grid.apply_command_at(terrain_target, terrain_tool_mode, self):
 		terrain_tool_rejected.emit()
-	elif raising and companion != null:
+		return
+	if raising and companion != null:
 		companion.spend()
+	if _animator != null:
+		_animator.play_dig()
 	_update_terrain_target()
 
 
@@ -372,6 +375,8 @@ func _start_dash() -> void:
 	_effective_dash_duration = maxf(tuning.dash_duration, 0.01)
 	_set_body_color(tuning.dash_color_linear)
 	_body.scale = _base_body_scale * tuning.dash_scale_multiplier
+	if _animator != null:
+		_animator.play_dodge()
 	print("PROTOTYPE01_DASH_STARTED")
 	dash_started.emit()
 

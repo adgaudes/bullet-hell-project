@@ -48,8 +48,20 @@ func _initialize() -> void:
 	await _steps(30)
 	await _sequence("player_walk", _player, 4, 11.5, 60.0, 20.0)
 	_player._start_dash()
-	await _sequence("player_dash", _player, 1, 11.5, 60.0, 20.0)
+	# Passo 6: otto fotogrammi coprono tutta la capriola (CharacterAnimator.DODGE_SECONDS).
+	await _sequence("player_dash", _player, 6, 11.5, 60.0, 20.0)
 	Input.action_release(&"move_right")
+	# Le altre andature (la mira resta dov'e) e lo scavo da fermo.
+	for gait: Array in [["player_run_forward", &"move_forward"], ["player_run_back", &"move_back"], ["player_strafe_left", &"move_left"]]:
+		await _steps(40)
+		Input.action_press(gait[1])
+		await _steps(30)
+		await _sequence(gait[0], _player, 4, 11.5, 60.0, 20.0)
+		Input.action_release(gait[1])
+	await _steps(60)
+	if _player._animator != null:
+		_player._animator.play_dig()
+	await _sequence("player_dig", _player, 7, 11.5, 60.0, 20.0)
 	await _steps(120)
 	_player.on_hit()
 	await _sequence("player_hit", _player, 1, 11.5, 60.0, 20.0)

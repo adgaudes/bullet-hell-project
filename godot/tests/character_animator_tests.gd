@@ -2,9 +2,10 @@ extends SceneTree
 ## Test delle animazioni con scheletro (CharacterAnimator, HipTwistModifier, D-060). Eseguire con:
 ##   godot_console --headless --path godot --fixed-fps 60 --script res://tests/character_animator_tests.gd
 ## Invarianti: il modello dell'ingegnere ha scheletro e animazioni attese; fermo/corsa
-## seguono la velocita; le gambe si girano verso la marcia mentre la testa resta sulla
-## mira; oltre BACKPEDAL_ANGLE si corre all'indietro (con isteresi); colpo, morte e
-## ripresa non rompono la miscela; con ActorMotion spento le ossa restano ferme.
+## seguono la velocita; l'andatura (avanti, sinistra, destra, indietro) segue l'angolo fra
+## mira e marcia, con isteresi, e le gambe si girano dello scarto che resta mentre la
+## testa resta sulla mira; scavo, schivata, colpo, morte e ripresa non rompono la
+## miscela; con ActorMotion spento le ossa restano ferme.
 
 const MODEL := preload("res://assets/models/player_engineer.glb")
 const SPEED := 4.0
@@ -38,10 +39,16 @@ func _initialize() -> void:
 	_skeleton.skeleton_updated.connect(_on_skeleton_updated)
 	var player: AnimationPlayer = _model.find_children("*", "AnimationPlayer", true, false)[0]
 	var missing := PackedStringArray()
-	for animation: StringName in [CharacterAnimator.IDLE, CharacterAnimator.JOG, CharacterAnimator.AIM,
-			CharacterAnimator.HIT, CharacterAnimator.DEATH]:
+	var expected: Array[StringName] = [CharacterAnimator.IDLE, CharacterAnimator.AIM, CharacterAnimator.HIT,
+		CharacterAnimator.DEATH, CharacterAnimator.DIG, CharacterAnimator.DODGE]
+	for gait: StringName in CharacterAnimator.GAITS:
+		expected.append(CharacterAnimator.GAITS[gait][0])
+	for animation in expected:
 		if not player.has_animation(animation):
 			missing.append(animation)
+	# La libreria e a 24 fps, Mixamo a 30: le durate dicono se l'export ha rispettato entrambe.
+	_check(absf(player.get_animation(&"Jog_Fwd").length - 0.92) < 0.03 and absf(player.get_animation(&"Strafe_Left").length - 0.67) < 0.03,
+		"durate originali conservate (corsa %.2f s, passo laterale %.2f s)" % [player.get_animation(&"Jog_Fwd").length, player.get_animation(&"Strafe_Left").length])
 	_check(missing.is_empty(), "animazioni attese presenti (mancano: %s)" % ", ".join(missing))
 	_check(_head >= 0 and _thigh >= 0 and _hips >= 0 and _skeleton.find_bone(CharacterAnimator.SPINE_BONE) >= 0,
 		"ossa attese presenti")
@@ -61,38 +68,66 @@ func _initialize() -> void:
 	_animator.set_locomotion(Vector3(0.0, 0.0, -SPEED), REFERENCE_SPEED)
 	var moved := await _hips_travel(40)
 	_check(_animator.move_blend() > 0.95, "in marcia la corsa sostituisce il fermo (%.2f)" % _animator.move_blend())
-	_check(absf(_animator.twist()) < 0.01 and not _animator.is_backpedaling(), "avanti: gambe dritte, corsa in avanti")
+	_check(absf(_animator.twist()) < 0.01 and _animator.gait() == CharacterAnimator.GAIT_FORWARD, "avanti: gambe dritte, corsa in avanti")
 	_check(moved > 0.01, "la corsa muove il bacino (%.3f m)" % moved)
 	var head_forward := _head_pose
 	var thigh_forward := _thigh_pose
 
-	print("Marcia di lato e all'indietro")
+	print("Andature")
 	_animator.set_locomotion(Vector3(SPEED, 0.0, 0.0), REFERENCE_SPEED)
-	await _frames(40)
-	_check(absf(_animator.twist() + PI * 0.5) < 0.02 and not _animator.is_backpedaling(),
-		"verso destra: gambe girate di -90 gradi (%.2f rad)" % _animator.twist())
-	_check(_yaw_between(thigh_forward, _thigh_pose) > 1.0, "le gambe seguono la marcia (%.2f rad)" % _yaw_between(thigh_forward, _thigh_pose))
-	_check(_yaw_between(head_forward, _head_pose) < 0.5, "la testa resta sulla mira (%.2f rad)" % _yaw_between(head_forward, _head_pose))
+	moved = await _hips_travel(40)
+	_check(_animator.gait() == CharacterAnimator.GAIT_RIGHT and absf(_animator.twist()) < 0.02,
+		"verso destra: passo laterale destro, gambe dritte")
+	_check(moved > 0.01, "il passo laterale muove il bacino (%.3f m)" % moved)
+	_check(_yaw_between(head_forward, _head_pose) < 0.5, "di lato la testa resta sulla mira (%.2f rad)" % _yaw_between(head_forward, _head_pose))
+	_animator.set_locomotion(Vector3(-SPEED, 0.0, 0.0), REFERENCE_SPEED)
+	_check(_animator.gait() == CharacterAnimator.GAIT_LEFT, "verso sinistra: passo laterale sinistro")
 	_animator.set_locomotion(Vector3(0.0, 0.0, SPEED), REFERENCE_SPEED)
 	moved = await _hips_travel(40)
-	_check(_animator.is_backpedaling() and absf(_animator.twist()) < 0.02, "indietro: corsa all'indietro, gambe dritte")
+	_check(_animator.gait() == CharacterAnimator.GAIT_BACK and absf(_animator.twist()) < 0.02, "indietro: corsa all'indietro, gambe dritte")
 	_check(moved > 0.01, "anche all'indietro la corsa avanza (%.3f m)" % moved)
-	# 105 gradi sta dentro la fascia d'isteresi: resta nello stato in cui era.
-	var diagonal := Vector3(sin(deg_to_rad(105.0)), 0.0, -cos(deg_to_rad(105.0))) * SPEED
-	_animator.set_locomotion(diagonal, REFERENCE_SPEED)
-	_check(_animator.is_backpedaling(), "a 105 gradi, venendo dall'indietro, resta all'indietro")
+	# In diagonale (30 gradi a destra): resta la corsa in avanti, le gambe girano dello scarto.
 	_animator.set_locomotion(Vector3(0.0, 0.0, -SPEED), REFERENCE_SPEED)
+	await _frames(40)
+	thigh_forward = _thigh_pose
+	var slanted := Vector3(sin(deg_to_rad(30.0)), 0.0, -cos(deg_to_rad(30.0))) * SPEED
+	_animator.set_locomotion(slanted, REFERENCE_SPEED)
+	await _frames(40)
+	_check(_animator.gait() == CharacterAnimator.GAIT_FORWARD and absf(_animator.twist() + deg_to_rad(30.0)) < 0.02,
+		"a 30 gradi: corsa in avanti con le gambe girate di -30 gradi (%.2f rad)" % _animator.twist())
+	_check(_yaw_between(head_forward, _head_pose) < 0.5, "in diagonale la testa resta sulla mira (%.2f rad)" % _yaw_between(head_forward, _head_pose))
+	# 50 gradi sta dentro la fascia d'isteresi: resta nell'andatura in cui era.
+	var diagonal := Vector3(sin(deg_to_rad(50.0)), 0.0, -cos(deg_to_rad(50.0))) * SPEED
 	_animator.set_locomotion(diagonal, REFERENCE_SPEED)
-	_check(not _animator.is_backpedaling(), "a 105 gradi, venendo dall'avanti, resta in avanti")
+	_check(_animator.gait() == CharacterAnimator.GAIT_FORWARD, "a 50 gradi, venendo dall'avanti, resta in avanti")
+	_animator.set_locomotion(Vector3(SPEED, 0.0, 0.0), REFERENCE_SPEED)
+	_animator.set_locomotion(diagonal, REFERENCE_SPEED)
+	_check(_animator.gait() == CharacterAnimator.GAIT_RIGHT, "a 50 gradi, venendo da destra, resta a destra")
 	_animator.set_locomotion(Vector3.ZERO, REFERENCE_SPEED)
 	await _frames(60)
 	_check(_animator.move_blend() < 0.01 and is_zero_approx(_animator.twist()), "fermandosi torna a riposo")
 
-	print("Colpo, morte, interruttore")
+	print("Scavo, schivata, colpo, morte, interruttore")
+	var tree: AnimationTree = _model.find_children("*", "AnimationTree", true, false)[0]
+	var standing := _hips_pose.origin.y
+	_animator.play_dodge()
+	var lowest := standing
+	for i in 40:
+		await process_frame
+		lowest = minf(lowest, _hips_pose.origin.y)
+	_check(lowest < standing - 0.15, "la capriola abbassa il bacino (da %.2f a %.2f m)" % [standing, lowest])
+	_check(not tree.get(&"parameters/dodge_shot/active"), "dopo DODGE_SECONDS la capriola e finita")
+	_check(absf(_hips_pose.origin.y - standing) < 0.05, "e il personaggio e di nuovo in piedi")
+	_animator.play_dig()
+	await _frames(4)
+	_check(tree.get(&"parameters/dig_shot/active"), "lo scavo parte a comando")
+	await _frames(40)
+	_check(not tree.get(&"parameters/dig_shot/active") and absf(_hips_pose.origin.y - standing) < 0.05,
+		"lo scavo finisce e non sposta il bacino")
 	_animator.play_hit()
 	await _frames(30)
-	var tree: AnimationTree = _model.find_children("*", "AnimationTree", true, false)[0]
-	_check(tree.active, "dopo il colpo la miscela e ancora attiva")
+	_check(tree.active and _animator.fired_count(&"dodge") == 1 and _animator.fired_count(&"dig") == 1 and _animator.fired_count(&"hit") == 1,
+		"dopo le azioni la miscela e ancora attiva")
 	_animator.play_death()
 	await _frames(5)
 	_check(not tree.active and player.current_animation == CharacterAnimator.DEATH, "alla morte parte la caduta")

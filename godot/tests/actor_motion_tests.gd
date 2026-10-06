@@ -171,6 +171,7 @@ func _test_player() -> void:
 	# Dash: la scala del dash resta su _body, l'impulso sta sul modello.
 	_player._start_dash()
 	await physics_frame
+	_check(_player._animator.fired_count(&"dodge") == 1, "lo scatto chiede la capriola all'animatore")
 	_check(_player.is_dashing and _player._body.scale.is_equal_approx(_player._base_body_scale * _player.tuning.dash_scale_multiplier),
 		"nel dash la scala 1,15 del corpo visivo resta quella del codice di gioco")
 	var squash := model.transform.basis.get_scale()

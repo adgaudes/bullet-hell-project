@@ -1,38 +1,63 @@
 class_name CharacterAnimator
 extends Node
 ## Animazioni con scheletro di un personaggio (D-060, tools/blender/build_character_assets.py):
-## fermo/corsa miscelati sulla velocita, braccia e testa nella posa di mira, gambe girate
-## verso la direzione di marcia (HipTwistModifier) e, oltre BACKPEDAL_ANGLE, corsa
-## all'indietro. Colpo e morte a comando. Legge solo cio che gli passa il proprietario
-## e muove solo le ossa: corpo fisico e valori di gioco non sanno che esiste.
+## fermo/corsa miscelati sulla velocita; la corsa sceglie fra avanti, sinistra, destra e
+## indietro secondo l'angolo fra mira e marcia, e le gambe si girano (HipTwistModifier)
+## dello scarto che resta; braccia e testa stanno nella posa di mira. Scavo, schivata,
+## colpo e morte a comando. Legge solo cio che gli passa il proprietario e muove solo le
+## ossa: corpo fisico e valori di gioco non sanno che esiste.
 ## Con ActorMotion.enabled spento resta fermo nell'ultima posa.
 
 const IDLE := &"Idle"
-const JOG := &"Jog_Fwd"
 const AIM := &"Pistol_Aim_Neutral"
 const HIT := &"Hit_Chest"
 const DEATH := &"Death01"
+const DIG := &"Dig"
+const DODGE := &"Dodge"
+const GAIT_FORWARD := &"forward"
+const GAIT_LEFT := &"left"
+const GAIT_RIGHT := &"right"
+const GAIT_BACK := &"back"
+## Per andatura: animazione, angolo (rad) fra mira e marcia a cui e esatta (rotazione
+## attorno a +Y: positivo = verso sinistra), velocita (m/s) a cui e a passo naturale.
+const GAITS: Dictionary[StringName, Array] = {
+	GAIT_FORWARD: [&"Jog_Fwd", 0.0, 3.2],
+	GAIT_LEFT: [&"Strafe_Left", PI * 0.5, 2.6],
+	GAIT_RIGHT: [&"Strafe_Right", -PI * 0.5, 2.6],
+	GAIT_BACK: [&"Run_Bwd", PI, 2.2],
+}
 const HIPS_BONE := &"DEF-hips"
 const SPINE_BONE := &"DEF-spine.001"
-## Ossa che seguono la posa di mira invece della corsa (piu tutti i loro figli nel rig).
+## Petto: HipTwistModifier lo tiene rivolto dove si mira.
+const CHEST_BONE := &"DEF-spine.003"
+## Ossa che seguono la posa di mira invece della corsa.
 const AIM_BONES: Array[String] = [
 	"DEF-spine.003", "DEF-neck", "DEF-head",
 	"DEF-shoulder.L", "DEF-upper_arm.L", "DEF-forearm.L", "DEF-hand.L",
 	"DEF-shoulder.R", "DEF-upper_arm.R", "DEF-forearm.R", "DEF-hand.R",
 ]
-## Velocita (m/s) a cui la corsa e a passo naturale, e limiti del suo ritmo.
-const JOG_STRIDE_SPEED := 3.2
-const JOG_RATE_MIN := 0.7
-const JOG_RATE_MAX := 2.0
+## Ossa prese dallo scavo: tutto il busto, le gambe continuano a correre.
+const DIG_BONES: Array[String] = [
+	"DEF-spine.001", "DEF-spine.002", "DEF-spine.003", "DEF-neck", "DEF-head",
+	"DEF-shoulder.L", "DEF-upper_arm.L", "DEF-forearm.L", "DEF-hand.L",
+	"DEF-shoulder.R", "DEF-upper_arm.R", "DEF-forearm.R", "DEF-hand.R",
+]
+## Limiti del ritmo della corsa rispetto al passo naturale.
+const GAIT_RATE_MIN := 0.7
+const GAIT_RATE_MAX := 2.2
 ## Frazione della velocita di riferimento a cui la corsa ha sostituito del tutto il fermo.
-const JOG_FULL_BLEND := 0.5
+const GAIT_FULL_BLEND := 0.5
+## Secondi di dissolvenza fra un'andatura e l'altra.
+const GAIT_CROSSFADE := 0.15
+## Un'andatura resta finche la marcia non esce dal suo quarto piu questa isteresi (rad):
+## evita lo sfarfallio in diagonale.
+const GAIT_HYSTERESIS := deg_to_rad(12.0)
 ## Velocita (1/s) con cui miscela e torsione inseguono il movimento.
 const BLEND_RATE := 12.0
 const TWIST_RATE := 14.0
-## Oltre questo angolo (rad) fra mira e marcia corre all'indietro; l'isteresi evita lo
-## sfarfallio quando ci si muove di lato.
-const BACKPEDAL_ANGLE := deg_to_rad(100.0)
-const BACKPEDAL_HYSTERESIS := deg_to_rad(12.0)
+## Durata (s) dell'affondo di scavo e della capriola, qualunque sia la lunghezza dell'animazione.
+const DIG_SECONDS := 0.45
+const DODGE_SECONDS := 0.4
 
 var _tree: AnimationTree
 var _player: AnimationPlayer
@@ -41,10 +66,12 @@ var _move_target := 0.0
 var _move := 0.0
 var _rate := 1.0
 var _twist_target := 0.0
-var _backpedal := false
+var _gait := GAIT_FORWARD
+var _applied_gait := GAIT_FORWARD
 var _dead := false
 var _frozen := false
 var _aim_filter_size := 0
+var _fired: Dictionary[StringName, int] = {}
 
 
 ## Crea l'animatore per [param model] e lo aggiunge come suo figlio; null se il modello
@@ -71,12 +98,18 @@ func twist() -> float:
 	return _twist.angle
 
 
-func is_backpedaling() -> bool:
-	return _backpedal
+## Andatura scelta: una delle chiavi di [constant GAITS].
+func gait() -> StringName:
+	return _gait
 
 
 func aim_filter_size() -> int:
 	return _aim_filter_size
+
+
+## Quante volte e stata chiesta un'azione a comando (`dig`, `dodge`, `hit`).
+func fired_count(action: StringName) -> int:
+	return _fired.get(action, 0)
 
 
 ## [param local_velocity] nello spazio del personaggio (avanti = -Z);
@@ -84,25 +117,34 @@ func aim_filter_size() -> int:
 func set_locomotion(local_velocity: Vector3, reference_speed: float) -> void:
 	var planar := Vector2(local_velocity.x, local_velocity.z)
 	var speed := planar.length()
-	_move_target = clampf(speed / maxf(reference_speed * JOG_FULL_BLEND, 0.01), 0.0, 1.0)
+	_move_target = clampf(speed / maxf(reference_speed * GAIT_FULL_BLEND, 0.01), 0.0, 1.0)
 	if speed < 0.05:
 		_twist_target = 0.0
-		_backpedal = false
 		_rate = 1.0
 		return
 	# Rotazione attorno a +Y che porta "avanti" (-Z) sulla direzione di marcia.
 	var heading := atan2(-planar.x, -planar.y)
-	var limit := BACKPEDAL_ANGLE + (BACKPEDAL_HYSTERESIS if not _backpedal else -BACKPEDAL_HYSTERESIS)
-	_backpedal = absf(heading) > limit
-	if _backpedal:
-		heading -= signf(heading) * PI
-	_twist_target = heading
-	_rate = clampf(speed / JOG_STRIDE_SPEED, JOG_RATE_MIN, JOG_RATE_MAX) * (-1.0 if _backpedal else 1.0)
+	if absf(angle_difference(GAITS[_gait][1], heading)) > PI * 0.25 + GAIT_HYSTERESIS:
+		for candidate: StringName in GAITS:
+			if absf(angle_difference(GAITS[candidate][1], heading)) <= PI * 0.25:
+				_gait = candidate
+				break
+	_twist_target = angle_difference(GAITS[_gait][1], heading)
+	_rate = clampf(speed / GAITS[_gait][2], GAIT_RATE_MIN, GAIT_RATE_MAX)
+
+
+## Un affondo dell'attrezzo col busto; le gambe continuano quello che stavano facendo.
+func play_dig() -> void:
+	_fire(&"dig")
+
+
+## Capriola a corpo intero (lo scatto).
+func play_dodge() -> void:
+	_fire(&"dodge")
 
 
 func play_hit() -> void:
-	if not _dead:
-		_tree.set(&"parameters/hit_shot/request", AnimationNodeOneShot.ONE_SHOT_REQUEST_FIRE)
+	_fire(&"hit")
 
 
 ## Ferma la miscela e fa cadere il personaggio; [method revive] lo rimette in piedi.
@@ -126,38 +168,52 @@ func revive() -> void:
 	_tree.active = true
 
 
+func _fire(action: StringName) -> void:
+	if _dead:
+		return
+	_fired[action] = fired_count(action) + 1
+	_tree.set("parameters/%s_shot/request" % action, AnimationNodeOneShot.ONE_SHOT_REQUEST_FIRE)
+
+
 func _build(player: AnimationPlayer, skeleton: Skeleton3D) -> void:
 	_player = player
-	for animation_name: StringName in [IDLE, JOG]:
-		player.get_animation(animation_name).loop_mode = Animation.LOOP_LINEAR
+	player.get_animation(IDLE).loop_mode = Animation.LOOP_LINEAR
 
 	var blend := AnimationNodeBlendTree.new()
+	# Andature: una transizione con dissolvenza, poi il ritmo, poi la miscela col fermo.
+	var gaits := AnimationNodeTransition.new()
+	gaits.xfade_time = GAIT_CROSSFADE
+	gaits.input_count = GAITS.size()
+	blend.add_node(&"gait", gaits)
+	var index := 0
+	for gait_name: StringName in GAITS:
+		var animation: StringName = GAITS[gait_name][0]
+		player.get_animation(animation).loop_mode = Animation.LOOP_LINEAR
+		gaits.set_input_name(index, gait_name)
+		blend.add_node(gait_name, _clip(animation))
+		blend.connect_node(&"gait", index, gait_name)
+		index += 1
+	blend.add_node(&"gait_rate", AnimationNodeTimeScale.new())
+	blend.connect_node(&"gait_rate", 0, &"gait")
 	blend.add_node(&"idle", _clip(IDLE))
-	blend.add_node(&"jog", _clip(JOG))
-	blend.add_node(&"jog_rate", AnimationNodeTimeScale.new())
 	blend.add_node(&"move", AnimationNodeBlend2.new())
+	blend.connect_node(&"move", 0, &"idle")
+	blend.connect_node(&"move", 1, &"gait_rate")
+
+	# Posa di mira su braccia e testa.
 	blend.add_node(&"aim", _clip(AIM))
 	var upper := AnimationNodeBlend2.new()
-	upper.filter_enabled = true
-	var aim_animation := player.get_animation(AIM)
-	for track in aim_animation.get_track_count():
-		var path := aim_animation.track_get_path(track)
-		if path.get_subname_count() > 0 and AIM_BONES.has(String(path.get_subname(0))):
-			upper.set_filter_path(path, true)
-			_aim_filter_size += 1
+	_aim_filter_size = _filter(upper, player.get_animation(AIM), AIM_BONES)
 	blend.add_node(&"upper", upper)
-	blend.add_node(&"hit", _clip(HIT))
-	var hit_shot := AnimationNodeOneShot.new()
-	hit_shot.fadein_time = 0.04
-	hit_shot.fadeout_time = 0.12
-	blend.add_node(&"hit_shot", hit_shot)
-	blend.connect_node(&"jog_rate", 0, &"jog")
-	blend.connect_node(&"move", 0, &"idle")
-	blend.connect_node(&"move", 1, &"jog_rate")
 	blend.connect_node(&"upper", 0, &"move")
 	blend.connect_node(&"upper", 1, &"aim")
-	blend.connect_node(&"hit_shot", 0, &"upper")
-	blend.connect_node(&"hit_shot", 1, &"hit")
+
+	# Azioni a comando, una sopra l'altra: scavo (solo busto), capriola, colpo.
+	var rates: Dictionary[String, float] = {}
+	var dig_shot := _one_shot(blend, "dig", DIG, DIG_SECONDS, &"upper", rates)
+	_filter(dig_shot, player.get_animation(DIG), DIG_BONES)
+	_one_shot(blend, "dodge", DODGE, DODGE_SECONDS, &"dig_shot", rates)
+	_one_shot(blend, "hit", HIT, 0.0, &"dodge_shot", rates)
 	blend.connect_node(&"output", 0, &"hit_shot")
 
 	_tree = AnimationTree.new()
@@ -167,13 +223,15 @@ func _build(player: AnimationPlayer, skeleton: Skeleton3D) -> void:
 	_tree.anim_player = _tree.get_path_to(player)
 	_tree.set(&"parameters/upper/blend_amount", 1.0)
 	_tree.set(&"parameters/move/blend_amount", 0.0)
-	_tree.set(&"parameters/jog_rate/scale", 1.0)
+	_tree.set(&"parameters/gait_rate/scale", 1.0)
+	for rate_name in rates:
+		_tree.set("parameters/%s/scale" % rate_name, rates[rate_name])
 	_tree.active = true
 
 	_twist = HipTwistModifier.new()
 	_twist.name = "HipTwist"
 	skeleton.add_child(_twist)
-	_twist.setup(skeleton, HIPS_BONE, SPINE_BONE)
+	_twist.setup(skeleton, HIPS_BONE, SPINE_BONE, CHEST_BONE)
 	# La posa iniziale c'e subito, anche se ActorMotion e spento dal primo frame.
 	_tree.advance(0.0)
 
@@ -184,6 +242,37 @@ func _clip(animation: StringName) -> AnimationNodeAnimation:
 	return node
 
 
+## Accende su [param node] il filtro delle tracce di [param animation] che muovono
+## [param bones]; restituisce quante ne ha trovate.
+func _filter(node: AnimationNode, animation: Animation, bones: Array[String]) -> int:
+	node.filter_enabled = true
+	var count := 0
+	for track in animation.get_track_count():
+		var path := animation.track_get_path(track)
+		if path.get_subname_count() > 0 and bones.has(String(path.get_subname(0))):
+			node.set_filter_path(path, true)
+			count += 1
+	return count
+
+
+## Aggiunge `<action>` (animazione), `<action>_rate` e `<action>_shot` sopra [param below].
+## Con [param seconds] > 0 l'animazione viene compressa o allungata a quella durata: il
+## ritmo che serve finisce in [param rates], da applicare quando l'albero esiste.
+func _one_shot(blend: AnimationNodeBlendTree, action: String, animation: StringName, seconds: float,
+		below: StringName, rates: Dictionary[String, float]) -> AnimationNodeOneShot:
+	var shot := AnimationNodeOneShot.new()
+	shot.fadein_time = 0.04
+	shot.fadeout_time = 0.12
+	blend.add_node(action, _clip(animation))
+	blend.add_node(action + "_rate", AnimationNodeTimeScale.new())
+	blend.add_node(action + "_shot", shot)
+	blend.connect_node(action + "_rate", 0, action)
+	blend.connect_node(action + "_shot", 0, below)
+	blend.connect_node(action + "_shot", 1, action + "_rate")
+	rates[action + "_rate"] = _player.get_animation(animation).length / seconds if seconds > 0.0 else 1.0
+	return shot
+
+
 func _process(delta: float) -> void:
 	var frozen := not ActorMotion.enabled
 	if frozen != _frozen:
@@ -192,7 +281,10 @@ func _process(delta: float) -> void:
 			else AnimationMixer.ANIMATION_CALLBACK_MODE_PROCESS_IDLE)
 	if frozen or _dead:
 		return
+	if _gait != _applied_gait:
+		_applied_gait = _gait
+		_tree.set(&"parameters/gait/transition_request", String(_gait))
 	_move = ActorMotion.smooth(_move, _move_target, BLEND_RATE, delta)
 	_twist.angle = ActorMotion.smooth(_twist.angle, _twist_target, TWIST_RATE, delta)
 	_tree.set(&"parameters/move/blend_amount", _move)
-	_tree.set(&"parameters/jog_rate/scale", _rate)
+	_tree.set(&"parameters/gait_rate/scale", _rate)

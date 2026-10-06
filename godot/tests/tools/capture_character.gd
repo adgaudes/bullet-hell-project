@@ -3,11 +3,12 @@ extends SceneTree
 ##   godot_console --path godot --resolution 1280x800 --fixed-fps 60 --script res://tests/tools/capture_character.gd -- --out=../output/character
 ## Mette in fila una copia del modello per posa (`POSES`: animazione e secondo), su un
 ## piano neutro, e salva la fila da davanti, da dietro e dalla camera di gioco. Stampa
-## le animazioni del modello (`CHARACTER_ANIMATIONS`). `--model=res://...glb` cambia modello.
+## le animazioni del modello (`CHARACTER_ANIMATIONS`). `--model=res://...glb` cambia modello,
+## `--poses=Jog_Fwd@0.2,Dig@1.5` sceglie le pose (animazione@secondo).
 
 const SUIT_COLOR_LINEAR := Color(1.0, 0.35, 0.02)
 ## Animazione ("" = posa di riposo) e secondo a cui fermarla.
-const POSES: Array[Array] = [
+var POSES: Array[Array] = [
 	["", 0.0], ["Idle", 0.0], ["Pistol_Idle", 0.0], ["Jog_Fwd", 0.0], ["Jog_Fwd", 0.25],
 	["Pistol_Aim_Neutral", 0.0], ["Hit_Chest", 0.15], ["Interact", 1.0], ["Death01", 2.3],
 ]
@@ -24,6 +25,10 @@ func _initialize() -> void:
 			_out = arg.trim_prefix("--out=")
 		elif arg.begins_with("--model="):
 			_model = arg.trim_prefix("--model=")
+		elif arg.begins_with("--poses="):
+			POSES.clear()
+			for pose in arg.trim_prefix("--poses=").split(","):
+				POSES.append([pose.get_slice("@", 0), pose.get_slice("@", 1).to_float()])
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("res://").path_join(_out))
 
 	var world := Node3D.new()

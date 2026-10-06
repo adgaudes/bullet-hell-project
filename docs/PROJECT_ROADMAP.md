@@ -41,6 +41,7 @@ Principio guida:
   - 6 ottobre 2026: **specifica del ciclo giorno/notte approvata** (D-058, `docs/DAY_NIGHT_SPEC.md`): una notte per livello, rottamatori piu forti al buio, torcia e faro con upgrade, lampioni piazzabili. **Solo documento, nessun codice.**
   - 6 ottobre 2026: **primo personaggio con scheletro e animazioni** (D-060): l'ingegnere corre, mira, incassa e cade con animazioni CC0 (Quaternius) su un modello a pezzi rigidi generato da script Blender; gambe girate verso la marcia, busto sulla mira. Gate verde. **Resa da giudicare dal proprietario nel playtest**; build non riesportate.
   - 6 ottobre 2026: **MCP for Blender installato e Rigify abilitato** (D-061) per modellare con Blender aperto; Mixamo resta un servizio web da usare con l'account del proprietario quando manca un'animazione.
+  - 6 ottobre 2026: **corse laterali e all'indietro, scavo e capriola dell'ingegnere** (D-062), da cinque animazioni Mixamo scaricate dal proprietario e riportate sullo scheletro: la mira resta ferma mentre le gambe seguono la marcia, lo scatto fa la capriola, il tool del terreno un affondo. Gate verde. **Resa da giudicare dal proprietario**; build non riesportate.
 - **Fasi 4-14:** non iniziate formalmente. Esperimenti tecnici anticipati non equivalgono al superamento dei relativi gate.
 
 **Prossimo passo (in ordine):**
@@ -53,7 +54,7 @@ Principio guida:
 6. **In sospeso, senza urgenza:**
    - Test A percettivo e test su Steam Deck via Proton (`docs/PLAYTESTS/GODOT_PARITY_PLAYTEST.md`); dopo, eliminare la build Unreal `LocalBuilds/Prototype01-TerrainGrid-Win64-v1` (872 MB);
    - eliminare a mano le cartelle vuote `Desktop/Videogame-settings` e `Desktop/Videogame-vision` (worktree di Codex) dopo aver chiuso Codex;
-   - pipeline dei personaggi animati avviata (D-060, ingegnere); dopo il giudizio del proprietario: animazioni di dash, scavo e tiro, altri personaggi del roster, volti e forme organiche.
+   - pipeline dei personaggi animati avviata (D-060, ingegnere); andature, scavo e capriola aggiunti (D-062); dopo il giudizio del proprietario: ritmi e durate, animazione di tiro, altri personaggi del roster, volti e forme organiche.
 7. **Ciclo giorno/notte** (D-058, richiesto dal proprietario il 6 ottobre 2026): il proprietario rivede `docs/DAY_NIGHT_SPEC.md`; poi l'agente scrive il piano e implementa la tappa 1 (notte giocabile: ciclo, luce, nemici al buio, due carte), quindi la tappa 2 (lampioni). Non blocca il playtest del punto 4: prima del tramonto il livello resta identico.
 
 Fonti operative: `DECISIONS.md`, `RISK_REGISTER.md` e i protocolli in `PLAYTESTS/`.

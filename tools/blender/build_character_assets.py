@@ -15,7 +15,9 @@ Come funziona:
 - il modello e fatto di **pezzi rigidi**: ogni primitiva pesa 1 su un solo osso
   (parametro `bone`), niente deformazione da sistemare. I pezzi si disegnano nella posa
   di riposo, a T, usando le posizioni delle giunture (`Skeleton.head/tail`);
-- delle animazioni della libreria restano solo quelle in `ANIMATIONS`, con il nome originale.
+- delle animazioni della libreria restano solo quelle in `ANIMATIONS`, con il nome originale;
+- le animazioni Mixamo di `MIXAMO_CLIPS` (`third_party/mixamo/`) vengono riportate sullo
+  stesso scheletro copiando, osso per osso, la rotazione rispetto alla posa di riposo.
 
 Convenzioni:
 - metri; origine a terra fra i piedi. **Nello spazio dello scheletro il fronte guarda -Y
@@ -71,6 +73,32 @@ PROPORTIONS = {
 }
 REMOVED_BONES = ("DEF-f_", "DEF-thumb")
 
+# Animazioni Mixamo (FBX senza skin in `third_party/mixamo/`, scaricate dal proprietario;
+# licenza Adobe: uso libero nel gioco, vietato ridistribuire i file grezzi). Per file:
+# nome dell'animazione (`_Loop` = ciclica in Godot), se togliere lo spostamento
+# orizzontale del bacino, e l'intervallo in secondi da tenere (None = tutto).
+MIXAMO_DIR = os.path.join(os.path.dirname(__file__), "third_party", "mixamo")
+MIXAMO_FPS = 30.0
+MIXAMO_CLIPS = {
+    "strafe_left.fbx": ("Strafe_Left_Loop", False, None),
+    "strafe_right.fbx": ("Strafe_Right_Loop", False, None),
+    "run_backward.fbx": ("Run_Bwd_Loop", False, None),
+    # Un solo affondo dell'attrezzo; la sola capriola, senza preparazione ne rialzata.
+    "dig.fbx": ("Dig", True, (0.3, 1.5)),
+    "dodge.fbx": ("Dodge", True, (0.5, 2.0)),
+}
+# Osso dello scheletro -> osso Mixamo (senza il prefisso `mixamorig:`).
+MIXAMO_BONES = {
+    "DEF-hips": "Hips", "DEF-spine.001": "Spine", "DEF-spine.002": "Spine1", "DEF-spine.003": "Spine2",
+    "DEF-neck": "Neck", "DEF-head": "Head",
+    "DEF-shoulder.L": "LeftShoulder", "DEF-upper_arm.L": "LeftArm", "DEF-forearm.L": "LeftForeArm",
+    "DEF-hand.L": "LeftHand",
+    "DEF-shoulder.R": "RightShoulder", "DEF-upper_arm.R": "RightArm", "DEF-forearm.R": "RightForeArm",
+    "DEF-hand.R": "RightHand",
+    "DEF-thigh.L": "LeftUpLeg", "DEF-shin.L": "LeftLeg", "DEF-foot.L": "LeftFoot", "DEF-toe.L": "LeftToeBase",
+    "DEF-thigh.R": "RightUpLeg", "DEF-shin.R": "RightLeg", "DEF-foot.R": "RightFoot", "DEF-toe.R": "RightToeBase",
+}
+
 
 def shade(value):
     return (value, value, value)
@@ -100,17 +128,116 @@ class Skeleton:
         missing = [name for name in ANIMATIONS if name not in bpy.data.actions]
         if missing:
             raise RuntimeError("Animazioni assenti dalla libreria: %s" % missing)
-        # L'export glTF prende le azioni dalle tracce NLA dell'armatura: una traccia per azione.
-        animation_data = self.obj.animation_data_create()
+        self.obj.animation_data_create()
         for name in ANIMATIONS:
-            action = bpy.data.actions[name]
-            track = animation_data.nla_tracks.new()
-            track.name = name
-            strip = track.strips.new(name, int(action.frame_range[0]), action)
-            if strip.action_slot is None and action.slots:
-                strip.action_slot = action.slots[0]
+            self._stash(bpy.data.actions[name])
         self.joints = {}
         self._reproportion()
+        for filename, (name, strip_travel, span) in MIXAMO_CLIPS.items():
+            self._add_mixamo(filename, name, strip_travel, span)
+
+    def _stash(self, action):
+        """L'export glTF prende le azioni dalle tracce NLA dell'armatura: una traccia per azione."""
+        track = self.obj.animation_data.nla_tracks.new()
+        track.name = action.name
+        strip = track.strips.new(action.name, int(action.frame_range[0]), action)
+        if strip.action_slot is None and action.slots:
+            strip.action_slot = action.slots[0]
+
+    def _add_mixamo(self, filename, name, strip_travel, span):
+        """Porta un'animazione Mixamo sullo scheletro. Le due pose di riposo sono la stessa
+        T nello stesso verso, quindi per ogni osso basta copiare, in spazio mondo, la
+        rotazione rispetto al riposo; il bacino trasla in proporzione alla sua altezza."""
+        objects, actions = set(bpy.data.objects), set(bpy.data.actions)
+        scene = bpy.context.scene
+        # L'import FBX porta la scena a 30 fps: rimessa com'era, o l'export accelera tutto.
+        fps = scene.render.fps
+        bpy.ops.import_scene.fbx(filepath=os.path.join(MIXAMO_DIR, filename))
+        scene.render.fps = fps
+        source = next(o for o in bpy.data.objects if o not in objects and o.type == "ARMATURE")
+        source_action = next(a for a in bpy.data.actions if a not in actions)
+        world = source.matrix_world
+
+        def rotation(matrix):
+            return matrix.to_3x3().normalized().to_quaternion()
+
+        def source_bone(target):
+            return "mixamorig:" + MIXAMO_BONES[target]
+
+        # Stessa posa di riposo: a T, sinistra a +X, fronte a -Y.
+        arm = source.data.bones[source_bone("DEF-upper_arm.L")]
+        toe = source.data.bones[source_bone("DEF-toe.L")]
+        arm_axis = (world.to_3x3() @ (arm.tail_local - arm.head_local)).normalized()
+        toe_axis = (world.to_3x3() @ (toe.tail_local - toe.head_local)).normalized()
+        if arm_axis.x < 0.9 or toe_axis.y > -0.5:
+            raise RuntimeError("%s: posa di riposo inattesa (braccio %s, punta %s)" % (filename, arm_axis, toe_axis))
+
+        bones = list(self.obj.data.bones)
+        rest = {b.name: b.matrix_local.to_quaternion() for b in bones}
+        source_rest = {b.name: rotation(world @ source.data.bones[source_bone(b.name)].matrix_local)
+                       for b in bones if b.name in MIXAMO_BONES}
+        hips_rest = (world @ source.data.bones[source_bone(HIPS)].matrix_local).translation
+        ratio = self.obj.data.bones[HIPS].head_local.z / hips_rest.z
+
+        first, last = (int(round(v)) for v in source_action.frame_range)
+        if span is not None:
+            first, last = first + int(round(span[0] * MIXAMO_FPS)), first + int(round(span[1] * MIXAMO_FPS))
+        frame_scale = scene.render.fps / MIXAMO_FPS
+        keys = {b.name: [] for b in bones if b.name in MIXAMO_BONES}
+        hips_keys = []
+        for frame in range(first, last + 1):
+            scene.frame_set(frame)
+            time = (frame - first) * frame_scale
+            pose = {}
+            for bone in bones:
+                parent = bone.parent.name if bone.parent else None
+                if bone.name in MIXAMO_BONES:
+                    now = rotation(world @ source.pose.bones[source_bone(bone.name)].matrix)
+                    pose[bone.name] = now @ source_rest[bone.name].inverted() @ rest[bone.name]
+                elif parent is not None:
+                    pose[bone.name] = pose[parent] @ rest[parent].inverted() @ rest[bone.name]
+                else:
+                    pose[bone.name] = rest[bone.name].copy()
+                if bone.name not in MIXAMO_BONES:
+                    continue
+                if parent is not None:
+                    basis = (rest[parent].inverted() @ rest[bone.name]).inverted() @ pose[parent].inverted() @ pose[bone.name]
+                else:
+                    basis = rest[bone.name].inverted() @ pose[bone.name]
+                track = keys[bone.name]
+                if track and track[-1][1].dot(basis) < 0.0:
+                    basis.negate()
+                track.append((time, basis))
+            travel = (world @ source.pose.bones[source_bone(HIPS)].matrix).translation - hips_rest
+            if strip_travel:
+                travel.x = travel.y = 0.0
+            hips_keys.append((time, rest[HIPS].inverted() @ (travel * ratio)))
+
+        action = bpy.data.actions.new(name)
+        slot = action.slots.new(id_type="OBJECT", name=self.obj.name)
+        bag = action.layers.new("Layer").strips.new(type="KEYFRAME").channelbag(slot, ensure=True)
+
+        def curve(path, index, values):
+            fcurve = bag.fcurves.new(path, index=index)
+            fcurve.keyframe_points.add(len(values))
+            for point, (time, value) in zip(fcurve.keyframe_points, values):
+                point.co = (time, value)
+                point.interpolation = "LINEAR"
+            fcurve.update()
+
+        for bone_name, track in keys.items():
+            for index in range(4):
+                curve('pose.bones["%s"].rotation_quaternion' % bone_name, index, [(t, q[index]) for t, q in track])
+        for index in range(3):
+            curve('pose.bones["%s"].location' % HIPS, index, [(t, v[index]) for t, v in hips_keys])
+
+        armature = source.data
+        bpy.data.objects.remove(source, do_unlink=True)
+        bpy.data.armatures.remove(armature)
+        bpy.data.actions.remove(source_action)
+        self._stash(action)
+        print("MIXAMO %s -> %s frames=%d seconds=%.2f hips_ratio=%.3f"
+              % (filename, name, last - first + 1, (last - first) / MIXAMO_FPS, ratio))
 
     def head(self, bone):
         return self.joints[bone][0].copy()
