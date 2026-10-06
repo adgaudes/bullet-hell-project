@@ -37,9 +37,10 @@ tuning = ExtResource("6_terrain_tuning")
 natural_ground = true
 plaza_radius = 30.0
 
-[node name="Player" parent="." node_paths=PackedStringArray("terrain_grid") instance=ExtResource("4_player")]
+[node name="Player" parent="." node_paths=PackedStringArray("terrain_grid", "recoil_source") instance=ExtResource("4_player")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.88, 0)
 terrain_grid = NodePath("../TerrainGrid")
+recoil_source = NodePath("../PlayerWeapon")
 
 [node name="CameraRig" type="Node3D" parent="." node_paths=PackedStringArray("target")]
 script = ExtResource("3_camera")
