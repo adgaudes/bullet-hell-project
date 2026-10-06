@@ -63,7 +63,7 @@ Misure sul PC del proprietario in D-042 e in `tests/tools/benchmark_arena.gd`. *
 
 **Indicatori a bordo schermo** (D-044): freccia, nome e distanza dei due cortili e dei due depositi di rottami piu vicini fuori vista, e del boss quando e in campo; un deposito esaurito non e piu indicato.
 
-Prima passata artistica (D-046): le rovine basse sono gusci sventrati senza tetto (la collisione resta il blocco pieno) e i terrapieni hanno fianchi di terra a strati. Personaggio, compagno, nemici e boss restano **graybox provvisorio**.
+Prima passata artistica (D-046): le rovine basse sono gusci sventrati senza tetto (la collisione resta il blocco pieno) e i terrapieni hanno fianchi di terra a strati. Personaggio, compagno, rottamatori e boss hanno modelli low-poly statici generati da script (D-050), senza animazioni.
 
 Non ancora: obiettivi di livello, eventi che deformano l'arena.
 
@@ -121,6 +121,8 @@ Domande di playtest in piu:
 
 15. Dopo la prima run, in Officina c'era qualcosa che volevi e potevi quasi permetterti? I prezzi sono un obiettivo o un muro?
 16. Un upgrade permanente ha cambiato come hai giocato il livello dopo, o solo i numeri?
+
+17. Modelli (D-050): capisci sempre dove guardano tu, il compagno e i rottamatori? Qualcuno stona o si confonde con lo sfondo?
 
 Marker: `PROTOTYPE01_PROFILE_BANKED`, `PROTOTYPE01_PERMANENT_BOUGHT`, `PROTOTYPE01_PERMANENT_APPLIED`.
 

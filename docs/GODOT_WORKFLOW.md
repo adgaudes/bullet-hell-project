@@ -115,6 +115,8 @@ Catture della run (combattimento e level-up): `godot_console --path godot --reso
 
 Catture dell'arena grande (D-042: partenza, panoramica dall'alto di tutta l'arena senza nebbia, combattimento dopo un minuto): `godot_console --path godot --resolution 1280x800 --fixed-fps 60 --script res://tests/tools/capture_district.gd -- --out=../output/district`. Con `--visit=x,z` (ripetibile) salva anche la vista di gioco col giocatore in quel punto (`visit_0.png`, ...) ed esce senza la cattura del combattimento: utile per guardare da vicino rovine e oggetti.
 
+Modelli degli attori (D-050): `"/c/Program Files/Blender Foundation/Blender 5.2/blender.exe" -b --factory-startup --python tools/blender/build_actor_assets.py`, poi `godot_console --headless --path godot --editor --quit`. Catture ravvicinate e dalla camera di gioco: `godot_console --path godot --resolution 1280x800 --fixed-fps 60 --script res://tests/tools/capture_actors.gd -- --out=../output/actors`.
+
 Catture dell'Officina (fine livello col pulsante, catalogo): `godot_console --path godot --resolution 1280x800 --fixed-fps 60 --script res://tests/tools/capture_workshop.gd -- --out=../output/workshop`. Sotto `--script` l'autoload `PlayerProfile` non legge ne scrive `user://profile.cfg`: test e catture impostano il profilo in memoria.
 
 Trappola verificata (6 ottobre 2026): `add_child()` su un nodo fratello **durante il `_ready` della scena** fallisce ("Parent node is busy setting up children") e il nodo resta fuori dall'albero senza altri sintomi. Usare `add_child.call_deferred()`.

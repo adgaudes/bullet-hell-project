@@ -211,7 +211,8 @@ Nessuno di questi passi e stato eseguito.
 - Audio (D-048): `scripts/audio/sfx_library.gd`, `scripts/audio/run_audio.gd` (nodo `RunAudio` in `arena_run.tscn`, `play(id)`), `default_bus_layout.tres`, volumi in `GameSettings` e slider in `pause_menu.tscn`; nuovi segnali `PlayerCharacter.terrain_tool_rejected`, `LevelUpMenu.opened`, `ArenaRun.boss_spawned`, `Demolisher.scrap_taken`. Suite `tests/audio_tests.gd` (15 suite in tutto).
 - Build Windows e Linux riesportate il 6 ottobre 2026 dopo D-045...D-048; smoke test della build Windows superato, Linux non eseguita.
 - Officina (D-049): autoload `PlayerProfile` (`scripts/services/player_profile.gd`, `user://profile.cfg`), `scripts/progression/permanent_catalog.gd`, `scripts/ui/workshop_panel.gd` (nodo `WorkshopPanel` in `arena_run.tscn`), `ArenaRun._apply_permanent_upgrades()` e `_bank()`, `PlayerCharacter.tool_range_bonus_cm`. Suite `tests/workshop_tests.gd`, catture `tests/tools/capture_workshop.gd`.
-- **Non fatto:** ascolto dell'audio, bilanciamento, Officina e profilo permanente, musica, Steam Deck.
+- Modelli degli attori (D-050): `tools/blender/build_actor_assets.py`, `assets/models/{player_engineer,companion_cart,scavenger,demolisher,demolisher_blade}.glb`, `resources/materials/actor_paint.gdshader`, `scripts/core/actor_model.gd` (`ActorModel`), `tests/tools/capture_actors.gd`. Build riesportate dopo D-049 e D-050; smoke test della build Windows superato.
+- **Non fatto:** animazioni, ascolto dell'audio, bilanciamento, Officina e profilo permanente, musica, Steam Deck.
 
 ## Da non dimenticare
 
