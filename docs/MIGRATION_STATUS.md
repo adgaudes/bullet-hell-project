@@ -263,3 +263,8 @@ Usare sempre `godot_console`, mai `godot`, per i comandi non interattivi: il sec
 - formato delle risorse di tuning `.tres` (chiusura della Fase 2);
 - `LocalBuilds/` Unreal (1,74 GB): da conservare o rimuovere (proposta Fase 10);
 - se e quando installare un MCP Godot: trigger in `GODOT_WORKFLOW.md`.
+
+## Ciclo giorno/notte (6 ottobre 2026)
+
+- **Specifica approvata, niente codice:** `docs/DAY_NIGHT_SPEC.md` (D-058). Una notte per livello, nemici piu forti al buio, torcia e faro con upgrade, lampioni piazzabili. Due tappe: (1) notte giocabile, (2) lampioni.
+- **Prossimo passo:** revisione della specifica da parte del proprietario, poi piano di implementazione della tappa 1.
