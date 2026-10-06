@@ -279,8 +279,13 @@ func _test_defeat_completes_level() -> void:
 	_check(panel.is_open and panel.is_victory and paused, "schermata di vittoria, gioco fermo")
 	_check(_director.enemies.is_empty() and not _director.spawning, "l'orda si ritira")
 	_check(_director.kills == kills + 1, "conta solo il boss fra gli abbattuti")
+	carried += _run.survival_scrap()
 	_check(_run.scrap_out(true) == carried + _run.tuning.boss_scrap_bonus, "rottami portati fuori: cassone + premio (%d)" % _run.scrap_out(true))
 	_check(_run.scrap_out(false) == int(carried * _run.tuning.death_scrap_share), "morendo se ne salva la meta")
+	var before := _run.survival_scrap()
+	_run.elapsed += 3.0 * _run.tuning.survival_scrap_seconds
+	_check(_run.tuning.survival_scrap_seconds > 0.0 and _run.scrap_out(true) == carried + 3 + _run.tuning.boss_scrap_bonus
+		and _run.survival_scrap() == before + 3, "rottami di recupero: uno ogni %.0f s di livello" % _run.tuning.survival_scrap_seconds)
 	_check(not _hud.is_boss_bar_visible(), "barra del boss nascosta")
 	paused = false
 

@@ -17,7 +17,7 @@ static func all() -> Array[Dictionary]:
 			text = "Il compagno parte con 2 posti in piu per i rottami."},
 		{id = &"stock", name = "Scorta", costs = [3, 7],
 			text = "Il compagno parte con 2 rottami in piu nel cassone."},
-		{id = &"fixed_turret", name = "Torretta fissa", costs = [18],
+		{id = &"fixed_turret", name = "Torretta fissa", costs = [30],
 			text = "Il compagno parte gia con la chiodatrice sul cassone."},
 		{id = &"salvage", name = "Paracadute per rottami", costs = [10],
 			text = "Se vieni rottamato salvi tre quarti del cassone invece di meta."},

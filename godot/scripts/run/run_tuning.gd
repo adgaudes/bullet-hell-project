@@ -85,6 +85,9 @@ extends Resource
 @export var boss_scrap_bonus := 5
 ## Quota dei rottami che si salva morendo (proposta della specifica di campagna).
 @export_range(0.0, 1.0) var death_scrap_share := 0.5
+## Rottami di recupero: uno ogni tanti secondi di livello, contati col cassone a fine
+## livello (e ridotti come il cassone se si muore). 0 = regola spenta.
+@export var survival_scrap_seconds := 0.0
 
 @export_group("Courtyard")
 ## Mura iniziali del cortile: anello di celle Raised a questa distanza dal centro

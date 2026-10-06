@@ -1,0 +1,503 @@
+extends SceneTree
+## Simulatore di run complete (non e una suite): gioca `arena_run.tscn` vero, senza
+## finestra, con un bot al posto del giocatore, per misurare quando si muore, se il
+## boss viene raggiunto e quanti rottami escono dal livello. Serve a bilanciare i
+## prezzi dell'Officina prima del playtest; un bot non e un giocatore.
+##   godot_console --headless --path godot --fixed-fps 60 --script res://tests/tools/simulate_runs.gd -- --bots=kiter --seeds=1-10
+## Opzioni (dopo `--`):
+##   --bots=passive,novice,kiter,scrapper   bot da provare (default: tutti)
+##   --seeds=1-10 | --seeds=3,7,9    semi delle run (default 1-5); `--seed=N` = una sola
+##   --profile=base_health:1,cargo:2 upgrade permanenti gia comprati (profilo in memoria)
+##   --max-seconds=1500              oltre questo tempo di gioco la run e interrotta
+##   --hz=60                         passi fisici al secondo (il gioco ne usa 120)
+##   --boss-at=N                     letto da ArenaRun: anticipa il boss
+## Con `--fixed-fps 60` e 60 passi fisici al secondo una run e ripetibile: stesso
+## seme e stesso bot danno la stessa riga. Senza finestra gira gia alla massima
+## velocita della CPU (una run fino al boss costa 2-5 minuti): per fare prima si
+## lanciano piu processi in parallelo, uno per bot o per gruppo di semi. Piu passi
+## fisici per frame (`--fixed-fps 10`) non accelerano in modo misurabile e su un
+## seme dello scrapper hanno dato un risultato diverso: non usarli per confronti.
+## Bot:
+##   passive   fermo nel cortile di partenza;
+##   novice    vede solo i nemici vicini, reagisce ogni mezzo secondo, non cerca
+##             l'esperienza e prende sempre la prima carta;
+##   kiter     si allontana dai nemici e raccoglie esperienza, non tocca il terreno;
+##   scrapper  come kiter, e in piu scava quando puo per riempire il cassone e
+##             prende presto la carta del cassone.
+## Col boss in campo i bot che si muovono gli girano attorno a portata di chiodatrice.
+## Movimento e mira passano dalle azioni di input (`Input.action_press`), il tool
+## da un `InputEventAction`; le carte del level-up da `LevelUpMenu.press`.
+## Marker: PROTOTYPE01_SIM (una riga per run), PROTOTYPE01_SIM_SUMMARY,
+## PROTOTYPE01_SIM_AFFORD (run necessarie per ogni livello dell'Officina).
+
+const RunScene := preload("res://scenes/main/arena_run.tscn")
+const BOT_NAMES: Array[StringName] = [&"passive", &"novice", &"kiter", &"scrapper"]
+const MOVE_ACTIONS: Array[StringName] = [&"move_left", &"move_right", &"move_forward", &"move_back"]
+const AIM_ACTIONS: Array[StringName] = [&"aim_left", &"aim_right", &"aim_up", &"aim_down"]
+const DIRECTIONS := 16
+## Metri davanti al bot a cui si valuta il pericolo di una direzione.
+const LOOKAHEAD := 3.0
+## Distanza dal boss che i bot cercano di tenere: dentro la portata della chiodatrice.
+const BOSS_ORBIT_DISTANCE := 5.5
+const BOSS_TOO_CLOSE := 3.0
+## Priorita fissa delle carte: prima il danno, poi la vita, poi il resto.
+const CARD_PRIORITY: Array[StringName] = [
+	&"nail_spread", &"nail_rate", &"companion_turret", &"nail_pierce", &"patch", &"boots",
+	&"companion_magnet", &"reach", &"companion_cargo", &"dig_blast", &"spiked_wall",
+]
+## Lo scrapper vuole il cassone grande subito dopo le armi.
+const CARD_PRIORITY_SCRAPPER: Array[StringName] = [
+	&"nail_spread", &"nail_rate", &"companion_cargo", &"companion_turret", &"nail_pierce", &"patch",
+	&"boots", &"companion_magnet", &"reach", &"dig_blast", &"spiked_wall",
+]
+## Secondi fra due decisioni, raggio entro cui vede i nemici, peso dell'esperienza.
+const BOT_PARAMS := {
+	&"passive": {interval = 1.0, awareness = 0.0, xp_weight = 0.0, digs = false, first_card = true},
+	&"novice": {interval = 0.5, awareness = 6.0, xp_weight = 0.0, digs = false, first_card = true},
+	&"kiter": {interval = 0.25, awareness = 12.0, xp_weight = 0.12, digs = false, first_card = false},
+	&"scrapper": {interval = 0.25, awareness = 12.0, xp_weight = 0.12, digs = true, first_card = false},
+}
+
+var _bots: Array[StringName] = []
+var _seeds: Array[int] = []
+var _profile_levels: Dictionary[StringName, int] = {}
+var _max_seconds := 1500.0
+var _hz := 60
+
+var _scene: Node3D
+var _run: ArenaRun
+var _player: PlayerCharacter
+var _companion: Companion
+var _grid: TerrainGrid
+var _director: EnemyDirector
+var _path: PathField
+var _scrap: ScrapField
+var _xp: XpField
+var _menu: LevelUpMenu
+
+var _bot: StringName = &"passive"
+var _params: Dictionary = {}
+var _rng := RandomNumberGenerator.new()
+var _decision_left := 0.0
+var _move := Vector2.ZERO
+var _aim := Vector2.ZERO
+var _dig_cooldown := 0.0
+var _stuck_seconds := 0.0
+var _escape_left := 0.0
+var _digs := 0
+var _hits := 0
+## Stato all'arrivo del boss: vita e livello (-1 se non e mai arrivato).
+var _health_at_boss := -1
+var _level_at_boss := -1
+var _results: Array[Dictionary] = []
+
+
+func _initialize() -> void:
+	_parse_arguments()
+	Engine.physics_ticks_per_second = _hz
+	var started := Time.get_ticks_msec()
+	for bot in _bots:
+		for run_seed in _seeds:
+			_results.append(await _simulate(bot, run_seed))
+	for bot in _bots:
+		_print_summary(bot)
+	print("PROTOTYPE01_SIM_DONE runs=%d wall_s=%.1f" % [_results.size(), (Time.get_ticks_msec() - started) / 1000.0])
+	quit()
+
+
+func _parse_arguments() -> void:
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--bots="):
+			for bot_name in arg.trim_prefix("--bots=").split(",", false):
+				if BOT_NAMES.has(StringName(bot_name)):
+					_bots.append(StringName(bot_name))
+		elif arg.begins_with("--seeds="):
+			_seeds = _parse_seeds(arg.trim_prefix("--seeds="))
+		elif arg.begins_with("--seed=") and _seeds.is_empty():
+			_seeds = [arg.trim_prefix("--seed=").to_int()]
+		elif arg.begins_with("--profile="):
+			for pair in arg.trim_prefix("--profile=").split(",", false):
+				var parts := pair.split(":")
+				var id := StringName(parts[0])
+				var level := parts[1].to_int() if parts.size() > 1 else 1
+				_profile_levels[id] = clampi(level, 0, PermanentCatalog.max_level(id))
+		elif arg.begins_with("--max-seconds="):
+			_max_seconds = arg.trim_prefix("--max-seconds=").to_float()
+		elif arg.begins_with("--hz="):
+			_hz = maxi(arg.trim_prefix("--hz=").to_int(), 30)
+	if _bots.is_empty():
+		_bots = BOT_NAMES.duplicate()
+	if _seeds.is_empty():
+		_seeds = [1, 2, 3, 4, 5]
+
+
+static func _parse_seeds(text: String) -> Array[int]:
+	var seeds: Array[int] = []
+	for part in text.split(",", false):
+		var bounds := part.split("-", false)
+		if bounds.size() == 2:
+			for value in range(bounds[0].to_int(), bounds[1].to_int() + 1):
+				seeds.append(value)
+		else:
+			seeds.append(part.to_int())
+	return seeds
+
+
+# --- Una run -----------------------------------------------------------------------
+
+func _simulate(bot: StringName, run_seed: int) -> Dictionary:
+	var wall_start := Time.get_ticks_msec()
+	_bot = bot
+	_params = BOT_PARAMS[bot]
+	# Sotto --script il profilo e in memoria: lo si riporta allo stato richiesto.
+	var profile := root.get_node("PlayerProfile") as PlayerProfileService
+	profile.reset()
+	for id: StringName in _profile_levels:
+		if _profile_levels[id] > 0:
+			profile.levels[id] = _profile_levels[id]
+
+	_scene = RunScene.instantiate()
+	root.add_child(_scene)
+	_run = _scene.get_node(^"Run")
+	_player = _scene.get_node(^"Player")
+	_companion = _scene.get_node(^"Companion")
+	_grid = _scene.get_node(^"TerrainGrid")
+	_director = _scene.get_node(^"EnemyDirector")
+	_path = _scene.get_node(^"PathField")
+	_scrap = _scene.get_node(^"ScrapField")
+	_xp = _scene.get_node(^"XpField")
+	_menu = _scene.get_node(^"LevelUpMenu")
+	# `_ready` della scena arriva al primo frame; poi il seme, come fa ArenaRun con
+	# `--seed=N` (nessun generatore e stato ancora usato).
+	await physics_frame
+	_run.run_seed = run_seed
+	_run.progression.setup(run_seed)
+	_director.rng.seed = run_seed + 1
+	_run._boss_rng.seed = run_seed + 2
+	_rng.seed = run_seed + 3
+	_decision_left = 0.0
+	_move = Vector2.ZERO
+	_aim = Vector2.ZERO
+	_dig_cooldown = 0.0
+	_stuck_seconds = 0.0
+	_escape_left = 0.0
+	_digs = 0
+	_hits = 0
+	_health_at_boss = -1
+	_level_at_boss = -1
+	_player.health_changed.connect(_on_health_changed.bind([_player.health]))
+	_run.boss_spawned.connect(_on_boss_spawned)
+
+	var step := 1.0 / Engine.physics_ticks_per_second
+	var timed_out := false
+	while not _run.is_over:
+		if _run.elapsed >= _max_seconds:
+			timed_out = true
+			break
+		if _menu.is_open:
+			_release_inputs()
+			_pick_card()
+		else:
+			_tick_bot(step)
+		await physics_frame
+	_release_inputs()
+
+	var victory := _run.boss_phase == ArenaRun.BossPhase.DEFEATED
+	var boss_state := "none"
+	var boss_health := 0
+	if victory:
+		boss_state = "killed"
+	elif _run.boss_phase == ArenaRun.BossPhase.ACTIVE:
+		boss_state = "reached"
+		boss_health = _run.boss.health if is_instance_valid(_run.boss) else 0
+	var upgrades: PackedStringArray = []
+	for id: StringName in _run.progression.levels:
+		upgrades.append("%s:%d" % [id, _run.progression.levels[id]])
+	var result := {
+		bot = bot, seed = run_seed, time = _run.elapsed, victory = victory, timed_out = timed_out,
+		level = _run.progression.level, kills = _director.kills, boss = boss_state, boss_health = boss_health,
+		health = _player.health, digs = _digs, carried = _companion.carried, capacity = _companion.capacity,
+		scrap_out = _run.scrap_out(victory), hits = _hits,
+	}
+	var outcome := "victory_at" if victory else ("timeout_at" if timed_out else "died_at")
+	print("PROTOTYPE01_SIM seed=%d bot=%s %s=%.1f level=%d kills=%d boss=%s boss_hp=%d hp=%d hits=%d hp_at_boss=%d level_at_boss=%d digs=%d scrap_carried=%d capacity=%d scrap_out=%d upgrades=%s wall_s=%.1f"
+		% [run_seed, bot, outcome, result.time, result.level, result.kills, boss_state, boss_health, result.health,
+			_hits, _health_at_boss, _level_at_boss, _digs, result.carried, result.capacity, result.scrap_out, ",".join(upgrades),
+			(Time.get_ticks_msec() - wall_start) / 1000.0])
+
+	paused = false
+	root.remove_child(_scene)
+	_scene.queue_free()
+	await physics_frame
+	await physics_frame
+	return result
+
+
+func _on_health_changed(health: int, _max_health: int, last: Array) -> void:
+	if health < last[0]:
+		_hits += 1
+	last[0] = health
+
+
+func _on_boss_spawned(_boss: Demolisher) -> void:
+	_health_at_boss = _player.health
+	_level_at_boss = _run.progression.level
+
+
+# --- Bot ---------------------------------------------------------------------------
+
+func _tick_bot(step: float) -> void:
+	_dig_cooldown = maxf(_dig_cooldown - step, 0.0)
+	_escape_left = maxf(_escape_left - step, 0.0)
+	_decision_left -= step
+	if _bot != &"passive":
+		_track_stuck(step)
+		if _decision_left <= 0.0:
+			_decision_left = _params.interval
+			if _escape_left <= 0.0:
+				_move = _choose_direction()
+		if _params.digs:
+			_tick_digging()
+	_apply_inputs()
+
+
+## Fermo contro un ostacolo mentre vuole muoversi: per mezzo secondo prova una
+## direzione a caso, come chi si accorge di essere incastrato.
+func _track_stuck(step: float) -> void:
+	var speed := Vector2(_player.velocity.x, _player.velocity.z).length()
+	if _move.is_zero_approx() or speed > 1.5:
+		_stuck_seconds = 0.0
+		return
+	_stuck_seconds += step
+	if _stuck_seconds >= 0.4:
+		_stuck_seconds = 0.0
+		_escape_left = 0.5
+		_move = Vector2.RIGHT.rotated(_rng.randf_range(0.0, TAU))
+
+
+## Direzione di marcia (piano XZ) col punteggio migliore fra 16, o zero per restare
+## fermo: lontano dai nemici e dagli ostacoli, verso l'esperienza quando e sicuro.
+func _choose_direction() -> Vector2:
+	var here := _planar(_player.global_position)
+	var awareness: float = _params.awareness
+	# Ogni minaccia: x, y = posizione; z = raggio del corpo in piu.
+	var threats: Array[Vector3] = []
+	var weights: Array[float] = []
+	var nearest := INF
+	# Il boss si vede sempre (barra vita e freccia a schermo): non lo si fugge, lo si aggira.
+	var boss_active := _run.boss_phase == ArenaRun.BossPhase.ACTIVE and is_instance_valid(_run.boss)
+	var boss_at := _planar(_run.boss.global_position) if boss_active else Vector2.ZERO
+	var boss_radius := _run.boss.hit_radius_bonus if boss_active else 0.0
+	for enemy in _director.enemies:
+		if enemy.is_dead or enemy.self_driven:
+			continue
+		var at := _planar(enemy.global_position)
+		var distance := at.distance_to(here)
+		if distance > awareness:
+			continue
+		nearest = minf(nearest, distance)
+		# Fra mezzo secondo sara piu vicino: i nemici puntano il bot.
+		var predicted := at.move_toward(here, _run.tuning.enemy_speed * 0.5)
+		threats.append(Vector3(predicted.x, predicted.y, 0.0))
+		weights.append(1.0)
+
+	var xp_direction := Vector2.ZERO
+	var xp_weight: float = _params.xp_weight
+	if xp_weight > 0.0:
+		var best_xp := 20.0
+		for fragment: Dictionary in _xp._fragments:
+			var node: Node3D = fragment.node
+			var offset := _planar(node.global_position) - here
+			if offset.length() < best_xp:
+				best_xp = offset.length()
+				xp_direction = offset.normalized()
+		if nearest < 3.0:
+			xp_weight *= 0.3
+
+	if threats.is_empty() and xp_direction.is_zero_approx() and not boss_active:
+		return Vector2.ZERO
+
+	var limit := _run._play_half_extent() - 6.0
+	var best := Vector2.ZERO
+	var best_score := -INF
+	for i in DIRECTIONS + 1:
+		var direction := Vector2.ZERO if i == DIRECTIONS else Vector2.RIGHT.rotated(TAU * i / DIRECTIONS)
+		var score := 0.0
+		var future := here + direction * LOOKAHEAD
+		var middle := here + direction * (LOOKAHEAD * 0.4)
+		for t in threats.size():
+			var at := Vector2(threats[t].x, threats[t].y)
+			var far := maxf(future.distance_to(at) - threats[t].z, 0.3)
+			var near := maxf(middle.distance_to(at) - threats[t].z, 0.3)
+			score -= weights[t] * (1.0 / (far * far) + 1.0 / (near * near))
+		if boss_active:
+			var boss_distance := future.distance_to(boss_at) - boss_radius
+			score -= 0.3 * absf(boss_distance - BOSS_ORBIT_DISTANCE)
+			if boss_distance < BOSS_TOO_CLOSE:
+				score -= 4.0 * (BOSS_TOO_CLOSE - boss_distance)
+		if i < DIRECTIONS:
+			if not _walkable(here + direction * 1.0):
+				score -= 100.0
+			if not _walkable(here + direction * 2.0):
+				score -= 3.0
+			if not _walkable(future):
+				score -= 1.0
+			if _grid.cell_state_at(_world(middle)) == TerrainState.CellState.LOWERED:
+				score -= 0.3
+			if absf(future.x) > limit or absf(future.y) > limit:
+				score -= 5.0
+			score += 0.1 * direction.dot(_move.normalized()) if not _move.is_zero_approx() else 0.0
+			score += xp_weight * direction.dot(xp_direction)
+		if score > best_score:
+			best_score = score
+			best = direction
+	return best
+
+
+## Scava un passo quando il cassone ha posto: mira a una cella a portata (meglio
+## un muro o un deposito, che rende senza lasciare una buca) e preme il tool.
+func _tick_digging() -> void:
+	_aim = Vector2.ZERO
+	if _dig_cooldown > 0.0:
+		return
+	var waiting := _scrap.positions_near(_player.global_position, _companion.tuning.pickup_radius_from_player).size()
+	if _companion.carried + waiting >= _companion.capacity:
+		return
+	if _nearest_enemy_distance() < 3.5:
+		return
+	var here := _planar(_player.global_position)
+	var reach := _planar(_player.terrain_target).distance_to(here)
+	var facing := _planar(-_player.global_basis.z).normalized()
+	var best := Vector2.ZERO
+	var best_score := 0.0
+	for i in DIRECTIONS:
+		var direction := Vector2.RIGHT.rotated(TAU * i / DIRECTIONS)
+		var target := _world(here + direction * reach)
+		if not _grid.can_apply_at(target, TerrainState.ToolMode.DIG, _player):
+			continue
+		var score := 2.0 if _grid.cell_state_at(target) == TerrainState.CellState.RAISED else 1.0
+		# Niente buche sulla propria strada.
+		if score < 2.0 and not _move.is_zero_approx() and direction.dot(_move.normalized()) > 0.85:
+			continue
+		score += 0.4 * direction.dot(facing)
+		if score > best_score:
+			best_score = score
+			best = direction
+	if best.is_zero_approx():
+		return
+	_aim = best
+	if facing.dot(best) > 0.985 and _grid.can_apply_at(_player.terrain_target, TerrainState.ToolMode.DIG, _player):
+		_press_tool()
+		_dig_cooldown = 0.5
+		_digs += 1
+
+
+func _nearest_enemy_distance() -> float:
+	var here := _planar(_player.global_position)
+	var nearest := INF
+	for enemy in _director.enemies:
+		if not enemy.is_dead:
+			nearest = minf(nearest, _planar(enemy.global_position).distance_to(here) - enemy.hit_radius_bonus)
+	return nearest
+
+
+func _walkable(point: Vector2) -> bool:
+	return _path.is_walkable(_world(point))
+
+
+# --- Input -------------------------------------------------------------------------
+
+## Stick sinistro e destro: x = destra, y = verso la camera (+Z).
+func _apply_inputs() -> void:
+	_set_stick(MOVE_ACTIONS, _move)
+	_set_stick(AIM_ACTIONS, _aim)
+
+
+func _set_stick(actions: Array[StringName], value: Vector2) -> void:
+	var strengths: Array[float] = [maxf(-value.x, 0.0), maxf(value.x, 0.0), maxf(-value.y, 0.0), maxf(value.y, 0.0)]
+	for i in actions.size():
+		if strengths[i] > 0.01:
+			Input.action_press(actions[i], minf(strengths[i], 1.0))
+		else:
+			Input.action_release(actions[i])
+
+
+func _release_inputs() -> void:
+	for action in MOVE_ACTIONS + AIM_ACTIONS:
+		Input.action_release(action)
+
+
+## Una pressione del tool: evento vero (pressione e rilascio), consegnato subito
+## invece che al prossimo frame, cosi il comando parte al passo fisico in cui e deciso.
+func _press_tool() -> void:
+	for pressed: bool in [true, false]:
+		var event := InputEventAction.new()
+		event.action = &"terrain_tool"
+		event.pressed = pressed
+		Input.parse_input_event(event)
+		Input.flush_buffered_events()
+
+
+## Sceglie la carta con la priorita piu alta; durante la pausa di cortesia del
+## menu la pressione e ignorata e si riprova al passo successivo.
+func _pick_card() -> void:
+	var priority := CARD_PRIORITY_SCRAPPER if _bot == &"scrapper" else CARD_PRIORITY
+	var best_index := 0
+	var best_rank := priority.size()
+	for i in (0 if _params.first_card else _menu._buttons.size()):
+		# Il nome dell'upgrade e la terza riga della carta.
+		var lines := _menu._buttons[i].text.split("\n")
+		var rank := priority.size()
+		for upgrade in UpgradeCatalog.all():
+			if lines.size() > 2 and upgrade.name == lines[2]:
+				rank = priority.find(upgrade.id)
+				break
+		if rank >= 0 and rank < best_rank:
+			best_rank = rank
+			best_index = i
+	_menu.press(best_index)
+
+
+# --- Riepilogo ---------------------------------------------------------------------
+
+func _print_summary(bot: StringName) -> void:
+	var runs := _results.filter(func(r: Dictionary) -> bool: return r.bot == bot)
+	if runs.is_empty():
+		return
+	var victories := runs.filter(func(r: Dictionary) -> bool: return r.victory).size()
+	var reached := runs.filter(func(r: Dictionary) -> bool: return r.boss != "none").size()
+	var timeouts := runs.filter(func(r: Dictionary) -> bool: return r.timed_out).size()
+	var total_scrap := 0.0
+	for r: Dictionary in runs:
+		total_scrap += r.scrap_out
+	var mean_scrap := total_scrap / runs.size()
+	print("PROTOTYPE01_SIM_SUMMARY bot=%s runs=%d deaths=%d victories=%d timeouts=%d boss_reached=%d end_time=%s level=%s kills=%s scrap_carried=%s scrap_out=%s scrap_out_mean=%.2f"
+		% [bot, runs.size(), runs.size() - victories - timeouts, victories, timeouts, reached,
+			_spread(runs, &"time"), _spread(runs, &"level"), _spread(runs, &"kills"),
+			_spread(runs, &"carried"), _spread(runs, &"scrap_out"), mean_scrap])
+	# Run necessarie per pagare ogni livello dell'Officina col reddito medio di questo bot.
+	for entry in PermanentCatalog.all():
+		var costs: Array = entry.costs
+		var parts: PackedStringArray = []
+		for cost: int in costs:
+			parts.append("%d>%s" % [cost, "mai" if mean_scrap <= 0.0 else "%.1f" % (cost / mean_scrap)])
+		print("PROTOTYPE01_SIM_AFFORD bot=%s id=%s cost>runs=%s" % [bot, entry.id, ",".join(parts)])
+
+
+## "mediana/minimo/massimo" di un campo dei risultati.
+static func _spread(runs: Array, field: StringName) -> String:
+	var values: Array[float] = []
+	for r: Dictionary in runs:
+		values.append(float(r[field]))
+	values.sort()
+	var middle := values.size() / 2
+	var median := values[middle] if values.size() % 2 == 1 else (values[middle - 1] + values[middle]) * 0.5
+	return "%.1f/%.1f/%.1f" % [median, values[0], values[values.size() - 1]]
+
+
+static func _planar(v: Vector3) -> Vector2:
+	return Vector2(v.x, v.z)
+
+
+static func _world(v: Vector2) -> Vector3:
+	return Vector3(v.x, 0.0, v.y)

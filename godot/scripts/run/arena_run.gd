@@ -284,9 +284,15 @@ func _play_half_extent() -> float:
 	return director.path_field.half_extent if director.path_field != null else 24.0
 
 
-## Rottami che escono dal livello: quelli nel cassone, piu il premio del boss se battuto.
+## Rottami di recupero maturati col tempo di livello (`survival_scrap_seconds`).
+func survival_scrap() -> int:
+	return int(elapsed / tuning.survival_scrap_seconds) if tuning.survival_scrap_seconds > 0.0 else 0
+
+
+## Rottami che escono dal livello: quelli nel cassone e quelli di recupero, piu il
+## premio del boss se battuto.
 func scrap_out(victory: bool) -> int:
-	var carried := companion.carried if companion != null else 0
+	var carried := (companion.carried if companion != null else 0) + survival_scrap()
 	if victory:
 		return carried + tuning.boss_scrap_bonus
 	return int(floor(carried * _death_scrap_share))
