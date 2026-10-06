@@ -414,6 +414,14 @@ func set_max_health(value: int, heal_full := true) -> void:
 	health_changed.emit(health, max_health)
 
 
+## Recupera vita fino al massimo; non rianima.
+func heal(amount: int) -> void:
+	if health <= 0 or amount <= 0:
+		return
+	health = mini(health + amount, max_health)
+	health_changed.emit(health, max_health)
+
+
 func is_alive() -> bool:
 	return max_health <= 0 or health > 0
 

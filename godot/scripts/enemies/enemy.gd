@@ -52,6 +52,8 @@ var is_dead := false
 var spike_cooldown := 0.0
 ## Si guida da solo con drive() (boss): l'EnemyDirector non lo sterza ne lo riporta sull'anello.
 var self_driven := false
+## Moltiplicatore della velocita dell'orda: i rottamatori veloci (D-056) ne hanno piu di 1.
+var speed_scale := 1.0
 ## Raggio in piu rispetto a un rottamatore, per i colpi (corpi grandi).
 var hit_radius_bonus := 0.0
 ## Commissione (D-045): il direttore lo porta a `errand_point` invece che dal giocatore.

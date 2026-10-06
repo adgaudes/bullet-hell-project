@@ -15,8 +15,17 @@ Scena `godot/scenes/main/arena_run.tscn`, ora scena principale. L'arena "rovine 
 - **Chiodatrice automatica:** spara al nemico piu vicino in linea di tiro. I chiodi si fermano sulle celle Raised: un muro protegge ma toglie anche la linea di tiro.
 - **Esperienza:** ogni rottamatore lascia un frammento; il giocatore lo attira entro 2,5 m. Level-up con **tre carte** secondo `PROGRESSION_SPEC.md` (regole 1-4, seed nel log).
 - **Vita:** 5 punti, breve invulnerabilita dopo un colpo. A zero: schermata "Rottamato" con tempo, livello e abbattuti, poi Ricomincia.
-- **Compagno e rottami** come nel Companion Slice: scavare produce rottami, rialzare costa un rottame e richiede il compagno vicino. Il compagno usa lo stesso campo di percorso e non resta chiuso fuori dalle mura.
+- **Compagno e rottami**: smontare una cella rialzata produce un rottame (scavare terreno nudo no, D-056), rialzare costa un rottame e richiede il compagno vicino. Il compagno usa lo stesso campo di percorso e non resta chiuso fuori dalle mura.
 - **Senza sfera hazard** (scelta del proprietario): un solo tipo di pericolo per misurare nemici e terreno.
+
+## Regole ritoccate dopo la simulazione (D-056)
+
+- **I rottami sono finiti.** Scavare terreno nudo fa un fossato e basta. I rottami vengono solo dallo smontare celle rialzate: mura dei cortili, depositi, barricate del boss, terrapieni tuoi (che rendono il rottame speso).
+- **Rottamatori veloci**: blu, 4,2 m/s, meta vita. Dal minuto 2:30, fino al 30% dei nuovi nati al minuto 10. Tu corri a 6 m/s; un fossato li dimezza come gli altri.
+- **Carte ripetibili** quando gli upgrade veri finiscono: Rattoppo al volo, Rottame di fortuna, Barattolo di chiodi.
+- **Cassone rinforzato** e Non comune e ha due livelli.
+
+Valori in `run_default.tres` (gruppo Runners, `recovery_scrap_levels`) e in `upgrade_catalog.gd`.
 
 ## Impronte dell'orda (D-053)
 
@@ -39,7 +48,7 @@ Dopo ogni scavo o rialzo, per 3 secondi, galloni magenta a terra mostrano da dov
 | Categoria | Upgrade | Effetto nel mondo |
 |---|---|---|
 | Arma | Grilletto limato, Chiodi da carpentiere, Canna doppia | cadenza, perforazione, ventaglio di chiodi |
-| Pezzo compagno | Torretta sul cassone, Calamita, Cassone rinforzato | pezzo visibile sul compagno; spara, attira frammenti, porta piu rottami |
+| Pezzo compagno | Torretta sul cassone, Calamita, Cassone rinforzato (Non comune, 2 livelli) | pezzo visibile sul compagno; spara, attira frammenti, porta piu rottami |
 | Tool terreno | Scavo esplosivo, Terrapieni spinati | onda d'urto allo scavo; le mura cambiano colore e feriscono chi le spinge |
 | Personaggio | Scarponi slacciati, Toppa, Tasche larghe | riempitivi comuni |
 
@@ -119,13 +128,15 @@ A fine livello, vinto o perso, i rottami portati fuori vanno nel profilo (`user:
 | Torretta fissa | 30 | il compagno parte con la chiodatrice montata |
 | Paracadute per rottami | 10 | morendo si salvano tre quarti del cassone |
 
-**Rottami portati fuori** (D-055): quelli nel cassone, piu **uno per ogni minuto di livello**, piu 5 se batti il boss; morendo si salva meta di cassone e minuti. Prezzi tarati con bot simulati (`tests/tools/simulate_runs.gd`), non da un giocatore: per un principiante simulato ogni upgrade costa 1-3 run, la Torretta 6. L'Officina si raggiunge dal menu iniziale (D-051) e dalla schermata di fine livello, che mostra anche la mappa del campo scolpito (D-052).
+**Rottami portati fuori** (D-055, D-056): quelli nel cassone, piu **uno ogni due livelli di esperienza guadagnati**, piu 5 se batti il boss; morendo si salva meta di cassone e livelli. Aspettare chiusi dentro non rende nulla. Prezzi tarati con bot simulati (`tests/tools/simulate_runs.gd`), non da un giocatore: per un principiante simulato ogni upgrade costa 1-3 run, la Torretta 6. L'Officina si raggiunge dal menu iniziale (D-051) e dalla schermata di fine livello, che mostra anche la mappa del campo scolpito (D-052).
 
 Domande di playtest in piu:
 
 15. Dopo la prima run, in Officina c'era qualcosa che volevi e potevi quasi permetterti? I prezzi sono un obiettivo o un muro?
 16. Un upgrade permanente ha cambiato come hai giocato il livello dopo, o solo i numeri?
 
+21. Rottamatori veloci (D-056): li riconosci? Ti costringono a usare il terreno o sono solo un fastidio?
+22. Rottami (D-056): sei andato a cercare depositi e mura da smontare? Hai mai smontato le tue mura per recuperarli?
 19. Impronte dell'orda (D-053): le guardi prima di decidere dove scavare o murare? Aiutano a prevedere, o distraggono?
 20. Movimento dei personaggi (D-054): qualcosa si muove troppo, troppo poco, o in modo che stona?
 18. Mappa di fine livello (D-052): l'hai guardata? Ti ha aiutato a capire cosa ha funzionato e perche sei morto?

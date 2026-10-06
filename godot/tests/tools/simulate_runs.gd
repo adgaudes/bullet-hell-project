@@ -15,8 +15,11 @@ extends SceneTree
 ## seme e stesso bot danno la stessa riga. Senza finestra gira gia alla massima
 ## velocita della CPU (una run fino al boss costa 2-5 minuti): per fare prima si
 ## lanciano piu processi in parallelo, uno per bot o per gruppo di semi. Piu passi
-## fisici per frame (`--fixed-fps 10`) non accelerano in modo misurabile e su un
-## seme dello scrapper hanno dato un risultato diverso: non usarli per confronti.
+## fisici per frame (`--fixed-fps 10`) non accelerano in modo misurabile e possono
+## dare un risultato diverso: un nemico che striscia contro un muro riceve dalla
+## fisica del motore una posizione diversa di frazioni di millimetro (verificato con
+## `--trace`), e da li la run si separa. Non usarli per confronti.
+##   --trace=N                       stampa lo stato ogni N secondi di gioco
 ## Bot:
 ##   passive   fermo nel cortile di partenza;
 ##   novice    vede solo i nemici vicini, reagisce ogni mezzo secondo, non cerca
@@ -31,6 +34,11 @@ extends SceneTree
 ## PROTOTYPE01_SIM_AFFORD (run necessarie per ogni livello dell'Officina).
 
 const RunScene := preload("res://scenes/main/arena_run.tscn")
+
+## Con `--trace=N` stampa lo stato ogni N secondi di gioco (PROTOTYPE01_SIM_TRACE):
+## serve a trovare dove due run che dovrebbero essere uguali si separano.
+var _trace_every := 0.0
+var _trace_next := 0.0
 const BOT_NAMES: Array[StringName] = [&"passive", &"novice", &"kiter", &"scrapper"]
 const MOVE_ACTIONS: Array[StringName] = [&"move_left", &"move_right", &"move_forward", &"move_back"]
 const AIM_ACTIONS: Array[StringName] = [&"aim_left", &"aim_right", &"aim_up", &"aim_down"]
@@ -123,6 +131,8 @@ func _parse_arguments() -> void:
 				_profile_levels[id] = clampi(level, 0, PermanentCatalog.max_level(id))
 		elif arg.begins_with("--max-seconds="):
 			_max_seconds = arg.trim_prefix("--max-seconds=").to_float()
+		elif arg.begins_with("--trace="):
+			_trace_every = arg.trim_prefix("--trace=").to_float()
 		elif arg.begins_with("--hz="):
 			_hz = maxi(arg.trim_prefix("--hz=").to_int(), 30)
 	if _bots.is_empty():
@@ -190,10 +200,17 @@ func _simulate(bot: StringName, run_seed: int) -> Dictionary:
 
 	var step := 1.0 / Engine.physics_ticks_per_second
 	var timed_out := false
+	_trace_next = 0.0
 	while not _run.is_over:
 		if _run.elapsed >= _max_seconds:
 			timed_out = true
 			break
+		if _trace_every > 0.0 and _run.elapsed >= _trace_next:
+			_trace_next += _trace_every
+			print("PROTOTYPE01_SIM_TRACE t=%.3f pos=%.4f,%.4f kills=%d alive=%d level=%d xp=%d hp=%d rng=%d carried=%d frags=%d"
+				% [_run.elapsed, _player.global_position.x, _player.global_position.z, _director.kills,
+					_director.enemies.size(), _run.progression.level, _run.progression.xp, _player.health,
+					_director.rng.state, _companion.carried, _xp.count()])
 		if _menu.is_open:
 			_release_inputs()
 			_pick_card()

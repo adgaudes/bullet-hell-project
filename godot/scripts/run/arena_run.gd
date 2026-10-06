@@ -26,6 +26,8 @@ const MARKER_BOSS_COLOR := Color(1.0, 0.25, 0.15)
 ## Ogni quanto si ricontrolla quali punti di interesse hanno ancora celle Raised.
 const MARKER_REFRESH_SECONDS := 1.0
 const MAIN_MENU_SCENE := "res://scenes/main/main_menu.tscn"
+## Raggio della carta ripetibile Barattolo di chiodi.
+const NAIL_JAR_RADIUS := 7.0
 
 ## Direzioni di arrivo annunciate: nome e verso nel mondo (nord = -Z = alto dello schermo).
 const BOSS_DIRECTIONS := [
@@ -127,6 +129,7 @@ func _physics_process(delta: float) -> void:
 	hud.set_time(elapsed)
 	_tick_boss(delta)
 	_tick_markers(delta)
+	_open_next_level_up()
 
 
 # --- Indicatori a bordo schermo ----------------------------------------------------
@@ -284,15 +287,21 @@ func _play_half_extent() -> float:
 	return director.path_field.half_extent if director.path_field != null else 24.0
 
 
-## Rottami di recupero maturati col tempo di livello (`survival_scrap_seconds`).
-func survival_scrap() -> int:
-	return int(elapsed / tuning.survival_scrap_seconds) if tuning.survival_scrap_seconds > 0.0 else 0
+## Rottami di recupero: per i livelli guadagnati (`recovery_scrap_levels`) e, se
+## accesa, per il tempo di livello (`survival_scrap_seconds`).
+func recovery_scrap() -> int:
+	var total := 0
+	if tuning.recovery_scrap_levels > 0.0:
+		total += int((progression.level - 1) / tuning.recovery_scrap_levels)
+	if tuning.survival_scrap_seconds > 0.0:
+		total += int(elapsed / tuning.survival_scrap_seconds)
+	return total
 
 
 ## Rottami che escono dal livello: quelli nel cassone e quelli di recupero, piu il
 ## premio del boss se battuto.
 func scrap_out(victory: bool) -> int:
-	var carried := (companion.carried if companion != null else 0) + survival_scrap()
+	var carried := (companion.carried if companion != null else 0) + recovery_scrap()
 	if victory:
 		return carried + tuning.boss_scrap_bonus
 	return int(floor(carried * _death_scrap_share))
@@ -440,7 +449,8 @@ func _on_xp_collected(amount: int) -> void:
 		return
 	_pending_level_ups += progression.add_xp(amount)
 	_refresh_xp()
-	_open_next_level_up()
+	# Il menu (e la pausa) si aprono a fine passo, in `_physics_process`: fermare
+	# il gioco qui, a meta passo, lascerebbe indietro i nodi non ancora elaborati.
 
 
 func _open_next_level_up() -> void:
@@ -493,6 +503,16 @@ func apply_upgrade(id: StringName, new_level: int) -> void:
 			player.set_max_health(player.max_health + 1)
 		&"reach":
 			xp_field.player_radius *= 1.4
+		&"field_patch":
+			player.heal(1)
+		&"lucky_scrap":
+			if companion != null:
+				companion.add_capacity(0, 1)
+		&"nail_jar":
+			var center := Vector3(player.global_position.x, 0.1, player.global_position.z)
+			for enemy in director.enemies_near(center, NAIL_JAR_RADIUS):
+				enemy.take_damage(2)
+			_blast_effect(center, NAIL_JAR_RADIUS)
 
 
 func _upgrade_companion_turret(new_level: int) -> void:

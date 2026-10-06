@@ -82,6 +82,7 @@ godot_console --headless --path godot --fixed-fps 60 --script res://tests/worksh
 godot_console --headless --path godot --fixed-fps 60 --script res://tests/menu_tests.gd
 godot_console --headless --path godot --fixed-fps 60 --script res://tests/flow_preview_tests.gd
 godot_console --headless --path godot --fixed-fps 60 --script res://tests/actor_motion_tests.gd
+godot_console --headless --path godot --fixed-fps 60 --script res://tests/economy_tests.gd
 ```
 
 Piu semplice: `tools/godot/Invoke-GodotChecks.ps1` esegue tutte le suite presenti in `godot/tests/`.
@@ -126,7 +127,11 @@ Trappola verificata (6 ottobre 2026): un `Image` RGBA8 arrotonda i colori a 8 bi
 
 Impronte dell'orda (cortile aperto, varco nord chiuso, cortile sigillato): `godot_console --path godot --resolution 1280x800 --fixed-fps 60 --script res://tests/tools/capture_flow.gd -- --out=../output/flow`. Sequenze di fotogrammi del movimento degli attori: `... --script res://tests/tools/capture_motion.gd -- --out=../output/motion`. Costo del movimento, acceso e spento nello stesso processo: `benchmark_arena.gd -- --enemies=70 --motion-ab`.
 
-Simulazione di run con bot (D-055): `godot_console --headless --path godot --fixed-fps 60 --script res://tests/tools/simulate_runs.gd -- --bots=passive,novice,kiter,scrapper --seeds=1-10 --max-seconds=1200` (righe `PROTOTYPE01_SIM`, `PROTOTYPE01_SIM_SUMMARY`, `PROTOTYPE01_SIM_AFFORD`; `--profile=base_health:2,cargo:1` simula un profilo con acquisti). Una run fino al boss costa 2,5-6 minuti di orologio: per molte run conviene un processo per coppia bot/seme in parallelo. **Mentre girano simulazioni le misure di `benchmark_arena.gd` non sono attendibili** (osservato: tempi quasi doppi).
+Simulazione di run con bot (D-055): `godot_console --headless --path godot --fixed-fps 60 --script res://tests/tools/simulate_runs.gd -- --bots=passive,novice,kiter,scrapper --seeds=1-10 --max-seconds=1200` (righe `PROTOTYPE01_SIM`, `PROTOTYPE01_SIM_SUMMARY`, `PROTOTYPE01_SIM_AFFORD`; `--profile=base_health:2,cargo:1` simula un profilo con acquisti). Una run fino al boss costa 2,5-6 minuti di orologio: per molte run conviene un processo per coppia bot/seme in parallelo. **Mentre girano simulazioni le misure di `benchmark_arena.gd` non sono attendibili** (osservato: tempi quasi doppi). Con `--trace=N` il simulatore stampa lo stato ogni N secondi di gioco (`PROTOTYPE01_SIM_TRACE`): confrontando due tracce si trova il passo in cui due run si separano.
+
+Trappola verificata (6 ottobre 2026): **non mettere in pausa l'albero a meta di un passo fisico** da codice di gioco (`get_tree().paused = true` dentro un `_physics_process` o un segnale emesso da li): i nodi gia elaborati in quel passo e quelli non ancora elaborati restano sfasati. Segnare la richiesta e aprire il menu dall'ultimo nodo del passo (`ArenaRun._physics_process`).
+
+Limite noto (6 ottobre 2026): due run identiche con un numero diverso di passi fisici per frame (`--fixed-fps 60` contro `--fixed-fps 10` a 60 Hz) si separano comunque dopo un po': `move_and_slide` di un nemico che striscia su un muro restituisce posizioni diverse di frazioni di millimetro. E nel motore, non nel gioco: per confronti usare sempre lo stesso `--fixed-fps`.
 
 Catture di Officina, mappa di fine livello e menu iniziale: `godot_console --path godot --resolution 1280x800 --fixed-fps 60 --script res://tests/tools/capture_workshop.gd -- --out=../output/workshop`. Sotto `--script` l'autoload `PlayerProfile` non legge ne scrive `user://profile.cfg`: test e catture impostano il profilo in memoria.
 

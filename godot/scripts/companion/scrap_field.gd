@@ -14,6 +14,10 @@ const BOB_HEIGHT := 0.08
 const BOB_SPEED := 3.0
 
 @export var grid: TerrainGrid
+## Anche scavare terreno nudo (Normal -> Lowered) produce un rottame. Vero nelle
+## scene del Companion Slice; falso nel livello (D-056): li i rottami vengono solo
+## dallo smontare una cella rialzata (mura, depositi, barricate), che sono finite.
+@export var bare_ground_yields_scrap := true
 
 var _scraps: Array[MeshInstance3D] = []
 var _mesh := BoxMesh.new()
@@ -103,9 +107,11 @@ func _process(delta: float) -> void:
 		scrap.rotation.y += delta
 
 
-## Ogni passo di scavo produce un rottame sopra la cella.
+## Uno scavo produce un rottame sopra la cella (vedi `bare_ground_yields_scrap`).
 func _on_command_applied(cell: Vector2i, mode: TerrainState.ToolMode, new_state: TerrainState.CellState) -> void:
 	if mode != TerrainState.ToolMode.DIG:
+		return
+	if not bare_ground_yields_scrap and new_state != TerrainState.CellState.NORMAL:
 		return
 	spawn_on_cell(cell, new_state)
 

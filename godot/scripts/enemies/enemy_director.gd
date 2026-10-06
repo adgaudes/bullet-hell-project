@@ -12,6 +12,8 @@ signal enemy_killed(world_position: Vector3, total: int)
 const SCAVENGER_MODEL := preload("res://assets/models/scavenger.glb")
 ## Lineare: vernice dello scafo dei rottamatori (e colore dei loro frammenti).
 const BODY_COLOR := Color(0.42, 0.1, 0.05)
+## Lineare: scafo dei rottamatori veloci (D-056), blu elettrico per distinguerli a colpo d'occhio.
+const RUNNER_COLOR := Color(0.05, 0.22, 0.85)
 const SEPARATION_RADIUS := 0.8
 const SEPARATION_WEIGHT := 1.6
 ## Sotto questa distanza dal giocatore si punta dritto, senza waypoint.
@@ -38,6 +40,9 @@ var rng := RandomNumberGenerator.new()
 var _spawn_timer := 1.0
 var _body_mesh: Mesh
 var _base_material: ShaderMaterial
+var _runner_material: ShaderMaterial
+## Rottamatori veloci nati finora.
+var runners_spawned := 0
 var _flash_material := StandardMaterial3D.new()
 
 
@@ -47,6 +52,7 @@ func _ready() -> void:
 	# Una mesh e un materiale per tutta l'orda: un nemico costa una draw call.
 	_body_mesh = ActorModel.mesh_of(SCAVENGER_MODEL)
 	_base_material = ActorModel.paint_material(BODY_COLOR, 2.0)
+	_runner_material = ActorModel.paint_material(RUNNER_COLOR, 3.0)
 	_flash_material.albedo_color = Color.WHITE
 	_flash_material.emission_enabled = true
 	_flash_material.emission = Color.WHITE
@@ -73,11 +79,25 @@ func current_enemy_health() -> int:
 	return tuning.enemy_health + int(elapsed / maxf(tuning.enemy_health_growth_seconds, 1.0))
 
 
-## Crea un nemico in un punto preciso (test, eventi scriptati).
-func spawn_at(world: Vector3) -> Enemy:
+## Quota di rottamatori veloci fra i nuovi nati, in questo momento del livello.
+func current_runner_share() -> float:
+	if tuning.runner_share_max <= 0.0 or elapsed < tuning.runner_start_seconds:
+		return 0.0
+	var t := clampf((elapsed - tuning.runner_start_seconds) / maxf(tuning.runner_ramp_seconds, 1.0), 0.0, 1.0)
+	return tuning.runner_share_max * t
+
+
+## Crea un nemico in un punto preciso (test, eventi scriptati). [param runner]:
+## rottamatore veloce, con meno vita.
+func spawn_at(world: Vector3, runner := false) -> Enemy:
 	var enemy := Enemy.new()
 	enemy.name = "Enemy%d" % (kills + enemies.size())
-	enemy.setup(current_enemy_health(), _body_mesh, _base_material, _flash_material)
+	if runner:
+		runners_spawned += 1
+		enemy.speed_scale = tuning.runner_speed / maxf(tuning.enemy_speed, 0.01)
+		enemy.setup(maxi(ceili(current_enemy_health() * tuning.runner_health_share), 1), _body_mesh, _runner_material, _flash_material)
+	else:
+		enemy.setup(current_enemy_health(), _body_mesh, _base_material, _flash_material)
 	add_enemy(enemy, Vector3(world.x, Enemy.spawn_height(), world.z))
 	return enemy
 
@@ -128,7 +148,8 @@ func _spawn_batch() -> void:
 		var point: Vector3 = origin + offset
 		if path_field != null and not path_field.is_walkable(point):
 			point = origin
-		spawn_at(point)
+		var share := current_runner_share()
+		spawn_at(point, share > 0.0 and rng.randf() < share)
 
 
 ## Punto libero sull'anello di comparsa attorno al giocatore, riportato dentro
@@ -187,7 +208,7 @@ func _move_enemies(delta: float) -> void:
 			if direction.is_zero_approx():
 				direction = to_player.normalized()
 		direction += _separation(enemy, buckets) * SEPARATION_WEIGHT
-		var speed := tuning.enemy_speed
+		var speed := tuning.enemy_speed * enemy.speed_scale
 		if grid != null and grid.cell_state_at(pos) == TerrainState.CellState.LOWERED:
 			speed *= 1.0 - penalty
 		var desired := direction.limit_length(1.0) * speed

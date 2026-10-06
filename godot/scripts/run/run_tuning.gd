@@ -85,9 +85,24 @@ extends Resource
 @export var boss_scrap_bonus := 5
 ## Quota dei rottami che si salva morendo (proposta della specifica di campagna).
 @export_range(0.0, 1.0) var death_scrap_share := 0.5
-## Rottami di recupero: uno ogni tanti secondi di livello, contati col cassone a fine
-## livello (e ridotti come il cassone se si muore). 0 = regola spenta.
+## Rottami di recupero a tempo: uno ogni tanti secondi di livello. 0 = regola spenta
+## (D-056: spenta, premiava chi si mura e aspetta).
 @export var survival_scrap_seconds := 0.0
+## Rottami di recupero per esperienza: uno ogni tanti livelli guadagnati nel livello,
+## contati col cassone a fine livello (e ridotti come il cassone se si muore).
+## L'esperienza va raccolta fuori dalle mura: chi si chiude dentro non ne matura. 0 = spenta.
+@export var recovery_scrap_levels := 0.0
+
+@export_group("Runners")
+## Rottamatori veloci (D-056): compaiono da `runner_start_seconds` e crescono fino a
+## `runner_share_max` dei nuovi nati in `runner_ramp_seconds`. Meno vita, piu velocita:
+## non si seminano camminando, ma fossati e mura li fermano come gli altri.
+@export var runner_speed := 4.2
+@export var runner_start_seconds := 150.0
+@export var runner_ramp_seconds := 450.0
+@export_range(0.0, 1.0) var runner_share_max := 0.3
+## Quota della vita di un rottamatore normale (minimo 1).
+@export_range(0.1, 1.0) var runner_health_share := 0.5
 
 @export_group("Courtyard")
 ## Mura iniziali del cortile: anello di celle Raised a questa distanza dal centro

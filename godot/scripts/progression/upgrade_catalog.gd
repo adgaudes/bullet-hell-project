@@ -3,6 +3,8 @@ extends RefCounted
 ## Upgrade del primo prototipo (PROGRESSION_SPEC, sezione 6; D-038). Dati in
 ## un solo posto; gli effetti li applica ArenaRun. Ogni voce:
 ## id, name, category, rarity, max_level, requires ("" o "companion"), text.
+## Le voci con `filler = true` sono ripetibili senza limite (max_level 0) e
+## compaiono solo quando le carte vere non bastano a riempire l'offerta (D-056).
 
 enum Rarity { COMMON, UNCOMMON, RARE, LEGENDARY }
 
@@ -28,7 +30,7 @@ static func all() -> Array[Dictionary]:
 			requires = "companion", text = "Il compagno monta una chiodatrice. Ai livelli successivi spara piu spesso."},
 		{id = &"companion_magnet", name = "Calamita", category = &"companion", rarity = Rarity.UNCOMMON, max_level = 2,
 			requires = "companion", text = "Il compagno attira i frammenti di esperienza attorno a se."},
-		{id = &"companion_cargo", name = "Cassone rinforzato", category = &"companion", rarity = Rarity.COMMON, max_level = 3,
+		{id = &"companion_cargo", name = "Cassone rinforzato", category = &"companion", rarity = Rarity.UNCOMMON, max_level = 2,
 			requires = "companion", text = "Il compagno porta 2 rottami in piu e ne trova 1 subito."},
 		{id = &"dig_blast", name = "Scavo esplosivo", category = &"terrain", rarity = Rarity.UNCOMMON, max_level = 3,
 			requires = "", text = "Scavare una cella colpisce i rottamatori vicini (2 danni). Raggio maggiore a ogni livello."},
@@ -40,4 +42,10 @@ static func all() -> Array[Dictionary]:
 			requires = "", text = "Un punto vita in piu e ti rimetti in sesto del tutto."},
 		{id = &"reach", name = "Tasche larghe", category = &"character", rarity = Rarity.COMMON, max_level = 3,
 			requires = "", text = "Raggio di raccolta dei frammenti piu ampio del 40%."},
+		{id = &"field_patch", name = "Rattoppo al volo", category = &"character", rarity = Rarity.COMMON, max_level = 0,
+			requires = "", filler = true, text = "Recuperi un punto vita."},
+		{id = &"lucky_scrap", name = "Rottame di fortuna", category = &"companion", rarity = Rarity.COMMON, max_level = 0,
+			requires = "companion", filler = true, text = "Un rottame in piu nel cassone, se c'e posto."},
+		{id = &"nail_jar", name = "Barattolo di chiodi", category = &"weapon", rarity = Rarity.COMMON, max_level = 0,
+			requires = "", filler = true, text = "Scoppia un barattolo: 2 danni a tutti i rottamatori entro 7 metri."},
 	]

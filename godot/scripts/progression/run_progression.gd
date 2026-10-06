@@ -48,10 +48,24 @@ func level_of(id: StringName) -> int:
 
 
 ## Regola 2: niente upgrade al massimo ne pezzi per macchine che non hai.
+## Le carte ripetibili (`filler`) non sono qui: vedi `fillers()`.
 func eligible() -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
 	for upgrade in catalog:
-		if level_of(upgrade.id) >= upgrade.max_level:
+		if upgrade.get(&"filler", false) or level_of(upgrade.id) >= upgrade.max_level:
+			continue
+		if upgrade.requires == "companion" and not has_companion:
+			continue
+		result.append(upgrade)
+	return result
+
+
+## Carte ripetibili: riempiono l'offerta quando gli upgrade veri stanno finendo,
+## cosi un level-up non resta mai senza scelta.
+func fillers() -> Array[Dictionary]:
+	var result: Array[Dictionary] = []
+	for upgrade in catalog:
+		if not upgrade.get(&"filler", false):
 			continue
 		if upgrade.requires == "companion" and not has_companion:
 			continue
@@ -63,6 +77,8 @@ func eligible() -> Array[Dictionary]:
 ## Regola 4: dopo pity_level_ups scelte senza Rari, la prima carta e Rara o superiore.
 func roll_offer() -> Array[Dictionary]:
 	var pool := eligible()
+	if pool.size() < CARDS:
+		pool.append_array(fillers())
 	var offer: Array[Dictionary] = []
 	var used_categories: Array[StringName] = []
 	var force_rare := level_ups_without_rare >= pity_level_ups

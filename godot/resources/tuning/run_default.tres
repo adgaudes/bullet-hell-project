@@ -4,4 +4,4 @@
 
 [resource]
 script = ExtResource("1_tuning")
-survival_scrap_seconds = 60.0
+recovery_scrap_levels = 2.0
