@@ -40,6 +40,7 @@ Principio guida:
   - 6 ottobre 2026: **glifi dei tasti nell'interfaccia** (D-059): suggerimenti "icona + testo" in menu, Officina, pausa, level-up e fine livello, e i quattro comandi di gioco nell'HUD; seguono controller o tastiera e mouse. Nuova suite `button_prompts_tests.gd`. Build in `LocalBuilds/` non riesportate.
   - 6 ottobre 2026: **specifica del ciclo giorno/notte approvata** (D-058, `docs/DAY_NIGHT_SPEC.md`): una notte per livello, rottamatori piu forti al buio, torcia e faro con upgrade, lampioni piazzabili. **Solo documento, nessun codice.**
   - 6 ottobre 2026: **primo personaggio con scheletro e animazioni** (D-060): l'ingegnere corre, mira, incassa e cade con animazioni CC0 (Quaternius) su un modello a pezzi rigidi generato da script Blender; gambe girate verso la marcia, busto sulla mira. Gate verde. **Resa da giudicare dal proprietario nel playtest**; build non riesportate.
+  - 6 ottobre 2026: **MCP for Blender installato e Rigify abilitato** (D-061) per modellare con Blender aperto; Mixamo resta un servizio web da usare con l'account del proprietario quando manca un'animazione.
 - **Fasi 4-14:** non iniziate formalmente. Esperimenti tecnici anticipati non equivalgono al superamento dei relativi gate.
 
 **Prossimo passo (in ordine):**
