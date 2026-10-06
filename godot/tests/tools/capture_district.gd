@@ -2,15 +2,20 @@ extends SceneTree
 ## Catture dell'arena grande (D-042), non e una suite. Con finestra reale:
 ##   godot_console --path godot --resolution 1280x800 --fixed-fps 60 --script res://tests/tools/capture_district.gd -- --out=../output/district
 ## Produce: overview (tutta l'arena dall'alto), start (vista di gioco alla partenza),
-## poi, dopo un minuto di orda, combat.
+## poi, dopo un minuto di orda, combat. Con `--visit=x,z` (ripetibile) aggiunge una
+## vista di gioco col giocatore in quel punto (visit_0, visit_1, ...) ed esce senza combat.
 
 var _out := "../output/district"
+var _visits: Array[Vector2] = []
 
 
 func _initialize() -> void:
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--out="):
 			_out = arg.trim_prefix("--out=")
+		elif arg.begins_with("--visit="):
+			var parts := arg.trim_prefix("--visit=").split(",")
+			_visits.append(Vector2(parts[0].to_float(), parts[1].to_float()))
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("res://").path_join(_out))
 	var scene: Node3D = preload("res://scenes/main/arena_run.tscn").instantiate()
 	root.add_child(scene)
@@ -44,6 +49,15 @@ func _initialize() -> void:
 	environment.fog_enabled = true
 	hud.visible = true
 	(scene.get_node(^"CameraRig/Camera") as Camera3D).make_current()
+
+	for i in _visits.size():
+		player.global_position = Vector3(_visits[i].x, 0.88, _visits[i].y)
+		for frame in 30:
+			await physics_frame
+		await _save("visit_%d" % i)
+	if not _visits.is_empty():
+		quit()
+		return
 
 	director.spawning = true
 	for i in 3600:

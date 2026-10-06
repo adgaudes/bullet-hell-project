@@ -162,9 +162,13 @@ func _test_blocks_are_low_and_inside() -> void:
 			continue
 		blocks += 1
 		var body := child as StaticBody3D
-		var mesh: BoxMesh = (body.get_child(0) as MeshInstance3D).mesh
-		low = low and mesh.size.y <= 4.5
-		inside = inside and absf(body.position.x) + mesh.size.x * 0.5 <= e and absf(body.position.z) + mesh.size.z * 0.5 <= e
+		# Ingombro = la collisione (blocco pieno), non i pezzi visibili del guscio.
+		var size := Vector3.ZERO
+		for part in body.get_children():
+			if part is CollisionShape3D:
+				size = ((part as CollisionShape3D).shape as BoxShape3D).size
+		low = low and size.y > 0.0 and size.y <= 4.5
+		inside = inside and absf(body.position.x) + size.x * 0.5 <= e and absf(body.position.z) + size.z * 0.5 <= e
 	_check(blocks >= 20, "almeno 20 rovine basse dentro il perimetro (%d)" % blocks)
 	_check(low, "nessuna rovina interna piu alta di 4,5 m: non coprono il giocatore")
 	_check(inside, "tutte le rovine interne dentro l'area giocabile")

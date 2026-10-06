@@ -23,6 +23,11 @@ const SIDES := 4
 const COURTYARD_VARIANTS: Array[StringName] = [&"three_gates", &"two_gates", &"broken", &"double", &"three_gates", &"broken"]
 ## Risoluzione della mappa di occupazione, in metri.
 const OCCUPANCY_STEP := 1.0
+## Gusci delle rovine basse: spessore dei muri e altezza minima di un tratto
+## (sopra la quota di tiro, 0,88 m: dove un chiodo si ferma il muro si vede).
+const SHELL_WALL_THICKNESS := 0.5
+const SHELL_MIN_WALL := 1.3
+const SHELL_VINE_REACH := 0.3
 
 @export_group("District")
 ## Raggio della piazza centrale: dentro il suolo e lastricato, fuori prevale il verde.
@@ -99,6 +104,7 @@ var terrain_features: Array[Dictionary] = []
 ## (punto di interesse, edificio, oggetto con collisione).
 var _occupancy := PackedByteArray()
 var _occupancy_side := 0
+var _unit_box: BoxMesh
 
 
 func _init() -> void:
@@ -377,30 +383,92 @@ func _build_blocks() -> void:
 		x += lot_size
 
 
-## Rovina bassa (2,5-4,5 m) con eventuale ala a L e macerie accanto.
+## Rovina bassa (2,5-4,5 m) senza tetto, con eventuale ala a L e macerie accanto.
 func _low_ruin(index: int, center: Vector2, footprint: Vector2) -> void:
 	var tint := _pick(CONCRETE_TINTS)
 	var height := _rng.randf_range(2.5, 4.5)
 	var yaw := _rng.randf_range(-6.0, 6.0)
-	_ruin_block("Block%d" % index, Vector3(center.x, 0.0, center.y), Vector3(footprint.x, height, footprint.y),
-		yaw, tint, _rng.randf_range(0.5, 0.9))
+	_ruin_shell("Block%d" % index, Vector3(center.x, 0.0, center.y), Vector3(footprint.x, height, footprint.y),
+		yaw, tint, _rng.randf_range(0.1, 0.5))
 	_reserve(_rect_around(center, footprint * 0.5, 1.0))
 	if _rng.randf() < 0.5:
 		var side := 1.0 if _rng.randf() < 0.5 else -1.0
 		var wing_size := Vector2(_rng.randf_range(4.0, 7.0), _rng.randf_range(3.0, 6.0))
 		var wing_center := center + Vector2(side * (footprint.x * 0.5 + wing_size.x * 0.5 - 0.3), footprint.y * 0.5 - wing_size.y * 0.5)
 		if _is_free(_rect_around(wing_center, wing_size * 0.5, 1.0)):
-			_ruin_block("Block%dWing" % index, Vector3(wing_center.x, 0.0, wing_center.y),
-				Vector3(wing_size.x, height * _rng.randf_range(0.5, 0.8), wing_size.y), yaw, tint, 0.9)
+			_ruin_shell("Block%dWing" % index, Vector3(wing_center.x, 0.0, wing_center.y),
+				Vector3(wing_size.x, maxf(height * _rng.randf_range(0.5, 0.8), SHELL_MIN_WALL), wing_size.y), yaw, tint, 0.5)
 			_reserve(_rect_around(wing_center, wing_size * 0.5, 1.0))
 	if _rng.randf() < 0.5:
 		var rubble_center := center + Vector2(0.0, footprint.y * 0.5 + 2.5)
 		if _is_free(_rect_around(rubble_center, Vector2.ONE * 2.2, 0.5)):
 			_rubble(Vector3(rubble_center.x, 0.0, rubble_center.y), 1.8)
 			_reserve(_rect_around(rubble_center, Vector2.ONE * 2.2))
+	# Il verde cresce dentro, sul pavimento, non piu sul tetto.
 	for i in _rng.randi_range(1, 3):
-		var p := center + Vector2(_rng.randf_range(-0.4, 0.4) * footprint.x, _rng.randf_range(-0.4, 0.4) * footprint.y)
-		_bush(Vector3(p.x, height, p.y), _rng.randf_range(1.2, 2.2), false)
+		var p := center + Vector2(_rng.randf_range(-0.3, 0.3) * footprint.x, _rng.randf_range(-0.3, 0.3) * footprint.y)
+		_bush(Vector3(p.x, 0.1, p.y), _rng.randf_range(1.2, 2.2), false)
+
+
+## Guscio di edificio sventrato: muri perimetrali a tratti di altezza diversa,
+## pavimento interno, macerie e un lembo di solaio crollato. La collisione resta
+## il blocco pieno, e nessun tratto di muro e piu basso di `SHELL_MIN_WALL`: nemici,
+## chiodi e campo di percorso lo vedono come un blocco, e dove un chiodo si ferma
+## c'e sempre un muro visibile.
+func _ruin_shell(node_name: String, base: Vector3, size: Vector3, yaw_deg: float,
+		tint: Color, overgrowth: float) -> StaticBody3D:
+	var body := _static_body(node_name, Transform3D(Basis(Vector3.UP, deg_to_rad(yaw_deg)), base))
+	_box_shape_child(body, size, Transform3D(Basis(), Vector3(0.0, size.y * 0.5, 0.0)))
+	stats.blocks += 1
+	var t := SHELL_WALL_THICKNESS
+	var inner := Vector2(size.x - t * 2.0, size.z - t * 2.0)
+	_shell_piece(body, Vector3(0.0, 0.06, 0.0), Vector3(inner.x, 0.12, inner.y), tint * 0.6, base.y + 0.12, 0.25, 0.0)
+	for side in 4:
+		var along_x := side < 2
+		var direction := 1.0 if side % 2 == 0 else -1.0
+		# I muri lungo Z stanno fra quelli lungo X: niente facce sovrapposte agli angoli.
+		var length := size.x if along_x else inner.y
+		var segments := maxi(2, roundi(length / 3.0))
+		var segment := length / segments
+		for s in segments:
+			var wall_height := maxf(SHELL_MIN_WALL, size.y * _rng.randf_range(0.4, 1.0))
+			if _rng.randf() < 0.3:
+				wall_height = size.y
+			var along := -length * 0.5 + segment * (s + 0.5)
+			var across := direction * ((size.z if along_x else size.x) * 0.5 - t * 0.5)
+			_shell_piece(body,
+				Vector3(along, wall_height * 0.5, across) if along_x else Vector3(across, wall_height * 0.5, along),
+				Vector3(segment, wall_height, t) if along_x else Vector3(t, wall_height, segment),
+				tint, base.y + wall_height, overgrowth, 1.0)
+	# Macerie sul pavimento.
+	for i in _rng.randi_range(2, 4):
+		var chunk := Vector3(_rng.randf_range(0.5, 1.6), _rng.randf_range(0.25, 0.7), _rng.randf_range(0.5, 1.4))
+		var basis := Basis.from_euler(Vector3(_rng.randf_range(-0.3, 0.3), _rng.randf_range(0.0, TAU), _rng.randf_range(-0.3, 0.3)))
+		var at := Vector3(_rng.randf_range(-0.38, 0.38) * inner.x, chunk.y * 0.4 + 0.1, _rng.randf_range(-0.38, 0.38) * inner.y)
+		_shell_piece(body, at, chunk, _pick(CONCRETE_TINTS), base.y + at.y + chunk.y, 0.7, 0.0, basis)
+	# Lembo di solaio crollato, appoggiato a un muro lungo X.
+	if _rng.randf() < 0.6:
+		var slab := Vector3(inner.x * _rng.randf_range(0.35, 0.6), 0.22, inner.y * _rng.randf_range(0.45, 0.7))
+		var toward := 1.0 if _rng.randf() < 0.5 else -1.0
+		var lean := deg_to_rad(_rng.randf_range(16.0, 26.0)) * toward
+		var rise := sin(absf(lean)) * slab.z * 0.5
+		var at := Vector3(_rng.randf_range(-0.2, 0.2) * inner.x, rise + 0.25, -toward * (inner.y * 0.5 - cos(lean) * slab.z * 0.5))
+		_shell_piece(body, at, slab, tint * 0.85, base.y + at.y + rise, overgrowth, 0.0, Basis(Vector3.RIGHT, lean))
+	return body
+
+
+## Un pezzo del guscio: il cubo unitario condiviso, scalato (stessa mesh e stesso
+## materiale per tutti i pezzi di tutte le rovine).
+func _shell_piece(body: Node3D, at: Vector3, size: Vector3, tint: Color, top_y: float,
+		overgrowth: float, windows: float, basis := Basis()) -> void:
+	if _unit_box == null:
+		_unit_box = _box(Vector3.ONE)
+	var mi := _mesh_child(body, _unit_box, _ruin_material, Transform3D(basis.scaled_local(size), at))
+	mi.set_instance_shader_parameter(&"base_tint", tint)
+	mi.set_instance_shader_parameter(&"top_y", top_y)
+	mi.set_instance_shader_parameter(&"overgrowth", overgrowth)
+	mi.set_instance_shader_parameter(&"windows", windows)
+	mi.set_instance_shader_parameter(&"vine_reach", SHELL_VINE_REACH)
 
 
 func _build_props() -> void:

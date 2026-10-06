@@ -63,7 +63,7 @@ Misure sul PC del proprietario in D-042 e in `tests/tools/benchmark_arena.gd`. *
 
 **Indicatori a bordo schermo** (D-044): freccia, nome e distanza dei due cortili e dei due depositi di rottami piu vicini fuori vista, e del boss quando e in campo; un deposito esaurito non e piu indicato.
 
-Gli edifici a blocchi e le celle sono **graybox provvisorio**: restano previsti il perimetro di citta in rovina e le rovine basse che fanno da strade, non il loro aspetto.
+Prima passata artistica (D-046): le rovine basse sono gusci sventrati senza tetto (la collisione resta il blocco pieno) e i terrapieni hanno fianchi di terra a strati. Personaggio, compagno, nemici e boss restano **graybox provvisorio**.
 
 Non ancora: obiettivi di livello, eventi che deformano l'arena.
 

@@ -190,6 +190,9 @@ func _make_material(batched: bool) -> ShaderMaterial:
 	material.shader = CELL_SHADER
 	material.set_shader_parameter(&"batched", batched)
 	material.set_shader_parameter(&"plaza_radius", plaza_radius)
+	if is_inside_tree():
+		material.set_shader_parameter(&"raised_top",
+			global_position.y + UnrealSpace.length(_heights_cm[TerrainState.CellState.RAISED]))
 	return material
 
 

@@ -206,6 +206,7 @@ Nessuno di questi passi e stato eseguito.
 - Indicatori a bordo schermo (D-044): `ArenaRun.current_markers()` e `RunHud.set_markers()`.
 - Build Windows e Linux riesportate il 6 ottobre 2026 dopo boss e indicatori; smoke test della build Windows superato, Linux non eseguita.
 - Rottamatori al lavoro (D-045): `Enemy.set_errand()` / `errand_reached`, seguiti dall'`EnemyDirector` al posto del giocatore; `Demolisher` gestisce squadra (`_crew`), cantiere (`site_cell()`) e consegne; `ScrapField.positions_near()`, `spawn_on_cell()`, `spawn_on_ground()`. Cattura `output/boss/crew.png`.
+- Passata artistica (D-046): `RuinsDistrict._ruin_shell()` / `_shell_piece()` (cubo unitario condiviso, collisione a blocco pieno), `vine_reach` in `ruin_overgrown.gdshader`, `raised_top` in `terrain_cell.gdshader`. `capture_district.gd` accetta `--visit=x,z`.
 - **Non fatto:** bilanciamento, Officina e profilo permanente, Steam Deck.
 
 ## Da non dimenticare

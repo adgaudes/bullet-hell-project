@@ -11,6 +11,9 @@ instance uniform float top_y = 10.0;
 instance uniform float overgrowth = 0.5;
 // 0 = muro pieno, 1 = facciata a finestre.
 instance uniform float windows = 1.0;
+// Quanto i rampicanti coprono le pareti vicino a tetto e terra: 1 per le torri,
+// meno per le rovine basse (tutta la parete e vicina a entrambi e sarebbe solo verde).
+instance uniform float vine_reach = 1.0;
 
 uniform vec3 moss_a : source_color = vec3(0.15, 0.30, 0.07);
 uniform vec3 moss_b : source_color = vec3(0.36, 0.48, 0.12);
@@ -52,8 +55,8 @@ void fragment() {
 	float vine_n = fbm(vec2(uv.x * 0.8, uv.y * 0.11));
 	float from_top = 1.0 - smoothstep(0.0, 9.0, top_y - world_pos.y);
 	float from_ground = 1.0 - smoothstep(0.0, 6.0, world_pos.y);
-	float vines = smoothstep(0.6, 0.66, vine_n + overgrowth * 0.35 + from_top * 0.3 + from_ground * 0.3 - 0.15);
-	float moss_top = smoothstep(0.4, 0.8, up) * smoothstep(0.35, 0.45, fbm(world_pos.xz * 0.4) + overgrowth * 0.3);
+	float vines = smoothstep(0.6, 0.66, vine_n + overgrowth * 0.35 + (from_top + from_ground) * 0.3 * vine_reach - 0.15);
+	float moss_top = smoothstep(0.4, 0.8, up) * smoothstep(0.35, 0.45, fbm(world_pos.xz * 0.4) + overgrowth * 0.3 - (1.0 - vine_reach) * 0.12);
 	float green = clamp(max(vines * side * mix(0.4, 1.0, overgrowth), moss_top), 0.0, 1.0);
 	vec3 moss = mix(moss_a, moss_b, fbm(world_pos.xz * 0.3 + world_pos.y * 0.15));
 	moss *= 0.75 + 0.4 * value_noise(uv * 4.0);
