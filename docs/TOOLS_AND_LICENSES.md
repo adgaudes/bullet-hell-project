@@ -39,6 +39,27 @@ Spazio libero rilevato sul disco di progetto: circa 620 GB, sufficiente per la f
 
 Audit repository del 21 settembre 2026: Git LFS 3.7.1 configurato e integro; il branch remoto `feature/terrain-grid-slice` al commit `40b7682` e stato clonato in un percorso pulito, inclusa la mappa LFS, quindi compilato e avviato headless con successo. La copia temporanea e stata rimossa dopo la verifica.
 
+## Addon Godot installati (`godot/addons/`)
+
+Installati il 6 ottobre 2026 su richiesta del proprietario (D-057). Tutti gratuiti, licenza MIT, sorgente pubblico; copiati nel repository, nessun download a runtime. Verifica: import in Godot 4.7.2, suite `godot/tests/addons_tests.gd`, catture con finestra, export Windows e Linux, smoke test della build Windows. **Steam Deck non verificato.**
+
+| Addon | Versione | Fonte | Licenza | Stato | A cosa serve |
+|---|---|---|---|---|---|
+| Debug Menu (Calinou) | 1.2.0, commit `ff12461` del 19 novembre 2025 | <https://github.com/godot-extended-libraries/godot-debug-menu> | MIT | **Attivo** (autoload `DebugMenu`) | Overlay con fps, frametime, grafici CPU/GPU e hardware; **F3** cicla nascosto / compatto / dettagliato. Serve alla misura su Steam Deck |
+| Controller Icons (rsubtil) | 3.1.8 del 28 luglio 2026 | <https://github.com/rsubtil/controller_icons> | MIT; per le icone vedi `godot/addons/controller_icons/LICENSE` | **Attivo** (autoload `ControllerIcons`), **non ancora usato dall'interfaccia** | Glifi dei tasti che seguono il dispositivo in uso (Xbox, PlayStation, Switch, Steam Deck, tastiera e mouse) |
+| Debug Draw 3D (DmitriySalnikov) | 1.7.3 del 4 aprile 2026 | <https://github.com/DmitriySalnikov/godot_debug_draw_3d> | MIT | **Attivo** (GDExtension, si carica da sola), non ancora usato dal gioco | Linee, scatole, sfere e testo di debug in 3D (`DebugDraw3D.draw_*`). Nelle build release la libreria e uno stub che non disegna nulla |
+| SimpleGrassTextured (IcterusGames) | 2.1.0 del 3 aprile 2026 | <https://github.com/IcterusGames/SimpleGrassTextured> | MIT | **Installato, plugin non attivo**, escluso dagli export | Erba dipinta nell'editor, per la seconda passata artistica dell'arena. Attivarlo aggiunge un autoload, uniformi globali e un layer di rendering: farlo quando serve e misurarne il costo |
+
+Scostamenti dai pacchetti originali: di Debug Draw 3D sono incluse solo le librerie Windows e Linux x86_64 (niente macOS, Android, iOS, web, arm64, ne `native_api`); esempi e demo non copiati. Le librerie native (`*.dll`, `*.so`) sono in Git LFS.
+
+Aggiornare un addon: scaricare la release in una cartella temporanea, sostituire la cartella in `godot/addons/`, rieseguire `--editor --quit` e il gate, aggiornare questa tabella.
+
+### Regola: cercare addon utili e proporli
+
+A ogni nuovo task l'agente controlla se nell'Asset Library o nell'Asset Store di Godot (o su GitHub) esiste un addon o un asset che farebbe meglio o prima, e **lo propone al proprietario quando pensa che convenga scaricarlo**: beneficio concreto, licenza, costo (solo gratuiti; quelli a pagamento si propongono e basta), manutenzione, compatibilita con Godot 4.7.x, Windows, Linux e Steam Deck. Si scarica dopo il suo si. Anche "valutato, non serve" va annotato quando la domanda e ricorrente.
+
+Valutati e non adottati il 6 ottobre 2026 (giudizio dell'agente, senza prova pratica): GUT e gdUnit4 (le suite proprie e il gate bastano), Terrain3D (heightmap, incompatibile con la griglia discreta), Phantom Camera e Dialogue Manager (nessun bisogno attuale), Godot Jolt (gia integrato nell'engine). Da rivalutare piu avanti: GodotSteam (all'apertura della pagina Steam), LimboAI (se boss e compagno superano il codice attuale), Voxel Tools di Zylann (voce "terrain voxel" del radar).
+
 ## Migrazione UE 5.8.2 e Visual Studio 2026 (storico)
 
 Sezione storica: il progetto Godot non richiede Visual Studio ne MSVC.

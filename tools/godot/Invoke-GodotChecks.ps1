@@ -3,7 +3,8 @@
   Gate di qualita del progetto Godot: validazione statica, test automatici, smoke test headless.
 
 .DESCRIPTION
-  1. --check-only su ogni script .gd del progetto;
+  1. --check-only su ogni script .gd del progetto (esclusi gli addon di terze parti in
+     godot/addons: usano il nome globale dei propri autoload, che in --check-only non esiste);
   2. tutte le suite in godot/tests a 60 fps fissi;
   3. avvio headless dal menu iniziale con `-- --autostart` (passa subito al livello)
      e verifica dei marker attesi.
@@ -79,7 +80,7 @@ if ($Executable) {
 }
 
 Write-Host "== check-only"
-Get-ChildItem -Path $project -Recurse -Filter *.gd | Where-Object { $_.FullName -notmatch "\\\.godot\\" } | ForEach-Object {
+Get-ChildItem -Path $project -Recurse -Filter *.gd | Where-Object { $_.FullName -notmatch "\\\.godot\\|\\addons\\" } | ForEach-Object {
     $resPath = "res://" + $_.FullName.Substring($project.Length + 1).Replace("\", "/")
     $result = Invoke-Captured $godot @("--headless", "--path", "$project", "--check-only", "--script", $resPath)
     if ($result.Code -ne 0) {

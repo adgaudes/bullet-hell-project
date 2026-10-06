@@ -218,6 +218,12 @@ Nessuno di questi passi e stato eseguito.
 - Segnalato e non corretto: `Companion.mount_part` con un nome gia montato lascia il nuovo pezzo con un nome generato (innocuo oggi: ogni pezzo si monta una volta).
 - **Non fatto:** animazioni con scheletro, ascolto dell'audio, bilanciamento, Officina e profilo permanente, musica, Steam Deck.
 
+## Addon Godot (6 ottobre 2026)
+
+Installati quattro addon in `godot/addons/` (D-057, elenco e licenze in `TOOLS_AND_LICENSES.md`, uso e trappole in `GODOT_WORKFLOW.md`): Debug Menu (F3), Controller Icons, Debug Draw 3D attivi; SimpleGrassTextured installato ma spento. Nuova suite `addons_tests.gd`; il gate salta `--check-only` in `godot/addons`. Export Windows e Linux riusciti in una cartella temporanea e smoke test della build Windows superato; **le build in `LocalBuilds/` non sono state riesportate**.
+
+Prossimi passi possibili: glifi dei tasti in menu, Officina e prompt con Controller Icons; misura su Steam Deck con il Debug Menu; visualizzazione di debug del campo di percorso con Debug Draw 3D.
+
 ## Da non dimenticare
 
 - **Non estendere il progetto Unreal.** E materiale di riferimento da leggere, non da far evolvere.

@@ -49,7 +49,7 @@ Le decisioni registrate sono in `docs/DECISIONS.md`.
 4. Mantenere una build giocabile e verificarla periodicamente pacchettizzata.
 5. Separare codice, sorgenti, import, build e file generati.
 6. Registrare decisioni costose o irreversibili.
-7. Aggiungere tool o dipendenze solo per un problema concreto, dopo verifica di costo, licenza, manutenzione ed esportabilita. **Valutare pero sempre**, per l'obiettivo e per ogni task, se esistono tool esterni, addon Godot, estensioni, plugin o server MCP utili, e proporli (dettagli in `CLAUDE.md`, sezione "Strumenti esterni").
+7. Aggiungere tool o dipendenze solo per un problema concreto, dopo verifica di costo, licenza, manutenzione ed esportabilita. **Valutare pero sempre**, per l'obiettivo e per ogni task, se esistono tool esterni, addon Godot, estensioni, plugin o server MCP utili, e proporli (dettagli in `CLAUDE.md`, sezione "Strumenti esterni"). In particolare controllare l'Asset Library e l'Asset Store di Godot e proporre al proprietario gli addon o asset che conviene scaricare; quelli installati sono elencati in `docs/TOOLS_AND_LICENSES.md`.
 8. **Tenere aggiornata la sezione "Stato operativo" di `docs/PROJECT_ROADMAP.md`** a ogni avanzamento, con il prossimo passo esplicito.
 8. Non sacrificare leggibilita, accessibilita o prestazioni per la densita visiva.
 9. L'originalita deve emergere dai sistemi e dall'esperienza, non solo da tema o asset.

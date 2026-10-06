@@ -36,6 +36,7 @@ Principio guida:
   - 6 ottobre 2026: **menu iniziale** (D-051), nuova scena principale con Officina raggiungibile prima di giocare, e **mappa del campo scolpito a fine livello** (D-052).
   - 6 ottobre 2026: **impronte dell'orda** dopo ogni modifica al terreno (D-053), **movimento procedurale degli attori** (D-054), **primo bilanciamento dell'economia con run simulate** (D-055: un rottame al minuto, Torretta a 30). 19 suite verdi, 120 fps invariati su PC, build Windows e Linux riesportate.
   - 6 ottobre 2026: **corretti i cinque problemi emersi dalla simulazione** (D-056): rottami solo dalle celle rialzate, carta Cassone ridimensionata, reddito per livelli invece che per tempo, rottamatori veloci e carte ripetibili, level-up aperto a fine passo. 20 suite verdi, build riesportate.
+  - 6 ottobre 2026: **quattro addon Godot installati** (D-057): Debug Menu (F3, per la misura su Steam Deck), Controller Icons (glifi dei tasti, non ancora nell'interfaccia), Debug Draw 3D, SimpleGrassTextured (spento, per la seconda passata artistica). 21 suite verdi. Build in `LocalBuilds/` non riesportate.
 - **Fasi 4-14:** non iniziate formalmente. Esperimenti tecnici anticipati non equivalgono al superamento dei relativi gate.
 
 **Prossimo passo (in ordine):**
