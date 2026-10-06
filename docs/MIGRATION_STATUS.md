@@ -2,7 +2,7 @@
 
 > **File vivo.** Va aggiornato a ogni avanzamento. Chi apre una nuova sessione legge questo e sa esattamente dove siamo e cosa fare.
 
-**Ultimo aggiornamento:** 6 ottobre 2026: **arena grande giocabile** (D-042): `arena_run.tscn` e un quartiere in rovina di 204x204 m con griglia terreno unica 85x85 a lotti, cortile di partenza, cortili secondari, depositi e trincee; 13 suite verdi, misure su PC registrate, Steam Deck non misurato. Prima: prototipo della promessa A (D-038), struttura a campagne, arene grandi e boss (D-040, D-041, specifica di campagna in attesa delle risposte del proprietario). **Il prossimo passo di prodotto e nella roadmap** (`docs/PROJECT_ROADMAP.md`, "Stato operativo"): il primo boss. Questo file resta il diario della migrazione.
+**Ultimo aggiornamento:** 6 ottobre 2026: **primo boss e fine del livello** (D-043, il Demolitore: chiamata a 12 minuti, smonta i terrapieni, alza barricate, vittoria alla sua morte; 14 suite verdi, valori non bilanciati): **il livello completo e pronto per il playtest del proprietario**. Lo stesso giorno: **arena grande giocabile** (D-042): `arena_run.tscn` e un quartiere in rovina di 204x204 m con griglia terreno unica 85x85 a lotti, cortile di partenza, cortili secondari, depositi e trincee; 13 suite verdi, misure su PC registrate, Steam Deck non misurato. Prima: prototipo della promessa A (D-038), struttura a campagne, arene grandi e boss (D-040, D-041, specifica di campagna in attesa delle risposte del proprietario). **Il prossimo passo di prodotto e nella roadmap** (`docs/PROJECT_ROADMAP.md`, "Stato operativo"): il playtest del proprietario. Questo file resta il diario della migrazione.
 **Engine:** Godot 4.7.2 stable, edizione standard/GDScript
 **Fase corrente:** 10 quasi chiusa (codice Unreal rimosso, tag `unreal-prototype-final`); **in attesa del proprietario**: playtest di parita (feel, Test A, Steam Deck), poi eliminazione di `LocalBuilds/Prototype01-TerrainGrid-Win64-v1`
 **Branch di lavoro:** `feature/arena-run` (dal 5 ottobre 2026; `main` resta al prototipo della promessa A, da unire quando il livello con boss supera il playtest)
@@ -196,6 +196,14 @@ Nessuno di questi passi e stato eseguito.
 - Nuovi strumenti: `tests/district_tests.gd` (suite), `tests/tools/benchmark_arena.gd`, `tests/tools/capture_district.gd`. Catture in `output/district/`.
 - Trappola nuova in `GODOT_WORKFLOW.md`: in headless i colori dei MultiMesh non si rileggono.
 - **Non fatto:** misura su Steam Deck; build non riesportate; nessun indicatore per trovare i punti di interesse.
+
+## Boss (6 ottobre 2026)
+
+- `Demolisher` (`scripts/enemies/demolisher.gd`) estende `Enemy` con `self_driven = true`: l'`EnemyDirector` lo tiene in elenco (armi e scavo esplosivo lo colpiscono) ma chiama `drive()` invece di sterzarlo, e non lo riporta sull'anello.
+- `ArenaRun` gestisce le fasi `WAITING / WARNING / ACTIVE / DEFEATED`, sceglie la direzione col seme della run (`run_seed + 2`) e chiude il livello; `GameOverPanel.open()` ha la variante vittoria.
+- `TerrainGrid.force_cell_state()` cambia una cella a runtime senza regole ne rottami; `set_raised_tint()` colora le barricate.
+- Avvio rapido del boss: `-- --boss-at=60`. Catture in `output/boss/`.
+- **Non fatto:** bilanciamento, audio, Officina e profilo permanente, rottamatori che trasportano i rottami.
 
 ## Da non dimenticare
 

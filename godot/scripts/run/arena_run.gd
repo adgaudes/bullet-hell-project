@@ -4,7 +4,21 @@ extends Node
 ## collega nemici, arma, esperienza, level-up, vita e fine run, applica alla
 ## griglia la disposizione del terreno (cortili, depositi, trincee) prodotta
 ## dall'arena grande (D-042) e gli effetti degli upgrade.
+## Chiude il livello col boss (D-043): chiamata a tempo, direzione annunciata,
+## arrivo del Demolitore, vittoria alla sua morte.
 ## Seed: `-- --seed=N` sulla riga di comando, altrimenti casuale; sempre nel log.
+## `-- --boss-at=N` anticipa la chiamata del boss a N secondi.
+
+signal boss_called(direction: Vector3)
+signal level_completed
+
+enum BossPhase { WAITING, WARNING, ACTIVE, DEFEATED }
+
+## Direzioni di arrivo annunciate: nome e verso nel mondo (nord = -Z = alto dello schermo).
+const BOSS_DIRECTIONS := [
+	["NORD", Vector3(0.0, 0.0, -1.0)], ["EST", Vector3(1.0, 0.0, 0.0)],
+	["SUD", Vector3(0.0, 0.0, 1.0)], ["OVEST", Vector3(-1.0, 0.0, 0.0)],
+]
 
 @export var tuning: RunTuning
 ## Arena grande con i punti di interesse del terreno; senza, si costruisce il solo
@@ -26,6 +40,14 @@ var is_over := false
 var run_seed := 0
 var companion_weapon: AutoWeapon
 var dig_blast_radius := 0.0
+var boss_phase := BossPhase.WAITING
+var boss: Demolisher
+var boss_direction := Vector3.ZERO
+var boss_direction_name := ""
+## Secondi di livello a cui il boss viene chiamato (tuning o riga di comando); 0 = mai.
+var boss_call_at := 0.0
+var _boss_warning_left := 0.0
+var _boss_rng := RandomNumberGenerator.new()
 var _pending_level_ups := 0
 
 
@@ -39,6 +61,8 @@ func _ready() -> void:
 	progression.pity_level_ups = tuning.pity_level_ups
 	progression.has_companion = companion != null
 	director.rng.seed = run_seed + 1
+	_boss_rng.seed = run_seed + 2
+	boss_call_at = _boss_call_from_command_line(tuning.boss_call_seconds)
 
 	player.invulnerability_seconds = tuning.player_invulnerability
 	player.set_max_health(tuning.player_max_health)
@@ -66,6 +90,119 @@ func _physics_process(delta: float) -> void:
 		return
 	elapsed += delta
 	hud.set_time(elapsed)
+	_tick_boss(delta)
+
+
+# --- Boss di fine livello ----------------------------------------------------------
+
+func _tick_boss(delta: float) -> void:
+	match boss_phase:
+		BossPhase.WAITING:
+			if boss_call_at > 0.0 and elapsed >= boss_call_at:
+				call_boss()
+		BossPhase.WARNING:
+			_boss_warning_left -= delta
+			hud.set_boss_warning(boss_direction_name, boss_direction, _boss_warning_left)
+			if _boss_warning_left <= 0.0:
+				_spawn_boss()
+		BossPhase.ACTIVE:
+			if is_instance_valid(boss):
+				hud.set_boss_health(boss.health, boss.max_health)
+
+
+## Annuncia la direzione di arrivo: il giocatore ha il preavviso per preparare il terreno.
+func call_boss() -> void:
+	if boss_phase != BossPhase.WAITING:
+		return
+	# Solo direzioni in cui c'e spazio per arrivare da lontano (vicino ai bordi no).
+	var limit := _play_half_extent() - 3.0
+	var options: Array = []
+	for entry: Array in BOSS_DIRECTIONS:
+		var point: Vector3 = player.global_position + entry[1] * tuning.boss_spawn_distance
+		if absf(point.x) <= limit and absf(point.z) <= limit:
+			options.append(entry)
+	if options.is_empty():
+		options = BOSS_DIRECTIONS
+	var chosen: Array = options[_boss_rng.randi_range(0, options.size() - 1)]
+	boss_direction_name = chosen[0]
+	boss_direction = chosen[1]
+	boss_phase = BossPhase.WARNING
+	_boss_warning_left = tuning.boss_warning_seconds
+	hud.set_boss_warning(boss_direction_name, boss_direction, _boss_warning_left)
+	print("PROTOTYPE01_BOSS_CALLED direction=%s time=%.1f" % [boss_direction_name, elapsed])
+	boss_called.emit(boss_direction)
+
+
+func _spawn_boss() -> void:
+	boss_phase = BossPhase.ACTIVE
+	hud.clear_boss_warning()
+	boss = Demolisher.new()
+	boss.setup_demolisher(tuning.boss_health, director.flash_material())
+	boss.player = player
+	boss.grid = grid
+	boss.path_field = director.path_field
+	boss.director = director
+	boss.companion = companion
+	boss.speed = tuning.boss_speed
+	boss.contact_damage = tuning.boss_contact_damage
+	boss.contact_radius = tuning.boss_contact_radius
+	boss.demolish_seconds = tuning.boss_demolish_seconds
+	boss.wall_attraction_radius = tuning.boss_wall_attraction_radius
+	boss.walls_per_barricade = tuning.boss_walls_per_barricade
+	boss.max_barricades = tuning.boss_max_barricades
+	var point := _boss_spawn_point()
+	director.add_enemy(boss, Vector3(point.x, Demolisher.boss_spawn_height(), point.z))
+	boss.rotation.y = atan2(boss_direction.x, boss_direction.z)
+	boss.died.connect(_on_boss_died)
+	hud.set_boss_health(boss.health, boss.max_health)
+	print("PROTOTYPE01_BOSS_SPAWNED direction=%s x=%.1f z=%.1f health=%d" % [boss_direction_name, point.x, point.z, boss.health])
+
+
+## Punto di ingresso nella direzione annunciata: dentro l'arena e su terreno libero.
+func _boss_spawn_point() -> Vector3:
+	var limit := _play_half_extent() - 3.0
+	var path := director.path_field
+	var side := Vector3(-boss_direction.z, 0.0, boss_direction.x)
+	for lateral in [0.0, 3.0, -3.0, 6.0, -6.0, 9.0, -9.0]:
+		for back in [0.0, -3.0, 3.0, -6.0]:
+			var point: Vector3 = player.global_position + boss_direction * (tuning.boss_spawn_distance + back) + side * lateral
+			point = Vector3(clampf(point.x, -limit, limit), 0.0, clampf(point.z, -limit, limit))
+			if path == null or (path.is_walkable(point) and path.is_walkable(point + Vector3(1.0, 0.0, 1.0)) \
+					and path.is_walkable(point - Vector3(1.0, 0.0, 1.0))):
+				return point
+	var fallback: Vector3 = player.global_position + boss_direction * tuning.boss_spawn_distance
+	return Vector3(clampf(fallback.x, -limit, limit), 0.0, clampf(fallback.z, -limit, limit))
+
+
+func _play_half_extent() -> float:
+	if district != null:
+		return district.play_half_extent
+	return director.path_field.half_extent if director.path_field != null else 24.0
+
+
+## Rottami che escono dal livello: quelli nel cassone, piu il premio del boss se battuto.
+func scrap_out(victory: bool) -> int:
+	var carried := companion.carried if companion != null else 0
+	if victory:
+		return carried + tuning.boss_scrap_bonus
+	return int(floor(carried * tuning.death_scrap_share))
+
+
+func _on_boss_died(_enemy: Enemy) -> void:
+	if is_over:
+		return
+	is_over = true
+	boss_phase = BossPhase.DEFEATED
+	director.spawning = false
+	director.clear_horde()
+	hud.clear_boss()
+	if level_up_menu.is_open:
+		level_up_menu.close()
+	var scrap := scrap_out(true)
+	print("PROTOTYPE01_LEVEL_COMPLETE time=%.1f level=%d kills=%d scrap=%d seed=%d"
+		% [elapsed, progression.level, director.kills, scrap, run_seed])
+	level_completed.emit()
+	game_over.open(elapsed, progression.level, director.kills, true, scrap)
 
 
 ## Disposizione iniziale del terreno: i punti di interesse dell'arena grande,
@@ -298,9 +435,17 @@ func _on_player_died() -> void:
 	director.spawning = false
 	if level_up_menu.is_open:
 		level_up_menu.close()
-	print("PROTOTYPE01_PLAYER_DIED time=%.1f level=%d kills=%d seed=%d"
-		% [elapsed, progression.level, director.kills, run_seed])
-	game_over.open(elapsed, progression.level, director.kills)
+	var scrap := scrap_out(false)
+	print("PROTOTYPE01_PLAYER_DIED time=%.1f level=%d kills=%d scrap=%d seed=%d"
+		% [elapsed, progression.level, director.kills, scrap, run_seed])
+	game_over.open(elapsed, progression.level, director.kills, false, scrap)
+
+
+static func _boss_call_from_command_line(default_seconds: float) -> float:
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--boss-at="):
+			return arg.trim_prefix("--boss-at=").to_float()
+	return default_seconds
 
 
 static func _seed_from_command_line() -> int:

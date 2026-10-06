@@ -63,9 +63,36 @@ Misure sul PC del proprietario in D-042 e in `tests/tools/benchmark_arena.gd`. *
 
 Non ancora: un modo per **trovare** i punti di interesse (bussola, indicatori a bordo schermo), obiettivi di livello, eventi che deformano l'arena.
 
+## Boss: il Demolitore (D-043, 6 ottobre 2026)
+
+Il livello si chiude con un boss (`scripts/enemies/demolisher.gd`), come da `CAMPAIGN_STRUCTURE_SPEC.md`.
+
+- **Chiamata**: a 12 minuti (`boss_call_seconds`) compare "IL DEMOLITORE ARRIVA DA NORD/EST/SUD/OVEST" con conto alla rovescia di 12 s e una freccia a schermo. Sono i secondi per preparare il terreno.
+- **Arrivo**: entra a 30 m dal giocatore dalla direzione annunciata; in basso compare la sua barra vita. L'orda continua.
+- **Regola col terreno**: i terrapieni entro 12 m lo attirano piu di te. Li smonta in 1,2 s (la lama martella). Ogni due mura smontate alza una **barricata** scura fra se e te, che ferma i tuoi chiodi.
+- **Fine**: alla sua morte l'orda si ritira e compare "Livello completato" con i rottami portati fuori (quelli nel cassone del compagno piu 5). Morendo se ne salva la meta. Per ora il numero e solo mostrato: l'Officina non esiste ancora.
+
+| Mossa | Vantaggio | Costo o pericolo |
+|---|---|---|
+| Muro a sacrificio lontano da te | lo tiene fermo dove la chiodatrice lo colpisce | ogni due mura gli regali una barricata; il muro costa un rottame |
+| Fossato sul suo percorso | dimezza la sua velocita | rallenta anche te e il compagno |
+| Scavare una sua barricata | riapre la linea di tiro e rende un rottame | devi avvicinarti a 4,8 m da lui |
+| Nessun muro attorno | niente barricate | ti punta dritto: 2 danni a contatto |
+
+Valori in `run_default.tres` (`RunTuning`, gruppo Boss): 150 punti vita, 1,7 m/s, 2 danni. **Non bilanciati.** Per provarlo subito: `godot --path godot -- --boss-at=60`.
+
+Domande di playtest in piu:
+
+8. Hai capito da dove arrivava e hai avuto tempo di preparare qualcosa?
+9. Hai capito da solo che i muri lo attirano e che le barricate scure sono sue?
+10. Hai usato il terreno contro di lui in almeno due modi diversi? Quali?
+11. Durata dello scontro e difficolta: troppo, giusto, poco?
+
+Marker: `PROTOTYPE01_BOSS_CALLED`, `PROTOTYPE01_BOSS_SPAWNED`, `PROTOTYPE01_BOSS_DEMOLISH_START`, `PROTOTYPE01_BOSS_WALL_DEMOLISHED`, `PROTOTYPE01_BOSS_BARRICADE`, `PROTOTYPE01_BOSS_BARRICADE_DOWN`, `PROTOTYPE01_LEVEL_COMPLETE`.
+
 ## Fuori scope
 
-Estrazione e fine della run a tempo, altri tipi di nemico, audio, effetti di colpo oltre al lampo, bilanciamento fine, prestazioni su Steam Deck (da misurare), menu iniziale.
+Officina e profilo permanente, obiettivi di livello, altri tipi di nemico, audio, effetti di colpo oltre al lampo, bilanciamento fine, prestazioni su Steam Deck (da misurare), menu iniziale.
 
 ## Marker diagnostici
 

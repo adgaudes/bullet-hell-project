@@ -109,6 +109,8 @@ Catture della run (combattimento e level-up): `godot_console --path godot --reso
 
 Catture dell'arena grande (D-042: partenza, panoramica dall'alto di tutta l'arena senza nebbia, combattimento dopo un minuto): `godot_console --path godot --resolution 1280x800 --fixed-fps 60 --script res://tests/tools/capture_district.gd -- --out=../output/district`.
 
+Catture del boss (annuncio, Demolitore con barricata, vittoria): `godot_console --path godot --resolution 1280x800 --fixed-fps 60 --script res://tests/tools/capture_boss.gd -- --out=../output/boss`. Per giocare subito il boss: `godot --path godot -- --boss-at=60`.
+
 Benchmark dell'arena grande (costruzione, celle e collisioni, costo per passo del direttore dei nemici e dell'arma, draw call con finestra): `godot_console --path godot --resolution 1280x800 --script res://tests/tools/benchmark_arena.gd -- --enemies=70` (righe `PROTOTYPE01_ARENA_BENCH`). In `--headless` il monitor `TIME_PHYSICS_PROCESS` include l'attesa del loop e non e attendibile: fidarsi delle misure dirette `director_ms`, `weapon_ms`, `solve_ms`.
 
 Trappola verificata (5 ottobre 2026): in un test `extends SceneTree`, la scena aggiunta in `_initialize` riceve `_ready` solo al primo frame, e `_ready` riattiva il passo fisico dei nodi che definiscono `_physics_process`. Un `set_physics_process(false)` va quindi chiamato **dopo** aver atteso almeno un frame.

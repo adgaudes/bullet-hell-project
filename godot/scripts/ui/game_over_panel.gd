@@ -1,13 +1,16 @@
 class_name GameOverPanel
 extends CanvasLayer
-## Fine run (D-038): riepilogo e ripartenza. L'estrazione arrivera dopo.
+## Fine livello: sconfitta (D-038) o vittoria sul boss (D-043), riepilogo e ripartenza.
+## L'Officina fra i livelli arrivera dopo: i rottami portati fuori sono solo mostrati.
 
 signal restart_requested
 
 const INPUT_GRACE_SECONDS := 0.8
 
 var is_open := false
+var is_victory := false
 var _overlay: ColorRect
+var _title: Label
 var _summary: Label
 var _restart: Button
 var _quit: Button
@@ -27,11 +30,11 @@ func _ready() -> void:
 	column.custom_minimum_size = Vector2(440, 0)
 	column.add_theme_constant_override(&"separation", 18)
 	center.add_child(column)
-	var title := Label.new()
-	title.text = "ROTTAMATO"
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override(&"font_size", 44)
-	column.add_child(title)
+	_title = Label.new()
+	_title.text = "ROTTAMATO"
+	_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_title.add_theme_font_size_override(&"font_size", 44)
+	column.add_child(_title)
 	_summary = Label.new()
 	_summary.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_summary.add_theme_font_size_override(&"font_size", 22)
@@ -43,9 +46,13 @@ func _ready() -> void:
 	_overlay.hide()
 
 
-func open(seconds: float, level: int, kills: int) -> void:
+func open(seconds: float, level: int, kills: int, victory := false, scrap := 0) -> void:
 	is_open = true
-	_summary.text = "Tempo %s\nLivello %d\nRottamatori abbattuti %d" % [RunHud.format_time(seconds), level, kills]
+	is_victory = victory
+	_title.text = "LIVELLO COMPLETATO" if victory else "ROTTAMATO"
+	_overlay.color = Color(0.02, 0.05, 0.03, 0.85) if victory else Color(0.05, 0.01, 0.01, 0.85)
+	_summary.text = "Tempo %s\nLivello %d\nRottamatori abbattuti %d\nRottami portati fuori %d" \
+		% [RunHud.format_time(seconds), level, kills, scrap]
 	get_tree().paused = true
 	_overlay.show()
 	_restart.disabled = true

@@ -118,7 +118,7 @@ func _move_nails(delta: float) -> void:
 			for enemy: Enemy in director.enemies.duplicate():
 				if enemy.is_dead or nail.hit.has(enemy):
 					continue
-				if _segment_distance(from, to, enemy.global_position) <= HIT_RADIUS:
+				if _segment_distance(from, to, enemy.global_position) <= HIT_RADIUS + enemy.hit_radius_bonus:
 					nail.hit.append(enemy)
 					enemy.take_damage(damage)
 					if nail.pierce <= 0:

@@ -1,0 +1,241 @@
+extends SceneTree
+## Test del primo boss, il Demolitore (D-043). Eseguire con:
+##   godot_console --headless --path godot --fixed-fps 60 --script res://tests/boss_tests.gd
+
+const RunScene := preload("res://scenes/main/arena_run.tscn")
+const RAISED := TerrainState.CellState.RAISED
+const NORMAL := TerrainState.CellState.NORMAL
+const LOWERED := TerrainState.CellState.LOWERED
+
+var _failures := 0
+var _scene: Node3D
+var _run: ArenaRun
+var _grid: TerrainGrid
+var _player: PlayerCharacter
+var _director: EnemyDirector
+var _weapon: AutoWeapon
+var _path: PathField
+var _hud: RunHud
+var _scrap: ScrapField
+var _boss: Demolisher
+
+
+func _initialize() -> void:
+	Engine.physics_ticks_per_second = 60
+	_scene = RunScene.instantiate()
+	root.add_child(_scene)
+	_run = _scene.get_node(^"Run")
+	_grid = _scene.get_node(^"TerrainGrid")
+	_player = _scene.get_node(^"Player")
+	_director = _scene.get_node(^"EnemyDirector")
+	_weapon = _scene.get_node(^"PlayerWeapon")
+	_path = _scene.get_node(^"PathField")
+	_hud = _scene.get_node(^"RunHud")
+	_scrap = _scene.get_node(^"ScrapField")
+	_director.spawning = false
+	await _frames(5)
+	_weapon.set_physics_process(false)
+	await _test_call_and_arrival()
+	await _test_walls_attract_and_feed_barricades()
+	await _test_digging_a_barricade()
+	await _test_trench_slows()
+	await _test_contact_damage()
+	await _test_weapon_hits_boss()
+	await _test_defeat_completes_level()
+	print("PROTOTYPE01_TESTS %s failures=%d" % ["PASS" if _failures == 0 else "FAIL", _failures])
+	quit(1 if _failures > 0 else 0)
+
+
+func _check(condition: bool, label: String) -> void:
+	if condition:
+		print("  ok   %s" % label)
+	else:
+		_failures += 1
+		print("  FAIL %s" % label)
+
+
+func _frames(n: int) -> void:
+	for i in n:
+		await physics_frame
+
+
+func _place_player(at: Vector3) -> void:
+	_player.global_position = Vector3(at.x, 0.88, at.z)
+	_player.velocity = Vector3.ZERO
+	_player._invulnerable_left = 0.0
+	_path.solve()
+
+
+func _place_boss(at: Vector3) -> void:
+	_boss.global_position = Vector3(at.x, Demolisher.boss_spawn_height(), at.z)
+	_boss.velocity = Vector3.ZERO
+	_boss.demolish_cell = Vector2i(-1, -1)
+	_boss._retarget_left = 0.0
+	_boss._wall_target = Vector2i(-1, -1)
+
+
+func _cell_world(cell: Vector2i) -> Vector3:
+	var p := _grid.to_global(_grid.cell_local_position(cell, NORMAL))
+	return Vector3(p.x, 0.0, p.z)
+
+
+func _planar_distance(a: Vector3, b: Vector3) -> float:
+	return Vector2(a.x - b.x, a.z - b.z).length()
+
+
+func _test_call_and_arrival() -> void:
+	print("call and arrival")
+	_check(is_equal_approx(_run.boss_call_at, _run.tuning.boss_call_seconds), "chiamata a %.0f s dal tuning" % _run.boss_call_at)
+	_check(_run.boss_phase == ArenaRun.BossPhase.WAITING and not _hud.is_boss_warning_visible(), "prima della chiamata nessun annuncio")
+	_place_player(Vector3.ZERO)
+	_run.boss_call_at = _run.elapsed + 0.05
+	await _frames(6)
+	_check(_run.boss_phase == ArenaRun.BossPhase.WARNING, "a tempo scaduto il boss e annunciato")
+	_check(_hud.is_boss_warning_visible() and not _hud.is_boss_bar_visible(), "annuncio visibile, barra vita non ancora")
+	var names := ["NORD", "EST", "SUD", "OVEST"]
+	_check(names.has(_run.boss_direction_name) and is_equal_approx(_run.boss_direction.length(), 1.0),
+		"direzione annunciata: %s" % _run.boss_direction_name)
+	_check(_run.boss == null and _run._boss_warning_left > _run.tuning.boss_warning_seconds - 1.0,
+		"preavviso di %.0f s prima dell'arrivo" % _run.tuning.boss_warning_seconds)
+	_run._boss_warning_left = 0.05
+	await _frames(6)
+	_boss = _run.boss
+	_check(_run.boss_phase == ArenaRun.BossPhase.ACTIVE and _boss != null, "finito il preavviso il Demolitore entra in campo")
+	if _boss == null:
+		return
+	_check(_director.enemies.has(_boss), "registrato fra i nemici: armi e scavo esplosivo lo vedono")
+	var offset := _boss.global_position - _player.global_position
+	offset.y = 0.0
+	_check(offset.normalized().dot(_run.boss_direction) > 0.9, "arriva dalla direzione annunciata")
+	_check(absf(offset.length() - _run.tuning.boss_spawn_distance) < 12.0, "a circa %.0f m (%.1f)" % [_run.tuning.boss_spawn_distance, offset.length()])
+	_check(_hud.is_boss_bar_visible() and not _hud.is_boss_warning_visible(), "barra vita visibile, annuncio sparito")
+	_check(_boss.health == _run.tuning.boss_health, "vita %d" % _boss.health)
+
+
+## Un terrapieno entro il raggio lo attira piu del giocatore; ogni due mura
+## smontate nasce una barricata fra lui e il giocatore.
+func _test_walls_attract_and_feed_barricades() -> void:
+	print("walls and barricades")
+	_place_player(Vector3.ZERO)
+	_place_boss(Vector3(4.8, 0.0, -17.0))
+	var raised_before := _count(RAISED)
+	var first_frame := -1
+	var first_cell := Vector2i(-1, -1)
+	for i in 900:
+		await physics_frame
+		if _boss.is_demolishing() and first_cell.x < 0:
+			first_cell = _boss.demolish_cell
+		if _boss.walls_demolished >= 1:
+			first_frame = i
+			break
+	_check(first_frame >= 0, "raggiunge un terrapieno del cortile e lo smonta (frame %d)" % first_frame)
+	_check(first_cell.x >= 0 and _grid.state.get_state(first_cell) == NORMAL, "la cella smontata torna Normal")
+	_check(_boss.barricades.is_empty(), "un solo muro non basta per una barricata")
+	_check(_scrap.count() == 0, "smontare non lascia rottami al giocatore")
+	for i in 900:
+		await physics_frame
+		if _boss.walls_demolished >= 2:
+			break
+	_check(_boss.walls_demolished >= 2, "smonta un secondo muro")
+	_check(_boss.barricades.size() == 1, "due mura smontate: una barricata (%d)" % _boss.barricades.size())
+	if _boss.barricades.size() == 1:
+		var cell: Vector2i = _boss.barricades.keys()[0]
+		var center := _cell_world(cell)
+		_check(_grid.state.get_state(cell) == RAISED, "la barricata e una cella Raised")
+		_check(_planar_distance(center, _player.global_position) < _planar_distance(_boss.global_position, _player.global_position),
+			"sta fra il boss e il giocatore")
+		_check(_planar_distance(center, _player.global_position) > 2.0, "non nasce addosso al giocatore")
+		_check(_count(RAISED) == raised_before - 2 + 1, "bilancio delle celle: due mura in meno, una barricata in piu")
+		# Il boss non considera le proprie barricate come bersaglio.
+		_boss._retarget_left = 0.0
+		await _frames(2)
+		_check(_boss._wall_target != cell, "le proprie barricate non lo attirano")
+
+
+func _test_digging_a_barricade() -> void:
+	print("dig barricade")
+	if _boss.barricades.is_empty():
+		_check(false, "nessuna barricata da scavare")
+		return
+	var cell: Vector2i = _boss.barricades.keys()[0]
+	_director.set_physics_process(false)
+	var scraps := _scrap.count()
+	_check(_grid.apply_command_at(_cell_world(cell), TerrainState.ToolMode.DIG, _player), "il giocatore scava la barricata")
+	_check(not _boss.barricades.has(cell) and _grid.state.get_state(cell) == NORMAL, "la barricata crolla")
+	_check(_scrap.count() == scraps + 1, "e restituisce un rottame")
+	_director.set_physics_process(true)
+
+
+func _test_trench_slows() -> void:
+	print("trench")
+	_boss.wall_attraction_radius = 0.0
+	_place_player(Vector3(6.0, 0.0, 2.4))
+	_place_boss(Vector3(-6.0, 0.0, 2.4))
+	await _frames(40)
+	var normal_speed := Vector2(_boss.velocity.x, _boss.velocity.z).length()
+	_check(absf(normal_speed - _run.tuning.boss_speed) < 0.15, "su terreno Normal va a %.2f m/s" % normal_speed)
+	_grid.force_cell_state(_grid.cell_at(_boss.global_position), LOWERED)
+	await _frames(30)
+	var slow_speed := Vector2(_boss.velocity.x, _boss.velocity.z).length()
+	_check(slow_speed < _run.tuning.boss_speed * 0.6, "in un fossato rallenta (%.2f m/s)" % slow_speed)
+	_boss.wall_attraction_radius = _run.tuning.boss_wall_attraction_radius
+
+
+func _test_contact_damage() -> void:
+	print("contact")
+	_boss.wall_attraction_radius = 0.0
+	_player.set_max_health(_run.tuning.player_max_health)
+	_place_boss(Vector3(-2.0, 0.0, -2.4))
+	_place_player(Vector3(-0.9, 0.0, -2.4))
+	await _frames(3)
+	_check(_player.health == _run.tuning.player_max_health - _run.tuning.boss_contact_damage,
+		"il contatto toglie %d punti vita (vita %d)" % [_run.tuning.boss_contact_damage, _player.health])
+	_player.set_max_health(_run.tuning.player_max_health)
+	_boss.wall_attraction_radius = _run.tuning.boss_wall_attraction_radius
+
+
+func _test_weapon_hits_boss() -> void:
+	print("weapon")
+	_director.set_physics_process(false)
+	_place_player(Vector3(0.0, 0.0, 2.4))
+	_place_boss(Vector3(5.0, 0.0, 2.4))
+	await _frames(2)
+	var before := _boss.health
+	_check(_weapon.find_target() == _boss, "la chiodatrice lo prende di mira")
+	_weapon.set_physics_process(true)
+	await _frames(120)
+	_weapon.set_physics_process(false)
+	_check(_boss.health < before, "i chiodi lo feriscono (%d -> %d)" % [before, _boss.health])
+	_director.set_physics_process(true)
+
+
+func _test_defeat_completes_level() -> void:
+	print("defeat")
+	_place_player(Vector3(0.0, 0.0, 2.4))
+	_place_boss(Vector3(7.0, 0.0, 2.4))
+	for i in 3:
+		_director.spawn_at(Vector3(-6.0 + i, 0.0, 5.0))
+	var kills := _director.kills
+	var completed := [false]
+	_run.level_completed.connect(func() -> void: completed[0] = true)
+	var carried: int = _scene.get_node(^"Companion").carried
+	_boss.take_damage(_boss.health)
+	await _frames(2)
+	var panel: GameOverPanel = _scene.get_node(^"GameOverPanel")
+	_check(completed[0] and _run.is_over and _run.boss_phase == ArenaRun.BossPhase.DEFEATED, "boss abbattuto: livello completato")
+	_check(panel.is_open and panel.is_victory and paused, "schermata di vittoria, gioco fermo")
+	_check(_director.enemies.is_empty() and not _director.spawning, "l'orda si ritira")
+	_check(_director.kills == kills + 1, "conta solo il boss fra gli abbattuti")
+	_check(_run.scrap_out(true) == carried + _run.tuning.boss_scrap_bonus, "rottami portati fuori: cassone + premio (%d)" % _run.scrap_out(true))
+	_check(_run.scrap_out(false) == int(carried * _run.tuning.death_scrap_share), "morendo se ne salva la meta")
+	_check(not _hud.is_boss_bar_visible(), "barra del boss nascosta")
+	paused = false
+
+
+func _count(cell_state: TerrainState.CellState) -> int:
+	var total := 0
+	for y in _grid.state.height:
+		for x in _grid.state.width:
+			if _grid.state.get_state(Vector2i(x, y)) == cell_state:
+				total += 1
+	return total

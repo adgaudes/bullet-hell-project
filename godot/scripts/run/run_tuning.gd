@@ -54,6 +54,30 @@ extends Resource
 ## Level-up consecutivi senza carte Rare prima della garanzia (regola 4).
 @export var pity_level_ups := 4
 
+@export_group("Boss")
+## Secondi di livello prima della chiamata del boss (CAMPAIGN_STRUCTURE_SPEC: livello di 12-15 minuti).
+## 0 = nessun boss. `-- --boss-at=N` sulla riga di comando lo anticipa.
+@export var boss_call_seconds := 720.0
+## Preavviso fra l'annuncio della direzione e l'arrivo.
+@export var boss_warning_seconds := 12.0
+## Distanza dal giocatore a cui il boss entra in campo, nella direzione annunciata.
+@export var boss_spawn_distance := 30.0
+@export var boss_health := 150
+@export var boss_speed := 1.7
+@export var boss_contact_damage := 2
+@export var boss_contact_radius := 1.5
+## Secondi per smontare una cella Raised.
+@export var boss_demolish_seconds := 1.2
+## Entro questo raggio un terrapieno lo attira piu del giocatore.
+@export var boss_wall_attraction_radius := 12.0
+## Mura smontate per costruire una barricata, e barricate in piedi al massimo.
+@export var boss_walls_per_barricade := 2
+@export var boss_max_barricades := 8
+## Rottami in piu portati fuori dal livello battendo il boss.
+@export var boss_scrap_bonus := 5
+## Quota dei rottami che si salva morendo (proposta della specifica di campagna).
+@export_range(0.0, 1.0) var death_scrap_share := 0.5
+
 @export_group("Courtyard")
 ## Mura iniziali del cortile: anello di celle Raised a questa distanza dal centro
 ## della griglia, con un varco al centro di ogni lato. 0 = nessuna mura.

@@ -81,6 +81,9 @@ var raised_color_override := Color(0, 0, 0, 0):
 			if state.get_state(cell) == TerrainState.CellState.RAISED:
 				_update_cell_presentation(cell)
 
+## Tinta propria di singole celle Raised (indice -> colore lineare): le barricate del boss.
+var _raised_tints: Dictionary[int, Color] = {}
+
 var state := TerrainState.new()
 ## Cella sotto l'anteprima, (-1, -1) se nascosta.
 var preview_cell := Vector2i(-1, -1)
@@ -316,6 +319,30 @@ func set_cell_states(cells: Array[Vector2i], cell_state: TerrainState.CellState)
 			cell_changed.emit(cell, cell_state)
 
 
+## Cambio di stato a runtime fuori dalle regole del tool (boss che smonta un muro
+## o alza una barricata): niente log ne `command_applied`, quindi niente rottami.
+## Collisione differita come per i comandi. False se la cella non e modificabile.
+func force_cell_state(cell: Vector2i, cell_state: TerrainState.CellState) -> bool:
+	if not state.is_valid(cell) or state.is_protected(cell) or state.get_state(cell) == cell_state:
+		return false
+	state.set_state(cell, cell_state)
+	_apply_presentation(cell, true)
+	cell_changed.emit(cell, cell_state)
+	return true
+
+
+## Colore proprio di una cella quando e Raised (vale finche non viene tolto).
+func set_raised_tint(cell: Vector2i, color: Color) -> void:
+	if state.is_valid(cell):
+		_raised_tints[cell.y * state.width + cell.x] = color
+		_update_cell_presentation(cell)
+
+
+func clear_raised_tint(cell: Vector2i) -> void:
+	if state.is_valid(cell) and _raised_tints.erase(cell.y * state.width + cell.x):
+		_update_cell_presentation(cell)
+
+
 ## Centro della cella nello spazio locale, alla meta dell'altezza dello stato.
 func cell_local_position(cell: Vector2i, cell_state: TerrainState.CellState) -> Vector3:
 	var half_width := (state.width - 1) * 0.5
@@ -359,6 +386,9 @@ func _cell_color(cell: Vector2i, cell_state: TerrainState.CellState) -> Color:
 	if cell_state == TerrainState.CellState.LOWERED:
 		return LOWERED_COLOR
 	if cell_state == TerrainState.CellState.RAISED:
+		var index := cell.y * state.width + cell.x
+		if _raised_tints.has(index):
+			return _raised_tints[index]
 		return RAISED_COLOR if raised_color_override.a <= 0.0 else raised_color_override
 	return NORMAL_COLOR
 

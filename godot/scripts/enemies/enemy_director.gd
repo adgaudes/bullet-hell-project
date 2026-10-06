@@ -82,11 +82,32 @@ func spawn_at(world: Vector3) -> Enemy:
 	var enemy := Enemy.new()
 	enemy.name = "Enemy%d" % (kills + enemies.size())
 	enemy.setup(current_enemy_health(), _body_mesh, _eye_mesh, _base_material, _eye_material, _flash_material)
+	add_enemy(enemy, Vector3(world.x, Enemy.spawn_height(), world.z))
+	return enemy
+
+
+## Registra un nemico gia costruito (boss): armi e scavo esplosivo lo vedono come gli altri.
+func add_enemy(enemy: Enemy, world: Vector3) -> void:
 	add_child(enemy)
-	enemy.global_position = Vector3(world.x, Enemy.spawn_height(), world.z)
+	enemy.global_position = world
 	enemy.died.connect(_on_enemy_died)
 	enemies.append(enemy)
-	return enemy
+
+
+func flash_material() -> Material:
+	return _flash_material
+
+
+## L'orda si ritira (fine livello): tutti i nemici spariscono senza lasciare esperienza.
+func clear_horde() -> void:
+	for enemy in enemies:
+		enemy.is_dead = true
+		enemy.collision_layer = 0
+		enemy.collision_mask = 0
+		var tween := enemy.create_tween()
+		tween.tween_property(enemy, ^"scale", Vector3.ONE * 0.05, 0.25)
+		tween.tween_callback(enemy.queue_free)
+	enemies.clear()
 
 
 ## Nemici vivi entro [param radius] (piano XZ) da [param origin].
@@ -147,6 +168,9 @@ func _move_enemies(delta: float) -> void:
 		if enemy.is_dead:
 			continue
 		enemy.tick_visuals(delta)
+		if enemy.self_driven:
+			enemy.drive(delta)
+			continue
 		var pos := enemy.global_position
 		var to_player := _planar(player.global_position - pos)
 		if to_player.length() > tuning.enemy_leash_distance and _leash(enemy):

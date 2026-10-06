@@ -245,8 +245,10 @@ func _test_level_up_flow() -> void:
 func _test_companion_upgrades() -> void:
 	print("companion upgrades")
 	var base_capacity := _companion.tuning.capacity
+	# Il level-up precedente sceglie una carta a caso: puo gia essere il cassone.
+	var capacity_before := _companion.capacity
 	_run.apply_upgrade(&"companion_cargo", 1)
-	_check(_companion.capacity == base_capacity + 2, "cassone rinforzato: capacita +2")
+	_check(_companion.capacity == capacity_before + 2, "cassone rinforzato: capacita +2")
 	_check(_companion.tuning.capacity == base_capacity, "la risorsa di tuning non cambia")
 	_run.apply_upgrade(&"companion_turret", 1)
 	_check(_run.companion_weapon != null and _companion.has_node(^"TurretPart"), "torretta montata e visibile")

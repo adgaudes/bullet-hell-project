@@ -16,6 +16,10 @@ var max_health := 2
 var is_dead := false
 ## Ricarica del danno da terrapieno spinato.
 var spike_cooldown := 0.0
+## Si guida da solo con drive() (boss): l'EnemyDirector non lo sterza ne lo riporta sull'anello.
+var self_driven := false
+## Raggio in piu rispetto a un rottamatore, per i colpi (corpi grandi).
+var hit_radius_bonus := 0.0
 var _flash_left := 0.0
 var _body: MeshInstance3D
 var _base_material: Material
@@ -62,6 +66,11 @@ func take_damage(amount: int) -> bool:
 		died.emit(self)
 		return true
 	return false
+
+
+## Passo fisico dei nemici `self_driven`; gli altri li muove il direttore.
+func drive(_delta: float) -> void:
+	pass
 
 
 func tick_visuals(delta: float) -> void:
