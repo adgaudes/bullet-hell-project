@@ -12,7 +12,9 @@ func _initialize() -> void:
 	_test_defaults()
 	_test_apply()
 	_test_persistence()
+	_test_volume_validation()
 	await _test_pause_and_focus()
+	await _test_volume_sliders()
 	await _test_aim_inversion()
 	print("PROTOTYPE01_TESTS %s failures=%d" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
@@ -39,6 +41,7 @@ func _test_defaults() -> void:
 	_check(settings.msaa_3d == Viewport.MSAA_4X, "MSAA 3D predefinito 4x")
 	_check(is_equal_approx(settings.render_scale, 1.0), "scala rendering predefinita 100%")
 	_check(not settings.invert_aim_x and not settings.invert_aim_y, "assi mira non invertiti")
+	_check(is_equal_approx(settings.master_volume, 1.0) and is_equal_approx(settings.sfx_volume, 0.8), "volumi predefiniti 100% e 80%")
 	settings.free()
 
 
@@ -52,6 +55,12 @@ func _test_apply() -> void:
 	_check(Engine.max_fps == 90, "applica Engine.max_fps")
 	_check(root.msaa_3d == Viewport.MSAA_2X, "applica MSAA al viewport")
 	_check(is_equal_approx(root.scaling_3d_scale, 0.7), "applica scala 3D al viewport")
+	settings.master_volume = 0.5
+	settings.sfx_volume = 0.0
+	settings.apply_settings(root)
+	var sfx_bus := AudioServer.get_bus_index(&"SFX")
+	_check(absf(AudioServer.get_bus_volume_db(0) - linear_to_db(0.5)) < 0.01, "applica il volume generale al bus Master")
+	_check(sfx_bus > 0 and AudioServer.is_bus_mute(sfx_bus), "volume effetti a zero: bus SFX muto")
 	_settings().apply_settings(root)
 	settings.free()
 
@@ -67,6 +76,8 @@ func _test_persistence() -> void:
 	saved.window_mode = GameSettingsScript.WindowModeChoice.BORDERLESS_FULLSCREEN
 	saved.invert_aim_x = true
 	saved.invert_aim_y = true
+	saved.master_volume = 0.35
+	saved.sfx_volume = 0.6
 	_check(saved.save_settings(temp_path) == OK, "salva in un file temporaneo")
 	var loaded := GameSettingsScript.new()
 	_check(loaded.load_settings(temp_path) == OK, "ricarica il file temporaneo")
@@ -76,11 +87,105 @@ func _test_persistence() -> void:
 	_check(is_equal_approx(loaded.render_scale, 0.6), "round trip scala rendering")
 	_check(loaded.window_mode == GameSettingsScript.WindowModeChoice.BORDERLESS_FULLSCREEN, "round trip modalita finestra")
 	_check(loaded.invert_aim_x and loaded.invert_aim_y, "round trip inversione assi")
+	_check(is_equal_approx(loaded.master_volume, 0.35) and is_equal_approx(loaded.sfx_volume, 0.6), "round trip volumi")
 	var absolute_path := ProjectSettings.globalize_path(temp_path)
 	if FileAccess.file_exists(temp_path):
 		DirAccess.remove_absolute(absolute_path)
 	saved.free()
 	loaded.free()
+
+
+## Valori fuori intervallo o di tipo sbagliato nel file non passano cosi come sono.
+func _test_volume_validation() -> void:
+	print("volume validation")
+	var temp_path := "user://settings_test_volume_%d.cfg" % Time.get_ticks_usec()
+	var config := ConfigFile.new()
+	config.set_value("audio", "master_volume", 7.5)
+	config.set_value("audio", "sfx_volume", "forte")
+	_check(config.save(temp_path) == OK, "scrive un file con volumi non validi")
+	var loaded := GameSettingsScript.new()
+	_check(loaded.load_settings(temp_path) == OK, "lo ricarica")
+	_check(is_equal_approx(loaded.master_volume, 1.0), "volume oltre il massimo limitato a 1")
+	_check(is_equal_approx(loaded.sfx_volume, GameSettingsScript.DEFAULT_SFX_VOLUME), "volume non numerico: default")
+	config.set_value("audio", "master_volume", -2)
+	config.set_value("audio", "sfx_volume", NAN)
+	config.save(temp_path)
+	loaded.load_settings(temp_path)
+	_check(is_zero_approx(loaded.master_volume), "volume negativo limitato a 0")
+	_check(is_equal_approx(loaded.sfx_volume, GameSettingsScript.DEFAULT_SFX_VOLUME), "NaN: default")
+	# I setter salvano: il percorso resta quello temporaneo.
+	loaded.set_master_volume(1.4)
+	loaded.set_sfx_volume(0.45)
+	_check(is_equal_approx(loaded.master_volume, 1.0) and is_equal_approx(loaded.sfx_volume, 0.45), "i setter limitano a 0-1")
+	var reloaded := GameSettingsScript.new()
+	reloaded.load_settings(temp_path)
+	_check(is_equal_approx(reloaded.sfx_volume, 0.45), "i setter salvano subito")
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(temp_path))
+	loaded.free()
+	reloaded.free()
+	_settings().apply_settings(root)
+
+
+## I cursori del volume si usano con croce direzionale e tastiera e scrivono
+## nel servizio. Il servizio reale salva: qui punta a un file temporaneo.
+func _test_volume_sliders() -> void:
+	print("volume sliders")
+	var service: Node = _settings()
+	var real_path: String = service.settings_path
+	var temp_path := "user://settings_test_sliders_%d.cfg" % Time.get_ticks_usec()
+	var real_existed := FileAccess.file_exists(real_path)
+	var real_modified := FileAccess.get_modified_time(real_path) if real_existed else 0
+	service.settings_path = temp_path
+	var pause_menu := root.get_node("PauseMenu")
+	pause_menu.pause_game()
+	pause_menu.open_settings()
+	await process_frame
+	var master: HSlider = pause_menu.get_node("%SettingsPanel").get_node("%MasterVolume")
+	var sfx: HSlider = pause_menu.get_node("%SettingsPanel").get_node("%SfxVolume")
+	var master_label: Label = pause_menu.get_node("%SettingsPanel").get_node("%MasterVolumeValue")
+	_check(is_equal_approx(master.value, 1.0) and is_equal_approx(sfx.value, 0.8), "i cursori mostrano i valori correnti")
+	_check(master.focus_mode == Control.FOCUS_ALL and sfx.focus_mode == Control.FOCUS_ALL, "i cursori prendono il focus")
+	master.grab_focus()
+	_send_joypad_button(JOY_BUTTON_DPAD_LEFT, true)
+	await process_frame
+	_send_joypad_button(JOY_BUTTON_DPAD_LEFT, false)
+	await process_frame
+	_check(is_equal_approx(service.master_volume, 0.95), "croce a sinistra abbassa il volume generale di un passo (%.2f)" % service.master_volume)
+	_check(absf(AudioServer.get_bus_volume_db(0) - linear_to_db(0.95)) < 0.01, "il bus Master segue il cursore")
+	_check(master_label.text == "95%", "etichetta aggiornata (%s)" % master_label.text)
+	_check(pause_menu.focused_control() == master, "il focus resta sul cursore")
+	_send_joypad_button(JOY_BUTTON_DPAD_DOWN, true)
+	await process_frame
+	_send_joypad_button(JOY_BUTTON_DPAD_DOWN, false)
+	await process_frame
+	_check(pause_menu.focused_control() == sfx, "croce in basso passa al volume effetti")
+	for pressed in [true, false]:
+		var key := InputEventKey.new()
+		key.keycode = KEY_LEFT
+		key.physical_keycode = KEY_LEFT
+		key.pressed = pressed
+		Input.parse_input_event(key)
+		await process_frame
+	_check(is_equal_approx(service.sfx_volume, 0.75), "freccia sinistra abbassa il volume effetti (%.2f)" % service.sfx_volume)
+	# A sul cursore non deve chiudere il menu ne arrivare al gioco.
+	_send_joypad_button(JOY_BUTTON_A, true)
+	await process_frame
+	_send_joypad_button(JOY_BUTTON_A, false)
+	await process_frame
+	_check(paused and pause_menu.is_open(), "A su un cursore non chiude il menu")
+	var saved := GameSettingsScript.new()
+	saved.load_settings(temp_path)
+	_check(is_equal_approx(saved.master_volume, 0.95) and is_equal_approx(saved.sfx_volume, 0.75), "i cursori salvano nel file configurato")
+	saved.free()
+	_check(FileAccess.file_exists(real_path) == real_existed and (not real_existed or FileAccess.get_modified_time(real_path) == real_modified),
+		"il file reale delle impostazioni non e stato toccato")
+	service.master_volume = GameSettingsScript.DEFAULT_MASTER_VOLUME
+	service.sfx_volume = GameSettingsScript.DEFAULT_SFX_VOLUME
+	service.apply_audio()
+	service.settings_path = real_path
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(temp_path))
+	pause_menu.resume_game()
+	await process_frame
 
 
 func _test_pause_and_focus() -> void:

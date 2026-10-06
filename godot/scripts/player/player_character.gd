@@ -13,6 +13,8 @@ signal dash_ready
 signal aim_device_changed(device: AimDevice)
 signal health_changed(health: int, max_health: int)
 signal died
+## Lo strumento terreno non ha potuto agire: cella non valida o niente rottami.
+signal terrain_tool_rejected
 
 enum AimDevice { GAMEPAD, MOUSE }
 
@@ -164,8 +166,11 @@ func _use_terrain_tool() -> void:
 	var raising := terrain_tool_mode == TerrainState.ToolMode.RAISE
 	if raising and companion != null 			and terrain_grid.can_apply_at(terrain_target, terrain_tool_mode, self) 			and not companion.can_supply(terrain_target):
 		print("PROTOTYPE01_TERRAIN_RAISE_NO_SCRAP")
+		terrain_tool_rejected.emit()
 		return
-	if terrain_grid.apply_command_at(terrain_target, terrain_tool_mode, self) and raising and companion != null:
+	if not terrain_grid.apply_command_at(terrain_target, terrain_tool_mode, self):
+		terrain_tool_rejected.emit()
+	elif raising and companion != null:
 		companion.spend()
 	_update_terrain_target()
 

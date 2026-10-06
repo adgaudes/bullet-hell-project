@@ -14,6 +14,10 @@ const DEFAULT_VSYNC_MODE := DisplayServer.VSYNC_MAILBOX
 const DEFAULT_MSAA_3D := Viewport.MSAA_4X
 const DEFAULT_RENDER_SCALE := 1.0
 const DEFAULT_WINDOW_MODE := WindowModeChoice.WINDOWED
+const DEFAULT_MASTER_VOLUME := 1.0
+const DEFAULT_SFX_VOLUME := 0.8
+const MASTER_BUS := &"Master"
+const SFX_BUS := &"SFX"
 const FPS_CAPS: Array[int] = [30, 60, 90, 120, 144, 0]
 const MSAA_MODES: Array[int] = [Viewport.MSAA_DISABLED, Viewport.MSAA_2X, Viewport.MSAA_4X, Viewport.MSAA_8X]
 const VSYNC_MODES: Array[int] = [DisplayServer.VSYNC_MAILBOX, DisplayServer.VSYNC_ENABLED, DisplayServer.VSYNC_DISABLED]
@@ -27,6 +31,9 @@ var render_scale := DEFAULT_RENDER_SCALE
 var window_mode := DEFAULT_WINDOW_MODE
 var invert_aim_x := false
 var invert_aim_y := false
+## Volumi lineari 0.0-1.0; 0 silenzia il bus.
+var master_volume := DEFAULT_MASTER_VOLUME
+var sfx_volume := DEFAULT_SFX_VOLUME
 
 
 func _ready() -> void:
@@ -46,6 +53,8 @@ func reset_to_defaults() -> void:
 	window_mode = DEFAULT_WINDOW_MODE
 	invert_aim_x = false
 	invert_aim_y = false
+	master_volume = DEFAULT_MASTER_VOLUME
+	sfx_volume = DEFAULT_SFX_VOLUME
 
 
 ## Carica un file; valori assenti o non validi mantengono i default.
@@ -66,6 +75,8 @@ func load_settings(path_override: String = "") -> Error:
 	window_mode = _validated_int(config.get_value("graphics", "window_mode", window_mode), WINDOW_MODES, DEFAULT_WINDOW_MODE)
 	invert_aim_x = bool(config.get_value("controls", "invert_aim_x", invert_aim_x))
 	invert_aim_y = bool(config.get_value("controls", "invert_aim_y", invert_aim_y))
+	master_volume = _validated_volume(config.get_value("audio", "master_volume", master_volume), DEFAULT_MASTER_VOLUME)
+	sfx_volume = _validated_volume(config.get_value("audio", "sfx_volume", sfx_volume), DEFAULT_SFX_VOLUME)
 	return OK
 
 
@@ -81,10 +92,12 @@ func save_settings(path_override: String = "") -> Error:
 	config.set_value("graphics", "window_mode", window_mode)
 	config.set_value("controls", "invert_aim_x", invert_aim_x)
 	config.set_value("controls", "invert_aim_y", invert_aim_y)
+	config.set_value("audio", "master_volume", master_volume)
+	config.set_value("audio", "sfx_volume", sfx_volume)
 	return config.save(settings_path)
 
 
-## Applica le opzioni grafiche; il viewport esplicito rende la logica testabile.
+## Applica le opzioni grafiche e audio; il viewport esplicito rende la logica testabile.
 func apply_settings(target_viewport: Viewport = null) -> void:
 	Engine.max_fps = fps_cap
 	# Il display server headless non ha una finestra su cui applicare queste opzioni.
@@ -95,6 +108,13 @@ func apply_settings(target_viewport: Viewport = null) -> void:
 	if viewport != null:
 		viewport.msaa_3d = msaa_3d
 		viewport.scaling_3d_scale = render_scale
+	apply_audio()
+
+
+## Porta i volumi sui bus audio. Un bus assente dal layout viene ignorato.
+func apply_audio() -> void:
+	_apply_bus_volume(MASTER_BUS, master_volume)
+	_apply_bus_volume(SFX_BUS, sfx_volume)
 
 
 func set_fps_cap(value: int) -> void:
@@ -132,6 +152,18 @@ func set_invert_aim_y(value: bool) -> void:
 	_save_and_emit()
 
 
+func set_master_volume(value: float) -> void:
+	master_volume = _validated_volume(value, DEFAULT_MASTER_VOLUME)
+	apply_audio()
+	_save_and_emit()
+
+
+func set_sfx_volume(value: float) -> void:
+	sfx_volume = _validated_volume(value, DEFAULT_SFX_VOLUME)
+	apply_audio()
+	_save_and_emit()
+
+
 func _apply_and_save() -> void:
 	apply_settings()
 	_save_and_emit()
@@ -152,6 +184,22 @@ func _apply_window_mode() -> void:
 			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
 		_:
 			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
+
+
+static func _apply_bus_volume(bus: StringName, volume: float) -> void:
+	var index := AudioServer.get_bus_index(bus)
+	if index < 0:
+		return
+	# linear_to_db(0) e -inf: a zero il bus viene silenziato.
+	AudioServer.set_bus_mute(index, volume <= 0.001)
+	AudioServer.set_bus_volume_db(index, linear_to_db(maxf(volume, 0.001)))
+
+
+static func _validated_volume(value: Variant, fallback: float) -> float:
+	if typeof(value) != TYPE_FLOAT and typeof(value) != TYPE_INT:
+		return fallback
+	var parsed := float(value)
+	return fallback if is_nan(parsed) else clampf(parsed, 0.0, 1.0)
 
 
 static func _validated_int(value: Variant, allowed: Array[int], fallback: int) -> int:

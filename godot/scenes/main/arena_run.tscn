@@ -1,4 +1,4 @@
-[gd_scene load_steps=18 format=3]
+[gd_scene load_steps=19 format=3]
 
 [ext_resource type="Script" path="res://scripts/services/skeleton_probe.gd" id="1_probe"]
 [ext_resource type="Script" path="res://scripts/arena/ruins_district.gd" id="2_arena"]
@@ -17,6 +17,7 @@
 [ext_resource type="Script" path="res://scripts/ui/run_hud.gd" id="15_hud"]
 [ext_resource type="Script" path="res://scripts/ui/level_up_menu.gd" id="16_level_up"]
 [ext_resource type="Script" path="res://scripts/ui/game_over_panel.gd" id="17_game_over"]
+[ext_resource type="Script" path="res://scripts/audio/run_audio.gd" id="18_audio"]
 
 [node name="ArenaRun" type="Node3D"]
 script = ExtResource("1_probe")
@@ -97,3 +98,14 @@ xp_field = NodePath("../XpField")
 hud = NodePath("../RunHud")
 level_up_menu = NodePath("../LevelUpMenu")
 game_over = NodePath("../GameOverPanel")
+
+[node name="RunAudio" type="Node" parent="." node_paths=PackedStringArray("player", "weapon", "director", "grid", "xp_field", "companion", "level_up_menu", "run")]
+script = ExtResource("18_audio")
+player = NodePath("../Player")
+weapon = NodePath("../PlayerWeapon")
+director = NodePath("../EnemyDirector")
+grid = NodePath("../TerrainGrid")
+xp_field = NodePath("../XpField")
+companion = NodePath("../Companion")
+level_up_menu = NodePath("../LevelUpMenu")
+run = NodePath("../Run")

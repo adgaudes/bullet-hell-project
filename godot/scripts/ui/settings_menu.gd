@@ -9,6 +9,10 @@ signal back_requested
 @onready var _msaa_option: OptionButton = %MsaaOption
 @onready var _window_option: OptionButton = %WindowOption
 @onready var _scale_option: OptionButton = %ScaleOption
+@onready var _master_volume: HSlider = %MasterVolume
+@onready var _master_value: Label = %MasterVolumeValue
+@onready var _sfx_volume: HSlider = %SfxVolume
+@onready var _sfx_value: Label = %SfxVolumeValue
 @onready var _invert_x: CheckButton = %InvertX
 @onready var _invert_y: CheckButton = %InvertY
 @onready var _back_button: Button = %BackButton
@@ -24,6 +28,8 @@ func _ready() -> void:
 	_msaa_option.item_selected.connect(_on_msaa_selected)
 	_window_option.item_selected.connect(_on_window_selected)
 	_scale_option.item_selected.connect(_on_scale_selected)
+	_master_volume.value_changed.connect(_on_master_volume_changed)
+	_sfx_volume.value_changed.connect(_on_sfx_volume_changed)
 	_invert_x.toggled.connect(_settings.set_invert_aim_x)
 	_invert_y.toggled.connect(_settings.set_invert_aim_y)
 	_back_button.pressed.connect(func(): back_requested.emit())
@@ -59,6 +65,9 @@ func _sync_from_settings() -> void:
 	_msaa_option.select(GameSettingsService.MSAA_MODES.find(_settings.msaa_3d))
 	_window_option.select(GameSettingsService.WINDOW_MODES.find(_settings.window_mode))
 	_scale_option.select(_closest_scale_index(_settings.render_scale))
+	_master_volume.set_value_no_signal(_settings.master_volume)
+	_sfx_volume.set_value_no_signal(_settings.sfx_volume)
+	_refresh_volume_labels()
 	_invert_x.set_pressed_no_signal(_settings.invert_aim_x)
 	_invert_y.set_pressed_no_signal(_settings.invert_aim_y)
 
@@ -81,6 +90,21 @@ func _on_window_selected(index: int) -> void:
 
 func _on_scale_selected(index: int) -> void:
 	_settings.set_render_scale(RENDER_SCALES[index])
+
+
+func _on_master_volume_changed(value: float) -> void:
+	_settings.set_master_volume(value)
+	_refresh_volume_labels()
+
+
+func _on_sfx_volume_changed(value: float) -> void:
+	_settings.set_sfx_volume(value)
+	_refresh_volume_labels()
+
+
+func _refresh_volume_labels() -> void:
+	_master_value.text = "%d%%" % roundi(_master_volume.value * 100.0)
+	_sfx_value.text = "%d%%" % roundi(_sfx_volume.value * 100.0)
 
 
 func _closest_scale_index(value: float) -> int:

@@ -178,6 +178,65 @@ layout_mode = 2
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 16
 
+[node name="AudioHeader" type="Label" parent="Overlay/Center/SettingsPanel/Margin/Content"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "Audio"
+
+[node name="MasterVolumeRow" type="HBoxContainer" parent="Overlay/Center/SettingsPanel/Margin/Content"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Overlay/Center/SettingsPanel/Margin/Content/MasterVolumeRow"]
+custom_minimum_size = Vector2(280, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Volume generale"
+
+[node name="MasterVolume" type="HSlider" parent="Overlay/Center/SettingsPanel/Margin/Content/MasterVolumeRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(240, 40)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 1
+max_value = 1.0
+step = 0.05
+value = 1.0
+
+[node name="MasterVolumeValue" type="Label" parent="Overlay/Center/SettingsPanel/Margin/Content/MasterVolumeRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(56, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "100%"
+horizontal_alignment = 2
+
+[node name="SfxVolumeRow" type="HBoxContainer" parent="Overlay/Center/SettingsPanel/Margin/Content"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Overlay/Center/SettingsPanel/Margin/Content/SfxVolumeRow"]
+custom_minimum_size = Vector2(280, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Volume effetti"
+
+[node name="SfxVolume" type="HSlider" parent="Overlay/Center/SettingsPanel/Margin/Content/SfxVolumeRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(240, 40)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 1
+max_value = 1.0
+step = 0.05
+value = 1.0
+
+[node name="SfxVolumeValue" type="Label" parent="Overlay/Center/SettingsPanel/Margin/Content/SfxVolumeRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(56, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "100%"
+horizontal_alignment = 2
+
 [node name="ControlsHeader" type="Label" parent="Overlay/Center/SettingsPanel/Margin/Content"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 20

@@ -5,6 +5,8 @@ extends CanvasLayer
 ## restano inattive per un attimo: chi sta premendo A non sceglie per sbaglio.
 
 signal chosen(id: StringName)
+## Il menu si e appena aperto con una nuova offerta.
+signal opened
 
 const INPUT_GRACE_SECONDS := 0.4
 
@@ -56,6 +58,7 @@ func open(offer: Array[Dictionary], levels: Dictionary, player_level: int) -> vo
 	_overlay.show()
 	_set_enabled(false)
 	get_tree().create_timer(INPUT_GRACE_SECONDS, true).timeout.connect(_enable_after_grace)
+	opened.emit()
 
 
 func close() -> void:
