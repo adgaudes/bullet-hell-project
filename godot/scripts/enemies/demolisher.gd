@@ -20,6 +20,8 @@ extends Enemy
 signal wall_demolished(cell: Vector2i)
 signal barricade_built(cell: Vector2i)
 signal scrap_delivered(cell: Vector2i, stocked: int)
+## Un rottamatore della squadra ha raccolto un rottame.
+signal scrap_taken
 
 const BODY_RADIUS := 0.9
 const BODY_HEIGHT := 2.4
@@ -338,6 +340,7 @@ func _on_carrier_arrived(carrier: Enemy) -> void:
 		if not _site_is_valid():
 			_choose_site()
 		print("PROTOTYPE01_BOSS_SCRAP_TAKEN crew=%d" % _crew.size())
+		scrap_taken.emit()
 		return
 	if not _site_is_valid() or _planar(_cell_center(_site_cell) - carrier.global_position).length() > 1.5:
 		return

@@ -97,12 +97,13 @@ Domande di playtest in piu:
 11. Durata dello scontro e difficolta: troppo, giusto, poco?
 12. Gli indicatori a bordo schermo ti hanno fatto andare verso cortili e rottami? Sono troppi, pochi, leggibili?
 13. Hai capito da solo che i rottamatori col cubo sulla schiena portano i rottami alla lastra arancione, e che li nasce la barricata? Hai provato a fermarli?
+14. Audio (D-048, mai ascoltato da nessuno): quale suono stanca, quale manca, quale e troppo forte o troppo debole? I volumi sono in Pausa > Impostazioni.
 
 Marker: `PROTOTYPE01_BOSS_CALLED`, `PROTOTYPE01_BOSS_SPAWNED`, `PROTOTYPE01_BOSS_DEMOLISH_START`, `PROTOTYPE01_BOSS_WALL_DEMOLISHED`, `PROTOTYPE01_BOSS_BARRICADE`, `PROTOTYPE01_BOSS_BARRICADE_DOWN`, `PROTOTYPE01_BOSS_SITE`, `PROTOTYPE01_BOSS_SCRAP_TAKEN`, `PROTOTYPE01_BOSS_SCRAP_DELIVERED`, `PROTOTYPE01_BOSS_SCRAP_DROPPED`, `PROTOTYPE01_LEVEL_COMPLETE`.
 
 ## Fuori scope
 
-Officina e profilo permanente, obiettivi di livello, altri tipi di nemico, audio, effetti di colpo oltre al lampo, bilanciamento fine, prestazioni su Steam Deck (da misurare), menu iniziale.
+Officina e profilo permanente, obiettivi di livello, altri tipi di nemico, musica e audio definitivo (gli effetti sintetizzati di D-048 sono un segnaposto), bilanciamento fine, prestazioni su Steam Deck (da misurare), menu iniziale.
 
 ## Marker diagnostici
 

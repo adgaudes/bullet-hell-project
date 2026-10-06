@@ -178,6 +178,10 @@ func _test_walls_attract_and_feed_barricades() -> void:
 			break
 	_check(_boss.barricades.size() == 1, "due rottami consegnati al cantiere: una barricata (%d)" % _boss.barricades.size())
 	_check(_scrap.count() == 0 and _boss.site_scrap() == 0, "i rottami sono finiti nella barricata")
+	var audio: RunAudio = _scene.get_node(^"RunAudio")
+	_check(audio.play_count(&"boss_spawn") == 1 and audio.play_count(&"boss_demolish") == 2
+		and audio.play_count(&"carrier_pickup") >= 2 and audio.play_count(&"boss_barricade") == 1,
+		"si sentono arrivo, muri smontati, rottami raccolti e barricata")
 	_check(haulers.all(func(e: Enemy) -> bool: return not e.has_errand and not e.carrying_scrap),
 		"consegnato il rottame, tornano a inseguire il giocatore")
 	for hauler in haulers:

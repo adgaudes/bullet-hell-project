@@ -152,6 +152,7 @@ func _connect_signals() -> void:
 		level_up_menu.chosen.connect(_on_upgrade_chosen)
 	if run != null:
 		run.boss_called.connect(_on_boss_called)
+		run.boss_spawned.connect(_on_boss_spawned)
 		run.level_completed.connect(play.bind(&"victory", 0.0))
 
 
@@ -192,3 +193,12 @@ func _on_upgrade_chosen(_id: StringName) -> void:
 
 func _on_boss_called(_direction: Vector3) -> void:
 	play(&"boss_warning")
+
+
+## Il Demolitore entra in campo: da qui si sentono muri smontati, rottami
+## raccolti dalla sua squadra e barricate che si alzano (D-045).
+func _on_boss_spawned(boss: Demolisher) -> void:
+	play(&"boss_spawn")
+	boss.wall_demolished.connect(func(_cell: Vector2i) -> void: play(&"boss_demolish"))
+	boss.scrap_taken.connect(play.bind(&"carrier_pickup", 0.0))
+	boss.barricade_built.connect(func(_cell: Vector2i) -> void: play(&"boss_barricade"))

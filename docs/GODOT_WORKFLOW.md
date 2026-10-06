@@ -77,6 +77,7 @@ godot_console --headless --path godot --fixed-fps 60 --script res://tests/compan
 godot_console --headless --path godot --fixed-fps 60 --script res://tests/run_progression_tests.gd
 godot_console --headless --path godot --fixed-fps 60 --script res://tests/arena_run_tests.gd
 godot_console --headless --path godot --fixed-fps 60 --script res://tests/path_field_tests.gd
+godot_console --headless --path godot --fixed-fps 60 --script res://tests/audio_tests.gd
 ```
 
 Piu semplice: `tools/godot/Invoke-GodotChecks.ps1` esegue tutte le suite presenti in `godot/tests/`.
@@ -98,6 +99,8 @@ Trappola verificata: in Godot 4.7 le azioni predefinite **`ui_accept` e `ui_canc
 Trappola verificata (6 ottobre 2026): in `--headless` il renderer fittizio **non conserva colori e dati custom dei MultiMesh** (`get_instance_color` e `get_instance_custom_data` restituiscono zero; le trasformazioni si). Un test headless puo verificare `use_colors`, `use_custom_data` e i conteggi, non i valori: per quelli serve una cattura con finestra.
 
 Trappola verificata (6 ottobre 2026): un `CPUParticles3D` creato da codice va **posizionato prima di `add_child`** (`top_level = true` e `position`): con `global_position` impostata dopo l'ingresso nell'albero i frammenti di un'emissione `one_shot` partono dall'origine. Nessun test headless lo vede: l'ha mostrato una cattura.
+
+Trappola verificata (6 ottobre 2026): in un **worktree nuovo** i modelli `.glb` sono puntatori Git LFS: il primo `--editor --quit` fallisce l'import e scrive `valid=false` nei `.glb.import`. Prima `git lfs checkout`, poi l'import; se i `.import` sono stati sporcati, ripristinarli da Git. In headless l'audio usa un driver fittizio: i test contano le riproduzioni (`RunAudio.play_counts`), non possono ascoltarle.
 
 Trappola verificata (4 ottobre 2026): una **nuova `class_name`** non e visibile a `--check-only` ne ai test finche la cache delle classi globali non e aggiornata (`Could not find type ...`). Aggiornarla con `godot_console --headless --path godot --editor --quit`, oppure aprendo l'editor una volta.
 

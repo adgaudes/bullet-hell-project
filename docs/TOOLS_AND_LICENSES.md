@@ -107,7 +107,7 @@ IncrediBuild, installato inizialmente come componente opzionale, e stato rimosso
 | Krita | Opzionale | Se scegliamo sprite o concept paint 2D | Produzione e modifica raster |
 | MCP Godot (`tugcantopaloglu/godot-mcp`) | Rimandato | Trigger in `GODOT_WORKFLOW.md` | Ispezione di un gioco in esecuzione; non necessario oggi |
 | Substance 3D Painter | Rimandato | Dopo art direction 3D approvata | Texturing avanzato, costo ricorrente |
-| Reaper/Audacity | Rimandato | Primo audio pass | Editing audio |
+| Reaper/Audacity | Rimandato | Primi file audio veri (il primo audio, D-048, e sintetizzato nel codice e non ha asset) | Editing audio |
 | FMOD/Wwise | Rimandato | Solo con requisito audio non coperto da Godot | Evitare middleware prematuro |
 | OBS Studio | Rimandato | Playtest registrati e materiale store | Cattura gameplay |
 | DaVinci Resolve | Rimandato | Trailer e marketing | Montaggio video |

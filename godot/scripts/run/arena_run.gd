@@ -10,6 +10,7 @@ extends Node
 ## `-- --boss-at=N` anticipa la chiamata del boss a N secondi.
 
 signal boss_called(direction: Vector3)
+signal boss_spawned(boss: Demolisher)
 signal level_completed
 
 enum BossPhase { WAITING, WARNING, ACTIVE, DEFEATED }
@@ -237,6 +238,7 @@ func _spawn_boss() -> void:
 	boss.rotation.y = atan2(boss_direction.x, boss_direction.z)
 	boss.died.connect(_on_boss_died)
 	hud.set_boss_health(boss.health, boss.max_health)
+	boss_spawned.emit(boss)
 	print("PROTOTYPE01_BOSS_SPAWNED direction=%s x=%.1f z=%.1f health=%d" % [boss_direction_name, point.x, point.z, boss.health])
 
 
