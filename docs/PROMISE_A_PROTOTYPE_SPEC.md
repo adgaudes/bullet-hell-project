@@ -115,26 +115,27 @@ A fine livello, vinto o perso, i rottami portati fuori vanno nel profilo (`user:
 | Torretta fissa | 18 | il compagno parte con la chiodatrice montata |
 | Paracadute per rottami | 10 | morendo si salvano tre quarti del cassone |
 
-**Costi non bilanciati.** L'Officina si raggiunge solo dalla schermata di fine livello: manca un menu iniziale.
+**Costi non bilanciati.** L'Officina si raggiunge dal menu iniziale (D-051) e dalla schermata di fine livello, che mostra anche la mappa del campo scolpito (D-052).
 
 Domande di playtest in piu:
 
 15. Dopo la prima run, in Officina c'era qualcosa che volevi e potevi quasi permetterti? I prezzi sono un obiettivo o un muro?
 16. Un upgrade permanente ha cambiato come hai giocato il livello dopo, o solo i numeri?
 
+18. Mappa di fine livello (D-052): l'hai guardata? Ti ha aiutato a capire cosa ha funzionato e perche sei morto?
 17. Modelli (D-050): capisci sempre dove guardano tu, il compagno e i rottamatori? Qualcuno stona o si confonde con lo sfondo?
 
 Marker: `PROTOTYPE01_PROFILE_BANKED`, `PROTOTYPE01_PERMANENT_BOUGHT`, `PROTOTYPE01_PERMANENT_APPLIED`.
 
 ## Fuori scope
 
-Menu iniziale e mappa di campagna, obiettivi di livello, altri tipi di nemico, musica e audio definitivo (gli effetti sintetizzati di D-048 sono un segnaposto), bilanciamento fine, prestazioni su Steam Deck (da misurare), menu iniziale.
+Mappa di campagna, obiettivi di livello, altri tipi di nemico, musica e audio definitivo (gli effetti sintetizzati di D-048 sono un segnaposto), bilanciamento fine, prestazioni su Steam Deck (da misurare), menu iniziale.
 
 ## Marker diagnostici
 
 `PROTOTYPE01_RUN_START seed=N`, `PROTOTYPE01_PATH_FIELD_READY`, `PROTOTYPE01_ENEMY_KILLED total=N`, `PROTOTYPE01_PLAYER_DAMAGED health=N`, `PROTOTYPE01_LEVEL_UP level=N offer=a,b,c`, `PROTOTYPE01_UPGRADE_CHOSEN id=.. level=N`, `PROTOTYPE01_DIG_BLAST`, `PROTOTYPE01_COMPANION_TURRET level=N`, `PROTOTYPE01_PLAYER_DIED time=.. level=.. kills=.. seed=N`.
 
-Per ripetere una run: `-- --seed=N` sulla riga di comando.
+Per ripetere una run: `-- --seed=N` sulla riga di comando. Dal menu iniziale (D-051) `--seed=`, `--boss-at=` e `--autostart` portano dritti al livello.
 
 ## Playtest del proprietario
 

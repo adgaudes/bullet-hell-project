@@ -25,6 +25,7 @@ const MARKER_DEPOSIT_COLOR := Color(0.95, 0.5, 0.15)
 const MARKER_BOSS_COLOR := Color(1.0, 0.25, 0.15)
 ## Ogni quanto si ricontrolla quali punti di interesse hanno ancora celle Raised.
 const MARKER_REFRESH_SECONDS := 1.0
+const MAIN_MENU_SCENE := "res://scenes/main/main_menu.tscn"
 
 ## Direzioni di arrivo annunciate: nome e verso nel mondo (nord = -Z = alto dello schermo).
 const BOSS_DIRECTIONS := [
@@ -69,6 +70,11 @@ var _marker_refresh_left := 0.0
 ## Profilo permanente (autoload PlayerProfile); null se la scena gira senza.
 var _profile: PlayerProfileService
 var _death_scrap_share := 0.0
+## Fotografia della griglia a inizio livello e conteggi del tool, per la mappa finale (D-052).
+var _initial_terrain := PackedByteArray()
+var _start_position := Vector3.ZERO
+var cells_dug := 0
+var cells_raised := 0
 
 
 func _ready() -> void:
@@ -94,6 +100,8 @@ func _ready() -> void:
 	_death_scrap_share = tuning.death_scrap_share
 	_apply_permanent_upgrades()
 	_build_terrain_layout()
+	_initial_terrain = RunMap.snapshot(grid.state)
+	_start_position = player.global_position
 
 	player.health_changed.connect(hud.set_health)
 	player.died.connect(_on_player_died)
@@ -101,6 +109,7 @@ func _ready() -> void:
 	xp_field.collected.connect(_on_xp_collected)
 	level_up_menu.chosen.connect(_on_upgrade_chosen)
 	game_over.restart_requested.connect(restart)
+	game_over.menu_requested.connect(return_to_menu)
 	if workshop != null:
 		game_over.workshop_requested.connect(workshop.open)
 		# Tornando dall'Officina il passo successivo e ripartire.
@@ -297,6 +306,7 @@ func _on_boss_died(_enemy: Enemy) -> void:
 	print("PROTOTYPE01_LEVEL_COMPLETE time=%.1f level=%d kills=%d scrap=%d seed=%d"
 		% [elapsed, progression.level, director.kills, scrap, run_seed])
 	level_completed.emit()
+	_show_run_map()
 	game_over.open(elapsed, progression.level, director.kills, true, scrap, _bank(scrap, true))
 
 
@@ -388,6 +398,32 @@ func restart() -> void:
 	get_tree().reload_current_scene()
 
 
+func return_to_menu() -> void:
+	get_tree().paused = false
+	get_tree().change_scene_to_file(MAIN_MENU_SCENE)
+
+
+## Mappa del campo come l'ha lasciato il giocatore, per la schermata di fine livello.
+func build_run_map() -> Image:
+	var buildings: Array[Rect2] = []
+	if district != null:
+		for child in district.get_children():
+			if not (child is StaticBody3D) or not child.name.begins_with("Block"):
+				continue
+			for part in child.get_children():
+				if part is CollisionShape3D and (part as CollisionShape3D).shape is BoxShape3D:
+					var size := ((part as CollisionShape3D).shape as BoxShape3D).size
+					var at := (child as StaticBody3D).global_position
+					buildings.append(Rect2(at.x - size.x * 0.5, at.z - size.z * 0.5, size.x, size.z))
+	var barricades: Dictionary = boss.barricades if is_instance_valid(boss) else {}
+	var boss_position: Variant = boss.global_position if is_instance_valid(boss) else null
+	return RunMap.render(grid, _initial_terrain, barricades, buildings, _start_position, player.global_position, boss_position)
+
+
+func _show_run_map() -> void:
+	game_over.set_map(build_run_map(), "Celle scavate %d   rialzate %d" % [cells_dug, cells_raised], "run_%d" % run_seed)
+
+
 func _on_enemy_killed(world_position: Vector3, total: int) -> void:
 	xp_field.spawn(world_position, tuning.xp_per_enemy)
 	hud.set_kills(total)
@@ -474,6 +510,10 @@ func _upgrade_companion_turret(new_level: int) -> void:
 
 ## Scavo esplosivo: ogni passo di scavo colpisce i nemici attorno alla cella.
 func _on_terrain_command(cell: Vector2i, mode: TerrainState.ToolMode, new_state: TerrainState.CellState) -> void:
+	if mode == TerrainState.ToolMode.DIG:
+		cells_dug += 1
+	else:
+		cells_raised += 1
 	var center := grid.to_global(grid.cell_local_position(cell, new_state))
 	# Zolle che saltano a ogni colpo di tool: dalla cima della cella.
 	DebrisBurst.spawn(get_parent(), Vector3(center.x, center.y * 2.0 - grid.global_position.y + 0.1, center.z),
@@ -580,6 +620,7 @@ func _on_player_died() -> void:
 	if level_up_menu.is_open:
 		level_up_menu.close()
 	var scrap := scrap_out(false)
+	_show_run_map()
 	print("PROTOTYPE01_PLAYER_DIED time=%.1f level=%d kills=%d scrap=%d seed=%d"
 		% [elapsed, progression.level, director.kills, scrap, run_seed])
 	game_over.open(elapsed, progression.level, director.kills, false, scrap, _bank(scrap, false))

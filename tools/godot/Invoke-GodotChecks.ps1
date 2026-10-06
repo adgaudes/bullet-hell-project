@@ -5,7 +5,8 @@
 .DESCRIPTION
   1. --check-only su ogni script .gd del progetto;
   2. tutte le suite in godot/tests a 60 fps fissi;
-  3. avvio headless della scena principale e verifica dei marker attesi.
+  3. avvio headless dal menu iniziale con `-- --autostart` (passa subito al livello)
+     e verifica dei marker attesi.
   Con -Executable verifica invece una build esportata (stessi marker, senza 1-2).
   Exit code 0 solo se tutto passa.
 
@@ -24,6 +25,7 @@ $godot = (Get-Command godot_console -ErrorAction Stop).Source
 $failures = 0
 
 $expectedMarkers = @(
+    "PROTOTYPE01_MENU_READY",
     "PROTOTYPE01_SMOKE_TEST_OK",
     "PROTOTYPE01_INPUT_READY",
     "PROTOTYPE01_EXPOSURE_READY",
@@ -70,7 +72,7 @@ function Test-Markers([string]$text) {
 
 if ($Executable) {
     Write-Host "== smoke test build: $Executable"
-    $run = Invoke-Captured (Resolve-Path $Executable) @("--headless", "--quit-after", "120")
+    $run = Invoke-Captured (Resolve-Path $Executable) @("--headless", "--quit-after", "180", "--", "--autostart")
     if (Test-Markers $run.Text) { Write-Host "  ok   tutti i marker presenti" } else { $failures++ }
     if ($failures -eq 0) { Write-Host "GODOT_CHECKS PASS" } else { Write-Host "GODOT_CHECKS FAIL" }
     exit [int]($failures -gt 0)
@@ -103,7 +105,7 @@ Get-ChildItem -Path (Join-Path $project "tests") -Filter *.gd | ForEach-Object {
 }
 
 Write-Host "== smoke test headless"
-$run = Invoke-Captured $godot @("--headless", "--path", "$project", "--quit-after", "120")
+$run = Invoke-Captured $godot @("--headless", "--path", "$project", "--quit-after", "180", "--", "--autostart")
 if (Test-Markers $run.Text) { Write-Host "  ok   tutti i marker presenti" } else { $failures++ }
 
 if ($failures -eq 0) { Write-Host "GODOT_CHECKS PASS" } else { Write-Host "GODOT_CHECKS FAIL ($failures)" }

@@ -79,6 +79,7 @@ godot_console --headless --path godot --fixed-fps 60 --script res://tests/arena_
 godot_console --headless --path godot --fixed-fps 60 --script res://tests/path_field_tests.gd
 godot_console --headless --path godot --fixed-fps 60 --script res://tests/audio_tests.gd
 godot_console --headless --path godot --fixed-fps 60 --script res://tests/workshop_tests.gd
+godot_console --headless --path godot --fixed-fps 60 --script res://tests/menu_tests.gd
 ```
 
 Piu semplice: `tools/godot/Invoke-GodotChecks.ps1` esegue tutte le suite presenti in `godot/tests/`.
@@ -117,7 +118,11 @@ Catture dell'arena grande (D-042: partenza, panoramica dall'alto di tutta l'aren
 
 Modelli degli attori (D-050): `"/c/Program Files/Blender Foundation/Blender 5.2/blender.exe" -b --factory-startup --python tools/blender/build_actor_assets.py`, poi `godot_console --headless --path godot --editor --quit`. Catture ravvicinate e dalla camera di gioco: `godot_console --path godot --resolution 1280x800 --fixed-fps 60 --script res://tests/tools/capture_actors.gd -- --out=../output/actors`.
 
-Catture dell'Officina (fine livello col pulsante, catalogo): `godot_console --path godot --resolution 1280x800 --fixed-fps 60 --script res://tests/tools/capture_workshop.gd -- --out=../output/workshop`. Sotto `--script` l'autoload `PlayerProfile` non legge ne scrive `user://profile.cfg`: test e catture impostano il profilo in memoria.
+La scena principale e il **menu iniziale** (D-051): un run senza argomenti si ferma li. Per arrivare al livello da riga di comando aggiungere `-- --autostart` (lo fanno il gate e lo smoke test delle build); `--seed=`, `--boss-at=` e `--capture=` lo implicano.
+
+Trappola verificata (6 ottobre 2026): un `Image` RGBA8 arrotonda i colori a 8 bit, quindi `get_pixel(...).is_equal_approx(colore)` e quasi sempre falso. Confrontare con una tolleranza (`RunMap.same_color`).
+
+Catture di Officina, mappa di fine livello e menu iniziale: `godot_console --path godot --resolution 1280x800 --fixed-fps 60 --script res://tests/tools/capture_workshop.gd -- --out=../output/workshop`. Sotto `--script` l'autoload `PlayerProfile` non legge ne scrive `user://profile.cfg`: test e catture impostano il profilo in memoria.
 
 Trappola verificata (6 ottobre 2026): `add_child()` su un nodo fratello **durante il `_ready` della scena** fallisce ("Parent node is busy setting up children") e il nodo resta fuori dall'albero senza altri sintomi. Usare `add_child.call_deferred()`.
 

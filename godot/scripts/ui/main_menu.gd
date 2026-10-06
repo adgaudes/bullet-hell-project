@@ -1,0 +1,137 @@
+class_name MainMenu
+extends Control
+## Menu iniziale (D-051): Gioca, Officina, Impostazioni, Esci. Scena principale
+## del progetto. Con `-- --autostart` (o `--seed=`, `--boss-at=`, `--capture=`)
+## passa subito al livello: smoke test, catture e prove rapide non si fermano qui.
+
+const RUN_SCENE := "res://scenes/main/arena_run.tscn"
+const AUTOSTART_ARGS: Array[String] = ["--autostart", "--seed=", "--boss-at=", "--capture="]
+const SCRAP_COLOR := Color(0.95, 0.5, 0.15)
+
+@export var workshop: WorkshopPanel
+
+var _profile: PlayerProfileService
+var _pause_menu: Node
+var _column: VBoxContainer
+var _scrap_label: Label
+var _play: Button
+var _workshop_button: Button
+var _settings: Button
+var _quit: Button
+
+
+func _ready() -> void:
+	get_tree().paused = false
+	_profile = get_node_or_null(^"/root/PlayerProfile") as PlayerProfileService
+	_pause_menu = get_node_or_null(^"/root/PauseMenu")
+	if _pause_menu != null:
+		# Nel menu non c'e nulla da mettere in pausa.
+		_pause_menu.set(&"enabled", false)
+	_build()
+	if workshop != null:
+		workshop.closed.connect(_on_panel_closed.bind(_workshop_button))
+	if _pause_menu != null and _pause_menu.has_signal(&"settings_closed"):
+		_pause_menu.connect(&"settings_closed", _on_panel_closed.bind(_settings))
+	if _profile != null:
+		_profile.changed.connect(_refresh)
+	_refresh()
+	print("PROTOTYPE01_MENU_READY")
+	if wants_autostart(OS.get_cmdline_user_args()):
+		start_run.call_deferred()
+	else:
+		_play.grab_focus()
+
+
+func _exit_tree() -> void:
+	if _pause_menu != null:
+		_pause_menu.set(&"enabled", true)
+
+
+## Vero se la riga di comando chiede di saltare il menu.
+static func wants_autostart(args: PackedStringArray) -> bool:
+	for arg in args:
+		for prefix in AUTOSTART_ARGS:
+			if arg.begins_with(prefix):
+				return true
+	return false
+
+
+func start_run() -> void:
+	get_tree().change_scene_to_file(RUN_SCENE)
+
+
+func open_workshop() -> void:
+	if workshop == null:
+		return
+	_column.hide()
+	workshop.open()
+
+
+func open_settings() -> void:
+	if _pause_menu == null:
+		return
+	_column.hide()
+	_pause_menu.call(&"open_settings_only")
+
+
+func focused_control() -> Control:
+	return get_viewport().gui_get_focus_owner()
+
+
+func _on_panel_closed(back_to: Button) -> void:
+	_column.show()
+	_refresh()
+	back_to.grab_focus()
+
+
+func _refresh() -> void:
+	if _profile == null:
+		_scrap_label.text = ""
+		return
+	_scrap_label.text = "Rottami in Officina: %d     Run giocate: %d     Livelli completati: %d" \
+		% [_profile.scrap, _profile.runs, _profile.victories]
+
+
+func _build() -> void:
+	set_anchors_preset(Control.PRESET_FULL_RECT)
+	var background := ColorRect.new()
+	background.color = Color(0.07, 0.06, 0.05)
+	background.set_anchors_preset(Control.PRESET_FULL_RECT)
+	add_child(background)
+	var center := CenterContainer.new()
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	add_child(center)
+	_column = VBoxContainer.new()
+	_column.custom_minimum_size = Vector2(420, 0)
+	_column.add_theme_constant_override(&"separation", 16)
+	center.add_child(_column)
+	var title := Label.new()
+	# Titolo provvisorio: il gioco non ha ancora un nome.
+	title.text = "PROTOTYPE 01"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override(&"font_size", 56)
+	_column.add_child(title)
+	var subtitle := Label.new()
+	subtitle.text = "Riscrivi il campo. Sopravvivi all'orda."
+	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	subtitle.add_theme_font_size_override(&"font_size", 20)
+	_column.add_child(subtitle)
+	_scrap_label = Label.new()
+	_scrap_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_scrap_label.add_theme_font_size_override(&"font_size", 17)
+	_scrap_label.add_theme_color_override(&"font_color", SCRAP_COLOR)
+	_column.add_child(_scrap_label)
+	_play = _button("Gioca", start_run)
+	_workshop_button = _button("Officina", open_workshop)
+	_settings = _button("Impostazioni", open_settings)
+	_quit = _button("Esci", func() -> void: get_tree().quit())
+
+
+func _button(text: String, action: Callable) -> Button:
+	var button := Button.new()
+	button.text = text
+	button.custom_minimum_size = Vector2(0, 56)
+	button.add_theme_font_size_override(&"font_size", 22)
+	button.pressed.connect(action)
+	_column.add_child(button)
+	return button

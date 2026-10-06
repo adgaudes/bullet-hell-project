@@ -1,8 +1,8 @@
 extends SceneTree
-## Catture dell'Officina (D-049), non e una suite. Con finestra reale:
+## Catture di Officina (D-049), mappa di fine livello (D-052) e menu (D-051), non e una suite. Con finestra reale:
 ##   godot_console --path godot --resolution 1280x800 --fixed-fps 60 --script res://tests/tools/capture_workshop.gd -- --out=../output/workshop
 ## Produce: game_over (fine livello col pulsante Officina), workshop (catalogo con
-## un upgrade comprato, uno al massimo e alcuni fuori portata).
+## un upgrade comprato, uno al massimo e alcuni fuori portata), menu (menu iniziale).
 
 var _out := "../output/workshop"
 
@@ -23,6 +23,13 @@ func _initialize() -> void:
 	for i in 10:
 		await physics_frame
 	var player: PlayerCharacter = scene.get_node(^"Player")
+	# Un po' di campo scolpito per la mappa: fossato a nord, muro a est, una breccia.
+	var grid: TerrainGrid = scene.get_node(^"TerrainGrid")
+	for x in [-2.4, 0.0, 2.4]:
+		grid.apply_command_at(Vector3(x, 0.0, -12.0), TerrainState.ToolMode.DIG, player)
+	for z in [-2.4, 0.0, 2.4]:
+		grid.apply_command_at(Vector3(4.8, 0.0, z), TerrainState.ToolMode.RAISE, player)
+	grid.apply_command_at(Vector3(-9.6, 0.0, 2.4), TerrainState.ToolMode.DIG, player)
 	player._invulnerable_left = 0.0
 	player.take_damage(player.health)
 	for i in 70:
@@ -32,6 +39,14 @@ func _initialize() -> void:
 	for i in 5:
 		await process_frame
 	await _save("workshop")
+	paused = false
+	root.remove_child(scene)
+	scene.queue_free()
+	var menu: Control = preload("res://scenes/main/main_menu.tscn").instantiate()
+	root.add_child(menu)
+	for i in 10:
+		await process_frame
+	await _save("menu")
 	quit()
 
 

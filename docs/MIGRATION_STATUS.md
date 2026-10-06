@@ -212,6 +212,7 @@ Nessuno di questi passi e stato eseguito.
 - Build Windows e Linux riesportate il 6 ottobre 2026 dopo D-045...D-048; smoke test della build Windows superato, Linux non eseguita.
 - Officina (D-049): autoload `PlayerProfile` (`scripts/services/player_profile.gd`, `user://profile.cfg`), `scripts/progression/permanent_catalog.gd`, `scripts/ui/workshop_panel.gd` (nodo `WorkshopPanel` in `arena_run.tscn`), `ArenaRun._apply_permanent_upgrades()` e `_bank()`, `PlayerCharacter.tool_range_bonus_cm`. Suite `tests/workshop_tests.gd`, catture `tests/tools/capture_workshop.gd`.
 - Modelli degli attori (D-050): `tools/blender/build_actor_assets.py`, `assets/models/{player_engineer,companion_cart,scavenger,demolisher,demolisher_blade}.glb`, `resources/materials/actor_paint.gdshader`, `scripts/core/actor_model.gd` (`ActorModel`), `tests/tools/capture_actors.gd`. Build riesportate dopo D-049 e D-050; smoke test della build Windows superato.
+- Menu (D-051): `scenes/main/main_menu.tscn` + `scripts/ui/main_menu.gd`, scena principale in `project.godot`; `PauseMenu.enabled`, `open_settings_only()`, `return_to_menu()`; il gate passa `-- --autostart`. Mappa (D-052): `scripts/ui/run_map.gd` (`RunMap`), `GameOverPanel.set_map()` / `save_map()`, `ArenaRun.build_run_map()`. Suite `tests/menu_tests.gd`.
 - **Non fatto:** animazioni, ascolto dell'audio, bilanciamento, Officina e profilo permanente, musica, Steam Deck.
 
 ## Da non dimenticare
