@@ -38,11 +38,11 @@ const WORLD_STATIC_LAYER := 1
 	set(value):
 		clear_half_extent = value
 		_queue_rebuild()
-@export_range(0, 20000, 100) var grass_tufts := 9000:
+@export_range(0, 60000, 100) var grass_tufts := 9000:
 	set(value):
 		grass_tufts = value
 		_queue_rebuild()
-@export_range(0, 5000, 50) var flowers := 1400:
+@export_range(0, 8000, 50) var flowers := 1400:
 	set(value):
 		flowers = value
 		_queue_rebuild()
@@ -110,7 +110,11 @@ func rebuild() -> void:
 	stats = {"blocks": 0, "props": 0, "trees": 0, "tufts": 0, "flowers": 0}
 	_rng.seed = layout_seed
 	_make_materials()
+	_compose()
 
+
+## Composizione della piazza (48x48 m). Le sottoclassi (RuinsDistrict) la sostituiscono.
+func _compose() -> void:
 	_build_ground()
 	_build_boundary()
 	_build_north()
@@ -122,6 +126,39 @@ func rebuild() -> void:
 	_build_ground_cover()
 	_add_sun()
 	_add_environment()
+
+
+## Raggio della piazza del suolo: oltre, la natura prevale sul costruito.
+## Lo stesso valore va in TerrainGrid.plaza_radius per le celle in modalita naturale.
+func plaza_radius() -> float:
+	return play_half_extent * 0.85
+
+
+## Lato del piano del suolo, oltre il perimetro giocabile.
+func ground_size() -> float:
+	return 220.0
+
+
+## Oltre questa distanza dal centro non cresce vegetazione.
+func cover_limit() -> float:
+	return play_half_extent + 14.0
+
+
+## Quota della vegetazione: sulla piazza il suolo e a zero.
+func cover_height() -> float:
+	return 0.0
+
+
+## Il punto e escluso dalla vegetazione? Qui il quadrato centrale, dove le celle
+## del terreno cambiano altezza.
+func _cover_excluded(p: Vector2) -> bool:
+	return absf(p.x) < clear_half_extent - 2.6 and absf(p.y) < clear_half_extent - 2.6
+
+
+## Probabilita [0,1] che un punto candidato porti un ciuffo; segue la formula del suolo.
+func _cover_chance(p: Vector2) -> float:
+	var cover := ground_cover_at(p)
+	return 1.0 if cover >= 0.5 + _rng.randf_range(-0.04, 0.06) else 0.0
 
 
 # --- Materiali -----------------------------------------------------------------
@@ -423,11 +460,11 @@ func _barrier(base: Vector3, yaw_deg: float) -> void:
 # --- Composizione ----------------------------------------------------------------
 
 func _build_ground() -> void:
-	var size := Vector3(220.0, 0.4, 220.0)
+	var size := Vector3(ground_size(), 0.4, ground_size())
 	var body := _static_body("Ground", Transform3D(Basis(), Vector3(0.0, -0.2, 0.0)))
 	var material := ShaderMaterial.new()
 	material.shader = GROUND_SHADER
-	material.set_shader_parameter(&"plaza_radius", play_half_extent * 0.85)
+	material.set_shader_parameter(&"plaza_radius", plaza_radius())
 	var plane := PlaneMesh.new()
 	plane.size = Vector2(size.x, size.z)
 	_mesh_child(body, plane, material, Transform3D(Basis(), Vector3(0.0, 0.2, 0.0)))
@@ -556,13 +593,14 @@ func _build_ring_props() -> void:
 
 ## Stessa formula del suolo (ruins_ground.gdshader): i ciuffi crescono dove il suolo e verde.
 func ground_cover_at(p: Vector2) -> float:
-	var plaza_radius := play_half_extent * 0.85
-	var edge := smoothstep(plaza_radius * 0.55, plaza_radius * 1.25, p.length())
+	var radius := plaza_radius()
+	var edge := smoothstep(radius * 0.55, radius * 1.25, p.length())
 	return _fbm(p * 0.09 + Vector2(3.7, 1.3)) + edge * 0.45 - 0.08 + (_value_noise(p * 2.7) - 0.5) * 0.08
 
 
 func _build_ground_cover() -> void:
-	var limit := play_half_extent + 14.0
+	var limit := cover_limit()
+	var height := cover_height()
 	var tuft_xforms: Array[Transform3D] = []
 	var tuft_colors: Array[Color] = []
 	var flower_xforms: Array[Transform3D] = []
@@ -572,21 +610,20 @@ func _build_ground_cover() -> void:
 		if tuft_xforms.size() >= grass_tufts and flower_xforms.size() >= flowers:
 			break
 		var p := Vector2(_rng.randf_range(-limit, limit), _rng.randf_range(-limit, limit))
-		# Le celle del terreno cambiano altezza: niente vegetazione sopra la griglia.
-		if absf(p.x) < clear_half_extent - 2.6 and absf(p.y) < clear_half_extent - 2.6:
+		if _cover_excluded(p):
 			continue
-		var cover := ground_cover_at(p)
-		if cover < 0.5 + _rng.randf_range(-0.04, 0.06):
+		var chance := _cover_chance(p)
+		if chance <= 0.0 or (chance < 1.0 and _rng.randf() > chance):
 			continue
 		var yaw := _rng.randf_range(0.0, TAU)
 		if _rng.randf() < float(flowers) / float(grass_tufts + flowers) and flower_xforms.size() < flowers:
 			var s := _rng.randf_range(0.7, 1.3)
-			flower_xforms.append(Transform3D(Basis(Vector3.UP, yaw).scaled(Vector3(s, s, s)), Vector3(p.x, 0.0, p.y)))
+			flower_xforms.append(Transform3D(Basis(Vector3.UP, yaw).scaled(Vector3(s, s, s)), Vector3(p.x, height, p.y)))
 			flower_colors.append(_pick(FLOWER_COLORS))
 		elif tuft_xforms.size() < grass_tufts:
 			var s := _rng.randf_range(0.7, 1.5)
 			tuft_xforms.append(Transform3D(Basis(Vector3.UP, yaw).scaled(Vector3(s, s * _rng.randf_range(0.8, 1.4), s)),
-				Vector3(p.x, 0.0, p.y)))
+				Vector3(p.x, height, p.y)))
 			tuft_colors.append(_pick(LEAF_TINTS) * _rng.randf_range(0.7, 1.0))
 	_add_multimesh("GrassTufts", _tuft_mesh(), tuft_xforms, tuft_colors)
 	_add_multimesh("Flowers", _flower_mesh(), flower_xforms, flower_colors)

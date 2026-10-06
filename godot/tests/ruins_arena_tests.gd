@@ -110,6 +110,10 @@ func _test_player_stays_inside() -> void:
 
 func _test_cells_use_natural_ground() -> void:
 	print("natural cells")
-	var mesh: MeshInstance3D = _grid.get_child(0).get_node(^"Mesh")
+	# In --headless il renderer fittizio non conserva colori e dati custom dei
+	# MultiMesh (GODOT_WORKFLOW.md): si verifica la configurazione, non i valori.
+	var batch: MultiMeshInstance3D = _grid.get_node(^"CellsNormal")
 	_check(_grid.natural_ground, "griglia in modalita naturale")
-	_check(is_equal_approx(float(mesh.get_instance_shader_parameter(&"natural")), 1.0), "la cella usa il suolo naturale")
+	_check(batch.multimesh.use_colors and batch.multimesh.use_custom_data, "il lotto porta colore e dati custom per cella")
+	_check(bool(batch.material_override.get_shader_parameter(&"batched")), "il lotto legge il colore dal MultiMesh")
+	_check(_grid.presented_cell_count() == _grid.state.cell_count(), "tutte le celle presentate")

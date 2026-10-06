@@ -45,20 +45,23 @@ Rinviati come da specifica: sinergia (regola 5), leggendari, limite di slot per 
 
 Tutti in `godot/resources/tuning/run_default.tres` (`RunTuning`): vita 5, nemici a 2,2 m/s con 2 punti vita (+1 ogni 150 s), intervallo di comparsa da 1,6 s a 0,3 s in 5 minuti, massimo 70 vivi; chiodatrice ogni 0,5 s, portata 9 m; esperienza 5 per il primo livello, +3 a ogni livello.
 
-## Scala: l'arena definitiva sara molto piu grande
+## Scala: l'arena grande (D-042, 6 ottobre 2026)
 
-Indicazione del proprietario (5 ottobre 2026, poi D-040): le arene del gioco finale saranno **molto grandi**, come in Vampire Survivors o Deep Rock Galactic: Survivor. Questo prototipo misura il loop in uno spazio piccolo (48x48 m); non fissa la scala.
+Indicazione del proprietario (5 ottobre 2026, poi D-040): le arene del gioco finale sono **molto grandi**, come in Vampire Survivors o Deep Rock Galactic: Survivor. `arena_run.tscn` e ora il **quartiere in rovina** (`RuinsDistrict`, `scripts/arena/ruins_district.gd`): 204x204 m giocabili, tutti coperti da una sola griglia terreno 85x85 (`resources/tuning/terrain_district.tres`).
 
-Fatto il 5 ottobre 2026 (D-039), senza cambiare il comportamento nell'arena attuale:
+- **Griglia a lotti**: `TerrainGrid` disegna le 7225 celle con tre MultiMesh (uno per stato) e tiene una forma di collisione solo per ogni cella Raised. API, log e regole sono invariati; cambia solo la presentazione.
+- **Punti di interesse del terreno**, generati dal seme dell'arena e applicati alla griglia da `ArenaRun` all'avvio:
+  - il **cortile di partenza** di D-038 (anello a 4 celle, quattro varchi) attorno all'origine, in una piazza lastricata di 30 m di raggio;
+  - **sei cortili secondari** (raggio 3-5 celle, ad almeno 40 m l'uno dall'altro) in quattro varianti: tre varchi, due varchi opposti, anello rotto (30% delle mura mancanti), doppio anello con varco interno su un altro lato;
+  - **dieci depositi di rottami**: blocchi Raised 2x2 o 3x3; scavarli produce un rottame per passo, come scavare un muro;
+  - **quattro trincee**: file di 6-14 celle gia Lowered, fossati pronti che rallentano anche te.
+- **Rovine basse** (2,5-4,5 m, con collisione) sui lotti liberi, auto, macerie, barriere, lampioni, alberi: formano strade e strettoie per il campo di percorso; nulla dentro il perimetro supera i 4,5 m, cosi la camera non perde mai il giocatore. Torri alte solo fuori dal perimetro.
+- Il campo di percorso a finestra (D-039) e la comparsa ad anello restano come sono: con l'arena grande i nemici nascono davvero fuori schermo.
+- Vegetazione sopra le celle Normal (12 cm): su una cella scavata i ciuffi restano 8 cm sopra il fondo. Difetto noto e accettato nel prototipo.
 
-- `PathField` risolve una **finestra** di 64x64 celle (76,8 m) che segue il giocatore; gli ostacoli statici sono letti una volta per chunk e tenuti in cache. Costo per calcolo 2,3 ms a prescindere dalla dimensione dell'arena (benchmark: `tests/tools/benchmark_path_field.gd`, 480 m e 1000 m di lato). Fuori finestra i nemici puntano dritto.
-- I nemici nascono su un **anello di 17-23 m attorno al giocatore**, fuori schermo, riportato dentro l'area giocabile (nell'arena piccola cadono quindi sui bordi come prima). Un nemico oltre 40 m viene riportato sull'anello (`enemy_leash_distance`).
+Misure sul PC del proprietario in D-042 e in `tests/tools/benchmark_arena.gd`. **Steam Deck non misurato.** Densita, conteggi e dimensioni sono esportati su `District` e si cambiano dall'Inspector; il seme e `layout_seed`.
 
-Da fare quando si allarga:
-
-- La griglia terreno 11x11 al centro dovra diventare una griglia estesa o piu griglie (`PathField` oggi ne legge una), con costo di celle e collisioni da misurare su Steam Deck.
-- Il cortile con le mura diventa un punto di interesse fra tanti, non l'intera arena.
-- Misurare su Steam Deck: i valori sopra sono del PC del proprietario.
+Non ancora: un modo per **trovare** i punti di interesse (bussola, indicatori a bordo schermo), obiettivi di livello, eventi che deformano l'arena.
 
 ## Fuori scope
 

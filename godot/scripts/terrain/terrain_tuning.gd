@@ -4,14 +4,17 @@ extends Resource
 ## APrototype01TerrainGridActor (centimetri). Vedi D-024.
 ## Ogni modifica emette `changed`: la griglia si ricostruisce subito, anche nell'editor.
 
+## Limite di celle per lato (201 celle = 482 m): l'arena grande (D-042) ne usa 85.
+const MAX_CELLS := 201
+
 @export_group("Grid")
-## Celle lungo l'asse X Unreal (avanti, -Z Godot). Dispari, 1..15.
-@export_range(1, 15) var grid_width := 7:
+## Celle lungo l'asse X Unreal (avanti, -Z Godot). Dispari, 1..MAX_CELLS.
+@export_range(1, 201) var grid_width := 7:
 	set(value):
 		grid_width = value
 		emit_changed()
-## Celle lungo l'asse Y Unreal (destra, +X Godot). Dispari, 1..15.
-@export_range(1, 15) var grid_height := 7:
+## Celle lungo l'asse Y Unreal (destra, +X Godot). Dispari, 1..MAX_CELLS.
+@export_range(1, 201) var grid_height := 7:
 	set(value):
 		grid_height = value
 		emit_changed()

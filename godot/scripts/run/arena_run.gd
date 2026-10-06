@@ -1,11 +1,15 @@
 class_name ArenaRun
 extends Node
 ## Regia del prototipo della promessa A (D-038, docs/PROMISE_A_PROTOTYPE_SPEC.md):
-## collega nemici, arma, esperienza, level-up, vita e fine run, prepara le mura
-## del cortile e applica gli effetti degli upgrade.
+## collega nemici, arma, esperienza, level-up, vita e fine run, applica alla
+## griglia la disposizione del terreno (cortili, depositi, trincee) prodotta
+## dall'arena grande (D-042) e gli effetti degli upgrade.
 ## Seed: `-- --seed=N` sulla riga di comando, altrimenti casuale; sempre nel log.
 
 @export var tuning: RunTuning
+## Arena grande con i punti di interesse del terreno; senza, si costruisce il solo
+## cortile centrale di `tuning.wall_ring_radius`.
+@export var district: RuinsDistrict
 @export var player: PlayerCharacter
 @export var companion: Companion
 @export var grid: TerrainGrid
@@ -43,7 +47,7 @@ func _ready() -> void:
 	weapon.damage = tuning.weapon_damage
 	weapon.projectile_speed = tuning.projectile_speed
 	xp_field.player_radius = tuning.pickup_radius
-	_build_courtyard_walls()
+	_build_terrain_layout()
 
 	player.health_changed.connect(hud.set_health)
 	player.died.connect(_on_player_died)
@@ -62,6 +66,29 @@ func _physics_process(delta: float) -> void:
 		return
 	elapsed += delta
 	hud.set_time(elapsed)
+
+
+## Disposizione iniziale del terreno: i punti di interesse dell'arena grande,
+## oppure il solo cortile centrale.
+func _build_terrain_layout() -> void:
+	if district == null:
+		_build_courtyard_walls()
+		return
+	grid.plaza_radius = district.plaza_radius()
+	var raised := 0
+	var lowered := 0
+	for feature: Dictionary in district.terrain_features:
+		var center := grid.cell_at(Vector3(feature.center.x, 0.0, feature.center.y))
+		var cells: Array[Vector2i] = []
+		for offset: Vector2i in feature.offsets:
+			cells.append(center + offset)
+		grid.set_cell_states(cells, feature.state)
+		if feature.state == TerrainState.CellState.RAISED:
+			raised += cells.size()
+		else:
+			lowered += cells.size()
+	print("PROTOTYPE01_TERRAIN_LAYOUT_READY features=%d raised=%d lowered=%d"
+		% [district.terrain_features.size(), raised, lowered])
 
 
 ## Mura del cortile: anello di celle Raised con un varco al centro di ogni lato.

@@ -68,6 +68,9 @@ var _terrain_index := PackedInt32Array()
 var _static_chunks: Dictionary[Vector2i, PackedByteArray] = {}
 var _target_cell := Vector2i(-1, -1)
 var _dirty := true
+## Celle terreno cambiate dall'ultimo aggiornamento degli ostacoli: si rilegge una
+## volta sola, non a ogni cella (la disposizione iniziale dell'arena ne cambia centinaia).
+var _terrain_dirty := false
 var _since_solve := 0.0
 var _ready_done := false
 
@@ -82,7 +85,7 @@ func _ready() -> void:
 	_blocked.resize(count)
 	_terrain_index.resize(count)
 	if grid != null:
-		grid.cell_changed.connect(func(_cell: Vector2i, _state: TerrainState.CellState) -> void: _refresh_blocked())
+		grid.cell_changed.connect(func(_cell: Vector2i, _state: TerrainState.CellState) -> void: _terrain_dirty = true)
 		grid.rebuilt.connect(_refresh_terrain)
 	# Gli ostacoli dell'arena entrano nello spazio fisico dopo un passo.
 	await get_tree().physics_frame
@@ -99,6 +102,7 @@ func _ready() -> void:
 func _physics_process(delta: float) -> void:
 	if not _ready_done or target == null:
 		return
+	_flush_terrain()
 	_since_solve += delta
 	var world_cell := _world_cell_of(target.global_position)
 	if _needs_recenter(world_cell):
@@ -131,6 +135,7 @@ func is_inside(cell: Vector2i) -> bool:
 ## True se il punto e dentro l'arena, fuori dagli ostacoli statici e non
 ## sotto una cella Raised. Fuori dalla finestra legge chunk e griglia direttamente.
 func is_walkable(world: Vector3) -> bool:
+	_flush_terrain()
 	var cell := cell_of(world)
 	if is_inside(cell):
 		return _blocked[_index(cell)] == 0
@@ -143,6 +148,7 @@ func is_walkable(world: Vector3) -> bool:
 
 
 func cost_at(world: Vector3) -> float:
+	_flush_terrain()
 	var cell := cell_of(world)
 	return costs[_index(cell)] if is_inside(cell) else UNREACHABLE
 
@@ -150,6 +156,7 @@ func cost_at(world: Vector3) -> float:
 ## Centro della cella vicina che avvicina al bersaglio, o null se da qui il
 ## bersaglio non e raggiungibile o il punto e fuori finestra (chi chiama punta dritto).
 func next_waypoint(world: Vector3) -> Variant:
+	_flush_terrain()
 	var cell := cell_of(world)
 	if not is_inside(cell):
 		return null
@@ -271,7 +278,13 @@ func _refresh_terrain() -> void:
 	_refresh_blocked()
 
 
+func _flush_terrain() -> void:
+	if _terrain_dirty:
+		_refresh_blocked()
+
+
 func _refresh_blocked() -> void:
+	_terrain_dirty = false
 	for i in _blocked.size():
 		var blocked := _static_blocked[i]
 		var t := _terrain_index[i]
@@ -288,6 +301,7 @@ func _refresh_blocked() -> void:
 ## dell'heap binario. Diagonali solo se entrambi i lati sono liberi.
 func solve() -> void:
 	var start_usec := Time.get_ticks_usec()
+	_flush_terrain()
 	_since_solve = 0.0
 	_dirty = false
 	costs.fill(UNREACHABLE)

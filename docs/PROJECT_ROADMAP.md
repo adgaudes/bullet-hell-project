@@ -10,7 +10,7 @@ Principio guida:
 
 > Prima dimostriamo che e divertente. Poi dimostriamo che e producibile. Solo dopo costruiamo tutto il resto.
 
-## Stato operativo al 5 ottobre 2026
+## Stato operativo al 6 ottobre 2026
 
 > **Engine: Godot 4.7.2** (D-019). Le fasi di prodotto qui descritte restano valide: cambia la tecnologia, non la sequenza ne i gate. I riferimenti a Unreal, Visual Studio e MCP Epic nelle sezioni successive sono storici; il codice Unreal e nel tag `unreal-prototype-final`. Dettaglio della migrazione: `docs/MIGRATION_STATUS.md`; parita: `docs/GODOT_PARITY_CHECKLIST.md`.
 
@@ -25,13 +25,14 @@ Principio guida:
   - 4 ottobre 2026: **arena "rovine riconquistate"** (D-036), nuova scena principale con compagno e griglia 11x11 integrata nel suolo; impianto a primitive, modelli Blender da fare. 9 suite verdi. Build non riesportate.
   - 5 ottobre 2026: **prototipo della promessa A** (D-038, `docs/PROMISE_A_PROTOTYPE_SPEC.md`), nuova scena principale `arena_run.tscn`: cortile con mura e varchi, orda lenta, chiodatrice, esperienza, level-up a tre carte, 11 upgrade, vita e fine run. **Playtest rimandato dal proprietario**; build non riesportate.
   - 5 ottobre 2026: **scala dell'arena, parte tecnica** (D-039): campo di percorso a finestra con cache dei chunk (2,3 ms per calcolo anche a 1 km di lato) e comparsa dei nemici ad anello attorno al giocatore. 12 suite verdi. Misura su Steam Deck da fare. Backlog creativo in `docs/FEATURE_IDEAS.md`.
+  - 6 ottobre 2026: **arena grande giocabile** (D-042): `arena_run.tscn` e ora un quartiere in rovina di 204x204 m con griglia terreno unica 85x85 presentata a lotti (MultiMesh, collisione solo sulle Raised), cortile di partenza, sei cortili secondari in quattro varianti, dieci depositi di rottami, quattro trincee, rovine basse, perimetro di torri. 13 suite verdi, misure su PC in D-042. **Steam Deck non misurato.** Build non riesportate.
 - **Fasi 4-14:** non iniziate formalmente. Esperimenti tecnici anticipati non equivalgono al superamento dei relativi gate.
 
 **Prossimo passo (in ordine):**
 
 1. **Specifica della struttura di campagna**: scritta il 5 ottobre 2026 (`docs/CAMPAIGN_STRUCTURE_SPEC.md`, D-041 upgrade di livello e permanenti). **In attesa delle risposte del proprietario** alle 4 domande della sezione 8; senza risposta si procede con le proposte.
-2. **Arena grande giocabile** (agente): prima arena di almeno 200x200 m con la griglia terreno estesa (o piu griglie), punti di interesse e varianti del cortile; misurare celle e collisioni, su PC e Steam Deck. Seconda passata artistica (edifici in rovina, rampicanti, SSAO ed erba) solo dopo.
-3. **Primo boss di fine livello** (agente): un boss che mette alla prova le mura (puo assorbire l'idea 1 di `FEATURE_IDEAS.md`, i rottamatori che smontano i terrapieni) e chiude il livello.
+2. **Arena grande giocabile**: fatta il 6 ottobre 2026 (D-042). Restano la misura su Steam Deck e la seconda passata artistica (edifici in rovina, rampicanti, SSAO ed erba), dopo il playtest.
+3. **Primo boss di fine livello** (agente, **prossimo passo**): il Demolitore di `docs/CAMPAIGN_STRUCTURE_SPEC.md` (sezione 5), che smonta i terrapieni e porta i rottami ai rottamatori (idea 1 di `FEATURE_IDEAS.md`), con chiamata a tempo, arrivo da una direzione annunciata e fine del livello alla sua morte.
 4. **Playtest del proprietario** (rimandato il 5 ottobre 2026): quando c'e un livello completo con boss, almeno tre run con le domande in `docs/PROMISE_A_PROTOTYPE_SPEC.md`. Esito: Continua / Modifica / Scarta.
 5. **In sospeso, senza urgenza:**
    - Test A percettivo e test su Steam Deck via Proton (`docs/PLAYTESTS/GODOT_PARITY_PLAYTEST.md`); dopo, eliminare la build Unreal `LocalBuilds/Prototype01-TerrainGrid-Win64-v1` (872 MB);

@@ -123,11 +123,13 @@ func _send(action: StringName) -> void:
 
 
 func _count_cells() -> int:
-	var count := 0
-	for child in _grid.get_children():
-		if child is StaticBody3D:
-			count += 1
-	return count
+	var grid := _grid
+	# Tre lotti (uno per stato) e nessun duplicato; il conteggio e quello delle istanze.
+	var batches := 0
+	for child in grid.get_children():
+		if child is MultiMeshInstance3D and not child.is_queued_for_deletion():
+			batches += 1
+	return grid.presented_cell_count() if batches == 3 else -batches
 
 
 ## I valori attesi sono quelli del riferimento Unreal, non del preset di default.

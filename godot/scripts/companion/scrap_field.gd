@@ -8,7 +8,8 @@ signal scrap_spawned(position: Vector3)
 ## Ruggine, lineare.
 const SCRAP_COLOR := Color(0.55, 0.22, 0.06)
 const SCRAP_SIZE := 0.3
-const MAX_SCRAPS := 20
+## Nell'arena grande (D-042) i depositi scavati restano a terra lontano dal compagno.
+const MAX_SCRAPS := 60
 const BOB_HEIGHT := 0.08
 const BOB_SPEED := 3.0
 

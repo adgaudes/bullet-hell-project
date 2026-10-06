@@ -153,12 +153,13 @@ func _test_player_blocked_by_raised_cell() -> void:
 	await physics_frame
 
 
-func _cell_children(grid: Node) -> int:
-	var count := 0
+func _cell_children(grid: TerrainGrid) -> int:
+	# Tre lotti (uno per stato) e nessun duplicato; il conteggio e quello delle istanze.
+	var batches := 0
 	for child in grid.get_children():
-		if child is StaticBody3D and not child.is_queued_for_deletion():
-			count += 1
-	return count
+		if child is MultiMeshInstance3D and not child.is_queued_for_deletion():
+			batches += 1
+	return grid.presented_cell_count() if batches == 3 else -batches
 
 
 ## Altezza del primo impatto di un raggio verticale, -1 se nessuno.

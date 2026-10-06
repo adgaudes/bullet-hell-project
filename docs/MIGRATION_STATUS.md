@@ -2,7 +2,7 @@
 
 > **File vivo.** Va aggiornato a ogni avanzamento. Chi apre una nuova sessione legge questo e sa esattamente dove siamo e cosa fare.
 
-**Ultimo aggiornamento:** 5 ottobre 2026: logica di progressione approvata (D-035); **prototipo della promessa A** implementato e ora scena principale (D-038, `arena_run.tscn`), playtest rimandato dal proprietario. Struttura del gioco fissata: campagne a livelli, arene molto grandi, boss (D-040); campo di percorso a finestra e comparsa ad anello pronti per l'arena grande (D-039). **Il prossimo passo di prodotto e nella roadmap** (`docs/PROJECT_ROADMAP.md`, "Stato operativo"); questo file resta il diario della migrazione.
+**Ultimo aggiornamento:** 6 ottobre 2026: **arena grande giocabile** (D-042): `arena_run.tscn` e un quartiere in rovina di 204x204 m con griglia terreno unica 85x85 a lotti, cortile di partenza, cortili secondari, depositi e trincee; 13 suite verdi, misure su PC registrate, Steam Deck non misurato. Prima: prototipo della promessa A (D-038), struttura a campagne, arene grandi e boss (D-040, D-041, specifica di campagna in attesa delle risposte del proprietario). **Il prossimo passo di prodotto e nella roadmap** (`docs/PROJECT_ROADMAP.md`, "Stato operativo"): il primo boss. Questo file resta il diario della migrazione.
 **Engine:** Godot 4.7.2 stable, edizione standard/GDScript
 **Fase corrente:** 10 quasi chiusa (codice Unreal rimosso, tag `unreal-prototype-final`); **in attesa del proprietario**: playtest di parita (feel, Test A, Steam Deck), poi eliminazione di `LocalBuilds/Prototype01-TerrainGrid-Win64-v1`
 **Branch di lavoro:** `feature/arena-run` (dal 5 ottobre 2026; `main` resta al prototipo della promessa A, da unire quando il livello con boss supera il playtest)
@@ -187,6 +187,15 @@ Raccomandazione, **dopo** i playtest del proprietario:
 4. Disinstallare UE 5.8.2 e Visual Studio 2026, se non servono ad altro: decisione del proprietario, fuori dal repository.
 
 Nessuno di questi passi e stato eseguito.
+
+## Arena grande (6 ottobre 2026)
+
+- `TerrainGrid` presenta le celle con tre MultiMesh e un solo `StaticBody3D` con una forma per cella Raised (D-042). Le suite che contavano le celle come nodi figli usano ora `presented_cell_count()`; `TerrainTuning` ammette fino a 201 celle per lato.
+- `PathField` aggiorna gli ostacoli del terreno una volta per passo (bandiera sporca), non a ogni `cell_changed`: la disposizione iniziale cambia centinaia di celle.
+- `OvergrownArena` espone `_compose()` e i parametri del suolo (`plaza_radius()`, `ground_size()`, copertura); `RuinsDistrict` li sovrascrive e produce `terrain_features`, che `ArenaRun` applica alla griglia (`PROTOTYPE01_TERRAIN_LAYOUT_READY`).
+- Nuovi strumenti: `tests/district_tests.gd` (suite), `tests/tools/benchmark_arena.gd`, `tests/tools/capture_district.gd`. Catture in `output/district/`.
+- Trappola nuova in `GODOT_WORKFLOW.md`: in headless i colori dei MultiMesh non si rileggono.
+- **Non fatto:** misura su Steam Deck; build non riesportate; nessun indicatore per trovare i punti di interesse.
 
 ## Da non dimenticare
 

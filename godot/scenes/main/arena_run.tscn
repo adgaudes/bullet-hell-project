@@ -1,11 +1,11 @@
 [gd_scene load_steps=18 format=3]
 
 [ext_resource type="Script" path="res://scripts/services/skeleton_probe.gd" id="1_probe"]
-[ext_resource type="Script" path="res://scripts/arena/overgrown_arena.gd" id="2_arena"]
+[ext_resource type="Script" path="res://scripts/arena/ruins_district.gd" id="2_arena"]
 [ext_resource type="Script" path="res://scripts/camera/isometric_camera_rig.gd" id="3_camera"]
 [ext_resource type="PackedScene" path="res://scenes/player/player.tscn" id="4_player"]
 [ext_resource type="Script" path="res://scripts/terrain/terrain_grid.gd" id="5_terrain"]
-[ext_resource type="Resource" path="res://resources/tuning/terrain_arena.tres" id="6_terrain_tuning"]
+[ext_resource type="Resource" path="res://resources/tuning/terrain_district.tres" id="6_terrain_tuning"]
 [ext_resource type="PackedScene" path="res://scenes/companion/companion.tscn" id="7_companion"]
 [ext_resource type="Script" path="res://scripts/companion/scrap_field.gd" id="8_scrap"]
 [ext_resource type="Script" path="res://scripts/navigation/path_field.gd" id="9_path"]
@@ -21,13 +21,18 @@
 [node name="ArenaRun" type="Node3D"]
 script = ExtResource("1_probe")
 
-[node name="OvergrownArena" type="Node3D" parent="."]
+[node name="District" type="Node3D" parent="."]
 script = ExtResource("2_arena")
+play_half_extent = 102.0
+clear_half_extent = 0.0
+grass_tufts = 32000
+flowers = 4000
 
 [node name="TerrainGrid" type="Node3D" parent="."]
 script = ExtResource("5_terrain")
 tuning = ExtResource("6_terrain_tuning")
 natural_ground = true
+plaza_radius = 30.0
 
 [node name="Player" parent="." node_paths=PackedStringArray("terrain_grid") instance=ExtResource("4_player")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.88, 0)
@@ -41,6 +46,7 @@ target = NodePath("../Player")
 script = ExtResource("9_path")
 target = NodePath("../Player")
 grid = NodePath("../TerrainGrid")
+half_extent = 102.0
 
 [node name="ScrapField" type="Node3D" parent="." node_paths=PackedStringArray("grid")]
 script = ExtResource("8_scrap")
@@ -78,9 +84,10 @@ script = ExtResource("16_level_up")
 [node name="GameOverPanel" type="CanvasLayer" parent="."]
 script = ExtResource("17_game_over")
 
-[node name="Run" type="Node" parent="." node_paths=PackedStringArray("player", "companion", "grid", "director", "weapon", "xp_field", "hud", "level_up_menu", "game_over")]
+[node name="Run" type="Node" parent="." node_paths=PackedStringArray("district", "player", "companion", "grid", "director", "weapon", "xp_field", "hud", "level_up_menu", "game_over")]
 script = ExtResource("14_run")
 tuning = ExtResource("11_run_tuning")
+district = NodePath("../District")
 player = NodePath("../Player")
 companion = NodePath("../Companion")
 grid = NodePath("../TerrainGrid")

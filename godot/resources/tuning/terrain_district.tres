@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="TerrainTuning" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/terrain/terrain_tuning.gd" id="1_tuning"]
+
+[resource]
+script = ExtResource("1_tuning")
+grid_width = 85
+grid_height = 85
+cell_size_cm = 240.0
+cell_gap_cm = 12.0
+lowered_height_cm = 4.0
+normal_height_cm = 12.0
+raised_height_cm = 120.0
+lowered_speed_penalty_percent = 0.5

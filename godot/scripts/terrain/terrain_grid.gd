@@ -3,11 +3,13 @@ class_name TerrainGrid
 extends Node3D
 ## Griglia terreno graybox: porta di APrototype01TerrainGridActor.
 ##
-## Lo stato logico vive in TerrainState; questo nodo ne e la presentazione
-## (una cella = StaticBody3D con mesh e collisione) e l'interfaccia in
-## coordinate mondo. Solo le celle Raised hanno collisione.
+## Lo stato logico vive in TerrainState; questo nodo ne e la presentazione e
+## l'interfaccia in coordinate mondo. Dalla scala dell'arena grande (D-042) la
+## presentazione e a lotti: un MultiMesh per stato (tre draw call per l'intera
+## griglia, qualunque sia il numero di celle) e un solo StaticBody3D con una
+## forma di collisione per ogni cella Raised, perche solo le Raised collidono.
 ## La costruzione gira anche nell'editor (@tool), come OnConstruction:
-## le celle generate non sono salvate nella scena, quindi non si duplicano.
+## i nodi generati non sono salvati nella scena, quindi non si duplicano.
 ## L'origine del nodo e il centro della griglia, sul piano del pavimento.
 
 signal cell_changed(cell: Vector2i, state: TerrainState.CellState)
@@ -30,6 +32,13 @@ const INVALID_PREVIEW_COLOR := Color(1.0, 0.03, 0.03)
 const PREVIEW_SIZE_RATIO := 0.72
 const PREVIEW_HEIGHT_CM := 5.0
 const PREVIEW_LIFT_CM := 2.0
+## Istanza nascosta di un MultiMesh: scala zero, nessun triangolo disegnato.
+const HIDDEN_TRANSFORM := Transform3D(Vector3.ZERO, Vector3.ZERO, Vector3.ZERO, Vector3.ZERO)
+const BATCH_NAMES := {
+	TerrainState.CellState.LOWERED: "CellsLowered",
+	TerrainState.CellState.NORMAL: "CellsNormal",
+	TerrainState.CellState.RAISED: "CellsRaised",
+}
 
 @export var tuning: TerrainTuning:
 	set(value):
@@ -45,6 +54,14 @@ const PREVIEW_LIFT_CM := 2.0
 	set(value):
 		natural_ground = value
 		_queue_rebuild()
+## Raggio della piazza del suolo naturale (OvergrownArena.plaza_radius()), in metri:
+## oltre, il suolo delle celle e verde come quello dell'arena.
+@export var plaza_radius := 20.4:
+	set(value):
+		plaza_radius = value
+		for material in [_material, _batch_material]:
+			if material != null:
+				material.set_shader_parameter(&"plaza_radius", plaza_radius)
 
 ## Quanto il colore di stato copre il suolo naturale: Normal resta quasi suolo.
 const NATURAL_STATE_TINT := {
@@ -59,7 +76,7 @@ const NATURAL_PROTECTED_TINT := 0.75
 var raised_color_override := Color(0, 0, 0, 0):
 	set(value):
 		raised_color_override = value
-		for i in _cells.size():
+		for i in state.cell_count():
 			var cell := Vector2i(i % state.width, i / state.width)
 			if state.get_state(cell) == TerrainState.CellState.RAISED:
 				_update_cell_presentation(cell)
@@ -67,15 +84,23 @@ var raised_color_override := Color(0, 0, 0, 0):
 var state := TerrainState.new()
 ## Cella sotto l'anteprima, (-1, -1) se nascosta.
 var preview_cell := Vector2i(-1, -1)
+## Microsecondi dell'ultima ricostruzione, per benchmark e log.
+var last_rebuild_usec := 0
 
 # Valori di tuning normalizzati come ClampGridProperties, senza modificare la risorsa.
 var _cell_size_cm := 240.0
 var _cell_gap_cm := 12.0
 var _heights_cm: Dictionary[int, float] = {}
-var _cells: Array[StaticBody3D] = []
 var _meshes: Dictionary[int, BoxMesh] = {}
 var _shapes: Dictionary[int, BoxShape3D] = {}
+## Un MultiMeshInstance3D per stato; ogni cella ha un'istanza in ognuno, visibile solo in quello del suo stato.
+var _batches: Dictionary[int, MultiMeshInstance3D] = {}
+var _raised_body: StaticBody3D
+## Indice di cella -> forma di collisione, creata al primo rialzo e poi disattivata/riattivata.
+var _raised_shapes: Dictionary[int, CollisionShape3D] = {}
+## Materiale dell'anteprima (colore per istanza) e dei lotti (colore dal MultiMesh).
 var _material: ShaderMaterial
+var _batch_material: ShaderMaterial
 var _preview: MeshInstance3D
 var _rebuild_pending := false
 
@@ -88,21 +113,27 @@ func _ready() -> void:
 		print("PROTOTYPE01_TERRAIN_GRID_READY Width=%d Height=%d" % [state.width, state.height])
 
 
-## Ricostruzione idempotente: rimuove sempre le celle generate in precedenza.
+## Ricostruzione idempotente: rimuove sempre i nodi generati in precedenza.
 func rebuild() -> void:
+	var start_usec := Time.get_ticks_usec()
 	_rebuild_pending = false
 	_clamp_from_tuning()
-	for cell in _cells:
-		remove_child(cell)
-		cell.queue_free()
-	_cells.clear()
+	for batch in _batches.values():
+		remove_child(batch)
+		batch.queue_free()
+	_batches.clear()
+	if _raised_body != null:
+		remove_child(_raised_body)
+		_raised_body.queue_free()
+	_raised_shapes.clear()
 	if _preview != null:
 		remove_child(_preview)
 		_preview.queue_free()
 
-	_material = ShaderMaterial.new()
-	_material.shader = CELL_SHADER
+	_material = _make_material(false)
+	_batch_material = _make_material(true)
 	var visual_size := UnrealSpace.length(maxf(_cell_size_cm - _cell_gap_cm, 10.0))
+	var count := state.cell_count()
 	for cell_state: int in _heights_cm:
 		var height := UnrealSpace.length(_heights_cm[cell_state])
 		var mesh := BoxMesh.new()
@@ -111,10 +142,31 @@ func rebuild() -> void:
 		var shape := BoxShape3D.new()
 		shape.size = mesh.size
 		_shapes[cell_state] = shape
+		var multimesh := MultiMesh.new()
+		multimesh.transform_format = MultiMesh.TRANSFORM_3D
+		multimesh.use_colors = true
+		multimesh.use_custom_data = true
+		multimesh.mesh = mesh
+		multimesh.instance_count = count
+		var batch := MultiMeshInstance3D.new()
+		batch.name = BATCH_NAMES[cell_state]
+		batch.multimesh = multimesh
+		batch.material_override = _batch_material
+		# Solo i terrapieni proiettano un'ombra che si vede; le altre celle sono lastre.
+		batch.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON \
+			if cell_state == TerrainState.CellState.RAISED else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		add_child(batch)
+		_batches[cell_state] = batch
+
+	_raised_body = StaticBody3D.new()
+	_raised_body.name = "RaisedCells"
+	_raised_body.collision_layer = 1
+	_raised_body.collision_mask = 0
+	add_child(_raised_body)
 
 	for y in state.height:
 		for x in state.width:
-			_cells.append(_create_cell(Vector2i(x, y)))
+			_apply_presentation(Vector2i(x, y), false)
 
 	var preview_size := UnrealSpace.length(maxf(_cell_size_cm - _cell_gap_cm, 10.0) * PREVIEW_SIZE_RATIO)
 	var preview_mesh := BoxMesh.new()
@@ -126,7 +178,16 @@ func rebuild() -> void:
 	_preview.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_preview.visible = false
 	add_child(_preview)
+	last_rebuild_usec = Time.get_ticks_usec() - start_usec
 	rebuilt.emit()
+
+
+func _make_material(batched: bool) -> ShaderMaterial:
+	var material := ShaderMaterial.new()
+	material.shader = CELL_SHADER
+	material.set_shader_parameter(&"batched", batched)
+	material.set_shader_parameter(&"plaza_radius", plaza_radius)
+	return material
 
 
 ## Mostra l'anteprima sulla cella che contiene [param world_target].
@@ -195,8 +256,29 @@ func width_extent_cm() -> float:
 	return state.width * _cell_size_cm
 
 
+## Lato di una cella in metri.
+func cell_size_m() -> float:
+	return UnrealSpace.length(_cell_size_cm)
+
+
 func lowered_speed_penalty() -> float:
 	return clampf(tuning.lowered_speed_penalty_percent, 0.0, 0.95)
+
+
+## Celle presentate (istanze di ogni lotto): uguale a state.cell_count() se la
+## costruzione e coerente. Per test e benchmark.
+func presented_cell_count() -> int:
+	var batch: MultiMeshInstance3D = _batches.get(TerrainState.CellState.NORMAL)
+	return batch.multimesh.instance_count if batch != null else 0
+
+
+## Forme di collisione attive (una per cella Raised).
+func active_collision_count() -> int:
+	var count := 0
+	for shape in _raised_shapes.values():
+		if not shape.disabled:
+			count += 1
+	return count
 
 
 func can_apply_at(world_target: Vector3, mode: TerrainState.ToolMode, instigator: Node3D = null) -> bool:
@@ -230,7 +312,7 @@ func set_cell_states(cells: Array[Vector2i], cell_state: TerrainState.CellState)
 	for cell in cells:
 		if state.is_valid(cell) and not state.is_protected(cell):
 			state.set_state(cell, cell_state)
-			_apply_presentation(_cells[cell.y * state.width + cell.x], cell, false)
+			_apply_presentation(cell, false)
 			cell_changed.emit(cell, cell_state)
 
 
@@ -245,8 +327,8 @@ func cell_local_position(cell: Vector2i, cell_state: TerrainState.CellState) -> 
 
 
 func _clamp_from_tuning() -> void:
-	var width := clampi(tuning.grid_width, 1, 15)
-	var height := clampi(tuning.grid_height, 1, 15)
+	var width := clampi(tuning.grid_width, 1, TerrainTuning.MAX_CELLS)
+	var height := clampi(tuning.grid_height, 1, TerrainTuning.MAX_CELLS)
 	# Griglia sempre dispari: la cella centrale e sotto l'origine.
 	if width % 2 == 0:
 		width -= 1
@@ -265,57 +347,54 @@ func _clamp_from_tuning() -> void:
 	}
 
 
-func _create_cell(cell: Vector2i) -> StaticBody3D:
-	var body := StaticBody3D.new()
-	body.name = "Cell_%d_%d" % [cell.x, cell.y]
-	add_child(body)
-
-	var mesh_instance := MeshInstance3D.new()
-	mesh_instance.name = "Mesh"
-	mesh_instance.material_override = _material
-	body.add_child(mesh_instance)
-
-	var collision := CollisionShape3D.new()
-	collision.name = "Collision"
-	body.add_child(collision)
-
-	_apply_presentation(body, cell, false)
-	return body
-
-
 func _update_cell_presentation(cell: Vector2i) -> void:
 	if state.is_valid(cell):
-		_apply_presentation(_cells[cell.y * state.width + cell.x], cell, true)
+		_apply_presentation(cell, true)
 
 
-func _apply_presentation(body: StaticBody3D, cell: Vector2i, deferred: bool) -> void:
-	var cell_state := state.get_state(cell)
-	body.position = cell_local_position(cell, cell_state)
-
-	var mesh_instance: MeshInstance3D = body.get_node(^"Mesh")
-	mesh_instance.mesh = _meshes[cell_state]
-	var color := NORMAL_COLOR
+## Colore lineare della cella nel suo stato.
+func _cell_color(cell: Vector2i, cell_state: TerrainState.CellState) -> Color:
 	if state.is_protected(cell):
-		color = PROTECTED_COLOR
-	elif cell_state == TerrainState.CellState.LOWERED:
-		color = LOWERED_COLOR
-	elif cell_state == TerrainState.CellState.RAISED:
-		color = RAISED_COLOR if raised_color_override.a <= 0.0 else raised_color_override
-	mesh_instance.set_instance_shader_parameter(&"cell_color", color.linear_to_srgb())
-	mesh_instance.set_instance_shader_parameter(&"natural", 1.0 if natural_ground else 0.0)
+		return PROTECTED_COLOR
+	if cell_state == TerrainState.CellState.LOWERED:
+		return LOWERED_COLOR
+	if cell_state == TerrainState.CellState.RAISED:
+		return RAISED_COLOR if raised_color_override.a <= 0.0 else raised_color_override
+	return NORMAL_COLOR
+
+
+func _apply_presentation(cell: Vector2i, deferred: bool) -> void:
+	var cell_state := state.get_state(cell)
+	var index := cell.y * state.width + cell.x
 	var tint: float = NATURAL_PROTECTED_TINT if state.is_protected(cell) else NATURAL_STATE_TINT[cell_state]
-	mesh_instance.set_instance_shader_parameter(&"state_tint", tint)
+	for batch_state: int in _batches:
+		var multimesh := _batches[batch_state].multimesh
+		if batch_state != cell_state:
+			multimesh.set_instance_transform(index, HIDDEN_TRANSFORM)
+			continue
+		multimesh.set_instance_transform(index, Transform3D(Basis(), cell_local_position(cell, cell_state)))
+		multimesh.set_instance_color(index, _cell_color(cell, cell_state))
+		multimesh.set_instance_custom_data(index, Color(1.0 if natural_ground else 0.0, tint, 0.0, 0.0))
 
 	# Collisione coerente con la geometria visibile: solo Raised blocca.
 	# A runtime e differita (un comando puo arrivare durante una query fisica);
 	# in costruzione e immediata, o la cella spingerebbe via chi ci sta sopra.
-	var collision: CollisionShape3D = body.get_node(^"Collision")
-	collision.shape = _shapes[cell_state]
-	var disabled := cell_state != TerrainState.CellState.RAISED
+	var raised := cell_state == TerrainState.CellState.RAISED
+	var collision: CollisionShape3D = _raised_shapes.get(index)
+	if collision == null:
+		if not raised:
+			return
+		collision = CollisionShape3D.new()
+		collision.name = "Raised_%d_%d" % [cell.x, cell.y]
+		collision.shape = _shapes[TerrainState.CellState.RAISED]
+		collision.position = cell_local_position(cell, TerrainState.CellState.RAISED)
+		collision.disabled = true
+		_raised_body.add_child(collision)
+		_raised_shapes[index] = collision
 	if deferred:
-		collision.set_deferred(&"disabled", disabled)
+		collision.set_deferred(&"disabled", not raised)
 	else:
-		collision.disabled = disabled
+		collision.disabled = not raised
 
 
 ## Il rialzo della cella intersecherebbe il volume collidente di chi lo richiede?

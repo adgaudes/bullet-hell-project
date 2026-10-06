@@ -86,12 +86,26 @@ func _gates() -> Array[Vector2i]:
 
 func _test_courtyard_walls() -> void:
 	print("courtyard")
+	# Il cortile di partenza e l'anello attorno alla cella centrale; nell'arena grande
+	# (D-042) ci sono anche altri punti di interesse Raised, piu lontani.
+	var c := Vector2i(_grid.state.width / 2, _grid.state.height / 2)
+	var r := _run.tuning.wall_ring_radius
+	var ring := 0
 	var raised := 0
 	for y in _grid.state.height:
 		for x in _grid.state.width:
-			if _grid.state.get_state(Vector2i(x, y)) == TerrainState.CellState.RAISED:
-				raised += 1
-	_check(raised == 28, "28 celle di mura (trovate %d)" % raised)
+			if _grid.state.get_state(Vector2i(x, y)) != TerrainState.CellState.RAISED:
+				continue
+			raised += 1
+			if maxi(absi(x - c.x), absi(y - c.y)) == r:
+				ring += 1
+	_check(ring == 28, "28 celle di mura nel cortile di partenza (trovate %d)" % ring)
+	_check(raised > ring, "altri punti di interesse Raised oltre il cortile (%d in tutto)" % raised)
+	var clear := true
+	for y in range(c.y - r + 1, c.y + r):
+		for x in range(c.x - r + 1, c.x + r):
+			clear = clear and _grid.state.get_state(Vector2i(x, y)) == TerrainState.CellState.NORMAL
+	_check(clear, "dentro il cortile tutte le celle sono Normal")
 	var gates_open := true
 	for gate in _gates():
 		gates_open = gates_open and _grid.state.get_state(gate) == TerrainState.CellState.NORMAL
