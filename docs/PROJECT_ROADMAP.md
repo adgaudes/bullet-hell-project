@@ -42,9 +42,12 @@ Principio guida:
   - 6 ottobre 2026: **primo personaggio con scheletro e animazioni** (D-060): l'ingegnere corre, mira, incassa e cade con animazioni CC0 (Quaternius) su un modello a pezzi rigidi generato da script Blender; gambe girate verso la marcia, busto sulla mira. Gate verde. **Resa da giudicare dal proprietario nel playtest**; build non riesportate.
   - 6 ottobre 2026: **MCP for Blender installato e Rigify abilitato** (D-061) per modellare con Blender aperto; Mixamo resta un servizio web da usare con l'account del proprietario quando manca un'animazione.
   - 6 ottobre 2026: **corse laterali e all'indietro, scavo e capriola dell'ingegnere** (D-062), da cinque animazioni Mixamo scaricate dal proprietario e riportate sullo scheletro: la mira resta ferma mentre le gambe seguono la marcia, lo scatto fa la capriola, il tool del terreno un affondo. Gate verde. **Resa da giudicare dal proprietario**; build non riesportate.
+  - 6 ottobre 2026: **spike del terreno a rilievo continuo** (D-063): il proprietario vuole scolpire liberamente montagnette e solchi invece dei blocchi, e una pianta non squadrata. Scena isolata `scenes/spikes/terrain_spike.tscn` funzionante nelle catture e a 120 fps su PC; **lasciata a meta** (tre controlli del campo di percorso da chiarire, prova del proprietario da fare). Il livello a celle resta invariato.
 - **Fasi 4-14:** non iniziate formalmente. Esperimenti tecnici anticipati non equivalgono al superamento dei relativi gate.
 
 **Prossimo passo (in ordine):**
+
+0. **Terreno libero (D-063), ripresa dello spike:** chiudere i tre controlli falliti del campo di percorso, rieseguire catture e misure, far provare la scena al proprietario; solo dopo il suo si scrivere il piano di migrazione del livello vero al rilievo continuo. Dettaglio in `docs/MIGRATION_STATUS.md`.
 
 1. **Specifica della struttura di campagna**: scritta il 5 ottobre 2026 (`docs/CAMPAIGN_STRUCTURE_SPEC.md`, D-041 upgrade di livello e permanenti). **In attesa delle risposte del proprietario** alle 4 domande della sezione 8; senza risposta si procede con le proposte.
 2. **Arena grande giocabile**: fatta il 6 ottobre 2026 (D-042). Restano la misura su Steam Deck e la seconda passata artistica (edifici in rovina, rampicanti, SSAO ed erba), dopo il playtest.
