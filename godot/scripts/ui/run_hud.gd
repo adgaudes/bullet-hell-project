@@ -10,6 +10,8 @@ const XP_COLOR := Color(0.1, 0.85, 0.65)
 const BOSS_COLOR := Color(0.95, 0.6, 0.08)
 ## Distanza della freccia di direzione dal centro dello schermo, in frazione del lato corto.
 const ARROW_RADIUS_RATIO := 0.36
+## Ingombro di una scritta degli indicatori, per non sovrapporle.
+const MARKER_LABEL_SIZE := Vector2(120.0, 20.0)
 
 var _xp_bar: ProgressBar
 var _level_label: Label
@@ -148,6 +150,7 @@ func set_markers(markers: Array[Dictionary]) -> void:
 	var center := size * 0.5
 	# Margini: in alto e in basso ci sono le righe dell'HUD e la barra del boss.
 	var half := Vector2(maxf(center.x - 70.0, 10.0), maxf(center.y - 160.0, 10.0))
+	var placed: Array[Rect2] = []
 	for i in _marker_arrows.size():
 		var shown := i < markers.size()
 		_marker_arrows[i].visible = shown
@@ -167,7 +170,16 @@ func set_markers(markers: Array[Dictionary]) -> void:
 		var label := _marker_labels[i]
 		label.text = "%s %d m" % [marker.text, int(round(marker.distance))]
 		label.add_theme_color_override(&"font_color", marker.color)
-		label.position = spot - direction * 30.0 - Vector2(60.0, 11.0)
+		# Due punti nella stessa direzione: le scritte si impilano verso il centro
+		# invece di sovrapporsi.
+		var rect := Rect2(spot - direction * 30.0 - Vector2(60.0, 11.0), MARKER_LABEL_SIZE)
+		var stack_step := MARKER_LABEL_SIZE.y if spot.y < center.y else -MARKER_LABEL_SIZE.y
+		for attempt in markers.size():
+			if not placed.any(func(other: Rect2) -> bool: return other.intersects(rect)):
+				break
+			rect.position.y += stack_step
+		placed.append(rect)
+		label.position = rect.position
 	_markers_shown = markers.size()
 
 
