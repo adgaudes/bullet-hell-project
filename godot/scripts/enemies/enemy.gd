@@ -6,10 +6,13 @@ extends CharacterBody3D
 ## fermano, gli altri nemici no (li separa lo sterzo del direttore).
 
 signal died(enemy: Enemy)
+## Arrivato al punto della commissione; emesso a ogni passo finche resta li.
+signal errand_reached(enemy: Enemy)
 
 const HEIGHT := 1.0
 const RADIUS := 0.32
 const FLASH_SECONDS := 0.08
+const CARGO_SIZE := 0.36
 
 var health := 2
 var max_health := 2
@@ -20,6 +23,12 @@ var spike_cooldown := 0.0
 var self_driven := false
 ## Raggio in piu rispetto a un rottamatore, per i colpi (corpi grandi).
 var hit_radius_bonus := 0.0
+## Commissione (D-045): il direttore lo porta a `errand_point` invece che dal giocatore.
+var has_errand := false
+var errand_point := Vector3.ZERO
+## Porta un rottame sulla schiena (visibile): se muore lo lascia cadere.
+var carrying_scrap := false
+var _cargo: MeshInstance3D
 var _flash_left := 0.0
 var _body: MeshInstance3D
 var _base_material: Material
@@ -66,6 +75,31 @@ func take_damage(amount: int) -> bool:
 		died.emit(self)
 		return true
 	return false
+
+
+func set_errand(point: Vector3) -> void:
+	has_errand = true
+	errand_point = point
+
+
+func clear_errand() -> void:
+	has_errand = false
+
+
+func set_carrying(value: bool) -> void:
+	carrying_scrap = value
+	if value and _cargo == null:
+		var mesh := BoxMesh.new()
+		mesh.size = Vector3.ONE * CARGO_SIZE
+		var material := StandardMaterial3D.new()
+		material.albedo_color = ScrapField.SCRAP_COLOR.linear_to_srgb()
+		_cargo = MeshInstance3D.new()
+		_cargo.mesh = mesh
+		_cargo.material_override = material
+		_cargo.position.y = 0.36
+		add_child(_cargo)
+	if _cargo != null:
+		_cargo.visible = value
 
 
 ## Passo fisico dei nemici `self_driven`; gli altri li muove il direttore.

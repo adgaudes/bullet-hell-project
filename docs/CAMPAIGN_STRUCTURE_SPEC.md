@@ -53,7 +53,7 @@ Un boss non e una barra di vita grande: e **una pressione che il terreno puo ris
 | **Trivella** | avanza in linea retta e scava da sola un solco che diventa una corsia per l'orda | rialzare celle davanti la devia; usare il suo solco come fossato contro gli altri |
 | **Gru** | solleva e lascia cadere blocchi che diventano celle Raised permanenti | le sue mura si possono usare come copertura o scavare per rottami |
 
-**Implementato il 6 ottobre 2026 (D-043)**, con le barricate alzate dal boss stesso invece che dai rottamatori; dettagli in `PROMISE_A_PROTOTYPE_SPEC.md`, sezione Boss. Il primo boss da prototipare e il Demolitore: usa i sistemi gia esistenti (mura, rottami, campo di percorso) e risponde al "secondo nemico che mette alla prova le mura" della roadmap.
+**Implementato il 6 ottobre 2026 (D-043)**; dallo stesso giorno i rottami delle mura smontate li portano i rottamatori al cantiere della barricata (D-045); dettagli in `PROMISE_A_PROTOTYPE_SPEC.md`, sezione Boss. Il primo boss da prototipare e il Demolitore: usa i sistemi gia esistenti (mura, rottami, campo di percorso) e risponde al "secondo nemico che mette alla prova le mura" della roadmap.
 
 ## 6. Prima campagna minima (*proposta*)
 

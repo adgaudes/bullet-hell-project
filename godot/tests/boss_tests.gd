@@ -6,6 +6,8 @@ const RunScene := preload("res://scenes/main/arena_run.tscn")
 const RAISED := TerrainState.CellState.RAISED
 const NORMAL := TerrainState.CellState.NORMAL
 const LOWERED := TerrainState.CellState.LOWERED
+## Frame entro cui il boss ricontrolla bersagli e rottamatori (Demolisher.RETARGET_SECONDS).
+const RETARGET_FRAMES := 30
 
 var _failures := 0
 var _scene: Node3D
@@ -112,10 +114,13 @@ func _test_call_and_arrival() -> void:
 	_check(_boss.health == _run.tuning.boss_health, "vita %d" % _boss.health)
 
 
-## Un terrapieno entro il raggio lo attira piu del giocatore; ogni due mura
-## smontate nasce una barricata fra lui e il giocatore.
+## Un terrapieno entro il raggio lo attira piu del giocatore; ogni muro smontato
+## lascia un rottame, che i rottamatori portano al cantiere: ogni due nasce una
+## barricata fra lui e il giocatore (D-045).
 func _test_walls_attract_and_feed_barricades() -> void:
 	print("walls and barricades")
+	var companion: Companion = _scene.get_node(^"Companion")
+	companion.set_physics_process(false)
 	_place_player(Vector3.ZERO)
 	_place_boss(Vector3(4.8, 0.0, -17.0))
 	var raised_before := _count(RAISED)
@@ -131,13 +136,57 @@ func _test_walls_attract_and_feed_barricades() -> void:
 	_check(first_frame >= 0, "raggiunge un terrapieno del cortile e lo smonta (frame %d)" % first_frame)
 	_check(first_cell.x >= 0 and _grid.state.get_state(first_cell) == NORMAL, "la cella smontata torna Normal")
 	_check(_boss.barricades.is_empty(), "un solo muro non basta per una barricata")
-	_check(_scrap.count() == 0, "smontare non lascia rottami al giocatore")
+	_check(_scrap.count() == 1, "il muro smontato lascia un rottame a terra")
 	for i in 900:
 		await physics_frame
 		if _boss.walls_demolished >= 2:
 			break
-	_check(_boss.walls_demolished >= 2, "smonta un secondo muro")
-	_check(_boss.barricades.size() == 1, "due mura smontate: una barricata (%d)" % _boss.barricades.size())
+	# Fermo dov'e: i controlli che seguono riguardano solo i rottamatori.
+	_boss.speed = 0.0
+	_boss.velocity = Vector3.ZERO
+	_boss.wall_attraction_radius = 0.0
+	_check(_boss.walls_demolished == 2, "smonta un secondo muro")
+	_check(_scrap.count() == 2 and _boss.barricades.is_empty() and _boss.crew_size() == 0,
+		"senza rottamatori i rottami restano a terra e non nasce nessuna barricata")
+
+	var scraps := _scrap.positions_near(_boss.global_position, _boss.carrier_scrap_radius)
+	_check(scraps.size() == 2, "i due rottami sono alla portata dei suoi rottamatori")
+	if scraps.size() < 2:
+		return
+	# I rottamatori consegnano e poi tornano dal giocatore: qui non deve morire.
+	_player._invulnerable_left = 600.0
+	var first := _director.spawn_at(scraps[0] + Vector3(0.7, 0.0, 0.7))
+	await _frames(RETARGET_FRAMES)
+	_check(first.has_errand and _boss.crew_size() == 1, "un rottamatore vicino lascia il giocatore e va al rottame")
+	for i in 600:
+		await physics_frame
+		if first.carrying_scrap:
+			break
+	_check(first.carrying_scrap and _scrap.count() == 1, "lo raccoglie e lo porta addosso")
+	var site := _boss.site_cell()
+	_check(site.x >= 0 and _grid.state.get_state(site) == NORMAL, "il boss sceglie un cantiere su una cella Normal")
+	first.take_damage(first.health)
+	await _frames(2)
+	_check(_scrap.count() == 2 and _boss.crew_size() == 0, "abbattuto mentre e carico, lascia cadere il rottame")
+
+	var haulers: Array[Enemy] = []
+	for position in _scrap.positions_near(_boss.global_position, _boss.carrier_scrap_radius):
+		haulers.append(_director.spawn_at(position + Vector3(0.7, 0.0, 0.7)))
+	for i in 1500:
+		await physics_frame
+		if _boss.barricades.size() >= 1:
+			break
+	_check(_boss.barricades.size() == 1, "due rottami consegnati al cantiere: una barricata (%d)" % _boss.barricades.size())
+	_check(_scrap.count() == 0 and _boss.site_scrap() == 0, "i rottami sono finiti nella barricata")
+	_check(haulers.all(func(e: Enemy) -> bool: return not e.has_errand and not e.carrying_scrap),
+		"consegnato il rottame, tornano a inseguire il giocatore")
+	for hauler in haulers:
+		_director.enemies.erase(hauler)
+		hauler.queue_free()
+	_boss.speed = _run.tuning.boss_speed
+	_boss.wall_attraction_radius = _run.tuning.boss_wall_attraction_radius
+	companion.set_physics_process(true)
+	_player._invulnerable_left = 0.0
 	if _boss.barricades.size() == 1:
 		var cell: Vector2i = _boss.barricades.keys()[0]
 		var center := _cell_world(cell)

@@ -58,6 +58,30 @@ func nearest(origin: Vector3, radius: float) -> Variant:
 	return best
 
 
+## Posizioni dei rottami entro [param radius] (piano XZ) da [param origin].
+func positions_near(origin: Vector3, radius: float) -> Array[Vector3]:
+	var result: Array[Vector3] = []
+	for scrap in _scraps:
+		if _planar_distance(scrap.global_position, origin) <= radius:
+			result.append(scrap.global_position)
+	return result
+
+
+## Rottame sopra la cella, alla quota della sua superficie.
+func spawn_on_cell(cell: Vector2i, cell_state: TerrainState.CellState) -> void:
+	# cell_local_position e il centro a meta altezza: la superficie e al doppio.
+	var local := grid.cell_local_position(cell, cell_state)
+	local.y = local.y * 2.0 + SCRAP_SIZE
+	spawn(grid.to_global(local))
+
+
+## Rottame lasciato cadere in un punto qualunque: resta li, alla quota del terreno sotto.
+func spawn_on_ground(world: Vector3) -> void:
+	var cell := grid.cell_at(world)
+	var surface := grid.to_global(grid.cell_local_position(cell, grid.cell_state_at(world)))
+	spawn(Vector3(world.x, surface.y * 2.0 - grid.global_position.y + SCRAP_SIZE, world.z))
+
+
 ## Rimuove fino a [param max_count] rottami entro [param radius]; restituisce quanti.
 func take_near(origin: Vector3, radius: float, max_count: int) -> int:
 	var taken := 0
@@ -83,10 +107,7 @@ func _process(delta: float) -> void:
 func _on_command_applied(cell: Vector2i, mode: TerrainState.ToolMode, new_state: TerrainState.CellState) -> void:
 	if mode != TerrainState.ToolMode.DIG:
 		return
-	# cell_local_position e il centro a meta altezza: la superficie e al doppio.
-	var local := grid.cell_local_position(cell, new_state)
-	local.y = local.y * 2.0 + SCRAP_SIZE
-	spawn(grid.to_global(local))
+	spawn_on_cell(cell, new_state)
 
 
 static func _planar_distance(a: Vector3, b: Vector3) -> float:

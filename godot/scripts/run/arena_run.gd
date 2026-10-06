@@ -227,6 +227,11 @@ func _spawn_boss() -> void:
 	boss.wall_attraction_radius = tuning.boss_wall_attraction_radius
 	boss.walls_per_barricade = tuning.boss_walls_per_barricade
 	boss.max_barricades = tuning.boss_max_barricades
+	boss.scrap_field = companion.scrap_field if companion != null else null
+	boss.max_carriers = tuning.boss_max_carriers
+	boss.carrier_scrap_radius = tuning.boss_carrier_scrap_radius
+	boss.carrier_recruit_radius = tuning.boss_carrier_recruit_radius
+	boss.carrier_timeout = tuning.boss_carrier_timeout
 	var point := _boss_spawn_point()
 	director.add_enemy(boss, Vector3(point.x, Demolisher.boss_spawn_height(), point.z))
 	boss.rotation.y = atan2(boss_direction.x, boss_direction.z)

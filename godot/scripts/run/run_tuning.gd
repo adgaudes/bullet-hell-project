@@ -73,6 +73,14 @@ extends Resource
 ## Mura smontate per costruire una barricata, e barricate in piedi al massimo.
 @export var boss_walls_per_barricade := 2
 @export var boss_max_barricades := 8
+## Rottamatori che lavorano per lui allo stesso tempo (D-045): raccolgono i rottami
+## entro `boss_carrier_scrap_radius` da lui e li portano al cantiere della barricata.
+@export var boss_max_carriers := 3
+@export var boss_carrier_scrap_radius := 10.0
+## Un rottamatore e reclutabile se e entro questa distanza dal rottame.
+@export var boss_carrier_recruit_radius := 14.0
+## Secondi dopo i quali un rottamatore bloccato lascia la commissione (e il rottame).
+@export var boss_carrier_timeout := 10.0
 ## Rottami in piu portati fuori dal livello battendo il boss.
 @export var boss_scrap_bonus := 5
 ## Quota dei rottami che si salva morendo (proposta della specifica di campagna).

@@ -16,6 +16,8 @@ const SEPARATION_WEIGHT := 1.6
 ## Sotto questa distanza dal giocatore si punta dritto, senza waypoint.
 const DIRECT_CHASE_DISTANCE := 1.8
 const ACCELERATION := 18.0
+## Distanza planare a cui una commissione (Enemy.errand_point) e raggiunta.
+const ERRAND_REACH := 0.9
 
 @export var tuning: RunTuning
 @export var player: PlayerCharacter
@@ -173,15 +175,23 @@ func _move_enemies(delta: float) -> void:
 			continue
 		var pos := enemy.global_position
 		var to_player := _planar(player.global_position - pos)
-		if to_player.length() > tuning.enemy_leash_distance and _leash(enemy):
-			continue
 		var direction := Vector3.ZERO
-		if to_player.length() > DIRECT_CHASE_DISTANCE and path_field != null:
-			var waypoint: Variant = path_field.next_waypoint(pos)
-			if waypoint != null:
-				direction = _planar(waypoint - pos).normalized()
-		if direction.is_zero_approx():
-			direction = to_player.normalized()
+		if enemy.has_errand:
+			# Commissione del boss (D-045): dritto al punto, senza guinzaglio.
+			var to_errand := _planar(enemy.errand_point - pos)
+			if to_errand.length() <= ERRAND_REACH:
+				enemy.errand_reached.emit(enemy)
+			else:
+				direction = to_errand.normalized()
+		else:
+			if to_player.length() > tuning.enemy_leash_distance and _leash(enemy):
+				continue
+			if to_player.length() > DIRECT_CHASE_DISTANCE and path_field != null:
+				var waypoint: Variant = path_field.next_waypoint(pos)
+				if waypoint != null:
+					direction = _planar(waypoint - pos).normalized()
+			if direction.is_zero_approx():
+				direction = to_player.normalized()
 		direction += _separation(enemy, buckets) * SEPARATION_WEIGHT
 		var speed := tuning.enemy_speed
 		if grid != null and grid.cell_state_at(pos) == TerrainState.CellState.LOWERED:

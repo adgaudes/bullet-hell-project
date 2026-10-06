@@ -1,7 +1,8 @@
 extends SceneTree
 ## Catture del boss (D-043), non e una suite. Con finestra reale:
 ##   godot_console --path godot --resolution 1280x800 --fixed-fps 60 --script res://tests/tools/capture_boss.gd -- --out=../output/boss
-## Produce: warning (annuncio con freccia), boss (Demolitore al cortile con barricata), victory.
+## Produce: warning (annuncio con freccia), crew (rottamatore carico e cantiere, D-045),
+## boss (Demolitore al cortile con barricata), victory.
 
 var _out := "../output/boss"
 
@@ -28,10 +29,17 @@ func _initialize() -> void:
 		await physics_frame
 	var boss := run.boss
 	boss.global_position = Vector3(4.8, Demolisher.boss_spawn_height(), -17.0)
-	for i in 2400:
+	var crew_saved := false
+	for i in 3600:
 		player.set_max_health(5)
 		player._invulnerable_left = 1.0
 		await physics_frame
+		# Qualche rottamatore attorno al boss, come farebbe l'orda.
+		if i % 120 == 0 and director.enemies.size() < 6:
+			director.spawn_at(boss.global_position + Vector3(3.0, 0.0, 2.0))
+		if not crew_saved and boss.site_cell().x >= 0 				and director.enemies.any(func(e: Enemy) -> bool: return e.carrying_scrap):
+			crew_saved = true
+			await _save("crew")
 		if boss.barricades.size() >= 1 and boss.is_demolishing():
 			break
 	await _save("boss")

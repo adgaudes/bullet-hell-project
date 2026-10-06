@@ -205,7 +205,8 @@ Nessuno di questi passi e stato eseguito.
 - Avvio rapido del boss: `-- --boss-at=60`. Catture in `output/boss/`.
 - Indicatori a bordo schermo (D-044): `ArenaRun.current_markers()` e `RunHud.set_markers()`.
 - Build Windows e Linux riesportate il 6 ottobre 2026 dopo boss e indicatori; smoke test della build Windows superato, Linux non eseguita.
-- **Non fatto:** bilanciamento, audio, Officina e profilo permanente, rottamatori che trasportano i rottami, Steam Deck.
+- Rottamatori al lavoro (D-045): `Enemy.set_errand()` / `errand_reached`, seguiti dall'`EnemyDirector` al posto del giocatore; `Demolisher` gestisce squadra (`_crew`), cantiere (`site_cell()`) e consegne; `ScrapField.positions_near()`, `spawn_on_cell()`, `spawn_on_ground()`. Cattura `output/boss/crew.png`.
+- **Non fatto:** bilanciamento, Officina e profilo permanente, Steam Deck.
 
 ## Da non dimenticare
 

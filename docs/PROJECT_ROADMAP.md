@@ -28,6 +28,7 @@ Principio guida:
   - 6 ottobre 2026: **arena grande giocabile** (D-042): `arena_run.tscn` e ora un quartiere in rovina di 204x204 m con griglia terreno unica 85x85 presentata a lotti (MultiMesh, collisione solo sulle Raised), cortile di partenza, sei cortili secondari in quattro varianti, dieci depositi di rottami, quattro trincee, rovine basse, perimetro di torri. 13 suite verdi, misure su PC in D-042. **Steam Deck non misurato.** Build non riesportate.
   - 6 ottobre 2026: **primo boss, il Demolitore, e fine del livello** (D-043): chiamata a 12 minuti con direzione annunciata, boss che smonta i terrapieni e li trasforma in barricate, barra vita, schermata "Livello completato" con i rottami portati fuori. 14 suite verdi. Valori non bilanciati. **C'e ora un livello completo da giocare.**
   - 6 ottobre 2026: **indicatori a bordo schermo** per cortili, depositi di rottami e boss (D-044); **build Windows e Linux riesportate**, smoke test della build Windows superato.
+  - 6 ottobre 2026, rifiniture del livello in attesa del playtest (scelta del proprietario): **i rottamatori portano i rottami del Demolitore al cantiere della barricata** (D-045): rottami contesi con il compagno, portatori da abbattere, cantiere visibile da sabotare. 14 suite verdi.
 - **Fasi 4-14:** non iniziate formalmente. Esperimenti tecnici anticipati non equivalgono al superamento dei relativi gate.
 
 **Prossimo passo (in ordine):**
