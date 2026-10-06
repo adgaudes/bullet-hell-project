@@ -89,6 +89,8 @@ Senza risposta, l'agente procede con le proposte cosi come sono.
 
 ## 9. Conseguenze tecniche
 
+**Stato (6 ottobre 2026, D-049):** profilo permanente e Officina sono implementati con le proposte delle sezioni 3 e 8 (rottami come valuta, meta alla morte). Scostamenti dai punti sotto: catalogo separato `PermanentCatalog` al posto del campo `permanent`; Officina come pannello sopra la schermata di fine livello; `ArenaRun` non rinominato; mappa di campagna rimandata al secondo livello.
+
 - `RunProgression` resta per gli upgrade di livello; serve un **profilo permanente** salvato su disco (`user://`), con gli upgrade permanenti e i livelli sbloccati, separato dalle impostazioni gia salvate.
 - `ArenaRun` diventa `Level`: riceve il profilo, applica gli upgrade permanenti all'avvio, consegna i rottami all'uscita.
 - Una scena per livello, piu una scena Officina e una mappa di campagna.

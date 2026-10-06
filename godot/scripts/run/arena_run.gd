@@ -45,6 +45,8 @@ const BOSS_DIRECTIONS := [
 @export var hud: RunHud
 @export var level_up_menu: LevelUpMenu
 @export var game_over: GameOverPanel
+## Officina fra i livelli (D-049); opzionale.
+@export var workshop: WorkshopPanel
 
 var progression := RunProgression.new()
 var elapsed := 0.0
@@ -64,6 +66,9 @@ var _pending_level_ups := 0
 ## Punti di interesse ancora da indicare: { center: Vector3, text: String, color: Color, kind: StringName }.
 var _marker_targets: Array[Dictionary] = []
 var _marker_refresh_left := 0.0
+## Profilo permanente (autoload PlayerProfile); null se la scena gira senza.
+var _profile: PlayerProfileService
+var _death_scrap_share := 0.0
 
 
 func _ready() -> void:
@@ -86,6 +91,8 @@ func _ready() -> void:
 	weapon.damage = tuning.weapon_damage
 	weapon.projectile_speed = tuning.projectile_speed
 	xp_field.player_radius = tuning.pickup_radius
+	_death_scrap_share = tuning.death_scrap_share
+	_apply_permanent_upgrades()
 	_build_terrain_layout()
 
 	player.health_changed.connect(hud.set_health)
@@ -94,6 +101,10 @@ func _ready() -> void:
 	xp_field.collected.connect(_on_xp_collected)
 	level_up_menu.chosen.connect(_on_upgrade_chosen)
 	game_over.restart_requested.connect(restart)
+	if workshop != null:
+		game_over.workshop_requested.connect(workshop.open)
+		# Tornando dall'Officina il passo successivo e ripartire.
+		workshop.closed.connect(game_over.focus_default.bind(false))
 	grid.command_applied.connect(_on_terrain_command)
 	hud.set_health(player.health, player.max_health)
 	_refresh_xp()
@@ -269,7 +280,7 @@ func scrap_out(victory: bool) -> int:
 	var carried := companion.carried if companion != null else 0
 	if victory:
 		return carried + tuning.boss_scrap_bonus
-	return int(floor(carried * tuning.death_scrap_share))
+	return int(floor(carried * _death_scrap_share))
 
 
 func _on_boss_died(_enemy: Enemy) -> void:
@@ -286,7 +297,52 @@ func _on_boss_died(_enemy: Enemy) -> void:
 	print("PROTOTYPE01_LEVEL_COMPLETE time=%.1f level=%d kills=%d scrap=%d seed=%d"
 		% [elapsed, progression.level, director.kills, scrap, run_seed])
 	level_completed.emit()
-	game_over.open(elapsed, progression.level, director.kills, true, scrap)
+	game_over.open(elapsed, progression.level, director.kills, true, scrap, _bank(scrap, true))
+
+
+# --- Profilo permanente e Officina (D-049) ------------------------------------------
+
+## Upgrade permanenti comprati in Officina: valgono dall'inizio di ogni livello.
+func _apply_permanent_upgrades() -> void:
+	_profile = get_node_or_null(^"/root/PlayerProfile") as PlayerProfileService
+	if _profile == null:
+		return
+	var applied: PackedStringArray = []
+	for entry in PermanentCatalog.all():
+		var id: StringName = entry.id
+		var owned := _profile.level_of(id)
+		if owned <= 0:
+			continue
+		applied.append("%s=%d" % [id, owned])
+		match id:
+			&"tool_reach":
+				player.tool_range_bonus_cm = grid.cell_size_m() * 100.0 * owned
+			&"base_health":
+				player.set_max_health(tuning.player_max_health + owned)
+			&"reflexes":
+				player.invulnerability_seconds += 0.2 * owned
+			&"cargo":
+				if companion != null:
+					companion.add_capacity(2 * owned)
+			&"stock":
+				if companion != null:
+					companion.add_capacity(0, 2 * owned)
+			&"fixed_turret":
+				if companion != null:
+					# Conta come primo livello della carta: al level-up si puo solo migliorare.
+					apply_upgrade(&"companion_turret", progression.choose(&"companion_turret"))
+			&"salvage":
+				_death_scrap_share = maxf(_death_scrap_share, 0.75)
+	if not applied.is_empty():
+		print("PROTOTYPE01_PERMANENT_APPLIED %s" % ",".join(applied))
+
+
+## Incassa i rottami nel profilo; restituisce il totale in Officina, -1 senza profilo.
+func _bank(scrap: int, victory: bool) -> int:
+	if _profile == null:
+		return -1
+	_profile.bank_run(scrap, victory)
+	return _profile.scrap
 
 
 ## Disposizione iniziale del terreno: i punti di interesse dell'arena grande,
@@ -408,7 +464,8 @@ func _upgrade_companion_turret(new_level: int) -> void:
 		companion_weapon.weapon_range = 8.0
 		companion_weapon.damage = tuning.weapon_damage
 		companion_weapon.projectile_speed = tuning.projectile_speed
-		get_parent().add_child(companion_weapon)
+		# Differito: con la Torretta fissa (D-049) succede durante il _ready della scena.
+		get_parent().add_child.call_deferred(companion_weapon)
 		companion.mount_part(&"TurretPart", _turret_part())
 	else:
 		companion_weapon.fire_interval /= 1.35
@@ -525,7 +582,7 @@ func _on_player_died() -> void:
 	var scrap := scrap_out(false)
 	print("PROTOTYPE01_PLAYER_DIED time=%.1f level=%d kills=%d scrap=%d seed=%d"
 		% [elapsed, progression.level, director.kills, scrap, run_seed])
-	game_over.open(elapsed, progression.level, director.kills, false, scrap)
+	game_over.open(elapsed, progression.level, director.kills, false, scrap, _bank(scrap, false))
 
 
 static func _boss_call_from_command_line(default_seconds: float) -> float:

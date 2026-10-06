@@ -20,6 +20,7 @@ run/max_fps=120
 
 GameSettings="*res://scripts/services/game_settings.gd"
 PauseMenu="*res://scenes/ui/pause_menu.tscn"
+PlayerProfile="*res://scripts/services/player_profile.gd"
 
 [display]
 

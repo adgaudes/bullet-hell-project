@@ -49,6 +49,8 @@ var health := 0
 var invulnerability_seconds := 0.8
 ## Moltiplicatore permanente della velocita (upgrade), combinato col terreno.
 var speed_bonus := 1.0
+## Portata in piu del tool, in centimetri Unreal (upgrade permanente Prolunga, D-049).
+var tool_range_bonus_cm := 0.0
 var _invulnerable_left := 0.0
 
 var _movement := PlanarMovement.new()
@@ -190,7 +192,7 @@ func _update_terrain_target() -> void:
 	if forward.is_zero_approx():
 		terrain_grid.hide_preview()
 		return
-	terrain_target = global_position + forward.normalized() * UnrealSpace.length(maxf(tuning.terrain_tool_range_cm, 100.0))
+	terrain_target = global_position + forward.normalized() * UnrealSpace.length(maxf(tuning.terrain_tool_range_cm, 100.0) + tool_range_bonus_cm)
 	var missing_scrap := terrain_tool_mode == TerrainState.ToolMode.RAISE 		and companion != null and not companion.can_supply(terrain_target)
 	terrain_grid.update_preview(terrain_target, terrain_tool_mode, self, missing_scrap)
 

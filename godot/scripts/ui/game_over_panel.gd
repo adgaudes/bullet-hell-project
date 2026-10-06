@@ -1,9 +1,10 @@
 class_name GameOverPanel
 extends CanvasLayer
 ## Fine livello: sconfitta (D-038) o vittoria sul boss (D-043), riepilogo e ripartenza.
-## L'Officina fra i livelli arrivera dopo: i rottami portati fuori sono solo mostrati.
+## Da qui si entra nell'Officina (D-049) per spendere i rottami portati fuori.
 
 signal restart_requested
+signal workshop_requested
 
 const INPUT_GRACE_SECONDS := 0.8
 
@@ -12,6 +13,7 @@ var is_victory := false
 var _overlay: ColorRect
 var _title: Label
 var _summary: Label
+var _workshop: Button
 var _restart: Button
 var _quit: Button
 
@@ -39,6 +41,8 @@ func _ready() -> void:
 	_summary.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_summary.add_theme_font_size_override(&"font_size", 22)
 	column.add_child(_summary)
+	_workshop = _button(column, "Officina")
+	_workshop.pressed.connect(func() -> void: workshop_requested.emit())
 	_restart = _button(column, "Ricomincia")
 	_restart.pressed.connect(func() -> void: restart_requested.emit())
 	_quit = _button(column, "Esci")
@@ -46,21 +50,31 @@ func _ready() -> void:
 	_overlay.hide()
 
 
-func open(seconds: float, level: int, kills: int, victory := false, scrap := 0) -> void:
+## [param banked]: rottami in Officina dopo questo livello; negativo = non mostrato.
+func open(seconds: float, level: int, kills: int, victory := false, scrap := 0, banked := -1) -> void:
 	is_open = true
 	is_victory = victory
 	_title.text = "LIVELLO COMPLETATO" if victory else "ROTTAMATO"
 	_overlay.color = Color(0.02, 0.05, 0.03, 0.85) if victory else Color(0.05, 0.01, 0.01, 0.85)
 	_summary.text = "Tempo %s\nLivello %d\nRottamatori abbattuti %d\nRottami portati fuori %d" \
 		% [RunHud.format_time(seconds), level, kills, scrap]
+	if banked >= 0:
+		_summary.text += "\nRottami in Officina %d" % banked
 	get_tree().paused = true
 	_overlay.show()
-	_restart.disabled = true
-	_quit.disabled = true
+	for button: Button in [_workshop, _restart, _quit]:
+		button.disabled = true
 	get_tree().create_timer(INPUT_GRACE_SECONDS, true).timeout.connect(func() -> void:
-		_restart.disabled = false
-		_quit.disabled = false
-		_restart.grab_focus())
+		for button: Button in [_workshop, _restart, _quit]:
+			button.disabled = false
+		focus_default())
+
+
+## Fuoco sul pulsante da cui ripartire: l'Officina se c'e qualcosa da spendere.
+func focus_default(prefer_workshop := true) -> void:
+	if not is_open:
+		return
+	(_workshop if prefer_workshop else _restart).grab_focus()
 
 
 func _button(parent: Control, text: String) -> Button:

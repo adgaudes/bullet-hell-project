@@ -41,6 +41,7 @@ const SOUND_SETTINGS: Dictionary[StringName, Array] = {
 @export var companion: Companion
 @export var level_up_menu: LevelUpMenu
 @export var run: ArenaRun
+@export var workshop: WorkshopPanel
 
 ## Riproduzioni andate a buon fine per id (per i test: in headless non si sente nulla).
 var play_counts: Dictionary[StringName, int] = {}
@@ -150,6 +151,9 @@ func _connect_signals() -> void:
 	if level_up_menu != null:
 		level_up_menu.opened.connect(play.bind(&"level_up", 0.0))
 		level_up_menu.chosen.connect(_on_upgrade_chosen)
+	if workshop != null:
+		workshop.purchased.connect(func(_id: StringName) -> void: play(&"upgrade_chosen"))
+		workshop.rejected.connect(func(_id: StringName) -> void: play(&"tool_reject"))
 	if run != null:
 		run.boss_called.connect(_on_boss_called)
 		run.boss_spawned.connect(_on_boss_spawned)

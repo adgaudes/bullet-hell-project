@@ -75,7 +75,7 @@ Il livello si chiude con un boss (`scripts/enemies/demolisher.gd`), come da `CAM
 - **Arrivo**: entra a 30 m dal giocatore dalla direzione annunciata; in basso compare la sua barra vita. L'orda continua.
 - **Regola col terreno**: i terrapieni entro 12 m lo attirano piu di te. Li smonta in 1,2 s (la lama martella). Ogni muro smontato lascia un **rottame** a terra.
 - **Rottamatori al lavoro** (D-045): fino a 3 rottamatori vicini smettono di inseguirti, raccolgono i rottami entro 10 m dal boss (anche i tuoi) e li portano, con un cubo color ruggine sulla schiena, al **cantiere**: una lastra arancione a due celle dal boss verso di te. Ogni due rottami consegnati li si alza una **barricata** scura, che ferma i tuoi chiodi. Senza rottamatori, niente barricate.
-- **Fine**: alla sua morte l'orda si ritira e compare "Livello completato" con i rottami portati fuori (quelli nel cassone del compagno piu 5). Morendo se ne salva la meta. Per ora il numero e solo mostrato: l'Officina non esiste ancora.
+- **Fine**: alla sua morte l'orda si ritira e compare "Livello completato" con i rottami portati fuori (quelli nel cassone del compagno piu 5). Morendo se ne salva la meta. I rottami vanno nel profilo e si spendono in Officina (D-049).
 
 | Mossa | Vantaggio | Costo o pericolo |
 |---|---|---|
@@ -101,9 +101,32 @@ Domande di playtest in piu:
 
 Marker: `PROTOTYPE01_BOSS_CALLED`, `PROTOTYPE01_BOSS_SPAWNED`, `PROTOTYPE01_BOSS_DEMOLISH_START`, `PROTOTYPE01_BOSS_WALL_DEMOLISHED`, `PROTOTYPE01_BOSS_BARRICADE`, `PROTOTYPE01_BOSS_BARRICADE_DOWN`, `PROTOTYPE01_BOSS_SITE`, `PROTOTYPE01_BOSS_SCRAP_TAKEN`, `PROTOTYPE01_BOSS_SCRAP_DELIVERED`, `PROTOTYPE01_BOSS_SCRAP_DROPPED`, `PROTOTYPE01_LEVEL_COMPLETE`.
 
+## Officina e profilo permanente (D-049, 6 ottobre 2026)
+
+A fine livello, vinto o perso, i rottami portati fuori vanno nel profilo (`user://profile.cfg`, su Windows `%APPDATA%\Godot\app_userdata\Prototype01\profile.cfg`; per ripartire da zero basta cancellarlo). La schermata di fine livello ha il pulsante **Officina**: 7 upgrade permanenti definiti in `scripts/progression/permanent_catalog.gd`, con costo in rottami per livello.
+
+| Upgrade | Livelli e costi | Effetto dal livello successivo |
+|---|---|---|
+| Prolunga | 6, 14 | il tool arriva una cella piu lontano |
+| Telaio rinforzato | 4, 8, 14 | +1 punto vita |
+| Riflessi da officina | 5, 10 | +0,2 s di invulnerabilita dopo un colpo |
+| Cassone saldato | 4, 8, 12 | il compagno porta 2 rottami in piu |
+| Scorta | 3, 7 | il compagno parte con 2 rottami in piu |
+| Torretta fissa | 18 | il compagno parte con la chiodatrice montata |
+| Paracadute per rottami | 10 | morendo si salvano tre quarti del cassone |
+
+**Costi non bilanciati.** L'Officina si raggiunge solo dalla schermata di fine livello: manca un menu iniziale.
+
+Domande di playtest in piu:
+
+15. Dopo la prima run, in Officina c'era qualcosa che volevi e potevi quasi permetterti? I prezzi sono un obiettivo o un muro?
+16. Un upgrade permanente ha cambiato come hai giocato il livello dopo, o solo i numeri?
+
+Marker: `PROTOTYPE01_PROFILE_BANKED`, `PROTOTYPE01_PERMANENT_BOUGHT`, `PROTOTYPE01_PERMANENT_APPLIED`.
+
 ## Fuori scope
 
-Officina e profilo permanente, obiettivi di livello, altri tipi di nemico, musica e audio definitivo (gli effetti sintetizzati di D-048 sono un segnaposto), bilanciamento fine, prestazioni su Steam Deck (da misurare), menu iniziale.
+Menu iniziale e mappa di campagna, obiettivi di livello, altri tipi di nemico, musica e audio definitivo (gli effetti sintetizzati di D-048 sono un segnaposto), bilanciamento fine, prestazioni su Steam Deck (da misurare), menu iniziale.
 
 ## Marker diagnostici
 
