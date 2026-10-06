@@ -35,9 +35,9 @@ var _base_material: Material
 var _flash_material: Material
 
 
-## [param meshes]: corpo e occhi condivisi; [param materials]: base, occhi, lampo.
-func setup(hp: int, body_mesh: Mesh, eye_mesh: Mesh, base_material: Material,
-		eye_material: Material, flash_material: Material) -> void:
+## Mesh e materiali condivisi da tutta l'orda. Il modello (`scavenger`) ha una sola
+## superficie: scafo, visiera luminosa e chele sono colori di vertice.
+func setup(hp: int, body_mesh: Mesh, base_material: Material, flash_material: Material) -> void:
 	health = hp
 	max_health = hp
 	collision_layer = 16
@@ -53,14 +53,9 @@ func setup(hp: int, body_mesh: Mesh, eye_mesh: Mesh, base_material: Material,
 	_body = MeshInstance3D.new()
 	_body.mesh = body_mesh
 	_body.material_override = base_material
-	_body.position.y = -0.15
+	# Origine del modello a terra, quella del nemico al centro della capsula.
+	_body.position.y = -HEIGHT * 0.5
 	add_child(_body)
-	var eyes := MeshInstance3D.new()
-	eyes.mesh = eye_mesh
-	eyes.material_override = eye_material
-	eyes.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	eyes.position = Vector3(0.0, 0.0, -0.36)
-	add_child(eyes)
 
 
 ## Restituisce true se il colpo lo uccide.
@@ -96,7 +91,8 @@ func set_carrying(value: bool) -> void:
 		_cargo = MeshInstance3D.new()
 		_cargo.mesh = mesh
 		_cargo.material_override = material
-		_cargo.position.y = 0.36
+		# Sul portapacchi del modello (0,66 m da terra).
+		_cargo.position = Vector3(0.0, 0.35, 0.06)
 		add_child(_cargo)
 	if _cargo != null:
 		_cargo.visible = value

@@ -7,7 +7,7 @@ extends CharacterBody3D
 
 signal carried_changed(carried: int)
 
-## Lineari: cassone chiaro, striscia gialla anteriore, rottami color ruggine.
+## Lineari: carrozzeria chiara, striscia gialla anteriore, rottami color ruggine.
 const BODY_COLOR := Color(0.75, 0.75, 0.68)
 const STRIPE_COLOR := Color(1.0, 0.78, 0.05)
 const CARGO_SIZE := 0.22
@@ -160,12 +160,14 @@ func _assist_against_hazard() -> void:
 
 
 func _build_visuals() -> void:
-	var body_material := StandardMaterial3D.new()
-	body_material.albedo_color = BODY_COLOR.linear_to_srgb()
-	($Body as MeshInstance3D).material_override = body_material
+	# Modello `companion_cart` (tools/blender/build_actor_assets.py): la carrozzeria e
+	# "vernice" tinta con BODY_COLOR, la striscia del muso e la superficie `stripe`.
 	var stripe_material := StandardMaterial3D.new()
 	stripe_material.albedo_color = STRIPE_COLOR.linear_to_srgb()
-	($Stripe as MeshInstance3D).material_override = stripe_material
+	ActorModel.apply_materials(ActorModel.mesh_instance_of($Model), {
+		"detail": ActorModel.paint_material(BODY_COLOR, 2.5),
+		"stripe": stripe_material,
+	})
 
 	var cargo_mesh := BoxMesh.new()
 	cargo_mesh.size = Vector3.ONE * CARGO_SIZE
@@ -182,7 +184,7 @@ func _add_cargo_slots(count: int) -> void:
 		var cube := MeshInstance3D.new()
 		cube.mesh = _cargo_mesh
 		cube.material_override = _cargo_material
-		# Due file sopra il cassone.
+		# Due file sul pianale del cassone (0,30 m sopra l'origine nel modello).
 		cube.position = Vector3((i % 2) * 0.28 - 0.14, 0.42 + (i / 2) * 0.24, 0.1)
 		add_child(cube)
 		_cargo.append(cube)

@@ -1,16 +1,11 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://scripts/companion/companion.gd" id="1_companion"]
 [ext_resource type="Resource" path="res://resources/tuning/companion_default.tres" id="2_tuning"]
+[ext_resource type="PackedScene" path="res://assets/models/companion_cart.glb" id="3_model"]
 
 [sub_resource type="BoxShape3D" id="BoxShape_companion"]
 size = Vector3(0.8, 0.6, 1.0)
-
-[sub_resource type="BoxMesh" id="BoxMesh_body"]
-size = Vector3(0.8, 0.6, 1.0)
-
-[sub_resource type="BoxMesh" id="BoxMesh_stripe"]
-size = Vector3(0.82, 0.12, 0.1)
 
 [node name="Companion" type="CharacterBody3D"]
 collision_layer = 8
@@ -20,9 +15,5 @@ tuning = ExtResource("2_tuning")
 [node name="Collision" type="CollisionShape3D" parent="."]
 shape = SubResource("BoxShape_companion")
 
-[node name="Body" type="MeshInstance3D" parent="."]
-mesh = SubResource("BoxMesh_body")
-
-[node name="Stripe" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.1, -0.47)
-mesh = SubResource("BoxMesh_stripe")
+[node name="Model" parent="." instance=ExtResource("3_model")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.3, 0)

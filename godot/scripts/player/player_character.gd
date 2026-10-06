@@ -22,7 +22,6 @@ enum AimDevice { GAMEPAD, MOUSE }
 const STARTED_ACTIONS: Array[StringName] = [&"dash", &"terrain_tool", &"terrain_mode"]
 
 const BODY_COLOR_LINEAR := Color(1.0, 0.35, 0.02)
-const FACING_INDICATOR_COLOR_LINEAR := Color(0.0, 0.8, 1.0)
 const HIT_COLOR_LINEAR := Color(1.0, 0.02, 0.02)
 const HIT_FLASH_SECONDS := 0.3
 
@@ -66,8 +65,9 @@ var _body_material := StandardMaterial3D.new()
 var _base_body_scale := Vector3.ONE
 var _hit_flash_left := 0.0
 
-@onready var _body: MeshInstance3D = $Body
-@onready var _facing_indicator: MeshInstance3D = $FacingIndicator
+## Mesh del modello (tools/blender/build_actor_assets.py, `player_engineer`): la tuta
+## e la superficie `suit`, colorata da `_body_material`; il resto ha colori fissi.
+@onready var _body: MeshInstance3D = ActorModel.mesh_instance_of($Model)
 @onready var _collision: CollisionShape3D = $Collision
 
 
@@ -76,12 +76,16 @@ func _ready() -> void:
 		tuning = PlayerTuning.new()
 	_movement.configure(tuning)
 
-	_body.material_override = _body_material
+	# Il colore di vertice della tuta e solo ombreggiatura: la tinta e lo stato (dash, colpo).
+	_body_material.vertex_color_use_as_albedo = true
+	_body_material.roughness = 0.8
+	ActorModel.apply_materials(_body, {
+		"suit": _body_material,
+		# Lampada dell'elmetto e punta dell'attrezzo: l'indicatore del fronte, luminoso.
+		"detail": ActorModel.paint_material(Color.WHITE, 2.5),
+	})
 	_base_body_scale = _body.scale
 	_set_body_color(BODY_COLOR_LINEAR)
-	var indicator_material := StandardMaterial3D.new()
-	indicator_material.albedo_color = FACING_INDICATOR_COLOR_LINEAR.linear_to_srgb()
-	_facing_indicator.material_override = indicator_material
 
 	print("PROTOTYPE01_CHARACTER_READY")
 	if terrain_grid != null:

@@ -9,8 +9,9 @@ extends Node3D
 
 signal enemy_killed(world_position: Vector3, total: int)
 
+const SCAVENGER_MODEL := preload("res://assets/models/scavenger.glb")
+## Lineare: vernice dello scafo dei rottamatori (e colore dei loro frammenti).
 const BODY_COLOR := Color(0.42, 0.1, 0.05)
-const EYE_COLOR := Color(1.0, 0.75, 0.1)
 const SEPARATION_RADIUS := 0.8
 const SEPARATION_WEIGHT := 1.6
 ## Sotto questa distanza dal giocatore si punta dritto, senza waypoint.
@@ -35,24 +36,17 @@ var spike_damage := 0
 var spike_interval := 0.8
 var rng := RandomNumberGenerator.new()
 var _spawn_timer := 1.0
-var _body_mesh := BoxMesh.new()
-var _eye_mesh := BoxMesh.new()
-var _base_material := StandardMaterial3D.new()
-var _eye_material := StandardMaterial3D.new()
+var _body_mesh: Mesh
+var _base_material: ShaderMaterial
 var _flash_material := StandardMaterial3D.new()
 
 
 func _ready() -> void:
 	if tuning == null:
 		tuning = RunTuning.new()
-	_body_mesh.size = Vector3(0.64, 0.55, 0.72)
-	_eye_mesh.size = Vector3(0.4, 0.1, 0.06)
-	_base_material.albedo_color = BODY_COLOR.linear_to_srgb()
-	_base_material.roughness = 0.8
-	_eye_material.albedo_color = EYE_COLOR.linear_to_srgb()
-	_eye_material.emission_enabled = true
-	_eye_material.emission = EYE_COLOR.linear_to_srgb()
-	_eye_material.emission_energy_multiplier = 2.0
+	# Una mesh e un materiale per tutta l'orda: un nemico costa una draw call.
+	_body_mesh = ActorModel.mesh_of(SCAVENGER_MODEL)
+	_base_material = ActorModel.paint_material(BODY_COLOR, 2.0)
 	_flash_material.albedo_color = Color.WHITE
 	_flash_material.emission_enabled = true
 	_flash_material.emission = Color.WHITE
@@ -83,7 +77,7 @@ func current_enemy_health() -> int:
 func spawn_at(world: Vector3) -> Enemy:
 	var enemy := Enemy.new()
 	enemy.name = "Enemy%d" % (kills + enemies.size())
-	enemy.setup(current_enemy_health(), _body_mesh, _eye_mesh, _base_material, _eye_material, _flash_material)
+	enemy.setup(current_enemy_health(), _body_mesh, _base_material, _flash_material)
 	add_enemy(enemy, Vector3(world.x, Enemy.spawn_height(), world.z))
 	return enemy
 
