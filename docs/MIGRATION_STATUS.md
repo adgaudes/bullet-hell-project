@@ -195,7 +195,7 @@ Nessuno di questi passi e stato eseguito.
 - `OvergrownArena` espone `_compose()` e i parametri del suolo (`plaza_radius()`, `ground_size()`, copertura); `RuinsDistrict` li sovrascrive e produce `terrain_features`, che `ArenaRun` applica alla griglia (`PROTOTYPE01_TERRAIN_LAYOUT_READY`).
 - Nuovi strumenti: `tests/district_tests.gd` (suite), `tests/tools/benchmark_arena.gd`, `tests/tools/capture_district.gd`. Catture in `output/district/`.
 - Trappola nuova in `GODOT_WORKFLOW.md`: in headless i colori dei MultiMesh non si rileggono.
-- **Non fatto:** misura su Steam Deck; build non riesportate; nessun indicatore per trovare i punti di interesse.
+- **Non fatto:** misura su Steam Deck.
 
 ## Boss (6 ottobre 2026)
 
@@ -203,7 +203,9 @@ Nessuno di questi passi e stato eseguito.
 - `ArenaRun` gestisce le fasi `WAITING / WARNING / ACTIVE / DEFEATED`, sceglie la direzione col seme della run (`run_seed + 2`) e chiude il livello; `GameOverPanel.open()` ha la variante vittoria.
 - `TerrainGrid.force_cell_state()` cambia una cella a runtime senza regole ne rottami; `set_raised_tint()` colora le barricate.
 - Avvio rapido del boss: `-- --boss-at=60`. Catture in `output/boss/`.
-- **Non fatto:** bilanciamento, audio, Officina e profilo permanente, rottamatori che trasportano i rottami.
+- Indicatori a bordo schermo (D-044): `ArenaRun.current_markers()` e `RunHud.set_markers()`.
+- Build Windows e Linux riesportate il 6 ottobre 2026 dopo boss e indicatori; smoke test della build Windows superato, Linux non eseguita.
+- **Non fatto:** bilanciamento, audio, Officina e profilo permanente, rottamatori che trasportano i rottami, Steam Deck.
 
 ## Da non dimenticare
 

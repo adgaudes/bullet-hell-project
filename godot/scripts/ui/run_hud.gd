@@ -21,6 +21,10 @@ var _boss_arrow: Polygon2D
 var _boss_box: VBoxContainer
 var _boss_bar: ProgressBar
 var _root: Control
+## Indicatori a bordo schermo (punti di interesse, boss): freccia e distanza, riusati.
+var _marker_arrows: Array[Polygon2D] = []
+var _marker_labels: Array[Label] = []
+var _markers_shown := 0
 
 
 func _ready() -> void:
@@ -121,6 +125,54 @@ func set_boss_warning(direction_name: String, direction: Vector3, seconds_left: 
 	# Lampeggio lento: si nota senza coprire il campo.
 	_boss_arrow.modulate.a = 0.55 + 0.45 * absf(sin(seconds_left * 4.0))
 	_boss_arrow.show()
+
+
+## Indicatori a bordo schermo. Ogni voce: { direction: Vector2 (schermo, x destra e
+## y basso), distance: float (metri), color: Color, text: String }.
+func set_markers(markers: Array[Dictionary]) -> void:
+	while _marker_arrows.size() < markers.size():
+		var arrow := Polygon2D.new()
+		arrow.polygon = PackedVector2Array([Vector2(0, -16), Vector2(12, 10), Vector2(0, 4), Vector2(-12, 10)])
+		_root.add_child(arrow)
+		_marker_arrows.append(arrow)
+		var label := Label.new()
+		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		label.add_theme_font_size_override(&"font_size", 15)
+		label.add_theme_color_override(&"font_outline_color", Color.BLACK)
+		label.add_theme_constant_override(&"outline_size", 5)
+		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		label.custom_minimum_size = Vector2(120, 0)
+		_root.add_child(label)
+		_marker_labels.append(label)
+	var size := _root.size
+	var center := size * 0.5
+	# Margini: in alto e in basso ci sono le righe dell'HUD e la barra del boss.
+	var half := Vector2(maxf(center.x - 70.0, 10.0), maxf(center.y - 160.0, 10.0))
+	for i in _marker_arrows.size():
+		var shown := i < markers.size()
+		_marker_arrows[i].visible = shown
+		_marker_labels[i].visible = shown
+		if not shown:
+			continue
+		var marker := markers[i]
+		var direction: Vector2 = marker.direction
+		if direction.is_zero_approx():
+			direction = Vector2.UP
+		direction = direction.normalized()
+		var reach := minf(half.x / maxf(absf(direction.x), 0.001), half.y / maxf(absf(direction.y), 0.001))
+		var spot := center + direction * reach
+		_marker_arrows[i].position = spot
+		_marker_arrows[i].rotation = direction.angle() + PI * 0.5
+		_marker_arrows[i].color = marker.color
+		var label := _marker_labels[i]
+		label.text = "%s %d m" % [marker.text, int(round(marker.distance))]
+		label.add_theme_color_override(&"font_color", marker.color)
+		label.position = spot - direction * 30.0 - Vector2(60.0, 11.0)
+	_markers_shown = markers.size()
+
+
+func marker_count() -> int:
+	return _markers_shown
 
 
 func clear_boss_warning() -> void:

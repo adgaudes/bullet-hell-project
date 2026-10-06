@@ -36,6 +36,7 @@ func _initialize() -> void:
 	_test_start_area_is_clear()
 	await _test_far_path_and_spawn()
 	await _test_window_follows_player()
+	await _test_markers()
 	print("PROTOTYPE01_TESTS %s failures=%d" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -203,6 +204,47 @@ func _test_far_path_and_spawn() -> void:
 	_check(enemy.global_position.z > -11.5, "il rottamatore avanza verso il cortile (z=%.1f)" % enemy.global_position.z)
 	enemy.queue_free()
 	_director.enemies.clear()
+
+
+## Indicatori a bordo schermo: i piu vicini fuori vista, mai quelli esauriti.
+func _test_markers() -> void:
+	print("markers")
+	var run: ArenaRun = _scene.get_node(^"Run")
+	var hud: RunHud = _scene.get_node(^"RunHud")
+	_player.global_position = Vector3(0.0, 0.88, 0.0)
+	await _frames(70)
+	var markers := run.current_markers()
+	var courtyards := markers.filter(func(m: Dictionary) -> bool: return m.text == "CORTILE")
+	var deposits := markers.filter(func(m: Dictionary) -> bool: return m.text == "ROTTAMI")
+	_check(courtyards.size() == 2 and deposits.size() == 2, "due cortili e due depositi indicati (%d, %d)" % [courtyards.size(), deposits.size()])
+	_check(hud.marker_count() == markers.size(), "l'HUD mostra gli stessi indicatori (%d)" % hud.marker_count())
+	var far := true
+	for m: Dictionary in markers:
+		far = far and m.distance >= ArenaRun.MARKER_MIN_DISTANCE
+	_check(far, "nessun indicatore per cio che e gia in vista (il cortile di partenza no)")
+	# Il deposito indicato e davvero il piu vicino, nella direzione giusta.
+	var nearest := INF
+	var nearest_center := Vector2.ZERO
+	for f: Dictionary in _district.terrain_features:
+		if f.kind == &"deposit" and f.center.length() >= ArenaRun.MARKER_MIN_DISTANCE and f.center.length() < nearest:
+			nearest = f.center.length()
+			nearest_center = f.center
+	var first: Dictionary = deposits[0] if not deposits.is_empty() else {}
+	_check(not first.is_empty() and absf(first.distance - nearest) < 0.1 and first.direction.normalized().dot(nearest_center.normalized()) > 0.99,
+		"il primo deposito indicato e il piu vicino (%.0f m)" % nearest)
+	# Scavato del tutto, sparisce dagli indicatori.
+	var cells: Array[Vector2i] = []
+	for f: Dictionary in _district.terrain_features:
+		if f.kind == &"deposit" and f.center == nearest_center:
+			var center := _grid.cell_at(Vector3(f.center.x, 0.0, f.center.y))
+			for offset: Vector2i in f.offsets:
+				cells.append(center + offset)
+	_grid.set_cell_states(cells, NORMAL)
+	await _frames(70)
+	var still := false
+	for m: Dictionary in run.current_markers():
+		still = still or (m.text == "ROTTAMI" and absf(m.distance - nearest) < 0.1)
+	_check(not still, "un deposito esaurito non e piu indicato")
 
 
 func _test_window_follows_player() -> void:

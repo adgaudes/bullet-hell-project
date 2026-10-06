@@ -61,7 +61,11 @@ Indicazione del proprietario (5 ottobre 2026, poi D-040): le arene del gioco fin
 
 Misure sul PC del proprietario in D-042 e in `tests/tools/benchmark_arena.gd`. **Steam Deck non misurato.** Densita, conteggi e dimensioni sono esportati su `District` e si cambiano dall'Inspector; il seme e `layout_seed`.
 
-Non ancora: un modo per **trovare** i punti di interesse (bussola, indicatori a bordo schermo), obiettivi di livello, eventi che deformano l'arena.
+**Indicatori a bordo schermo** (D-044): freccia, nome e distanza dei due cortili e dei due depositi di rottami piu vicini fuori vista, e del boss quando e in campo; un deposito esaurito non e piu indicato.
+
+Gli edifici a blocchi e le celle sono **graybox provvisorio**: restano previsti il perimetro di citta in rovina e le rovine basse che fanno da strade, non il loro aspetto.
+
+Non ancora: obiettivi di livello, eventi che deformano l'arena.
 
 ## Boss: il Demolitore (D-043, 6 ottobre 2026)
 
@@ -87,6 +91,7 @@ Domande di playtest in piu:
 9. Hai capito da solo che i muri lo attirano e che le barricate scure sono sue?
 10. Hai usato il terreno contro di lui in almeno due modi diversi? Quali?
 11. Durata dello scontro e difficolta: troppo, giusto, poco?
+12. Gli indicatori a bordo schermo ti hanno fatto andare verso cortili e rottami? Sono troppi, pochi, leggibili?
 
 Marker: `PROTOTYPE01_BOSS_CALLED`, `PROTOTYPE01_BOSS_SPAWNED`, `PROTOTYPE01_BOSS_DEMOLISH_START`, `PROTOTYPE01_BOSS_WALL_DEMOLISHED`, `PROTOTYPE01_BOSS_BARRICADE`, `PROTOTYPE01_BOSS_BARRICADE_DOWN`, `PROTOTYPE01_LEVEL_COMPLETE`.
 

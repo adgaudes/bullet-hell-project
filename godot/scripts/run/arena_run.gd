@@ -14,6 +14,17 @@ signal level_completed
 
 enum BossPhase { WAITING, WARNING, ACTIVE, DEFEATED }
 
+## Indicatori a bordo schermo (D-044): oltre questa distanza un punto e fuori vista.
+const MARKER_MIN_DISTANCE := 14.0
+const MARKER_MAX_DISTANCE := 130.0
+## Quanti cortili e quanti depositi indicare, i piu vicini.
+const MARKERS_PER_KIND := 2
+const MARKER_COURTYARD_COLOR := Color(0.95, 0.85, 0.55)
+const MARKER_DEPOSIT_COLOR := Color(0.95, 0.5, 0.15)
+const MARKER_BOSS_COLOR := Color(1.0, 0.25, 0.15)
+## Ogni quanto si ricontrolla quali punti di interesse hanno ancora celle Raised.
+const MARKER_REFRESH_SECONDS := 1.0
+
 ## Direzioni di arrivo annunciate: nome e verso nel mondo (nord = -Z = alto dello schermo).
 const BOSS_DIRECTIONS := [
 	["NORD", Vector3(0.0, 0.0, -1.0)], ["EST", Vector3(1.0, 0.0, 0.0)],
@@ -49,6 +60,9 @@ var boss_call_at := 0.0
 var _boss_warning_left := 0.0
 var _boss_rng := RandomNumberGenerator.new()
 var _pending_level_ups := 0
+## Punti di interesse ancora da indicare: { center: Vector3, text: String, color: Color, kind: StringName }.
+var _marker_targets: Array[Dictionary] = []
+var _marker_refresh_left := 0.0
 
 
 func _ready() -> void:
@@ -91,6 +105,69 @@ func _physics_process(delta: float) -> void:
 	elapsed += delta
 	hud.set_time(elapsed)
 	_tick_boss(delta)
+	_tick_markers(delta)
+
+
+# --- Indicatori a bordo schermo ----------------------------------------------------
+
+func _tick_markers(delta: float) -> void:
+	if district == null:
+		return
+	_marker_refresh_left -= delta
+	if _marker_refresh_left <= 0.0:
+		_marker_refresh_left = MARKER_REFRESH_SECONDS
+		_refresh_marker_targets()
+	hud.set_markers(current_markers())
+
+
+## Un cortile o un deposito resta indicato finche ha almeno una cella Raised:
+## un deposito scavato del tutto sparisce dagli indicatori.
+func _refresh_marker_targets() -> void:
+	_marker_targets.clear()
+	for feature: Dictionary in district.terrain_features:
+		if feature.state != TerrainState.CellState.RAISED:
+			continue
+		var center_cell := grid.cell_at(Vector3(feature.center.x, 0.0, feature.center.y))
+		var standing := false
+		for offset: Vector2i in feature.offsets:
+			if grid.state.get_state(center_cell + offset) == TerrainState.CellState.RAISED:
+				standing = true
+				break
+		if not standing:
+			continue
+		var is_deposit: bool = feature.kind == &"deposit"
+		_marker_targets.append({
+			center = Vector3(feature.center.x, 0.0, feature.center.y),
+			kind = &"deposit" if is_deposit else &"courtyard",
+			text = "ROTTAMI" if is_deposit else "CORTILE",
+			color = MARKER_DEPOSIT_COLOR if is_deposit else MARKER_COURTYARD_COLOR,
+		})
+
+
+## I due cortili e i due depositi piu vicini fuori vista, piu il boss se e in campo.
+func current_markers() -> Array[Dictionary]:
+	var origin := player.global_position
+	var by_kind := {&"courtyard": [], &"deposit": []}
+	for target in _marker_targets:
+		var offset: Vector3 = target.center - origin
+		var distance := Vector2(offset.x, offset.z).length()
+		if distance < MARKER_MIN_DISTANCE or distance > MARKER_MAX_DISTANCE:
+			continue
+		by_kind[target.kind].append({
+			direction = Vector2(offset.x, offset.z), distance = distance, color = target.color, text = target.text,
+		})
+	var markers: Array[Dictionary] = []
+	for kind: StringName in by_kind:
+		var list: Array = by_kind[kind]
+		list.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a.distance < b.distance)
+		for i in mini(MARKERS_PER_KIND, list.size()):
+			markers.append(list[i])
+	if boss_phase == BossPhase.ACTIVE and is_instance_valid(boss):
+		var offset := boss.global_position - origin
+		var distance := Vector2(offset.x, offset.z).length()
+		if distance >= MARKER_MIN_DISTANCE:
+			markers.append({direction = Vector2(offset.x, offset.z), distance = distance, color = MARKER_BOSS_COLOR, text = "BOSS"})
+	return markers
 
 
 # --- Boss di fine livello ----------------------------------------------------------
