@@ -65,6 +65,7 @@ func _ready() -> void:
 	_back.add_theme_font_size_override(&"font_size", 20)
 	_back.pressed.connect(close)
 	column.add_child(_back)
+	column.add_child(ButtonPrompts.create([[&"ui_accept", "Compra"], [&"ui_cancel", "Torna"]]))
 	_overlay.hide()
 
 

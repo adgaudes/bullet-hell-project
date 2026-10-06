@@ -206,7 +206,7 @@ La cartella di destinazione deve esistere. La build Windows scrive i `print()` s
 Stanno in `godot/addons/`; versioni e licenze in `TOOLS_AND_LICENSES.md`. Verificati il 6 ottobre 2026 su Windows; Steam Deck no.
 
 - **Debug Menu**: autoload `DebugMenu`. In gioco **F3** cicla nascosto / compatto / dettagliato. Da codice: `get_node("/root/DebugMenu").style = 2`. Sul Deck F3 non esiste: associarlo a un tasto posteriore con Steam Input, oppure definire l'azione `cycle_debug_menu` in `project.godot` (se esiste, l'addon usa quella).
-- **Controller Icons**: autoload `ControllerIcons`. `parse_path("dash")` restituisce la texture del tasto per il dispositivo in uso; `parse_path("steamdeck/a")` un'icona precisa; i nodi `ControllerIconTexture` si aggiornano da soli al cambio di dispositivo. L'interfaccia non lo usa ancora.
+- **Controller Icons**: autoload `ControllerIcons`. `parse_path("dash")` restituisce la texture del tasto per il dispositivo in uso; `parse_path("steamdeck/a")` un'icona precisa; i nodi `ControllerIconTexture` si aggiornano da soli al cambio di dispositivo. Nel gioco si usa attraverso `ButtonPrompts` (`scripts/ui/button_prompts.gd`, D-059): `ButtonPrompts.create([[&"ui_accept", "Conferma"]])` restituisce una riga "icona + testo" da aggiungere a un contenitore; con secondo argomento `true` una colonna. In headless mostra sempre le icone del controller.
 - **Debug Draw 3D**: GDExtension, nessun plugin da attivare. `DebugDraw3D.draw_box(...)`, `draw_sphere(...)`, `draw_line(...)` a ogni frame. Nelle build release le chiamate restano valide ma non disegnano.
 - **SimpleGrassTextured**: plugin **non attivo**. Per usarlo: Progetto, Impostazioni, Plugin; poi togliere `addons/simplegrasstextured/*` da `exclude_filter` in `export_presets.cfg` e misurare il costo.
 
@@ -218,6 +218,8 @@ Trappole verificate (6 ottobre 2026):
 - Con il plugin dell'erba spento, esportare i suoi shader stampa `SHADER ERROR: L'uniforme globale 'sgt_...' non esiste`: per questo la cartella e esclusa dagli export.
 - L'export copia accanto all'eseguibile la libreria `libdd3d.*.template_release.*`: va distribuita insieme alla build.
 - Mentre il gate gira non creare ne cancellare cartelle dentro `godot/`: l'elenco degli script fallisce.
+- Con l'editor aperto, `--headless --editor --quit` stampa `ERROR: Error copying library ... libdd3d.windows.editor.x86_64.dll`: l'editor tiene bloccata la libreria. La cache delle classi viene aggiornata lo stesso; non e un errore del progetto.
+- Gli script di cattura vogliono `--out=` **relativo** al progetto (`../output/...`): un percorso assoluto Windows viene incollato dopo `res://` e il salvataggio fallisce.
 
 ## Non ancora verificato
 

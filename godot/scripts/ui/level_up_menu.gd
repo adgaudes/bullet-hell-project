@@ -37,6 +37,7 @@ func _ready() -> void:
 	_cards = HBoxContainer.new()
 	_cards.add_theme_constant_override(&"separation", 20)
 	column.add_child(_cards)
+	column.add_child(ButtonPrompts.create([[&"ui_accept", "Scegli"]]))
 	_overlay.hide()
 
 

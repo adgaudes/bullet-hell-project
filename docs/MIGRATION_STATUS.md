@@ -222,7 +222,9 @@ Nessuno di questi passi e stato eseguito.
 
 Installati quattro addon in `godot/addons/` (D-057, elenco e licenze in `TOOLS_AND_LICENSES.md`, uso e trappole in `GODOT_WORKFLOW.md`): Debug Menu (F3), Controller Icons, Debug Draw 3D attivi; SimpleGrassTextured installato ma spento. Nuova suite `addons_tests.gd`; il gate salta `--check-only` in `godot/addons`. Export Windows e Linux riusciti in una cartella temporanea e smoke test della build Windows superato; **le build in `LocalBuilds/` non sono state riesportate**.
 
-Prossimi passi possibili: glifi dei tasti in menu, Officina e prompt con Controller Icons; misura su Steam Deck con il Debug Menu; visualizzazione di debug del campo di percorso con Debug Draw 3D.
+**Glifi dei tasti (D-059)**: `scripts/ui/button_prompts.gd` (`ButtonPrompts.create([[azione, testo], ...], in_colonna)`) e usato da menu iniziale, Officina, pausa, level-up, fine livello e HUD. Suite `button_prompts_tests.gd`; viste catture con tastiera e con controller Xbox simulato. Non visti: Steam Deck, controller PlayStation reale.
+
+Prossimi passi possibili: misura su Steam Deck con il Debug Menu; visualizzazione di debug del campo di percorso con Debug Draw 3D.
 
 ## Da non dimenticare
 

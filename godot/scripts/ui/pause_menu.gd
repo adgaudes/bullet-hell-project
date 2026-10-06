@@ -34,6 +34,10 @@ func _ready() -> void:
 	_quit_button.add_sibling(_menu_button)
 	_menu_button.get_parent().move_child(_menu_button, _quit_button.get_index())
 	_settings_panel.back_requested.connect(_show_pause_panel)
+	var prompts := ButtonPrompts.create([[&"ui_accept", "Conferma"], [&"ui_cancel", "Indietro"]])
+	_overlay.add_child(prompts)
+	prompts.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM, Control.PRESET_MODE_MINSIZE, 28)
+	prompts.grow_horizontal = Control.GROW_DIRECTION_BOTH
 
 
 func _input(event: InputEvent) -> void:

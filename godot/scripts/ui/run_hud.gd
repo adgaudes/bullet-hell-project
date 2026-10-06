@@ -23,6 +23,7 @@ var _boss_arrow: Polygon2D
 var _boss_box: VBoxContainer
 var _boss_bar: ProgressBar
 var _root: Control
+var _controls: ButtonPrompts
 ## Indicatori a bordo schermo (punti di interesse, boss): freccia e distanza, riusati.
 var _marker_arrows: Array[Polygon2D] = []
 var _marker_labels: Array[Label] = []
@@ -110,6 +111,14 @@ func _ready() -> void:
 	boss_background.bg_color = Color(0.0, 0.0, 0.0, 0.6)
 	_boss_bar.add_theme_stylebox_override(&"background", boss_background)
 	_boss_box.add_child(_boss_bar)
+
+	# Comandi di gioco, in basso a sinistra.
+	_controls = ButtonPrompts.create([[&"dash", "Scatto"], [&"terrain_tool", "Scava o rialza"],
+		[&"terrain_mode", "Cambia modo"], [&"pause", "Pausa"]], true)
+	_controls.modulate.a = 0.85
+	root.add_child(_controls)
+	_controls.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT, Control.PRESET_MODE_MINSIZE, 24)
+	_controls.grow_vertical = Control.GROW_DIRECTION_BEGIN
 
 	set_xp(0, 1, 1)
 	set_time(0.0)

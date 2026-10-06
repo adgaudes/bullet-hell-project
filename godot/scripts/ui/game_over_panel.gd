@@ -65,6 +65,7 @@ func _ready() -> void:
 	_menu.pressed.connect(func() -> void: menu_requested.emit())
 	_quit = _button(column, "Esci")
 	_quit.pressed.connect(func() -> void: get_tree().quit())
+	column.add_child(ButtonPrompts.create([[&"ui_accept", "Conferma"]]))
 	_overlay.hide()
 
 

@@ -18,6 +18,7 @@ var _play: Button
 var _workshop_button: Button
 var _settings: Button
 var _quit: Button
+var _prompts: ButtonPrompts
 
 
 func _ready() -> void:
@@ -63,14 +64,14 @@ func start_run() -> void:
 func open_workshop() -> void:
 	if workshop == null:
 		return
-	_column.hide()
+	_set_menu_visible(false)
 	workshop.open()
 
 
 func open_settings() -> void:
 	if _pause_menu == null:
 		return
-	_column.hide()
+	_set_menu_visible(false)
 	_pause_menu.call(&"open_settings_only")
 
 
@@ -79,9 +80,15 @@ func focused_control() -> Control:
 
 
 func _on_panel_closed(back_to: Button) -> void:
-	_column.show()
+	_set_menu_visible(true)
 	_refresh()
 	back_to.grab_focus()
+
+
+## I pannelli aperti sopra il menu hanno i propri suggerimenti dei tasti.
+func _set_menu_visible(shown: bool) -> void:
+	_column.visible = shown
+	_prompts.visible = shown
 
 
 func _refresh() -> void:
@@ -125,6 +132,10 @@ func _build() -> void:
 	_workshop_button = _button("Officina", open_workshop)
 	_settings = _button("Impostazioni", open_settings)
 	_quit = _button("Esci", func() -> void: get_tree().quit())
+	_prompts = ButtonPrompts.create([[&"ui_accept", "Conferma"]])
+	add_child(_prompts)
+	_prompts.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM, Control.PRESET_MODE_MINSIZE, 28)
+	_prompts.grow_horizontal = Control.GROW_DIRECTION_BOTH
 
 
 func _button(text: String, action: Callable) -> Button:
