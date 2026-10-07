@@ -65,6 +65,7 @@ Legenda stato: **vivo** = aggiornato e autorevole; **riferimento** = stabile, si
 |---|---|---|---|
 | `docs/PLAYTESTS/GODOT_PARITY_PLAYTEST.md` | Playtest di parita Godot: feel, Test A, Steam Deck, preset; esiti registrati | per esiti del feel e test in sospeso | vivo |
 | `docs/PLAYTESTS/TERRAIN_GRID_SLICE_A_2026-09-22.md` | Protocollo e esito (Continua) della Terrain Slice A, legenda controlli, Test B Steam Deck | per i protocolli di test terreno e Deck | riferimento |
+| `docs/REVIEWS/ARENA_RUN_LEVEL_2026-10-07.md` | Review a lettura del livello completo (D-042…D-062): 41 segnalazioni con gravita, scenario, correzione e stato di verifica; cosa e gia corretto; percorsi senza test; ordine delle correzioni | prima di correggere o estendere boss, profilo, menu, campo di percorso, arma, audio | vivo |
 | `docs/REVIEWS/TERRAIN_GRID_SLICE_A_2026-09-21.md` | Review tecnica della Slice A in Unreal | raramente | storico |
 
 ## Archivio (era Unreal)
