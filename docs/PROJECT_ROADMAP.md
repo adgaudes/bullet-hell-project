@@ -55,7 +55,7 @@ Principio guida:
    - Test A percettivo e test su Steam Deck via Proton (`docs/PLAYTESTS/GODOT_PARITY_PLAYTEST.md`); dopo, eliminare la build Unreal `LocalBuilds/Prototype01-TerrainGrid-Win64-v1` (872 MB);
    - eliminare a mano le cartelle vuote `Desktop/Videogame-settings` e `Desktop/Videogame-vision` (worktree di Codex) dopo aver chiuso Codex;
    - pipeline dei personaggi animati avviata (D-060, ingegnere); andature, scavo e capriola aggiunti (D-062); dopo il giudizio del proprietario: ritmi e durate, animazione di tiro, altri personaggi del roster, volti e forme organiche.
-7. **Ciclo giorno/notte** (D-058, richiesto dal proprietario il 6 ottobre 2026): il proprietario rivede `docs/DAY_NIGHT_SPEC.md`; poi l'agente scrive il piano e implementa la tappa 1 (notte giocabile: ciclo, luce, nemici al buio, due carte), quindi la tappa 2 (lampioni). Non blocca il playtest del punto 4: prima del tramonto il livello resta identico.
+7. **Ciclo giorno/notte** (D-058, richiesto dal proprietario il 6 ottobre 2026): il proprietario rivede `docs/DAY_NIGHT_SPEC.md`; il piano di implementazione della tappa 1 e scritto (`docs/DAY_NIGHT_PLAN.md`, 7 ottobre 2026); poi l'agente implementa la tappa 1 (notte giocabile: ciclo, luce, nemici al buio, due carte), quindi la tappa 2 (lampioni). Non blocca il playtest del punto 4: prima del tramonto il livello resta identico.
 
 Fonti operative: `DECISIONS.md`, `RISK_REGISTER.md` e i protocolli in `PLAYTESTS/`.
 

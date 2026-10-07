@@ -146,48 +146,6 @@ Fatto il 3 ottobre 2026:
 - Le regole `.gitignore` per i residui Unreal restano: innocue, e utili finche UE e installato.
 - `dev/` e `output/`: risolto il 5 ottobre 2026. `dev/` (copia vagante degli hook LFS) e i documenti Unreal in `output/` eliminati; `output/` resta come cartella delle catture, ignorata da Git.
 
-## Review indipendente del 3 ottobre 2026
-
-Review del codice Godot fatta da un agente separato. Corretto:
-
-- **grilletto destro**: applicava il tool piu volte per pressione (ogni variazione analogica era un nuovo comando); ora una volta per pressione, come `Started`. Bug reale su controller e Deck, invisibile ai test basati su azioni simulate;
-- **modificatori**: Shift/Ctrl bloccavano dash e tool; ora ignorati come in Unreal;
-- **soglia dello stick di movimento**: 0,5 sul modulo grezzo come il trigger `Down` di `IA_Move` (prima 0,2 con riscalatura);
-- comandi del tool eseguiti nel passo fisico; corsia dell'hazard ricalcolata quando la griglia si ricostruisce e corretta su griglia scalata; il rig camera non riscrive piu la propria trasformazione nell'editor.
-
-Nuova suite `tests/input_events_tests.gd`. Build Windows e Linux riesportate dopo le correzioni.
-
-Non corretto, annotato: la mira mouse usa la posizione fisica del personaggio e la camera interpolata (scarto massimo di un passo, simile a Unreal).
-
-## Cosa serve dal proprietario
-
-Protocollo unico con tabelle da compilare: **`docs/PLAYTESTS/GODOT_PARITY_PLAYTEST.md`**.
-
-1. **Feel del personaggio** (Fase 5): F5 dall'editor, oppure la build Windows.
-2. **Test A percettivo** (Fase 7): `docs/PLAYTESTS/TERRAIN_GRID_SLICE_A_2026-09-22.md`.
-3. **Steam Deck**: scegliere Proton (build Windows) o Linux nativa (`Prototype01.x86_64`, decisione aperta) e ripetere il Test B dello stesso documento.
-
-## Fase 10 — stato
-
-Fatto il 3 ottobre 2026:
-
-- `feature/godot-migration-foundation` integrato in `main` in fast-forward e pubblicato su `origin` su richiesta del proprietario.
-- Documenti vivi aggiornati a Godot: `README.md`, `AGENTS.md`, `CLAUDE.md`, `PROJECT_ROADMAP.md` (tabella strumenti), `PLATFORM_AND_INPUT.md` (implementazione input), `PROJECT_BRIEF.md`, `TOOLS_AND_LICENSES.md`, `RISK_REGISTER.md` (R-011), `AI_HANDOFF_PROTOCOL.md`, `TERRAIN_SYSTEM.md`, `ART_DIRECTION.md`. Nota di aggiornamento in `PROTOTYPE_01_SPEC.md` e `BLENDER_UNREAL_ROUNDTRIP_SPEC.md`.
-- Lasciati invariati perche storici: `UNREAL_EDITOR_WORKFLOW.md`, `SMOKE_TEST_*.md`, `INPUT_MOVEMENT_SLICE_*.md`, `STORAGE_AUDIT_*.md`, i playtest, `DECISIONS.md` (le decisioni superate restano con il loro stato).
-
-### Proposta sul progetto Unreal (da decidere)
-
-Inventario: `Source/` (94 KB, 15 file), `Content/` (400 KB, la sola mappa), `Config/` (4 file), `Prototype01.uproject`, `Scripts/CreateSmokeMap.py`: meno di 1 MB versionato. Fuori da Git: `LocalBuilds/Prototype01-TerrainGrid-Win64-v1` (872 MB), `LocalBuilds/Prototype01-CharacterFeel-Win64-v4` (871 MB), `Artifacts/Playtests` (274 MB, da conservare comunque).
-
-Raccomandazione, **dopo** i playtest del proprietario:
-
-1. Tag Git `unreal-prototype-final` sul commit corrente: il progetto Unreal resta recuperabile per sempre dalla cronologia.
-2. Rimuovere da `main` `Source/`, `Content/`, `Config/`, `Prototype01.uproject`, `Scripts/CreateSmokeMap.py` e le regole `.gitignore` solo-Unreal. Peso irrilevante, ma toglie ambiguita a chi apre il repository.
-3. Eliminare `LocalBuilds/Prototype01-CharacterFeel-Win64-v4` (superata). Tenere `Prototype01-TerrainGrid-Win64-v1` finche il proprietario conferma la parita di feel, poi eliminarla: l'archivio con hash in `Artifacts/Playtests` resta come evidenza.
-4. Disinstallare UE 5.8.2 e Visual Studio 2026, se non servono ad altro: decisione del proprietario, fuori dal repository.
-
-Nessuno di questi passi e stato eseguito.
-
 ## Arena grande (6 ottobre 2026)
 
 - `TerrainGrid` presenta le celle con tre MultiMesh e un solo `StaticBody3D` con una forma per cella Raised (D-042). Le suite che contavano le celle come nodi figli usano ora `presented_cell_count()`; `TerrainTuning` ammette fino a 201 celle per lato.
@@ -272,4 +230,5 @@ Usare sempre `godot_console`, mai `godot`, per i comandi non interattivi: il sec
 ## Ciclo giorno/notte (6 ottobre 2026)
 
 - **Specifica approvata, niente codice:** `docs/DAY_NIGHT_SPEC.md` (D-058). Una notte per livello, nemici piu forti al buio, torcia e faro con upgrade, lampioni piazzabili. Due tappe: (1) notte giocabile, (2) lampioni.
-- **Prossimo passo:** revisione della specifica da parte del proprietario, poi piano di implementazione della tappa 1.
+- **Piano della tappa 1 scritto** (7 ottobre 2026, `docs/DAY_NIGHT_PLAN.md`): file, funzioni, valori, 11 casi di test e ordine di 5 commit; scritto senza Godot, nessun codice ancora.
+- **Prossimo passo:** implementare la tappa 1 seguendo il piano, con il gate verde a ogni commit.
