@@ -38,7 +38,7 @@ Legenda stato: **vivo** = aggiornato e autorevole; **riferimento** = stabile, si
 | `docs/PROMISE_A_PROTOTYPE_SPEC.md` | Prototipo della promessa A: cortile, orda, chiodatrice, level-up, upgrade, scala futura dell'arena, domande di playtest | per lavorare sulla run, sui nemici o per il playtest | vivo |
 | `docs/CAMPAIGN_STRUCTURE_SPEC.md` | Struttura di campagna (D-040, D-041): livelli, boss, upgrade di livello e permanenti, Officina, prima campagna minima, domande al proprietario | per livelli, boss, Officina, profilo permanente | vivo |
 | `docs/DAY_NIGHT_SPEC.md` | Ciclo giorno/notte (D-058): una notte per livello, nemici piu forti al buio, luce di torcia, faro e lampioni piazzabili, architettura, tappe e verifica; approvata, non implementata | per lavorare su notte, luce o lampioni | vivo |
-| `docs/DAY_NIGHT_PLAN.md` | Piano di implementazione della tappa 1 del ciclo giorno/notte: punti di aggancio verificati nel codice, unita nuove (`DayNightCycle`, `LightField`), modifiche per file, casi di test, ordine dei commit | per implementare la notte giocabile; scritto senza Godot, da eseguire con il gate | vivo |
+| `docs/DAY_NIGHT_PLAN.md` | Piano di implementazione della tappa 1 del ciclo giorno/notte: punti di aggancio verificati nel codice, addon valutati, unita nuove (`DayNightCycle`, `LightField`), modifiche per file, casi di test, ordine dei commit | per implementare la notte giocabile; scritto senza Godot, da eseguire con il gate | vivo |
 | `docs/FEATURE_IDEAS.md` | Backlog creativo: 10 idee per differenziare il gioco dai survivor (nemici che smontano le mura, eventi che deformano l'arena, fusione dei compagni, piazzola di estrazione...), con costo e priorita; nessuna approvata | quando si sceglie cosa prototipare dopo un playtest | vivo |
 | `docs/TERRAIN_SYSTEM.md` | Visione e regole della trasformazione del terreno, gate tecnici, terreno volumetrico rimandato | per qualunque cosa tocchi il terreno | vivo |
 | `docs/PROTOTYPE_01_SPEC.md` | Specifica del prototipo 01 "Terreno sotto pressione" (scritta per Unreal, contenuti validi) | per scope e criteri del prototipo attuale | riferimento |
@@ -63,6 +63,7 @@ Legenda stato: **vivo** = aggiornato e autorevole; **riferimento** = stabile, si
 
 | File | Contenuto | Leggilo quando | Stato |
 |---|---|---|---|
+| `docs/PLAYTESTS/ARENA_RUN_LEVEL_2026-10-07.md` | Promemoria per il playtest del livello completo: come avviare, problemi gia noti dalla review (da spuntare, non da riscoprire), cosa annotare, esito | **prima di giocare il livello**; dopo, per registrare l'esito | vivo |
 | `docs/PLAYTESTS/GODOT_PARITY_PLAYTEST.md` | Playtest di parita Godot: feel, Test A, Steam Deck, preset; esiti registrati | per esiti del feel e test in sospeso | vivo |
 | `docs/PLAYTESTS/TERRAIN_GRID_SLICE_A_2026-09-22.md` | Protocollo e esito (Continua) della Terrain Slice A, legenda controlli, Test B Steam Deck | per i protocolli di test terreno e Deck | riferimento |
 | `docs/REVIEWS/ARENA_RUN_LEVEL_2026-10-07.md` | Review a lettura del livello completo (D-042…D-062): 41 segnalazioni con gravita, scenario, correzione e stato di verifica; cosa e gia corretto; percorsi senza test; ordine delle correzioni | prima di correggere o estendere boss, profilo, menu, campo di percorso, arma, audio | vivo |

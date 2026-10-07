@@ -24,6 +24,10 @@ Scopo del documento: rendere la sessione che implementa puramente esecutiva. Ogn
 
 Trappole note da rispettare (da `GODOT_WORKFLOW.md`): nuova `class_name` invisibile a `--check-only` finche non si aggiorna la cache (`godot_console --headless --path godot --editor --quit`); `add_child` su un fratello durante il `_ready` della scena va differito; non mettere in pausa a meta passo fisico; gli autoload non esistono in `--check-only`.
 
+## 0b. Addon valutati
+
+Sky3D (cielo dinamico completo, sostituisce il `WorldEnvironment`), Day & Night Cycle di maetzemax (preset su ambiente e sole esistenti) e tre orologi o calendari dell'Asset Library: nessuno adottato, motivi e trigger di rivalutazione in `TOOLS_AND_LICENSES.md`, sezione "Addon Godot installati". Il piano resta su codice proprio: la camera vede poco cielo e l'ambiente del quartiere e gia costruito in `OvergrownArena`.
+
 ## 1. Tuning (`run_tuning.gd`)
 
 Nuovo gruppo `Night`, valori della specifica:
