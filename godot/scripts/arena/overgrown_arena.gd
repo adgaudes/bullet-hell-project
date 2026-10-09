@@ -157,8 +157,51 @@ func _cover_excluded(p: Vector2) -> bool:
 
 ## Probabilita [0,1] che un punto candidato porti un ciuffo; segue la formula del suolo.
 func _cover_chance(p: Vector2) -> float:
-	var cover := ground_cover_at(p)
+	var cover := _cover_sampled(p)
 	return 1.0 if cover >= 0.5 + _rng.randf_range(-0.04, 0.06) else 0.0
+
+
+## Passo del reticolo su cui `ground_cover_at` viene campionata e interpolata (T-02):
+## la formula ha lunghezze d'onda di ~11 m, a 2 m l'errore e sotto il rumore del
+## pennello; costa 2,3 us per nodo invece che per candidato.
+const COVER_LATTICE_PITCH := 2.0
+const COVER_UNSAMPLED := -1.0e9
+var _cover_lattice := PackedFloat32Array()
+var _cover_lattice_side := 0
+var _cover_lattice_origin := 0.0
+
+
+func _reset_cover_lattice() -> void:
+	var limit := cover_limit()
+	_cover_lattice_side = int(ceil(limit * 2.0 / COVER_LATTICE_PITCH)) + 2
+	_cover_lattice_origin = -limit
+	_cover_lattice.resize(_cover_lattice_side * _cover_lattice_side)
+	_cover_lattice.fill(COVER_UNSAMPLED)
+
+
+## `ground_cover_at` interpolata bilinearmente dal reticolo, calcolato a richiesta.
+func _cover_sampled(p: Vector2) -> float:
+	if _cover_lattice.is_empty():
+		_reset_cover_lattice()
+	var fx := clampf((p.x - _cover_lattice_origin) / COVER_LATTICE_PITCH, 0.0, _cover_lattice_side - 1.001)
+	var fy := clampf((p.y - _cover_lattice_origin) / COVER_LATTICE_PITCH, 0.0, _cover_lattice_side - 1.001)
+	var ix := int(fx)
+	var iy := int(fy)
+	var tx := fx - ix
+	var ty := fy - iy
+	var i := iy * _cover_lattice_side + ix
+	var top := lerpf(_cover_node(i), _cover_node(i + 1), tx)
+	var bottom := lerpf(_cover_node(i + _cover_lattice_side), _cover_node(i + _cover_lattice_side + 1), tx)
+	return lerpf(top, bottom, ty)
+
+
+func _cover_node(i: int) -> float:
+	var v := _cover_lattice[i]
+	if v == COVER_UNSAMPLED:
+		v = ground_cover_at(Vector2(_cover_lattice_origin + (i % _cover_lattice_side) * COVER_LATTICE_PITCH,
+			_cover_lattice_origin + (i / _cover_lattice_side) * COVER_LATTICE_PITCH))
+		_cover_lattice[i] = v
+	return v
 
 
 # --- Materiali -----------------------------------------------------------------
@@ -601,45 +644,84 @@ func ground_cover_at(p: Vector2) -> float:
 func _build_ground_cover() -> void:
 	var limit := cover_limit()
 	var height := cover_height()
-	var tuft_xforms: Array[Transform3D] = []
-	var tuft_colors: Array[Color] = []
-	var flower_xforms: Array[Transform3D] = []
-	var flower_colors: Array[Color] = []
-	var attempts := (grass_tufts + flowers) * 4
-	for i in attempts:
-		if tuft_xforms.size() >= grass_tufts and flower_xforms.size() >= flowers:
+	_reset_cover_lattice()
+	# Campionamento stratificato (T-02): una griglia di candidati con jitter invece del
+	# rigetto su 144k punti; l'ordine e mescolato con un passo primo, cosi se i posti
+	# finiscono prima della fine la copertura resta uniforme. I dati vanno dritti nel
+	# buffer del MultiMesh (16 float per istanza: trasformazione 3x4 e colore).
+	var wanted := grass_tufts + flowers
+	var side := int(ceil(sqrt(float(wanted) * 2.0)))
+	var total := side * side
+	var pitch := limit * 2.0 / maxf(float(side), 1.0)
+	var stride := 7919 if total % 7919 != 0 else 7907
+	var tufts := PackedFloat32Array()
+	var tuft_count := 0
+	var flower_buffer := PackedFloat32Array()
+	var flower_count := 0
+	tufts.resize(grass_tufts * 16)
+	flower_buffer.resize(flowers * 16)
+	var flower_share := float(flowers) / float(maxi(wanted, 1))
+	for k in total:
+		if tuft_count >= grass_tufts and flower_count >= flowers:
 			break
-		var p := Vector2(_rng.randf_range(-limit, limit), _rng.randf_range(-limit, limit))
+		var index := (k * stride) % total
+		var p := Vector2(-limit + (index % side + _rng.randf()) * pitch, -limit + (index / side + _rng.randf()) * pitch)
 		if _cover_excluded(p):
 			continue
 		var chance := _cover_chance(p)
 		if chance <= 0.0 or (chance < 1.0 and _rng.randf() > chance):
 			continue
 		var yaw := _rng.randf_range(0.0, TAU)
-		if _rng.randf() < float(flowers) / float(grass_tufts + flowers) and flower_xforms.size() < flowers:
+		if _rng.randf() < flower_share and flower_count < flowers:
 			var s := _rng.randf_range(0.7, 1.3)
-			flower_xforms.append(Transform3D(Basis(Vector3.UP, yaw).scaled(Vector3(s, s, s)), Vector3(p.x, height, p.y)))
-			flower_colors.append(_pick(FLOWER_COLORS))
-		elif tuft_xforms.size() < grass_tufts:
+			_write_instance(flower_buffer, flower_count, yaw, Vector3(s, s, s), Vector3(p.x, height, p.y), _pick(FLOWER_COLORS))
+			flower_count += 1
+		elif tuft_count < grass_tufts:
 			var s := _rng.randf_range(0.7, 1.5)
-			tuft_xforms.append(Transform3D(Basis(Vector3.UP, yaw).scaled(Vector3(s, s * _rng.randf_range(0.8, 1.4), s)),
-				Vector3(p.x, height, p.y)))
-			tuft_colors.append(_pick(LEAF_TINTS) * _rng.randf_range(0.7, 1.0))
-	_add_multimesh("GrassTufts", _tuft_mesh(), tuft_xforms, tuft_colors)
-	_add_multimesh("Flowers", _flower_mesh(), flower_xforms, flower_colors)
-	stats.tufts = tuft_xforms.size()
-	stats.flowers = flower_xforms.size()
+			_write_instance(tufts, tuft_count, yaw, Vector3(s, s * _rng.randf_range(0.8, 1.4), s), Vector3(p.x, height, p.y),
+				_pick(LEAF_TINTS) * _rng.randf_range(0.7, 1.0))
+			tuft_count += 1
+	tufts.resize(tuft_count * 16)
+	flower_buffer.resize(flower_count * 16)
+	_add_multimesh("GrassTufts", _tuft_mesh(), tufts, tuft_count)
+	_add_multimesh("Flowers", _flower_mesh(), flower_buffer, flower_count)
+	stats.tufts = tuft_count
+	stats.flowers = flower_count
 
 
-func _add_multimesh(node_name: String, mesh: Mesh, xforms: Array[Transform3D], colors: Array[Color]) -> void:
+## Scrive un'istanza (rotazione attorno a Y, scala, posizione, colore) nel formato del
+## buffer di MultiMesh: tre righe della trasformazione (x.x y.x z.x o.x ...) e RGBA.
+static func _write_instance(buffer: PackedFloat32Array, index: int, yaw: float, scale: Vector3, origin: Vector3, color: Color) -> void:
+	var c := cos(yaw)
+	var sn := sin(yaw)
+	var base := index * 16
+	# Basis(Vector3.UP, yaw).scaled(scale): colonne x = (c, 0, -sn)·sx, y = (0, 1, 0)·sy, z = (sn, 0, c)·sz.
+	buffer[base] = c * scale.x
+	buffer[base + 1] = 0.0
+	buffer[base + 2] = sn * scale.z
+	buffer[base + 3] = origin.x
+	buffer[base + 4] = 0.0
+	buffer[base + 5] = scale.y
+	buffer[base + 6] = 0.0
+	buffer[base + 7] = origin.y
+	buffer[base + 8] = -sn * scale.x
+	buffer[base + 9] = 0.0
+	buffer[base + 10] = c * scale.z
+	buffer[base + 11] = origin.z
+	buffer[base + 12] = color.r
+	buffer[base + 13] = color.g
+	buffer[base + 14] = color.b
+	buffer[base + 15] = color.a
+
+
+func _add_multimesh(node_name: String, mesh: Mesh, buffer: PackedFloat32Array, count: int) -> void:
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_3D
 	mm.use_colors = true
 	mm.mesh = mesh
-	mm.instance_count = xforms.size()
-	for i in xforms.size():
-		mm.set_instance_transform(i, xforms[i])
-		mm.set_instance_color(i, colors[i])
+	mm.instance_count = count
+	if count > 0:
+		mm.buffer = buffer
 	var mmi := MultiMeshInstance3D.new()
 	mmi.name = node_name
 	mmi.multimesh = mm

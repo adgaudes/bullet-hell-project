@@ -259,6 +259,13 @@ func _test_spawn_ring_and_leash() -> void:
 	_check(director.leashed == 1, "nemico a 10 m non toccato")
 	var dn := Vector3(near.global_position.x, 0.0, near.global_position.z).length()
 	_check(dn < 10.5, "il nemico vicino avanza verso il giocatore (%0.1f m)" % dn)
+	# E-01: fuori dalla finestra del campo (qui 32 celle = 19,2 m) ma sotto il guinzaglio (40 m)
+	# il nemico andrebbe dritto e resterebbe nelle rovine: viene riportato sull'anello.
+	var band := director.spawn_at(Vector3(0.0, 0.0, 30.0))
+	await _frames(2)
+	var db := Vector3(band.global_position.x, 0.0, band.global_position.z).length()
+	_check(director.leashed == 2 and db <= director.tuning.spawn_ring_max + 0.5,
+		"nemico a 30 m, fuori finestra ma sotto il guinzaglio: riportato (%0.1f m)" % db)
 	_world.remove_child(director)
 	director.free()
 	_world.remove_child(player)

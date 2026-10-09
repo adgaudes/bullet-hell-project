@@ -61,7 +61,8 @@ func set_attractor(node: Node3D, radius: float) -> void:
 
 func _physics_process(delta: float) -> void:
 	_time += delta
-	for fragment in _fragments.duplicate():
+	for k in range(_fragments.size() - 1, -1, -1):
+		var fragment: Dictionary = _fragments[k]
 		var node: MeshInstance3D = fragment.node
 		if fragment.target == null:
 			fragment.target = _attractor_for(node.global_position)
@@ -72,7 +73,7 @@ func _physics_process(delta: float) -> void:
 		var goal := target.global_position
 		var to_goal := Vector3(goal.x - node.global_position.x, 0.0, goal.z - node.global_position.z)
 		if to_goal.length() <= COLLECT_DISTANCE:
-			_fragments.erase(fragment)
+			_fragments.remove_at(k)
 			node.queue_free()
 			collected.emit(fragment.value)
 			continue

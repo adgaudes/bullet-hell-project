@@ -44,6 +44,9 @@ var _runner_material: ShaderMaterial
 ## Rottamatori veloci nati finora.
 var runners_spawned := 0
 var _flash_material := StandardMaterial3D.new()
+# Riusati a ogni passo (R-10): secchi di separazione e copia dell'elenco dei nemici.
+var _buckets: Dictionary[Vector2i, Array] = {}
+var _step_list: Array[Enemy] = []
 
 
 func _ready() -> void:
@@ -172,16 +175,21 @@ func _find_spawn_point() -> Variant:
 
 
 func _move_enemies(delta: float) -> void:
-	var buckets := {}
+	for bucket: Array in _buckets.values():
+		bucket.clear()
 	for enemy in enemies:
 		var key := Vector2i(floori(enemy.global_position.x), floori(enemy.global_position.z))
-		if not buckets.has(key):
-			buckets[key] = []
-		buckets[key].append(enemy)
+		if not _buckets.has(key):
+			_buckets[key] = []
+		_buckets[key].append(enemy)
+	if _buckets.size() > 4096:
+		_buckets.clear()
 
 	var penalty := grid.lowered_speed_penalty() if grid != null else 0.0
-	# Copia: un nemico che muore durante il passo esce subito dall'elenco.
-	for enemy: Enemy in enemies.duplicate():
+	# Copia riusata: un nemico che muore durante il passo esce subito dall'elenco.
+	_step_list.clear()
+	_step_list.append_array(enemies)
+	for enemy: Enemy in _step_list:
 		if enemy.is_dead:
 			continue
 		enemy.tick_visuals(delta)
@@ -199,7 +207,12 @@ func _move_enemies(delta: float) -> void:
 			else:
 				direction = to_errand.normalized()
 		else:
-			if to_player.length() > tuning.enemy_leash_distance and _leash(enemy):
+			# Fuori guinzaglio, o fuori dalla finestra del campo (dove andrebbe dritto e
+			# resterebbe nelle rovine, E-01): torna sull'anello.
+			var lost := to_player.length() > tuning.enemy_leash_distance
+			if not lost and path_field != null and path_field.is_ready() and to_player.length() > tuning.spawn_ring_max + 1.0 					and not path_field.is_inside(path_field.cell_of(pos)):
+				lost = true
+			if lost and _leash(enemy):
 				continue
 			if to_player.length() > DIRECT_CHASE_DISTANCE and path_field != null:
 				var waypoint: Variant = path_field.next_waypoint(pos)
@@ -207,7 +220,7 @@ func _move_enemies(delta: float) -> void:
 					direction = _planar(waypoint - pos).normalized()
 			if direction.is_zero_approx():
 				direction = to_player.normalized()
-		direction += _separation(enemy, buckets) * SEPARATION_WEIGHT
+		direction += _separation(enemy) * SEPARATION_WEIGHT
 		var speed := tuning.enemy_speed * enemy.speed_scale
 		if grid != null and grid.cell_state_at(pos) == TerrainState.CellState.LOWERED:
 			speed *= 1.0 - penalty
@@ -248,13 +261,15 @@ func _apply_contacts(enemy: Enemy) -> void:
 				break
 
 
-func _separation(enemy: Enemy, buckets: Dictionary) -> Vector3:
+func _separation(enemy: Enemy) -> Vector3:
 	var push := Vector3.ZERO
 	var base := Vector2i(floori(enemy.global_position.x), floori(enemy.global_position.z))
 	for dx in range(-1, 2):
 		for dz in range(-1, 2):
-			var bucket: Array = buckets.get(base + Vector2i(dx, dz), [])
-			for other: Enemy in bucket:
+			var key := base + Vector2i(dx, dz)
+			if not _buckets.has(key):
+				continue
+			for other: Enemy in _buckets[key]:
 				if other == enemy:
 					continue
 				var away := _planar(enemy.global_position - other.global_position)

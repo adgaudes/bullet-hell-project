@@ -40,7 +40,10 @@ func is_protected(cell: Vector2i) -> bool:
 	return cell == protected_cell
 
 
+## Fuori griglia vale NORMAL: nessun avvolgimento sulla riga precedente (T-04).
 func get_state(cell: Vector2i) -> CellState:
+	if not is_valid(cell):
+		return CellState.NORMAL
 	return _states[_index(cell)] as CellState
 
 

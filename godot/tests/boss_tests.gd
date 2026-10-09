@@ -43,6 +43,8 @@ func _initialize() -> void:
 	await _test_scrap_is_not_buried()
 	await _test_own_barricade_in_the_way()
 	await _test_abandons_unreachable_wall()
+	await _test_no_carrier_without_route()
+	await _test_spawn_point_is_walkable()
 	await _test_trench_slows()
 	await _test_contact_damage()
 	await _test_weapon_hits_boss()
@@ -294,6 +296,68 @@ func _test_abandons_unreachable_wall() -> void:
 	_grid.force_cell_state(cell, NORMAL)
 
 
+## E-04: un rottame chiuso dentro un anello di celle Raised non recluta nessuno.
+func _test_no_carrier_without_route() -> void:
+	print("no carrier without a route")
+	_place_player(Vector3.ZERO)
+	var scrap_cell := _grid.cell_at(Vector3(0.0, 0.0, 9.6))
+	var ring: Array[Vector2i] = []
+	for dy in range(-1, 2):
+		for dx in range(-1, 2):
+			if dx != 0 or dy != 0:
+				ring.append(scrap_cell + Vector2i(dx, dy))
+	_grid.set_cell_states(ring, RAISED)
+	_path.solve()
+	_scrap.spawn_on_cell(scrap_cell, NORMAL)
+	var scrap_world := _cell_world(scrap_cell)
+	_check(_path.cost_at(scrap_world) == PathField.UNREACHABLE, "il rottame e senza strada")
+	_place_boss(scrap_world + Vector3(0.0, 0.0, 6.0))
+	_boss.speed = 0.0
+	var radius := _boss.wall_attraction_radius
+	_boss.wall_attraction_radius = 0.0
+	var outsider := _director.spawn_at(scrap_world + Vector3(6.0, 0.0, 0.0))
+	await _frames(RETARGET_FRAMES)
+	_check(not outsider.has_errand and _boss.crew_size() == 0, "nessun rottamatore reclutato verso un rottame irraggiungibile")
+	_grid.set_cell_states(ring, NORMAL)
+	_path.solve()
+	await _frames(RETARGET_FRAMES)
+	_check(outsider.has_errand and _boss.crew_size() == 1, "riaperta la strada, viene reclutato")
+	# Abbattuto come in gioco: il boss lo toglie dalla squadra da solo.
+	outsider.take_damage(outsider.health)
+	await _frames(2)
+	_scrap.take_near(scrap_world, _grid.cell_size_m() * 3.0, 2)
+	_boss.speed = _run.tuning.boss_speed
+	_boss.wall_attraction_radius = radius
+	await _frames(2)
+
+
+## T-01: con una rovina sul punto d'ingresso, il boss nasce sulla cella percorribile piu vicina.
+func _test_spawn_point_is_walkable() -> void:
+	print("spawn point is walkable")
+	_place_player(Vector3.ZERO)
+	_run.boss_direction = Vector3(0.0, 0.0, -1.0)
+	var block := StaticBody3D.new()
+	block.collision_layer = 1
+	var shape := CollisionShape3D.new()
+	var box := BoxShape3D.new()
+	box.size = Vector3(22.0, 2.0, 16.0)
+	shape.shape = box
+	block.add_child(shape)
+	_scene.add_child(block)
+	block.global_position = _run.boss_direction * _run.tuning.boss_spawn_distance + Vector3(0.0, 1.0, 0.0)
+	await _frames(2)
+	_path.scan_static_obstacles()
+	var naive := _run.boss_direction * _run.tuning.boss_spawn_distance
+	_check(not _path.is_walkable(naive), "il punto d'ingresso nominale e dentro la rovina")
+	var point: Vector3 = _run._boss_spawn_point()
+	_check(_path.is_walkable(point), "il boss nasce su una cella percorribile (%s)" % point)
+	_check(_planar_distance(point, naive) <= 24.0, "vicino al punto nominale (%.1f m)" % _planar_distance(point, naive))
+	_scene.remove_child(block)
+	block.free()
+	await _frames(2)
+	_path.scan_static_obstacles()
+
+
 func _test_trench_slows() -> void:
 	print("trench")
 	_boss.wall_attraction_radius = 0.0
@@ -353,6 +417,7 @@ func _test_defeat_completes_level() -> void:
 	_check(completed[0] and _run.is_over and _run.boss_phase == ArenaRun.BossPhase.DEFEATED, "boss abbattuto: livello completato")
 	_check(panel.is_open and panel.is_victory and paused, "schermata di vittoria, gioco fermo")
 	_check(_director.enemies.is_empty() and not _director.spawning, "l'orda si ritira")
+	_check(_run._final_map != null, "la mappa di fine run e catturata prima di congedare l'orda")
 	_check(_director.kills == kills + 1, "conta solo il boss fra gli abbattuti")
 	carried += _run.recovery_scrap()
 	_check(_run.scrap_out(true) == carried + _run.tuning.boss_scrap_bonus, "rottami portati fuori: cassone + premio (%d)" % _run.scrap_out(true))

@@ -248,7 +248,9 @@ func _on_command_applied(_cell: Vector2i, _mode: TerrainState.ToolMode, _state: 
 
 func _on_field_solved() -> void:
 	if _armed:
-		show_now()
+		# Non nello stesso passo fisico del ricalcolo del campo (E-05): le scie si
+		# tracciano nel prossimo `_process`, fuori dal budget del passo.
+		_armed_left = 0.0
 	elif _showing and follow_field:
 		# Non nello stesso frame del ricalcolo del campo: i due costi non si sommano.
 		_retrace_wait = 2

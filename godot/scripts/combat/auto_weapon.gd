@@ -11,6 +11,10 @@ const NAIL_COLOR := Color(1.0, 0.85, 0.35)
 const NAIL_LENGTH := 0.42
 const HIT_RADIUS := 0.45
 const MAX_NAILS := 64
+## Senza linea di tiro si riprova dopo questo tempo, non a ogni passo (R-35).
+const BLOCKED_RETRY := 0.08
+## Candidati provati col raggio per colpo: i piu vicini bastano.
+const MAX_CANDIDATES := 8
 
 @export var shooter: Node3D
 @export var director: EnemyDirector
@@ -52,6 +56,7 @@ func _physics_process(delta: float) -> void:
 		return
 	var target := find_target()
 	if target == null:
+		_cooldown = BLOCKED_RETRY
 		return
 	_cooldown = fire_interval
 	_fire_at(target)
@@ -68,9 +73,13 @@ func find_target() -> Enemy:
 	candidates.sort_custom(func(a: Enemy, b: Enemy) -> bool:
 		return origin.distance_squared_to(a.global_position) < origin.distance_squared_to(b.global_position))
 	var space := get_world_3d().direct_space_state
+	var tried := 0
 	for enemy in candidates:
 		if enemy.is_dead:
 			continue
+		if tried >= MAX_CANDIDATES:
+			break
+		tried += 1
 		var aim := Vector3(enemy.global_position.x, origin.y, enemy.global_position.z)
 		var query := PhysicsRayQueryParameters3D.create(origin, aim, 1)
 		if space.intersect_ray(query).is_empty():
@@ -108,7 +117,9 @@ func _move_nails(delta: float) -> void:
 		return
 	var space := get_world_3d().direct_space_state
 	var step := projectile_speed * delta
-	for nail in _nails.duplicate():
+	var enemies := director.enemies if director != null else []
+	for k in range(_nails.size() - 1, -1, -1):
+		var nail: Dictionary = _nails[k]
 		var node: MeshInstance3D = nail.node
 		var from := node.global_position
 		var to: Vector3 = from + nail.direction * step
@@ -118,7 +129,11 @@ func _move_nails(delta: float) -> void:
 			to = wall.position
 			alive = false
 		if director != null:
-			for enemy: Enemy in director.enemies.duplicate():
+			# Indietro: un nemico ucciso qui esce da `enemies` durante il ciclo.
+			for e in range(enemies.size() - 1, -1, -1):
+				if e >= enemies.size():
+					continue
+				var enemy: Enemy = enemies[e]
 				if enemy.is_dead or nail.hit.has(enemy):
 					continue
 				if _segment_distance(from, to, enemy.global_position) <= HIT_RADIUS + enemy.hit_radius_bonus:
@@ -134,7 +149,7 @@ func _move_nails(delta: float) -> void:
 		if alive:
 			node.global_position = to
 		else:
-			_nails.erase(nail)
+			_nails.remove_at(k)
 			node.queue_free()
 
 

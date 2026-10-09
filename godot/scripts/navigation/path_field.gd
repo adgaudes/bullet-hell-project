@@ -66,6 +66,14 @@ var _blocked := PackedByteArray()
 var _terrain_index := PackedInt32Array()
 ## Chunk -> PackedByteArray(CHUNK * CHUNK) di ostacoli statici.
 var _static_chunks: Dictionary[Vector2i, PackedByteArray] = {}
+## Per chunk: indice della cella terreno sotto ogni cella del campo (-1 se fuori griglia),
+## letto da `grid.cell_at` una volta sola: il ricentro non lo ricalcola (E-02).
+var _terrain_chunks: Dictionary[Vector2i, PackedInt32Array] = {}
+## Per cella: indice della vicina verso il bersaglio (-1 nessuna), NEXT_UNKNOWN se non
+## ancora calcolato dall'ultima soluzione (E-03): `next_waypoint` lo legge invece di
+## scandire gli otto vicini a ogni passo di ogni nemico.
+const NEXT_UNKNOWN := -2
+var _next := PackedInt32Array()
 var _target_cell := Vector2i(-1, -1)
 var _dirty := true
 ## Celle terreno cambiate dall'ultimo aggiornamento degli ostacoli: si rilegge una
@@ -84,12 +92,18 @@ func _ready() -> void:
 	_static_blocked.resize(count)
 	_blocked.resize(count)
 	_terrain_index.resize(count)
+	_next.resize(count)
+	_next.fill(NEXT_UNKNOWN)
 	if grid != null:
 		grid.cell_changed.connect(func(_cell: Vector2i, _state: TerrainState.CellState) -> void: _terrain_dirty = true)
-		grid.rebuilt.connect(_refresh_terrain)
+		grid.rebuilt.connect(_on_grid_rebuilt)
 	# Gli ostacoli dell'arena entrano nello spazio fisico dopo un passo.
 	await get_tree().physics_frame
+	if not is_inside_tree():
+		return
 	await get_tree().physics_frame
+	if not is_inside_tree() or (target != null and not is_instance_valid(target)):
+		return
 	var center := Vector2i(world_columns / 2, world_columns / 2)
 	origin = _origin_for(_world_cell_of(target.global_position) if target != null else center)
 	_fill_window()
@@ -160,8 +174,21 @@ func next_waypoint(world: Vector3) -> Variant:
 	var cell := cell_of(world)
 	if not is_inside(cell):
 		return null
+	var index := _index(cell)
+	var cached := _next[index]
+	if cached == NEXT_UNKNOWN:
+		cached = _best_neighbor(cell)
+		_next[index] = cached
+	if cached < 0:
+		return null
+	return cell_center(Vector2i(cached % columns, cached / columns))
+
+
+# Indice della vicina con costo minore (-1 se nessuna avvicina): calcolato una volta per
+# cella e per soluzione.
+func _best_neighbor(cell: Vector2i) -> int:
 	var best_cost := costs[_index(cell)]
-	var best := Vector2i(-1, -1)
+	var best := -1
 	for i in NEIGHBORS.size():
 		var offset := NEIGHBORS[i]
 		var next := cell + offset
@@ -172,10 +199,8 @@ func next_waypoint(world: Vector3) -> Variant:
 		var c := costs[_index(next)]
 		if c < best_cost:
 			best_cost = c
-			best = next
-	if best.x < 0:
-		return null
-	return cell_center(best)
+			best = _index(next)
+	return best
 
 
 ## Sposta la finestra attorno a [param world_cell] e la riempie dalla cache dei chunk.
@@ -200,6 +225,11 @@ func scan_static_obstacles() -> void:
 	_fill_window()
 
 
+func _on_grid_rebuilt() -> void:
+	_terrain_chunks.clear()
+	_refresh_terrain()
+
+
 func _needs_recenter(world_cell: Vector2i) -> bool:
 	if columns >= world_columns:
 		return false
@@ -222,10 +252,50 @@ func _world_inside(wc: Vector2i) -> bool:
 
 
 func _fill_window() -> void:
-	for y in columns:
-		for x in columns:
-			_static_blocked[y * columns + x] = _static_at(origin + Vector2i(x, y))
-	_refresh_terrain()
+	# Chunk per chunk: una sola lettura della cache (gli array impacchettati si copiano
+	# per valore: 4096 letture singole costavano quanto la soluzione intera).
+	var first_chunk := Vector2i(origin.x / CHUNK, origin.y / CHUNK)
+	var last_chunk := Vector2i((origin.x + columns - 1) / CHUNK, (origin.y + columns - 1) / CHUNK)
+	for cy in range(first_chunk.y, last_chunk.y + 1):
+		for cx in range(first_chunk.x, last_chunk.x + 1):
+			var chunk := Vector2i(cx, cy)
+			var data: PackedByteArray = _static_chunks.get(chunk, PackedByteArray())
+			if data.is_empty():
+				data = _scan_chunk(chunk)
+				_static_chunks[chunk] = data
+			var terrain: PackedInt32Array = _terrain_chunks.get(chunk, PackedInt32Array())
+			if terrain.is_empty():
+				terrain = _scan_terrain_chunk(chunk)
+				_terrain_chunks[chunk] = terrain
+			var x0 := maxi(cx * CHUNK, origin.x)
+			var x1 := mini(cx * CHUNK + CHUNK, origin.x + columns)
+			var y0 := maxi(cy * CHUNK, origin.y)
+			var y1 := mini(cy * CHUNK + CHUNK, origin.y + columns)
+			for wy in range(y0, y1):
+				var row := (wy - origin.y) * columns - origin.x
+				var chunk_row := (wy % CHUNK) * CHUNK - cx * CHUNK
+				for wx in range(x0, x1):
+					_static_blocked[row + wx] = data[chunk_row + wx]
+					_terrain_index[row + wx] = terrain[chunk_row + wx]
+	_refresh_blocked()
+
+
+func _scan_terrain_chunk(chunk: Vector2i) -> PackedInt32Array:
+	var data := PackedInt32Array()
+	data.resize(CHUNK * CHUNK)
+	data.fill(-1)
+	if grid == null:
+		return data
+	for y in CHUNK:
+		for x in CHUNK:
+			var wc := chunk * CHUNK + Vector2i(x, y)
+			if not _world_inside(wc):
+				continue
+			var center := Vector3(-half_extent + (wc.x + 0.5) * cell_size, 0.0, -half_extent + (wc.y + 0.5) * cell_size)
+			var terrain_cell := grid.cell_at(center)
+			if grid.state.is_valid(terrain_cell):
+				data[y * CHUNK + x] = terrain_cell.y * grid.state.width + terrain_cell.x
+	return data
 
 
 ## Ostacolo statico in una cella mondo, dal chunk in cache o letto ora.
@@ -271,16 +341,7 @@ func _scan_chunk(chunk: Vector2i) -> PackedByteArray:
 func _refresh_terrain() -> void:
 	if columns == 0:
 		return
-	for y in columns:
-		for x in columns:
-			var i := y * columns + x
-			_terrain_index[i] = -1
-			if grid == null:
-				continue
-			var terrain_cell := grid.cell_at(cell_center(Vector2i(x, y)))
-			if grid.state.is_valid(terrain_cell):
-				_terrain_index[i] = terrain_cell.y * grid.state.width + terrain_cell.x
-	_refresh_blocked()
+	_fill_window()
 
 
 func _flush_terrain() -> void:
@@ -290,6 +351,7 @@ func _flush_terrain() -> void:
 
 func _refresh_blocked() -> void:
 	_terrain_dirty = false
+	_next.fill(NEXT_UNKNOWN)
 	for i in _blocked.size():
 		var blocked := _static_blocked[i]
 		var t := _terrain_index[i]
@@ -307,14 +369,18 @@ func _refresh_blocked() -> void:
 func solve() -> void:
 	var start_usec := Time.get_ticks_usec()
 	_flush_terrain()
-	_since_solve = 0.0
-	_dirty = false
 	costs.fill(UNREACHABLE)
+	_next.fill(NEXT_UNKNOWN)
 	if target == null:
+		_since_solve = 0.0
+		_dirty = false
 		return
 	var world_cell := _world_cell_of(target.global_position)
 	if _ready_done and not is_inside(world_cell - origin) and _world_inside(world_cell):
 		recenter(world_cell)
+	# Dopo il ricentro (che li rimette a "da risolvere"): questa soluzione li chiude.
+	_since_solve = 0.0
+	_dirty = false
 	_target_cell = world_cell - origin
 	if not is_inside(_target_cell):
 		return

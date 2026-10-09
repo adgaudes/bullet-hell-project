@@ -333,10 +333,16 @@ func _recruit_carriers() -> void:
 				break
 		if claimed:
 			continue
+		# Rottame senza strada dal giocatore (oltre un muro chiuso): nessuno lo raggiungerebbe.
+		if not _reachable(scrap):
+			continue
 		var best: Enemy = null
 		var best_distance := carrier_recruit_radius
 		for enemy in director.enemies:
 			if enemy == self or enemy.is_dead or enemy.self_driven or enemy.has_errand:
+				continue
+			# Stessa regione del giocatore e del rottame: altrimenti spingerebbe contro il muro.
+			if not _reachable(enemy.global_position):
 				continue
 			var distance := _planar(enemy.global_position - scrap).length()
 			if distance < best_distance:
@@ -349,6 +355,21 @@ func _recruit_carriers() -> void:
 		if not best.errand_reached.is_connected(_on_carrier_arrived):
 			best.errand_reached.connect(_on_carrier_arrived)
 			best.died.connect(_on_carrier_died)
+
+
+## Il punto, o una cella vicina (chi sta addosso a una rovina puo avere il centro in una
+## cella segnata come bloccata), ha una strada verso il giocatore nel campo di percorso.
+func _reachable(point: Vector3) -> bool:
+	if path_field == null or not path_field.is_ready():
+		return true
+	if path_field.cost_at(point) != PathField.UNREACHABLE:
+		return true
+	var step := path_field.cell_size
+	for dz in range(-1, 2):
+		for dx in range(-1, 2):
+			if (dx != 0 or dz != 0) and path_field.cost_at(point + Vector3(dx * step, 0.0, dz * step)) != PathField.UNREACHABLE:
+				return true
+	return false
 
 
 ## Toglie dalla squadra chi e morto o e stato rimosso (l'orda che si ritira).

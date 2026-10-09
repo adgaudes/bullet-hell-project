@@ -74,12 +74,17 @@ var _profile: PlayerProfileService
 var _death_scrap_share := 0.0
 ## Fotografia della griglia a inizio livello e conteggi del tool, per la mappa finale (D-052).
 var _initial_terrain := PackedByteArray()
+## Mappa di fine run catturata alla vittoria, prima che l'orda e il boss siano liberati.
+var _final_map: Image
 var _start_position := Vector3.ZERO
 var cells_dug := 0
 var cells_raised := 0
 
 
 func _ready() -> void:
+	# Ultimo nel passo fisico, qualunque sia l'ordine dei fratelli: aprire la pausa
+	# (level-up, game over) da qui non lascia nodi a meta passo (T-05).
+	process_physics_priority = 100
 	if tuning == null:
 		tuning = RunTuning.new()
 	run_seed = _seed_from_command_line()
@@ -218,10 +223,15 @@ func call_boss() -> void:
 	# Solo direzioni in cui c'e spazio per arrivare da lontano (vicino ai bordi no).
 	var limit := _play_half_extent() - 3.0
 	var options: Array = []
+	var path := director.path_field
 	for entry: Array in BOSS_DIRECTIONS:
 		var point: Vector3 = player.global_position + entry[1] * tuning.boss_spawn_distance
-		if absf(point.x) <= limit and absf(point.z) <= limit:
-			options.append(entry)
+		if absf(point.x) > limit or absf(point.z) > limit:
+			continue
+		# E con un punto d'ingresso percorribile (T-01: non dentro una rovina).
+		if path != null and path.is_ready() and _walkable_near(point, 9.0) == null:
+			continue
+		options.append(entry)
 	if options.is_empty():
 		options = BOSS_DIRECTIONS
 	var chosen: Array = options[_boss_rng.randi_range(0, options.size() - 1)]
@@ -278,7 +288,31 @@ func _boss_spawn_point() -> Vector3:
 					and path.is_walkable(point - Vector3(1.0, 0.0, 1.0))):
 				return point
 	var fallback: Vector3 = player.global_position + boss_direction * tuning.boss_spawn_distance
-	return Vector3(clampf(fallback.x, -limit, limit), 0.0, clampf(fallback.z, -limit, limit))
+	fallback = Vector3(clampf(fallback.x, -limit, limit), 0.0, clampf(fallback.z, -limit, limit))
+	# Ripiego verificato: la cella percorribile piu vicina a spirale (T-01).
+	var near: Variant = _walkable_near(fallback, 24.0)
+	return near if near != null else fallback
+
+
+## Punto percorribile (dentro l'arena) piu vicino a [param origin] entro [param radius],
+## cercato a spirale a passi di una cella del campo; null se non c'e.
+func _walkable_near(origin: Vector3, radius: float) -> Variant:
+	var path := director.path_field
+	if path == null:
+		return origin
+	var limit := _play_half_extent() - 3.0
+	var step := path.cell_size
+	var rings := int(ceil(radius / step))
+	for ring in rings + 1:
+		for dz in range(-ring, ring + 1):
+			for dx in range(-ring, ring + 1):
+				if maxi(absi(dx), absi(dz)) != ring:
+					continue
+				var point := Vector3(clampf(origin.x + dx * step, -limit, limit), 0.0, clampf(origin.z + dz * step, -limit, limit))
+				if path.is_walkable(point) and path.is_walkable(point + Vector3(1.0, 0.0, 1.0)) \
+						and path.is_walkable(point - Vector3(1.0, 0.0, 1.0)):
+					return point
+	return null
 
 
 func _play_half_extent() -> float:
@@ -313,6 +347,8 @@ func _on_boss_died(_enemy: Enemy) -> void:
 	is_over = true
 	boss_phase = BossPhase.DEFEATED
 	director.spawning = false
+	# Prima di congedare l'orda: la mappa di fine run legge barricate e posizione del boss (T-08).
+	_final_map = build_run_map()
 	director.clear_horde()
 	hud.clear_boss()
 	if level_up_menu.is_open:
@@ -436,7 +472,7 @@ func build_run_map() -> Image:
 
 
 func _show_run_map() -> void:
-	game_over.set_map(build_run_map(), "Celle scavate %d   rialzate %d" % [cells_dug, cells_raised], "run_%d" % run_seed)
+	game_over.set_map(_final_map if _final_map != null else build_run_map(), "Celle scavate %d   rialzate %d" % [cells_dug, cells_raised], "run_%d" % run_seed)
 
 
 func _on_enemy_killed(world_position: Vector3, total: int) -> void:
