@@ -202,6 +202,12 @@ func _test_pause_and_focus() -> void:
 	await process_frame
 	focused = pause_menu.focused_control()
 	_check(focused != null and focused.name == &"FpsOption", "focus sulla prima impostazione")
+	# R-13: Esc dalle Impostazioni torna al pannello di pausa, come B; non riprende il gioco.
+	_send_pause_key()
+	await process_frame
+	focused = pause_menu.focused_control()
+	_check(paused and pause_menu.is_open() and focused != null and focused.name == &"ResumeButton",
+		"Esc nelle Impostazioni torna alla pausa, come B")
 	_send_pause_joypad()
 	await process_frame
 	_check(not paused and not pause_menu.is_open(), "Start chiude il menu e riprende")
@@ -252,7 +258,9 @@ func _test_aim_inversion() -> void:
 func _send_pause_key() -> void:
 	for pressed in [true, false]:
 		var event := InputEventKey.new()
+		# Come un tasto reale: `pause` legge il tasto fisico, `ui_cancel` il keycode.
 		event.physical_keycode = KEY_ESCAPE
+		event.keycode = KEY_ESCAPE
 		event.pressed = pressed
 		Input.parse_input_event(event)
 

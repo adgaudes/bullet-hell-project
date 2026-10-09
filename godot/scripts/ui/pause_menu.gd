@@ -43,7 +43,15 @@ func _ready() -> void:
 func _input(event: InputEvent) -> void:
 	if event.is_echo():
 		return
-	if event.is_action_pressed(&"pause"):
+	# Esc e insieme `pause` e `ui_cancel`: a pannello aperto vale "Indietro", come B sul
+	# controller (chiude le Impostazioni anche nel menu iniziale, dove la pausa e spenta).
+	if _overlay.visible and event.is_action_pressed(&"ui_cancel"):
+		get_viewport().set_input_as_handled()
+		if _settings_panel.visible:
+			_show_pause_panel()
+		elif not _settings_only:
+			resume_game()
+	elif event.is_action_pressed(&"pause"):
 		if not enabled:
 			return
 		# Gioco fermato da altro (level-up, fine run): la pausa non lo riattiva.
@@ -54,12 +62,6 @@ func _input(event: InputEvent) -> void:
 			resume_game()
 		else:
 			pause_game()
-	elif _overlay.visible and event.is_action_pressed(&"ui_cancel"):
-		get_viewport().set_input_as_handled()
-		if _settings_panel.visible:
-			_show_pause_panel()
-		elif not _settings_only:
-			resume_game()
 
 
 ## Ferma il gioco e porta il focus su Riprendi.

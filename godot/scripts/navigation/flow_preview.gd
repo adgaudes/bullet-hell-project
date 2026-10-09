@@ -261,7 +261,9 @@ func _trace_trail(trail: int, start: Vector3, goal: Vector3) -> void:
 	_points.append(start)
 	var pos := start
 	var blocked := false
+	var merged := false
 	var merged_blocked := false
+	var arrived := false
 	var previous := -1
 	var step := path_field.cell_size
 	var stop_sq := stop_radius * stop_radius
@@ -269,6 +271,7 @@ func _trace_trail(trail: int, start: Vector3, goal: Vector3) -> void:
 		var to_goal := goal - pos
 		to_goal.y = 0.0
 		if to_goal.length_squared() <= stop_sq:
+			arrived = true
 			break
 		var waypoint: Variant = path_field.next_waypoint(pos)
 		var next: Vector3
@@ -287,11 +290,15 @@ func _trace_trail(trail: int, start: Vector3, goal: Vector3) -> void:
 			previous = -1
 			continue
 		var index := cell.y * path_field.columns + cell.x
+		if index == previous:
+			# Passo corto in linea retta: stessa cella di prima, non e una confluenza.
+			continue
 		if previous >= 0:
 			_next_cell[previous] = index
 		if _visited[index] != 0:
 			# Confluenza: da qui in poi le impronte ci sono gia e l'esito e lo stesso;
 			# la scia a valle porta una scia in piu.
+			merged = true
 			merged_blocked = _visited[index] == VISITED_BLOCKED
 			var downstream := index
 			for hop in MAX_TRAIL_STEPS:
@@ -305,6 +312,9 @@ func _trace_trail(trail: int, start: Vector3, goal: Vector3) -> void:
 		_flow[index] = 1
 		previous = index
 	trail_count += 1
+	# Finiti i passi senza arrivare (in linea retta contro un muro): chiusa fuori.
+	if not arrived and not merged:
+		blocked = true
 	if blocked or merged_blocked:
 		blocked_trails += 1
 		# Chi confluira in questa scia restera chiuso fuori come lei.

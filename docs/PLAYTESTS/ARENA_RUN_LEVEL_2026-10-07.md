@@ -19,20 +19,20 @@ Almeno tre run. Una con il controller e una con tastiera e mouse, come sempre.
 
 ## Cosa e gia noto: non serve riscoprirlo
 
-Dalla review del 7 ottobre 2026 (`docs/REVIEWS/ARENA_RUN_LEVEL_2026-10-07.md`), nessuna correzione ancora fatta. Se li vedi, **basta un segno di spunta e il seme**; se non li vedi in tre run, anche questo e un dato.
+Dalla review del 7 ottobre 2026 (`docs/REVIEWS/ARENA_RUN_LEVEL_2026-10-07.md`). Le otto del punto 1 (R-01, R-02, R-06, R-07, R-13, R-25, R-26, R-38) sono **corrette il 9 ottobre 2026** con un test ciascuna: se le vedi lo stesso, e un dato importante. Le altre restano aperte. Se li vedi, **basta un segno di spunta e il seme**; se non li vedi in tre run, anche questo e un dato.
 
 | Visto? | Cosa | Dove nel gioco | Rif. |
 |---|---|---|---|
-| ☐ | Il Demolitore resta fermo o spinge contro una rovina invece di arrivare a un terrapieno | boss, quando ha un muro tuo entro 12 m e un edificio in mezzo | R-01 |
-| ☐ | Il compagno spinge contro un muro o una barricata senza passare, e intanto non rifornisce i rialzi | un rottame dall'altra parte del muro, entro 6 m da te | R-02, R-05 |
+| ☐ | Il Demolitore resta fermo o spinge contro una rovina invece di arrivare a un terrapieno (**corretto**: dopo 2 s senza avvicinarsi lascia perdere il muro) | boss, quando ha un muro tuo entro 12 m e un edificio in mezzo | R-01 |
+| ☐ | Il compagno spinge contro un muro o una barricata senza passare, e intanto non rifornisce i rialzi (**R-02 corretto**: i rottami non restano piu sepolti; R-05 aperto) | un rottame dall'altra parte del muro, entro 6 m da te | R-02, R-05 |
 | ☐ | Un rottamatore col rottame in spalla va e viene dal boss ogni 10 secondi, con il suono di presa a ogni giro | boss vicino a un edificio o al bordo | R-04 |
 | ☐ | Stando a 4-5 m dal cantiere il boss non alza mai la barricata | boss | R-03 |
-| ☐ | Il boss smonta una barricata sua | boss | R-06 |
-| ☐ | Esc non chiude le Impostazioni dal menu iniziale (B si); in gioco Esc dalle Impostazioni chiude tutto, B torna alla pausa | menu | R-13 |
+| ☐ | Il boss smonta una barricata sua (**corretto**) | boss | R-06 |
+| ☐ | Esc non chiude le Impostazioni dal menu iniziale (B si); in gioco Esc dalle Impostazioni chiude tutto, B torna alla pausa (**corretto**) | menu | R-13 |
 | ☐ | Dopo aver scelto una carta col mouse, il primo Spazio o clic destro non fa niente | tastiera e mouse | R-17 |
 | ☐ | La sirena del boss si interrompe a meta | combattimento denso al momento dell'annuncio | R-36 |
-| ☐ | Dopo esserti murato dentro, le impronte dell'orda non mostrano la sbarra | cortile sigillato, tu non al centro | R-26 |
-| ☐ | Un rottamatore riportato sull'anello lascia una striscia per un frame | orda dispersa | R-07 |
+| ☐ | Dopo esserti murato dentro, le impronte dell'orda non mostrano la sbarra (**corretto**) | cortile sigillato, tu non al centro | R-26 |
+| ☐ | Un rottamatore riportato sull'anello lascia una striscia per un frame (**corretto**, non visto) | orda dispersa | R-07 |
 | ☐ | Scatto breve all'avvio del livello dal menu | "Gioca" | R-40 |
 | ☐ | Uno scavo non produce il rottame | molti rottami in giro (oltre 60) | R-09 |
 

@@ -47,6 +47,16 @@ func _press(action: StringName) -> void:
 	await _frames(1)
 
 
+func _press_escape() -> void:
+	for pressed in [true, false]:
+		var event := InputEventKey.new()
+		event.physical_keycode = KEY_ESCAPE
+		event.keycode = KEY_ESCAPE
+		event.pressed = pressed
+		Input.parse_input_event(event)
+		await _frames(2)
+
+
 func _test_autostart_arguments() -> void:
 	print("autostart")
 	_check(not MainMenu.wants_autostart(PackedStringArray()), "senza argomenti ci si ferma al menu")
@@ -91,6 +101,13 @@ func _test_menu() -> void:
 	focus = menu.focused_control() as Button
 	_check(not pause.call(&"is_open") and menu._column.visible and focus != null and focus.text == "Impostazioni",
 		"B chiude le Impostazioni e il fuoco torna sul suo pulsante")
+	# R-13: Esc fisico e insieme `pause` (spenta nel menu) e `ui_cancel`: deve chiudere come B.
+	menu.open_settings()
+	await _frames(2)
+	await _press_escape()
+	focus = menu.focused_control() as Button
+	_check(not pause.call(&"is_open") and not paused and menu._column.visible and focus != null and focus.text == "Impostazioni",
+		"Esc chiude le Impostazioni nel menu iniziale")
 
 	var column := (pause.get(&"_resume_button") as Button).get_parent()
 	var texts: Array = column.get_children().filter(func(n: Node) -> bool: return n is Button).map(func(b: Button) -> String: return b.text)

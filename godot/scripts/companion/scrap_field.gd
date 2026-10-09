@@ -30,6 +30,7 @@ func _ready() -> void:
 	_material.albedo_color = SCRAP_COLOR.linear_to_srgb()
 	if grid != null:
 		grid.command_applied.connect(_on_command_applied)
+		grid.cell_changed.connect(_on_cell_changed)
 
 
 func count() -> int:
@@ -48,6 +49,15 @@ func spawn(world_position: Vector3) -> void:
 	_scraps.append(scrap)
 	print("PROTOTYPE01_SCRAP_SPAWNED")
 	scrap_spawned.emit(world_position)
+
+
+## Rottami sopra la cella (piano XZ).
+func count_on_cell(cell: Vector2i) -> int:
+	var count := 0
+	for scrap in _scraps:
+		if grid.cell_at(scrap.global_position) == cell:
+			count += 1
+	return count
 
 
 ## Rottame piu vicino a [param origin] entro [param radius] (piano XZ), o null.
@@ -114,6 +124,36 @@ func _on_command_applied(cell: Vector2i, mode: TerrainState.ToolMode, new_state:
 	if not bare_ground_yields_scrap and new_state != TerrainState.CellState.NORMAL:
 		return
 	spawn_on_cell(cell, new_state)
+
+
+## Una cella che diventa Raised (terrapieno del giocatore, barricata del boss) non deve
+## seppellire un rottame: lo sposta sulla vicina Normal piu vicina, o in cima.
+func _on_cell_changed(cell: Vector2i, new_state: TerrainState.CellState) -> void:
+	if new_state != TerrainState.CellState.RAISED:
+		return
+	var moved := false
+	for scrap in _scraps:
+		if grid.cell_at(scrap.global_position) != cell:
+			continue
+		var target := _free_neighbor(cell)
+		var local := grid.cell_local_position(target, grid.state.get_state(target))
+		local.y = local.y * 2.0 + SCRAP_SIZE
+		var world := grid.to_global(local)
+		scrap.global_position = world
+		scrap.set_meta(&"base_y", world.y)
+		moved = true
+	if moved:
+		print("PROTOTYPE01_SCRAP_UNBURIED X=%d Y=%d" % [cell.x, cell.y])
+
+
+# Vicina Normal piu vicina (prima i lati, poi le diagonali); la cella stessa se non ce n'e.
+func _free_neighbor(cell: Vector2i) -> Vector2i:
+	for offset in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1),
+			Vector2i(1, 1), Vector2i(1, -1), Vector2i(-1, 1), Vector2i(-1, -1)]:
+		var neighbor: Vector2i = cell + offset
+		if grid.state.is_valid(neighbor) and grid.state.get_state(neighbor) == TerrainState.CellState.NORMAL:
+			return neighbor
+	return cell
 
 
 static func _planar_distance(a: Vector3, b: Vector3) -> float:

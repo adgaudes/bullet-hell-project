@@ -40,6 +40,9 @@ func _initialize() -> void:
 	await _test_call_and_arrival()
 	await _test_walls_attract_and_feed_barricades()
 	await _test_digging_a_barricade()
+	await _test_scrap_is_not_buried()
+	await _test_own_barricade_in_the_way()
+	await _test_abandons_unreachable_wall()
 	await _test_trench_slows()
 	await _test_contact_damage()
 	await _test_weapon_hits_boss()
@@ -217,6 +220,78 @@ func _test_digging_a_barricade() -> void:
 	_check(not _boss.barricades.has(cell) and _grid.state.get_state(cell) == NORMAL, "la barricata crolla")
 	_check(_scrap.count() == scraps + 1, "e restituisce un rottame")
 	_director.set_physics_process(true)
+
+
+## R-02: una cella che si alza (barricata o terrapieno) non seppellisce un rottame, e il
+## boss non sceglie per la barricata una cella con un rottame sopra.
+func _test_scrap_is_not_buried() -> void:
+	print("scrap under a raised cell")
+	_place_player(Vector3.ZERO)
+	var cell := _grid.cell_at(_player.global_position + Vector3(0.0, 0.0, 6.0))
+	if _grid.state.get_state(cell) != NORMAL:
+		_grid.force_cell_state(cell, NORMAL)
+	var before := _scrap.count()
+	_scrap.spawn_on_cell(cell, NORMAL)
+	_check(_scrap.count_on_cell(cell) == 1, "rottame posato su una cella Normal")
+	_check(not _boss._cell_is_free(cell), "il boss non ci costruisce sopra una barricata")
+	_grid.force_cell_state(cell, RAISED)
+	_check(_scrap.count() == before + 1 and _scrap.count_on_cell(cell) == 0, "la cella si alza: il rottame non e sepolto")
+	var moved: Array[Vector3] = _scrap.positions_near(_cell_world(cell), _grid.cell_size_m() * 1.6)
+	_check(moved.size() == 1 and _grid.cell_state_at(moved[0]) == NORMAL, "e sta su una vicina Normal")
+	_grid.force_cell_state(cell, NORMAL)
+	_scrap.take_near(_cell_world(cell), _grid.cell_size_m() * 2.0, 1)
+
+
+## R-06: una propria barricata sulla linea verso il giocatore non va smontata.
+func _test_own_barricade_in_the_way() -> void:
+	print("own barricade in the way")
+	_place_player(Vector3.ZERO)
+	var cell := _grid.cell_at(Vector3(0.0, 0.0, -6.0))
+	_boss._raise_barricade(cell)
+	var center := _cell_world(cell)
+	_place_boss(center + Vector3(0.0, 0.0, -1.9))
+	var radius := _boss.wall_attraction_radius
+	_boss.wall_attraction_radius = 0.0
+	var touched := false
+	for i in 90:
+		await physics_frame
+		if _boss.demolish_cell == cell:
+			touched = true
+			break
+	_check(not touched and _boss.barricades.has(cell), "spingendo contro la propria barricata non la smonta")
+	_boss.wall_attraction_radius = radius
+	_grid.apply_command_at(center, TerrainState.ToolMode.DIG, _player)
+	_scrap.take_near(center, _grid.cell_size_m() * 2.0, 1)
+
+
+## R-01: un muro che non si avvicina (qui: il boss non puo muoversi) viene lasciato perdere
+## dopo WALL_STALL_SECONDS, e per un po' non lo attira piu.
+func _test_abandons_unreachable_wall() -> void:
+	print("abandons an unreachable wall")
+	_place_player(Vector3.ZERO)
+	_place_boss(Vector3(0.0, 0.0, -14.0))
+	var cell := _grid.cell_at(Vector3(0.0, 0.0, -9.0))
+	_grid.force_cell_state(cell, RAISED)
+	var radius := _boss.wall_attraction_radius
+	_boss.wall_attraction_radius = 6.0
+	_boss.speed = 0.0
+	await _frames(3)
+	_check(_boss._wall_target == cell, "il muro lo attira")
+	var gave_up := -1
+	for i in 240:
+		await physics_frame
+		if _boss._wall_target != cell:
+			gave_up = i
+			break
+	var expected := int(Demolisher.WALL_STALL_SECONDS * 60.0)
+	_check(gave_up >= expected - 5 and gave_up <= expected + 30,
+		"senza avvicinarsi per %.0f s lo lascia perdere (frame %d)" % [Demolisher.WALL_STALL_SECONDS, gave_up])
+	_check(_boss._ignored_walls.has(cell) and _boss._nearest_wall() != cell, "e per un po' quel muro non lo attira piu")
+	_check(not _boss.is_demolishing(), "non e rimasto incastrato a smontare")
+	_boss._ignored_walls.clear()
+	_boss.speed = _run.tuning.boss_speed
+	_boss.wall_attraction_radius = radius
+	_grid.force_cell_state(cell, NORMAL)
 
 
 func _test_trench_slows() -> void:

@@ -41,6 +41,7 @@ func _initialize() -> void:
 	_test_window_geometry()
 	_test_static_wall_in_window()
 	await _test_recenter_follows_target()
+	await _test_recenter_solves_at_once()
 	_test_chunk_cache()
 	await _test_far_wall_after_recenter()
 	_test_walkable_outside_window()
@@ -129,6 +130,28 @@ func _test_recenter_follows_target() -> void:
 	var limit := _field.world_columns - _field.columns
 	_check(_field.origin == Vector2i(limit, limit), "al bordo la finestra si ferma sull'angolo %s" % _field.origin)
 	_check(_field.cost_at(_target.global_position) == 0.0, "bersaglio nell'angolo: costo zero")
+
+
+## R-25: con l'intervallo minimo di gioco (0,15 s) il ricentro non deve lasciare i costi
+## della vecchia finestra sotto le coordinate nuove nemmeno per un passo fisico.
+func _test_recenter_solves_at_once() -> void:
+	print("recenter solves at once")
+	_field.min_solve_interval = 0.15
+	_target.global_position = Vector3.ZERO
+	await _frames(12)
+	var solves := [0]
+	_field.solved.connect(func() -> void: solves[0] += 1)
+	var count := _field.recenter_count
+	_target.global_position = Vector3(-30.0, 0.0, 0.0)
+	await _frames(1)
+	_check(_field.recenter_count == count + 1, "spostamento grande: ricentro")
+	_check(solves[0] == 1, "risolto nello stesso passo fisico del ricentro (%d)" % solves[0])
+	_check(_field.cost_at(_target.global_position) == 0.0, "costo zero sul bersaglio subito")
+	var beside := _field.cost_at(_target.global_position + Vector3(2.4, 0.0, 0.0))
+	_check(beside > 0.0 and beside < 3.0, "accanto al bersaglio costo piccolo, non quello della finestra vecchia (%.2f)" % beside)
+	_field.min_solve_interval = 0.0
+	_target.global_position = Vector3.ZERO
+	await _frames(3)
 
 
 func _test_chunk_cache() -> void:

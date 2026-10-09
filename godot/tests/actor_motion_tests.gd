@@ -264,6 +264,14 @@ func _test_companion() -> void:
 	await _frames(2)
 	_check(replacement.get_parent() == _companion and _companion._parts.size() == 1 and _companion._parts[0] == replacement,
 		"un pezzo rimontato sostituisce il vecchio e resta figlio diretto del compagno")
+	# R-38: il terzo montaggio dello stesso nome non deve accumulare pezzi ne rinominarli.
+	var third := Node3D.new()
+	third.position = Vector3(0.0, 0.42, -0.25)
+	_companion.mount_part(&"TurretPart", third)
+	await _frames(2)
+	var named := _companion.get_children().filter(func(n: Node) -> bool: return n.name == &"TurretPart")
+	_check(named.size() == 1 and named[0] == third and _companion._parts.size() == 1 and _companion.has_node(^"TurretPart"),
+		"al terzo montaggio c'e un solo TurretPart, col nome giusto")
 
 	# In marcia: si inclina, sobbalza e tutto resta attaccato al telaio.
 	Input.action_press(&"move_right")
@@ -281,7 +289,7 @@ func _test_companion() -> void:
 		var rig := model.transform * rest.affine_inverse()
 		max_rise = maxf(max_rise, rig.origin.y)
 		min_rise = minf(min_rise, (rig * Companion.RIG_GROUND).y - Companion.RIG_GROUND.y)
-		max_gap = maxf(max_gap, replacement.transform.origin.distance_to(rig * Vector3(0.0, 0.42, -0.25)))
+		max_gap = maxf(max_gap, third.transform.origin.distance_to(rig * Vector3(0.0, 0.42, -0.25)))
 		moved = moved or _companion.velocity.length() > 2.0
 	Input.action_release(&"move_back")
 	var tilt_limit := Companion.TILT_MAX * 1.42 + Companion.SHIVER_ROLL

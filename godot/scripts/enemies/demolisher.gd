@@ -39,6 +39,11 @@ const NO_CELL := Vector2i(-1, -1)
 const EARTH_COLOR := Color(0.44, 0.33, 0.21)
 const ACCELERATION := 10.0
 const RETARGET_SECONDS := 0.4
+## Un muro che non si avvicina per tanto (rovina in mezzo, blocco non figlio della
+## griglia) viene lasciato perdere per WALL_IGNORE_SECONDS: si torna a inseguire il
+## giocatore col campo di percorso invece di restare incastrati.
+const WALL_STALL_SECONDS := 2.0
+const WALL_IGNORE_SECONDS := 8.0
 ## Sotto questa distanza dal giocatore punta dritto, senza waypoint.
 const DIRECT_CHASE_DISTANCE := 3.0
 
@@ -107,6 +112,11 @@ var _demolish_left := 0.0
 var _pending_scrap := 0
 var _wall_target := Vector2i(-1, -1)
 var _retarget_left := 0.0
+## Distanza minima raggiunta dal muro scelto e secondi senza avvicinarsi.
+var _wall_best_distance := INF
+var _wall_stall_left := WALL_STALL_SECONDS
+## Muri lasciati perdere: secondi prima di riconsiderarli.
+var _ignored_walls: Dictionary[Vector2i, float] = {}
 var _blade: MeshInstance3D
 ## Rottamatori al lavoro per lui: secondi rimasti prima che lascino la commissione.
 var _crew: Dictionary[Enemy, float] = {}
@@ -211,9 +221,19 @@ func drive(delta: float) -> void:
 		_tick_demolition(delta)
 		return
 
+	_tick_ignored_walls(delta)
 	if retarget:
-		_wall_target = _nearest_wall()
+		var chosen := _nearest_wall()
+		if chosen != _wall_target:
+			_wall_target = chosen
+			_wall_best_distance = INF
+			_wall_stall_left = WALL_STALL_SECONDS
 	var has_wall := _wall_target.x >= 0 and grid.state.get_state(_wall_target) == TerrainState.CellState.RAISED
+	if has_wall and _wall_stalled(delta):
+		_ignored_walls[_wall_target] = WALL_IGNORE_SECONDS
+		print("PROTOTYPE01_BOSS_WALL_ABANDONED X=%d Y=%d" % [_wall_target.x, _wall_target.y])
+		_wall_target = NO_CELL
+		has_wall = false
 	var direction := Vector3.ZERO
 	if has_wall:
 		direction = _planar(_cell_center(_wall_target) - pos).normalized()
@@ -244,6 +264,8 @@ func drive(delta: float) -> void:
 		if collider == null or collider.get_parent() != grid:
 			continue
 		var cell := grid.cell_at(collision.get_position() - collision.get_normal() * 0.3)
+		if barricades.has(cell):
+			continue
 		if grid.state.is_valid(cell) and grid.state.get_state(cell) == TerrainState.CellState.RAISED:
 			_start_demolition(cell)
 			return
@@ -457,7 +479,7 @@ func _nearest_wall() -> Vector2i:
 	for dy in range(-reach, reach + 1):
 		for dx in range(-reach, reach + 1):
 			var cell := own + Vector2i(dx, dy)
-			if not grid.state.is_valid(cell) or barricades.has(cell):
+			if not grid.state.is_valid(cell) or barricades.has(cell) or _ignored_walls.has(cell):
 				continue
 			if grid.state.get_state(cell) != TerrainState.CellState.RAISED:
 				continue
@@ -466,6 +488,24 @@ func _nearest_wall() -> Vector2i:
 				best_distance = distance
 				best = cell
 	return best
+
+
+## Vero se da WALL_STALL_SECONDS il muro scelto non si avvicina.
+func _wall_stalled(delta: float) -> bool:
+	var distance := _planar(_cell_center(_wall_target) - global_position).length()
+	if distance < _wall_best_distance - 0.05:
+		_wall_best_distance = distance
+		_wall_stall_left = WALL_STALL_SECONDS
+		return false
+	_wall_stall_left -= delta
+	return _wall_stall_left <= 0.0
+
+
+func _tick_ignored_walls(delta: float) -> void:
+	for cell in _ignored_walls.keys():
+		_ignored_walls[cell] -= delta
+		if _ignored_walls[cell] <= 0.0:
+			_ignored_walls.erase(cell)
 
 
 ## Cella per una barricata: a due celle dal boss verso il giocatore (o accanto, se
@@ -500,6 +540,9 @@ func _cell_is_free(cell: Vector2i) -> bool:
 	if _planar(center - global_position).length() < BODY_RADIUS + step * 0.75:
 		return false
 	if director != null and director.enemies_near(center, step * 0.75).any(func(e: Enemy) -> bool: return e != self):
+		return false
+	# Un rottame a terra non va sepolto (lo sposterebbe ScrapField, ma meglio non costruirci sopra).
+	if scrap_field != null and scrap_field.count_on_cell(cell) > 0:
 		return false
 	return true
 

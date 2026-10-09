@@ -183,6 +183,11 @@ func recenter(world_cell: Vector2i) -> void:
 	var start := Time.get_ticks_usec()
 	origin = _origin_for(world_cell)
 	_fill_window()
+	# I costi erano nelle coordinate della vecchia finestra: via subito, e il prossimo
+	# passo fisico risolve senza aspettare `min_solve_interval`.
+	costs.fill(UNREACHABLE)
+	_dirty = true
+	_since_solve = min_solve_interval
 	recenter_count += 1
 	last_recenter_usec = Time.get_ticks_usec() - start
 	recentered.emit(origin)

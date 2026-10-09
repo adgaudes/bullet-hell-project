@@ -60,6 +60,7 @@ func _initialize() -> void:
 	await _test_closing_gate_moves_trails()
 	await _test_forced_changes_do_not_trigger()
 	await _test_sealed_courtyard()
+	await _test_sealed_courtyard_off_center()
 	await _test_duration_and_retrigger()
 	await _test_manual_only()
 	_test_mark_cap()
@@ -271,6 +272,25 @@ func _test_sealed_courtyard() -> void:
 	_check(bars > 0 and bars <= _flow.trail_count, "sbarre di strada chiusa (%d)" % bars)
 	_check(bars_at_wall, "ogni sbarra e contro le mura")
 	_check(center == _grid.cell_at(Vector3.ZERO), "il giocatore e al centro della griglia")
+
+
+## R-26: giocatore fuori dal centro del cortile sigillato: in linea retta due passi cadono
+## spesso nella stessa cella; la scia non deve chiudersi su se stessa e contare come arrivata.
+func _test_sealed_courtyard_off_center() -> void:
+	print("sealed courtyard, player off centre")
+	_target.global_position = Vector3(2.9, 0.0, -1.7)
+	await _frames(20)
+	_flow.show_now()
+	_check(_flow.trail_count > 0 and _flow.reached_trails == 0, "nessuna scia arriva (%d di %d)" % [_flow.reached_trails, _flow.trail_count])
+	_check(_flow.is_blocked(), "esito: orda chiusa fuori")
+	_check(_marks_inside_courtyard() == 0 and _marks_on_raised() == 0, "nessuna impronta dentro o sulle mura")
+	var bars := 0
+	for i in _flow.marks.size():
+		if _flow.mark_kinds[i] == FlowPreview.KIND_BLOCKED:
+			bars += 1
+	_check(bars == _flow.blocked_trails, "ogni scia bloccata finisce con una sbarra (%d di %d)" % [bars, _flow.blocked_trails])
+	_target.global_position = Vector3.ZERO
+	await _frames(20)
 
 
 func _test_duration_and_retrigger() -> void:

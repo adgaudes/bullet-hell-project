@@ -226,6 +226,8 @@ func _leash(enemy: Enemy) -> bool:
 	if point == null:
 		return false
 	enemy.global_position = Vector3(point.x, Enemy.spawn_height(), point.z)
+	# Teletrasporto: senza questo l'interpolazione fisica disegna una striscia di 40 m.
+	enemy.reset_physics_interpolation()
 	enemy.velocity = Vector3.ZERO
 	leashed += 1
 	return true

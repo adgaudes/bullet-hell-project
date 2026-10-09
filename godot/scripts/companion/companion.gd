@@ -264,6 +264,9 @@ func mount_part(part_name: StringName, part: Node3D) -> void:
 		if index >= 0:
 			_parts.remove_at(index)
 			_part_rest.remove_at(index)
+		# Via dall'albero subito: altrimenti il nuovo pezzo viene rinominato (@TurretPart@N)
+		# e dal terzo montaggio dello stesso nome i pezzi si accumulano.
+		remove_child(old)
 		old.queue_free()
 	part.name = part_name
 	add_child(part)
