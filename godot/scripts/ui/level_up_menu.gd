@@ -105,7 +105,7 @@ func _make_card(upgrade: Dictionary, current_level: int) -> Button:
 	var level_text := "NUOVO" if current_level == 0 else "Liv. %d > %d" % [current_level, current_level + 1]
 	button.text = "%s\n\n%s\n%s - %s\n\n%s" % [
 		UpgradeCatalog.RARITY_NAMES[upgrade.rarity], upgrade.name,
-		UpgradeCatalog.CATEGORY_NAMES.get(upgrade.category, ""), level_text, upgrade.text]
+		UpgradeCatalog.CATEGORY_NAMES.get(upgrade.category, ""), level_text, UpgradeCatalog.describe(upgrade)]
 	for state in [&"normal", &"hover", &"pressed", &"focus", &"disabled"]:
 		var box := StyleBoxFlat.new()
 		box.bg_color = Color(0.09, 0.1, 0.12) if state != &"focus" else Color(0.16, 0.17, 0.2)

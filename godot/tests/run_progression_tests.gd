@@ -102,6 +102,16 @@ func _test_maxed_upgrades_disappear() -> void:
 			seen = seen or u.id == &"nail_rate"
 	_check(not seen, "upgrade al massimo mai offerto (regola 2)")
 	_check(p.choose(&"boots") == 1 and p.choose(&"boots") == 2, "choose incrementa il livello")
+	# R-15: i testi delle carte nascono dai valori, nessun segnaposto resta vuoto.
+	var unresolved := 0
+	for entry in UpgradeCatalog.all():
+		var text := UpgradeCatalog.describe(entry)
+		if text.contains("{") or text.contains("}"):
+			unresolved += 1
+	_check(unresolved == 0 and UpgradeCatalog.describe(UpgradeCatalog.all()[0]).contains("25%"),
+		"testi delle carte formattati dai valori del catalogo (%d non risolti)" % unresolved)
+	_check(is_equal_approx(UpgradeCatalog.value(&"dig_blast", &"radius"), 2.4) and UpgradeCatalog.value(&"inesistente", &"x", 3.0) == 3.0,
+		"UpgradeCatalog.value legge i valori e ha un default")
 
 
 func _test_companion_parts_need_companion() -> void:

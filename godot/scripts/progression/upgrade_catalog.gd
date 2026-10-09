@@ -5,6 +5,8 @@ extends RefCounted
 ## id, name, category, rarity, max_level, requires ("" o "companion"), text.
 ## Le voci con `filler = true` sono ripetibili senza limite (max_level 0) e
 ## compaiono solo quando le carte vere non bastano a riempire l'offerta (D-056).
+## `values` (R-15): le grandezze dell'effetto, lette da `ArenaRun.apply_upgrade` e
+## sostituite nel `text` con `{chiave}`: un solo posto da ritoccare per bilanciare.
 
 enum Rarity { COMMON, UNCOMMON, RARE, LEGENDARY }
 
@@ -18,34 +20,60 @@ const CATEGORY_NAMES := {
 }
 
 
+## Valore numerico di un upgrade (`values[key]`), o [param default] se manca.
+static func value(id: StringName, key: StringName, default: float = 0.0) -> float:
+	for entry in all():
+		if entry.id == id:
+			var values: Dictionary = entry.get("values", {})
+			return float(values.get(key, default))
+	return default
+
+
+## Testo della carta con i valori sostituiti (es. "{rate}" -> "25").
+static func describe(entry: Dictionary) -> String:
+	var text: String = entry.text
+	var values: Dictionary = entry.get("values", {})
+	for key in values:
+		var v: Variant = values[key]
+		var shown := (str(int(v)) if is_equal_approx(float(v), roundf(float(v))) else "%.1f" % float(v)) if typeof(v) != TYPE_STRING else String(v)
+		text = text.replace("{%s}" % key, shown)
+	return text
+
+
 static func all() -> Array[Dictionary]:
 	return [
 		{id = &"nail_rate", name = "Grilletto limato", category = &"weapon", rarity = Rarity.COMMON, max_level = 4,
-			requires = "", text = "La chiodatrice spara il 25% piu spesso."},
+			requires = "", values = {rate_percent = 25}, text = "La chiodatrice spara il {rate_percent}% piu spesso."},
 		{id = &"nail_pierce", name = "Chiodi da carpentiere", category = &"weapon", rarity = Rarity.UNCOMMON, max_level = 3,
 			requires = "", text = "Ogni chiodo trapassa un rottamatore in piu."},
 		{id = &"nail_spread", name = "Canna doppia", category = &"weapon", rarity = Rarity.RARE, max_level = 2,
 			requires = "", text = "Un chiodo in piu a ogni colpo, a ventaglio."},
 		{id = &"companion_turret", name = "Torretta sul cassone", category = &"companion", rarity = Rarity.RARE, max_level = 3,
-			requires = "companion", text = "Il compagno monta una chiodatrice. Ai livelli successivi spara piu spesso."},
+			requires = "companion", values = {fire_interval = 0.9, weapon_range = 8.0, rate_per_level = 1.35},
+			text = "Il compagno monta una chiodatrice (portata {weapon_range} m). Ai livelli successivi spara piu spesso."},
 		{id = &"companion_magnet", name = "Calamita", category = &"companion", rarity = Rarity.UNCOMMON, max_level = 2,
-			requires = "companion", text = "Il compagno attira i frammenti di esperienza attorno a se."},
+			requires = "companion", values = {radius = 2.5, radius_per_level = 1.5},
+			text = "Il compagno attira i frammenti di esperienza entro {radius} m, piu {radius_per_level} m per livello."},
 		{id = &"companion_cargo", name = "Cassone rinforzato", category = &"companion", rarity = Rarity.UNCOMMON, max_level = 2,
-			requires = "companion", text = "Il compagno porta 2 rottami in piu e ne trova 1 subito."},
+			requires = "companion", values = {capacity = 2, scrap_now = 1},
+			text = "Il compagno porta {capacity} rottami in piu e ne trova {scrap_now} subito."},
 		{id = &"dig_blast", name = "Scavo esplosivo", category = &"terrain", rarity = Rarity.UNCOMMON, max_level = 3,
-			requires = "", text = "Scavare una cella colpisce i rottamatori vicini (2 danni). Raggio maggiore a ogni livello."},
+			requires = "", values = {damage = 2, radius = 2.4, radius_per_level = 0.8},
+			text = "Scavare una cella colpisce i rottamatori entro {radius} m ({damage} danni), piu {radius_per_level} m per livello."},
 		{id = &"spiked_wall", name = "Terrapieni spinati", category = &"terrain", rarity = Rarity.UNCOMMON, max_level = 2,
-			requires = "", text = "I rottamatori che spingono contro una cella rialzata si fanno male."},
+			requires = "", values = {damage = 1, interval = 0.8, interval_level_2 = 0.5},
+			text = "I rottamatori che spingono contro una cella rialzata si fanno male ({damage} danno ogni {interval} s)."},
 		{id = &"boots", name = "Scarponi slacciati", category = &"character", rarity = Rarity.COMMON, max_level = 3,
-			requires = "", text = "Corri il 10% piu veloce."},
+			requires = "", values = {speed_percent = 10}, text = "Corri il {speed_percent}% piu veloce."},
 		{id = &"patch", name = "Toppa", category = &"character", rarity = Rarity.COMMON, max_level = 3,
-			requires = "", text = "Un punto vita in piu e ti rimetti in sesto del tutto."},
+			requires = "", values = {health = 1}, text = "Un punto vita in piu e ti rimetti in sesto del tutto."},
 		{id = &"reach", name = "Tasche larghe", category = &"character", rarity = Rarity.COMMON, max_level = 3,
-			requires = "", text = "Raggio di raccolta dei frammenti piu ampio del 40%."},
+			requires = "", values = {radius_percent = 40}, text = "Raggio di raccolta dei frammenti piu ampio del {radius_percent}%."},
 		{id = &"field_patch", name = "Rattoppo al volo", category = &"character", rarity = Rarity.COMMON, max_level = 0,
-			requires = "", filler = true, text = "Recuperi un punto vita."},
+			requires = "", filler = true, values = {heal = 1}, text = "Recuperi un punto vita."},
 		{id = &"lucky_scrap", name = "Rottame di fortuna", category = &"companion", rarity = Rarity.COMMON, max_level = 0,
-			requires = "companion", filler = true, text = "Un rottame in piu nel cassone, se c'e posto."},
+			requires = "companion", filler = true, values = {scrap_now = 1}, text = "Un rottame in piu nel cassone, se c'e posto."},
 		{id = &"nail_jar", name = "Barattolo di chiodi", category = &"weapon", rarity = Rarity.COMMON, max_level = 0,
-			requires = "", filler = true, text = "Scoppia un barattolo: 2 danni a tutti i rottamatori entro 7 metri."},
+			requires = "", filler = true, values = {damage = 2, radius = 7.0},
+			text = "Scoppia un barattolo: {damage} danni a tutti i rottamatori entro {radius} metri."},
 	]

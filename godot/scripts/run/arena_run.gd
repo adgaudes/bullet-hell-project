@@ -27,7 +27,6 @@ const MARKER_BOSS_COLOR := Color(1.0, 0.25, 0.15)
 const MARKER_REFRESH_SECONDS := 1.0
 const MAIN_MENU_SCENE := "res://scenes/main/main_menu.tscn"
 ## Raggio della carta ripetibile Barattolo di chiodi.
-const NAIL_JAR_RADIUS := 7.0
 
 ## Direzioni di arrivo annunciate: nome e verso nel mondo (nord = -Z = alto dello schermo).
 const BOSS_DIRECTIONS := [
@@ -557,7 +556,7 @@ func _on_upgrade_chosen(id: StringName) -> void:
 func apply_upgrade(id: StringName, new_level: int) -> void:
 	match id:
 		&"nail_rate":
-			weapon.fire_interval /= 1.25
+			weapon.fire_interval /= 1.0 + UpgradeCatalog.value(id, &"rate_percent") / 100.0
 		&"nail_pierce":
 			weapon.pierce += 1
 		&"nail_spread":
@@ -565,33 +564,34 @@ func apply_upgrade(id: StringName, new_level: int) -> void:
 		&"companion_turret":
 			_upgrade_companion_turret(new_level)
 		&"companion_magnet":
-			xp_field.set_attractor(companion, 2.5 + 1.5 * (new_level - 1))
+			xp_field.set_attractor(companion, UpgradeCatalog.value(id, &"radius") + UpgradeCatalog.value(id, &"radius_per_level") * (new_level - 1))
 			if new_level == 1:
 				companion.mount_part(&"MagnetPart", _magnet_part())
 		&"companion_cargo":
-			companion.add_capacity(2, 1)
+			companion.add_capacity(int(UpgradeCatalog.value(id, &"capacity")), int(UpgradeCatalog.value(id, &"scrap_now")))
 		&"dig_blast":
-			dig_blast_radius = 2.4 + 0.8 * (new_level - 1)
+			dig_blast_radius = UpgradeCatalog.value(id, &"radius") + UpgradeCatalog.value(id, &"radius_per_level") * (new_level - 1)
 		&"spiked_wall":
-			director.spike_damage = 1
-			director.spike_interval = 0.8 if new_level == 1 else 0.5
+			director.spike_damage = int(UpgradeCatalog.value(id, &"damage"))
+			director.spike_interval = UpgradeCatalog.value(id, &"interval") if new_level == 1 else UpgradeCatalog.value(id, &"interval_level_2")
 			_set_raised_tint(Color(0.85, 0.75, 0.7))
 		&"boots":
-			player.speed_bonus *= 1.1
+			player.speed_bonus *= 1.0 + UpgradeCatalog.value(id, &"speed_percent") / 100.0
 		&"patch":
-			player.set_max_health(player.max_health + 1)
+			player.set_max_health(player.max_health + int(UpgradeCatalog.value(id, &"health")))
 		&"reach":
-			xp_field.player_radius *= 1.4
+			xp_field.player_radius *= 1.0 + UpgradeCatalog.value(id, &"radius_percent") / 100.0
 		&"field_patch":
-			player.heal(1)
+			player.heal(int(UpgradeCatalog.value(id, &"heal")))
 		&"lucky_scrap":
 			if companion != null:
-				companion.add_capacity(0, 1)
+				companion.add_capacity(0, int(UpgradeCatalog.value(id, &"scrap_now")))
 		&"nail_jar":
+			var radius := UpgradeCatalog.value(id, &"radius")
 			var center := Vector3(player.global_position.x, 0.1, player.global_position.z)
-			for enemy in director.enemies_near(center, NAIL_JAR_RADIUS):
-				enemy.take_damage(2)
-			_blast_effect(center, NAIL_JAR_RADIUS)
+			for enemy in director.enemies_near(center, radius):
+				enemy.take_damage(int(UpgradeCatalog.value(id, &"damage")))
+			_blast_effect(center, radius)
 
 
 func _upgrade_companion_turret(new_level: int) -> void:
@@ -601,15 +601,15 @@ func _upgrade_companion_turret(new_level: int) -> void:
 		companion_weapon.shooter = companion
 		companion_weapon.director = director
 		companion_weapon.muzzle_height = 0.55
-		companion_weapon.fire_interval = 0.9
-		companion_weapon.weapon_range = 8.0
+		companion_weapon.fire_interval = UpgradeCatalog.value(&"companion_turret", &"fire_interval")
+		companion_weapon.weapon_range = UpgradeCatalog.value(&"companion_turret", &"weapon_range")
 		companion_weapon.damage = tuning.weapon_damage
 		companion_weapon.projectile_speed = tuning.projectile_speed
 		# Differito: con la Torretta fissa (D-049) succede durante il _ready della scena.
 		get_parent().add_child.call_deferred(companion_weapon)
 		companion.mount_part(&"TurretPart", _turret_part())
 	else:
-		companion_weapon.fire_interval /= 1.35
+		companion_weapon.fire_interval /= UpgradeCatalog.value(&"companion_turret", &"rate_per_level")
 	print("PROTOTYPE01_COMPANION_TURRET level=%d" % new_level)
 
 
