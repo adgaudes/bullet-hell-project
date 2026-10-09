@@ -11,6 +11,7 @@ const MAIN_MENU_SCENE := "res://scenes/main/main_menu.tscn"
 var enabled := true
 var _settings_only := false
 var _menu_button: Button
+var _prompts: ButtonPrompts
 
 @onready var _overlay: Control = %Overlay
 @onready var _pause_panel: PanelContainer = %PausePanel
@@ -34,10 +35,10 @@ func _ready() -> void:
 	_quit_button.add_sibling(_menu_button)
 	_menu_button.get_parent().move_child(_menu_button, _quit_button.get_index())
 	_settings_panel.back_requested.connect(_show_pause_panel)
-	var prompts := ButtonPrompts.create([[&"ui_accept", "Conferma"], [&"ui_cancel", "Indietro"]])
-	_overlay.add_child(prompts)
-	prompts.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM, Control.PRESET_MODE_MINSIZE, 28)
-	prompts.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_prompts = ButtonPrompts.create([[&"ui_accept", "Conferma"], [&"ui_cancel", "Indietro"]])
+	_overlay.add_child(_prompts)
+	_prompts.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM, Control.PRESET_MODE_MINSIZE, 28)
+	_prompts.grow_horizontal = Control.GROW_DIRECTION_BOTH
 
 
 func _input(event: InputEvent) -> void:
@@ -80,6 +81,9 @@ func resume_game() -> void:
 
 func open_settings() -> void:
 	_pause_panel.hide()
+	# Il pannello Impostazioni arriva quasi al bordo a 800 px (Steam Deck): i prompt
+	# in basso si sovrapporrebbero, e il pannello ha gia il pulsante Indietro (U-09).
+	_prompts.hide()
 	_settings_panel.open()
 
 
@@ -109,6 +113,7 @@ func focused_control() -> Control:
 
 func _show_pause_panel() -> void:
 	_settings_panel.hide()
+	_prompts.show()
 	if _settings_only:
 		_settings_only = false
 		_overlay.hide()

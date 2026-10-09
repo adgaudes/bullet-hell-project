@@ -144,7 +144,8 @@ func _test_move_actuation_threshold() -> void:
 	await _frames(10)
 
 
-## Strumento di playtest: Tab e croce destra alternano i preset di feel.
+## Strumento di playtest: Tab alterna i preset di feel. La croce direzionale non
+## piu: e la navigazione dei menu (ui_left/ui_right) e cambiava preset per sbaglio (U-12).
 func _test_tuning_switcher() -> void:
 	print("tuning switcher")
 	var switcher: TuningSwitcher = root.get_node("Scene/TuningSwitcher")
@@ -161,7 +162,15 @@ func _test_tuning_switcher() -> void:
 	dpad.pressed = true
 	Input.parse_input_event(dpad)
 	await _frames(2)
-	_check(_player.tuning.display_name == "Pesante", "croce destra -> Pesante (got %s)" % _player.tuning.display_name)
+	_check(_player.tuning.display_name == "Unreal (riferimento)", "la croce destra non cambia preset (got %s)" % _player.tuning.display_name)
+	var tab_release := InputEventKey.new()
+	tab_release.physical_keycode = KEY_TAB
+	tab_release.pressed = false
+	Input.parse_input_event(tab_release)
+	await _frames(2)
+	Input.parse_input_event(tab)
+	await _frames(2)
+	_check(_player.tuning.display_name == "Pesante", "Tab di nuovo -> Pesante (got %s)" % _player.tuning.display_name)
 	# Il nuovo tuning agisce davvero: velocita massima Pesante 5,5 m/s.
 	Input.action_press(&"move_right")
 	await _frames(240)

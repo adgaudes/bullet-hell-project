@@ -93,6 +93,8 @@ func _build_map_box(parent: Control) -> void:
 	_save_map = Button.new()
 	_save_map.text = "Salva mappa"
 	_save_map.custom_minimum_size = Vector2(0, 40)
+	# Il nome del file non allarga mai il pulsante oltre la mappa (U-08).
+	_save_map.clip_text = true
 	_save_map.pressed.connect(save_map)
 	_map_box.add_child(_save_map)
 	_map_box.hide()
@@ -122,7 +124,8 @@ func save_map() -> String:
 	if _map_image.save_png(path) != OK:
 		_save_map.text = "Salvataggio non riuscito"
 		return ""
-	_save_map.text = "Salvata in %s" % ProjectSettings.globalize_path(path)
+	# Solo il nome: il percorso assoluto (su Deck `/home/deck/.local/share/...`) non ci sta.
+	_save_map.text = "Salvata: %s" % path.get_file()
 	return path
 
 

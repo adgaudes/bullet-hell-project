@@ -72,33 +72,42 @@ func _sync_from_settings() -> void:
 	_invert_y.set_pressed_no_signal(_settings.invert_aim_y)
 
 
+# Riselezionare la voce gia attiva non tocca il servizio: niente riapplicazione
+# della grafica ne scrittura su disco (U-05).
 func _on_fps_selected(index: int) -> void:
-	_settings.set_fps_cap(GameSettingsService.FPS_CAPS[index])
+	if GameSettingsService.FPS_CAPS[index] != _settings.fps_cap:
+		_settings.set_fps_cap(GameSettingsService.FPS_CAPS[index])
 
 
 func _on_vsync_selected(index: int) -> void:
-	_settings.set_vsync_mode(GameSettingsService.VSYNC_MODES[index])
+	if GameSettingsService.VSYNC_MODES[index] != _settings.vsync_mode:
+		_settings.set_vsync_mode(GameSettingsService.VSYNC_MODES[index])
 
 
 func _on_msaa_selected(index: int) -> void:
-	_settings.set_msaa_3d(GameSettingsService.MSAA_MODES[index])
+	if GameSettingsService.MSAA_MODES[index] != _settings.msaa_3d:
+		_settings.set_msaa_3d(GameSettingsService.MSAA_MODES[index])
 
 
 func _on_window_selected(index: int) -> void:
-	_settings.set_window_mode(GameSettingsService.WINDOW_MODES[index])
+	if GameSettingsService.WINDOW_MODES[index] != _settings.window_mode:
+		_settings.set_window_mode(GameSettingsService.WINDOW_MODES[index])
 
 
 func _on_scale_selected(index: int) -> void:
-	_settings.set_render_scale(RENDER_SCALES[index])
+	if not is_equal_approx(RENDER_SCALES[index], _settings.render_scale):
+		_settings.set_render_scale(RENDER_SCALES[index])
 
 
 func _on_master_volume_changed(value: float) -> void:
-	_settings.set_master_volume(value)
+	if not is_equal_approx(value, _settings.master_volume):
+		_settings.set_master_volume(value)
 	_refresh_volume_labels()
 
 
 func _on_sfx_volume_changed(value: float) -> void:
-	_settings.set_sfx_volume(value)
+	if not is_equal_approx(value, _settings.sfx_volume):
+		_settings.set_sfx_volume(value)
 	_refresh_volume_labels()
 
 
