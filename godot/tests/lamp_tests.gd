@@ -210,7 +210,7 @@ func _test_boss_knocks_down() -> void:
 	await _frames(6)
 	_run._boss_warning_left = 0.05
 	await _frames(6)
-	var boss := _run.boss
+	var boss := _run.boss as Demolisher
 	_check(boss != null and boss.lamp_field == _lamps, "il Demolitore conosce i lampioni")
 	if boss != null:
 		boss.global_position = world + Vector3(0.5, Demolisher.boss_spawn_height(), 0.0)

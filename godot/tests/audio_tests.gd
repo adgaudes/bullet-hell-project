@@ -12,7 +12,7 @@ const EXPECTED_IDS: Array[StringName] = [
 	&"scrap_pickup", &"scrap_spend", &"level_up", &"upgrade_chosen",
 	&"boss_warning", &"victory",
 	&"boss_spawn", &"boss_demolish", &"boss_barricade", &"carrier_pickup",
-	&"dusk", &"nightfall", &"train_horn",
+	&"dusk", &"nightfall", &"train_horn", &"driller_charge",
 ]
 const FREQUENT_IDS: Array[StringName] = [&"nail_shot", &"enemy_death", &"xp_pickup", &"scrap_pickup"]
 
@@ -394,7 +394,7 @@ func _test_boss_and_end_events() -> void:
 	_check(_run.boss_phase == ArenaRun.BossPhase.WARNING and _count(&"boss_warning") == warnings + 1, "boss annunciato: boss_warning")
 	_run._boss_warning_left = 0.05
 	await _frames(6)
-	var boss := _run.boss
+	var boss := _run.boss as Demolisher
 	_check(boss != null, "boss in campo")
 	if boss == null:
 		return

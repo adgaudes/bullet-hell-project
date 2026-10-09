@@ -287,11 +287,66 @@ def build_demolisher_blade():
     return b.to_object("DemolisherBlade")
 
 
+def build_driller():
+    """Trivella (D-066): macchina da galleria su cingoli, capsula 0,9 x 2,4 m come il
+    Demolitore. Scafo basso e tozzo (vernice), collare d'acciaio in avanti dove si
+    innesta la punta (asset separato `driller_bit`, che il codice fa girare), cabina
+    arretrata con due feritoie rosse luminose, serbatoi ai fianchi, tubo di scarico."""
+    b = Builder(["detail"])
+    track = [(-1.1, 0.25), (-0.85, 0.0), (0.85, 0.0), (1.1, 0.25), (1.1, 0.5), (0.9, 0.72),
+             (-0.9, 0.72), (-1.1, 0.5)]
+    for x in (-0.7, 0.7):
+        b.profile(track, 0.46, (x, 0.0, 0.0), TIRE)
+        for y in (-0.65, 0.0, 0.65):
+            b.cyl(0.2, 0.5, (x, y, 0.36), STEEL, axis="x", sides=6)
+    # Scafo: basso, piu largo dietro.
+    b.box((1.3, 2.0, 0.7), (0.0, -0.1, 0.95), WHITE, paint=True, front=(0.85, 0.9), top=(0.92, 0.96))
+    # Collare della punta: tronco di cono d'acciaio in avanti, con flangia.
+    b.cyl(0.62, 0.5, (0.0, 1.05, 1.0), STEEL, axis="y", sides=10, radius_top=0.5)
+    b.cyl(0.7, 0.1, (0.0, 0.82, 1.0), DARK_METAL, axis="y", sides=10)
+    for i in range(8):
+        a = math.radians(i * 45.0)
+        b.box((0.08, 0.08, 0.08), (math.cos(a) * 0.62, 0.84, 1.0 + math.sin(a) * 0.62), WORN_STEEL)
+    # Cabina arretrata, feritoie rosse, tetto.
+    b.box((1.0, 0.8, 0.62), (0.0, -0.55, 1.6), DARK_METAL, top=(0.9, 0.9))
+    for x in (-0.28, 0.28):
+        b.box((0.34, 0.08, 0.1), (x, -0.13, 1.72), BOSS_EYE, emit=True)
+    b.box((1.06, 0.88, 0.1), (0.0, -0.55, 1.95), shade(0.85), paint=True)
+    # Serbatoi ai fianchi e tubo di scarico.
+    for x in (-0.62, 0.62):
+        b.cyl(0.17, 1.1, (x, 0.1, 1.42), RUST, axis="y", sides=8)
+    b.cyl(0.08, 0.7, (-0.35, -0.8, 2.2), DARK_METAL, sides=6)
+    b.cyl(0.11, 0.1, (-0.35, -0.8, 2.56), RUST, sides=6)
+    # Fasce di pericolo sul retro.
+    b.box((1.2, 0.04, 0.26), (0.0, -1.12, 0.95), HAZARD)
+    return b.to_object("Driller")
+
+
+def build_driller_bit():
+    """Punta della Trivella: cono d'acciaio lungo 1,5 m con tre creste elicoidali e
+    denti consumati. Origine alla base del cono (dove si innesta nel collare); l'asse
+    e +Y (in Godot -Z): il codice la fa girare attorno al proprio asse."""
+    b = Builder(["detail"])
+    b.cyl(0.52, 1.5, (0.0, 0.75, 0.0), WORN_STEEL, axis="y", sides=10, radius_top=0.06)
+    for i in range(3):
+        for k in range(5):
+            t = k / 5.0
+            a = math.radians(i * 120.0 + t * 200.0)
+            r = 0.5 - t * 0.42
+            y = 0.1 + t * 1.3
+            b.box((0.12, 0.3, 0.1), (math.cos(a) * r, y, math.sin(a) * r), DARK_METAL,
+                  rot=(0.0, math.degrees(a) + 90.0, 0.0))
+    b.cyl(0.1, 0.12, (0.0, 1.52, 0.0), STEEL, axis="y", sides=6, radius_top=0.02)
+    return b.to_object("DrillerBit")
+
+
 ASSETS = {
     "companion_cart": build_companion_cart,
     "scavenger": build_scavenger,
     "demolisher": build_demolisher,
     "demolisher_blade": build_demolisher_blade,
+    "driller": build_driller,
+    "driller_bit": build_driller_bit,
 }
 
 

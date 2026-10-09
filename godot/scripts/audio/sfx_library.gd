@@ -20,7 +20,7 @@ const IDS: Array[StringName] = [
 	&"scrap_pickup", &"scrap_spend", &"level_up", &"upgrade_chosen",
 	&"boss_warning", &"victory",
 	&"boss_spawn", &"boss_demolish", &"boss_barricade", &"carrier_pickup",
-	&"dusk", &"nightfall", &"train_horn",
+	&"dusk", &"nightfall", &"train_horn", &"driller_charge",
 ]
 
 static var _cache: Dictionary[StringName, AudioStreamWAV] = {}
@@ -182,6 +182,12 @@ static func _synthesize(id: StringName) -> PackedFloat32Array:
 				_layer(b, rng, Wave.SOFT_SQUARE, start, 0.5, 370.0, 364.0, 0.4, 0.03, 0.5)
 				_layer(b, rng, Wave.SINE, start, 0.5, 155.5, 152.0, 0.3, 0.03, 0.6)
 			_layer(b, rng, Wave.NOISE, 0.0, 1.1, 2200.0, 800.0, 0.12, 0.05, 1.2)
+		&"driller_charge":
+			# La punta che accelera: ronzio che sale, poi un colpo di cingoli.
+			b = _buffer(0.9)
+			_layer(b, rng, Wave.SOFT_SQUARE, 0.0, 0.7, 60.0, 240.0, 0.5, 0.05, 0.4)
+			_layer(b, rng, Wave.NOISE, 0.0, 0.8, 600.0, 2400.0, 0.2, 0.05, 0.6)
+			_layer(b, rng, Wave.SINE, 0.65, 0.25, 80.0, 50.0, 0.8, 0.003, 1.6)
 		&"boss_warning":
 			# Due colpi di sirena grave, da cantiere.
 			b = _buffer(1.25)

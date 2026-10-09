@@ -28,6 +28,7 @@ var _night_notice_left := 0.0
 var _night_notice_text := ""
 var _health_row: HBoxContainer
 var _boss_warning: Label
+var _boss_name_label: Label
 var _boss_arrow: Polygon2D
 var _boss_box: VBoxContainer
 var _boss_bar: ProgressBar
@@ -126,9 +127,9 @@ func _ready() -> void:
 	_boss_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_boss_box.hide()
 	root.add_child(_boss_box)
-	var boss_name := _label(_boss_box, HORIZONTAL_ALIGNMENT_CENTER)
-	boss_name.text = "IL DEMOLITORE"
-	boss_name.add_theme_font_size_override(&"font_size", 20)
+	_boss_name_label = _label(_boss_box, HORIZONTAL_ALIGNMENT_CENTER)
+	_boss_name_label.text = "IL DEMOLITORE"
+	_boss_name_label.add_theme_font_size_override(&"font_size", 20)
 	_boss_bar = ProgressBar.new()
 	_boss_bar.show_percentage = false
 	_boss_bar.custom_minimum_size = Vector2(520, 16)
@@ -155,8 +156,17 @@ func _ready() -> void:
 
 
 ## Annuncio dell'arrivo del boss: [param direction] e nel mondo (-Z = alto dello schermo).
-func set_boss_warning(direction_name: String, direction: Vector3, seconds_left: float) -> void:
-	set_event_warning("IL DEMOLITORE ARRIVA DA %s" % direction_name, direction, seconds_left, BOSS_COLOR)
+func set_boss_warning(boss_name: String, direction_name: String, direction: Vector3, seconds_left: float) -> void:
+	set_event_warning("%s ARRIVA DA %s" % [boss_name, direction_name], direction, seconds_left, BOSS_COLOR)
+
+
+## Nome sopra la barra vita del boss.
+func set_boss_name(boss_name: String) -> void:
+	_boss_name_label.text = boss_name
+
+
+func boss_name_text() -> String:
+	return _boss_name_label.text
 
 
 ## Annuncio con conto alla rovescia e freccia a bordo schermo verso [param direction]

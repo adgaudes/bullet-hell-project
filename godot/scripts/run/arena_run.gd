@@ -10,7 +10,7 @@ extends Node
 ## `-- --boss-at=N` anticipa la chiamata del boss a N secondi.
 
 signal boss_called(direction: Vector3)
-signal boss_spawned(boss: Demolisher)
+signal boss_spawned(boss: Enemy)
 signal level_completed
 ## Rilancio di DayNightCycle.phase_changed: HUD e audio non dipendono dal nodo del ciclo.
 signal night_phase_changed(phase: DayNightCycle.Phase)
@@ -30,6 +30,8 @@ const MARKER_REFRESH_SECONDS := 1.0
 const MAIN_MENU_SCENE := "res://scenes/main/main_menu.tscn"
 ## Raggio della carta ripetibile Barattolo di chiodi.
 
+## Nome a schermo di ogni boss (annuncio e barra vita).
+const BOSS_NAMES: Dictionary[StringName, String] = {&"demolisher": "IL DEMOLITORE", &"driller": "LA TRIVELLA"}
 ## Direzioni di arrivo annunciate: nome e verso nel mondo (nord = -Z = alto dello schermo).
 const BOSS_DIRECTIONS := [
 	["NORD", Vector3(0.0, 0.0, -1.0)], ["EST", Vector3(1.0, 0.0, 0.0)],
@@ -75,7 +77,7 @@ var _night_factor_applied := -1.0
 var _day_second_shown := -1
 var dig_blast_radius := 0.0
 var boss_phase := BossPhase.WAITING
-var boss: Demolisher
+var boss: Enemy
 var boss_direction := Vector3.ZERO
 var boss_direction_name := ""
 ## Secondi di livello a cui il boss viene chiamato (tuning o riga di comando); 0 = mai.
@@ -239,7 +241,7 @@ func _tick_boss(delta: float) -> void:
 				call_boss()
 		BossPhase.WARNING:
 			_boss_warning_left -= delta
-			hud.set_boss_warning(boss_direction_name, boss_direction, _boss_warning_left)
+			hud.set_boss_warning(boss_name(), boss_direction_name, boss_direction, _boss_warning_left)
 			if _boss_warning_left <= 0.0:
 				_spawn_boss()
 		BossPhase.ACTIVE:
@@ -270,36 +272,27 @@ func call_boss() -> void:
 	boss_direction = chosen[1]
 	boss_phase = BossPhase.WARNING
 	_boss_warning_left = tuning.boss_warning_seconds
-	hud.set_boss_warning(boss_direction_name, boss_direction, _boss_warning_left)
+	hud.set_boss_warning(boss_name(), boss_direction_name, boss_direction, _boss_warning_left)
 	print("PROTOTYPE01_BOSS_CALLED direction=%s time=%.1f" % [boss_direction_name, elapsed])
 	boss_called.emit(boss_direction)
+
+
+## Nome a schermo del boss di questo livello.
+func boss_name() -> String:
+	return BOSS_NAMES.get(tuning.boss_kind, "IL BOSS")
 
 
 func _spawn_boss() -> void:
 	boss_phase = BossPhase.ACTIVE
 	hud.clear_boss_warning()
-	boss = Demolisher.new()
-	boss.setup_demolisher(tuning.boss_health, director.flash_material())
-	boss.player = player
-	boss.grid = grid
-	boss.path_field = director.path_field
-	boss.director = director
-	boss.companion = companion
-	boss.speed = tuning.boss_speed
-	boss.contact_damage = tuning.boss_contact_damage
-	boss.contact_radius = tuning.boss_contact_radius
-	boss.demolish_seconds = tuning.boss_demolish_seconds
-	boss.wall_attraction_radius = tuning.boss_wall_attraction_radius
-	boss.walls_per_barricade = tuning.boss_walls_per_barricade
-	boss.max_barricades = tuning.boss_max_barricades
-	boss.scrap_field = companion.scrap_field if companion != null else null
-	boss.lamp_field = lamp_field
-	boss.max_carriers = tuning.boss_max_carriers
-	boss.carrier_scrap_radius = tuning.boss_carrier_scrap_radius
-	boss.carrier_recruit_radius = tuning.boss_carrier_recruit_radius
-	boss.carrier_timeout = tuning.boss_carrier_timeout
+	hud.set_boss_name(boss_name())
+	match tuning.boss_kind:
+		&"driller":
+			boss = _make_driller()
+		_:
+			boss = _make_demolisher()
 	var point := _boss_spawn_point()
-	director.add_enemy(boss, Vector3(point.x, Demolisher.boss_spawn_height(), point.z))
+	director.add_enemy(boss, Vector3(point.x, boss.spawn_center_height(), point.z))
 	boss.rotation.y = atan2(boss_direction.x, boss_direction.z)
 	boss.died.connect(_on_boss_died)
 	if train_event != null:
@@ -307,6 +300,51 @@ func _spawn_boss() -> void:
 	hud.set_boss_health(boss.health, boss.max_health)
 	boss_spawned.emit(boss)
 	print("PROTOTYPE01_BOSS_SPAWNED direction=%s x=%.1f z=%.1f health=%d" % [boss_direction_name, point.x, point.z, boss.health])
+
+
+func _make_demolisher() -> Demolisher:
+	var demolisher := Demolisher.new()
+	demolisher.setup_demolisher(tuning.boss_health, director.flash_material())
+	demolisher.player = player
+	demolisher.grid = grid
+	demolisher.path_field = director.path_field
+	demolisher.director = director
+	demolisher.companion = companion
+	demolisher.speed = tuning.boss_speed
+	demolisher.contact_damage = tuning.boss_contact_damage
+	demolisher.contact_radius = tuning.boss_contact_radius
+	demolisher.demolish_seconds = tuning.boss_demolish_seconds
+	demolisher.wall_attraction_radius = tuning.boss_wall_attraction_radius
+	demolisher.walls_per_barricade = tuning.boss_walls_per_barricade
+	demolisher.max_barricades = tuning.boss_max_barricades
+	demolisher.scrap_field = companion.scrap_field if companion != null else null
+	demolisher.lamp_field = lamp_field
+	demolisher.max_carriers = tuning.boss_max_carriers
+	demolisher.carrier_scrap_radius = tuning.boss_carrier_scrap_radius
+	demolisher.carrier_recruit_radius = tuning.boss_carrier_recruit_radius
+	demolisher.carrier_timeout = tuning.boss_carrier_timeout
+	return demolisher
+
+
+func _make_driller() -> Driller:
+	var driller := Driller.new()
+	driller.setup_driller(tuning.driller_health, director.flash_material())
+	driller.player = player
+	driller.grid = grid
+	driller.path_field = director.path_field
+	driller.director = director
+	driller.companion = companion
+	driller.scrap_field = companion.scrap_field if companion != null else null
+	driller.lamp_field = lamp_field
+	driller.contact_damage = tuning.boss_contact_damage
+	driller.contact_radius = tuning.boss_contact_radius
+	driller.charge_speed = tuning.driller_charge_speed
+	driller.charge_length = tuning.driller_charge_length
+	driller.aim_seconds = tuning.driller_aim_seconds
+	driller.rest_seconds = tuning.driller_rest_seconds
+	driller.stun_seconds = tuning.driller_stun_seconds
+	driller.stun_damage_multiplier = tuning.driller_stun_damage_multiplier
+	return driller
 
 
 ## Punto di ingresso nella direzione annunciata: dentro l'arena e su terreno libero.
@@ -652,7 +690,7 @@ func build_run_map() -> Image:
 					var size := ((part as CollisionShape3D).shape as BoxShape3D).size
 					var at := (child as StaticBody3D).global_position
 					buildings.append(Rect2(at.x - size.x * 0.5, at.z - size.z * 0.5, size.x, size.z))
-	var barricades: Dictionary = boss.barricades if is_instance_valid(boss) else {}
+	var barricades: Dictionary = (boss as Demolisher).barricades if is_instance_valid(boss) and boss is Demolisher else {}
 	var boss_position: Variant = boss.global_position if is_instance_valid(boss) else null
 	var lamps: Array[Vector2i] = lamp_field.cells() if lamp_field != null else []
 	return RunMap.render(grid, _initial_terrain, barricades, buildings, _start_position, player.global_position, boss_position, lamps)

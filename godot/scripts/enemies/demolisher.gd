@@ -136,6 +136,7 @@ var _windup_weight := 0.0
 
 func setup_demolisher(hp: int, flash_material: Material) -> void:
 	name = "Demolisher"
+	kind = &"demolisher"
 	self_driven = true
 	hit_radius_bonus = BODY_RADIUS - RADIUS
 	health = hp
@@ -179,6 +180,14 @@ func _ready() -> void:
 ## Altezza del centro della capsula sopra il pavimento.
 static func boss_spawn_height() -> float:
 	return BODY_HEIGHT * 0.5 + 0.02
+
+
+func spawn_center_height() -> float:
+	return boss_spawn_height()
+
+
+func death_debris_color() -> Color:
+	return BODY_COLOR
 
 
 func is_demolishing() -> bool:

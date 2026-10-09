@@ -224,3 +224,13 @@ func _reset_pose() -> void:
 ## Corpo sopra il pavimento: l'origine e al centro della capsula.
 static func spawn_height() -> float:
 	return HEIGHT * 0.5 + 0.02
+
+
+## Quota del centro del corpo sopra il pavimento; i boss, piu alti, la ridefiniscono.
+func spawn_center_height() -> float:
+	return spawn_height()
+
+
+## Colore dei frammenti alla morte; i boss lo ridefiniscono con la propria vernice.
+func death_debris_color() -> Color:
+	return Color(0.42, 0.1, 0.05)

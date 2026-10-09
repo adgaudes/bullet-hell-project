@@ -2,7 +2,9 @@ extends SceneTree
 ## Catture del livello 2, la ferrovia (D-066), non e una suite. Con finestra reale:
 ##   godot_console --path godot --resolution 1280x800 --fixed-fps 60 --quit-after 4000 --script res://tests/tools/capture_railway.gd -- --out=../output/railway
 ## Produce: warning (annuncio del treno con freccia), train (il convoglio che passa
-## accanto al cortile di partenza), aftermath (la fascia spianata, vagone compreso).
+## accanto al cortile di partenza), aftermath (la fascia spianata, vagone compreso),
+## driller_aim (la Trivella che mira, striscia a terra), driller_charge (in carica, solco dietro),
+## driller_stun (ferma contro un terrapieno, punta scoperta).
 
 var _out := "../output/railway"
 
@@ -47,6 +49,48 @@ func _initialize() -> void:
 	for i in 30:
 		await physics_frame
 	await _save("aftermath")
+
+	# La Trivella: chiamata subito, arrivo accanto al giocatore sulla fascia spianata.
+	train.next_at = 1.0e9
+	player.global_position = Vector3(-5.0, 0.88, 0.0)
+	player.velocity = Vector3.ZERO
+	run.call_boss()
+	# Fisica a 120 Hz nel gioco (non 60 come nei test): dodici passi bastano a un preavviso di 0,01 s.
+	run._boss_warning_left = 0.01
+	for i in 12:
+		await physics_frame
+	var boss := run.boss as Driller
+	if boss == null:
+		quit()
+		return
+	boss.global_position = Vector3(8.0, Driller.boss_spawn_height(), 0.0)
+	boss.reset_physics_interpolation()
+	boss.phase = Driller.Phase.REST
+	boss.phase_left = 0.05
+	while boss.phase != Driller.Phase.AIM:
+		await physics_frame
+	for i in 40:
+		await physics_frame
+	await _save("driller_aim")
+	while boss.phase != Driller.Phase.CHARGE:
+		await physics_frame
+	for i in 75:
+		await physics_frame
+	await _save("driller_charge")
+	# Un terrapieno davanti alla prossima carica.
+	while boss.phase != Driller.Phase.REST:
+		await physics_frame
+	# Giocatore e terrapieno esattamente sulla linea della Trivella, che mira dritta.
+	player.global_position = Vector3(boss.global_position.x - 11.0, 0.88, boss.global_position.z)
+	player.velocity = Vector3.ZERO
+	var grid: TerrainGrid = scene.get_node(^"TerrainGrid")
+	grid.set_cell_states([grid.cell_at(boss.global_position + Vector3(-7.2, 0.0, 0.0))], TerrainState.CellState.RAISED)
+	boss.phase_left = 0.05
+	while boss.phase != Driller.Phase.STUN:
+		await physics_frame
+	for i in 20:
+		await physics_frame
+	await _save("driller_stun")
 	quit()
 
 

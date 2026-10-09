@@ -109,7 +109,7 @@ func _test_call_and_arrival() -> void:
 		"preavviso di %.0f s prima dell'arrivo" % _run.tuning.boss_warning_seconds)
 	_run._boss_warning_left = 0.05
 	await _frames(6)
-	_boss = _run.boss
+	_boss = _run.boss as Demolisher
 	_check(_run.boss_phase == ArenaRun.BossPhase.ACTIVE and _boss != null, "finito il preavviso il Demolitore entra in campo")
 	if _boss == null:
 		return

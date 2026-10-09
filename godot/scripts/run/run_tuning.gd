@@ -86,6 +86,8 @@ extends Resource
 @export var train_boss_damage := 30
 
 @export_group("Boss")
+## Quale boss chiude il livello: `demolisher` (D-043) o `driller` (la Trivella, D-066).
+@export var boss_kind: StringName = &"demolisher"
 ## Secondi di livello prima della chiamata del boss (CAMPAIGN_STRUCTURE_SPEC: livello di 12-15 minuti).
 ## 0 = nessun boss. `-- --boss-at=N` sulla riga di comando lo anticipa.
 @export var boss_call_seconds := 720.0
@@ -123,6 +125,17 @@ extends Resource
 ## contati col cassone a fine livello (e ridotti come il cassone se si muore).
 ## L'esperienza va raccolta fuori dalle mura: chi si chiude dentro non ne matura. 0 = spenta.
 @export var recovery_scrap_levels := 0.0
+
+@export_group("Driller")
+## La Trivella (D-066): vita, velocita e lunghezza della carica, secondi di mira, di
+## riposo e di stordimento dopo un terrapieno, moltiplicatore del danno da stordita.
+@export var driller_health := 180
+@export var driller_charge_speed := 6.0
+@export var driller_charge_length := 30.0
+@export var driller_aim_seconds := 2.0
+@export var driller_rest_seconds := 3.0
+@export var driller_stun_seconds := 3.0
+@export var driller_stun_damage_multiplier := 2.0
 
 @export_group("Runners")
 ## Rottamatori veloci (D-056): compaiono da `runner_start_seconds` e crescono fino a

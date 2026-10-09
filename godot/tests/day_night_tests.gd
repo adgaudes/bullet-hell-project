@@ -220,7 +220,7 @@ func _test_errand_and_boss_unchanged() -> void:
 	await _frames(6)
 	_run._boss_warning_left = 0.05
 	await _frames(6)
-	var boss := _run.boss
+	var boss := _run.boss as Demolisher
 	_check(boss != null and is_equal_approx(boss.speed, _run.tuning.boss_speed) and boss.contact_damage == _run.tuning.boss_contact_damage,
 		"Demolitore di notte: velocita e danno del tuning")
 	if boss != null:

@@ -34,6 +34,7 @@ const SOUND_SETTINGS: Dictionary[StringName, Array] = {
 	&"dusk": [-6.0, 0.0, 1.0],
 	&"nightfall": [-4.0, 0.0, 1.0],
 	&"train_horn": [-4.0, 0.0, 0.8],
+	&"driller_charge": [-5.0, 0.0, 0.6],
 }
 ## Suoni che un player occupato non cede mai a un altro (R-36): sono rari e
 ## portano un'informazione che il giocatore deve sentire fino in fondo.
@@ -239,8 +240,16 @@ func _on_night_phase(phase: DayNightCycle.Phase) -> void:
 			play(&"nightfall")
 
 
-func _on_boss_spawned(boss: Demolisher) -> void:
+func _on_boss_spawned(boss: Enemy) -> void:
 	play(&"boss_spawn")
-	boss.wall_demolished.connect(func(_cell: Vector2i) -> void: play(&"boss_demolish"))
-	boss.scrap_taken.connect(play.bind(&"carrier_pickup", 0.0))
-	boss.barricade_built.connect(func(_cell: Vector2i) -> void: play(&"boss_barricade"))
+	if boss is Demolisher:
+		var demolisher := boss as Demolisher
+		demolisher.wall_demolished.connect(func(_cell: Vector2i) -> void: play(&"boss_demolish"))
+		demolisher.scrap_taken.connect(play.bind(&"carrier_pickup", 0.0))
+		demolisher.barricade_built.connect(func(_cell: Vector2i) -> void: play(&"boss_barricade"))
+	elif boss is Driller:
+		# La Trivella (D-066): carica annunciata, terrapieno sfondato, stordimento.
+		var driller := boss as Driller
+		driller.charge_started.connect(func(_target: Vector3) -> void: play(&"driller_charge"))
+		driller.wall_broken.connect(func(_cell: Vector2i) -> void: play(&"boss_demolish"))
+		driller.stunned.connect(func(_seconds: float) -> void: play(&"boss_barricade"))

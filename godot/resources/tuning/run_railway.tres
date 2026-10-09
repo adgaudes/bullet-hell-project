@@ -5,6 +5,7 @@
 [resource]
 script = ExtResource("1_tuning")
 recovery_scrap_levels = 2.0
+boss_kind = &"driller"
 hopper_start_seconds = 120.0
 hopper_ramp_seconds = 300.0
 hopper_share_max = 0.25

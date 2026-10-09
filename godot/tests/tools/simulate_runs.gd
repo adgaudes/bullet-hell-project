@@ -267,7 +267,7 @@ func _on_health_changed(health: int, _max_health: int, last: Array) -> void:
 	last[0] = health
 
 
-func _on_boss_spawned(_boss: Demolisher) -> void:
+func _on_boss_spawned(_boss: Enemy) -> void:
 	_health_at_boss = _player.health
 	_level_at_boss = _run.progression.level
 
