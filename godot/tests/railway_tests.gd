@@ -39,6 +39,7 @@ func _initialize() -> void:
 	_test_determinism()
 	await _test_spawn_and_path_in_corridor()
 	await _test_markers_include_wagons()
+	await _test_hoppers()
 	print("PROTOTYPE01_TESTS %s failures=%d" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -279,3 +280,42 @@ func _test_markers_include_wagons() -> void:
 			nearest_kind = f.kind
 	var first: Dictionary = deposits[0] if not deposits.is_empty() else {}
 	_check(not first.is_empty() and absf(first.distance - nearest) < 0.1, "il primo indicato e il piu vicino (%s a %.0f m)" % [nearest_kind, nearest])
+
+
+## Saltatori (D-066): dal tuning del livello 2, con meno vita, di un altro colore,
+## non rallentati dai fossati; nel livello 1 non esistono.
+func _test_hoppers() -> void:
+	print("hoppers")
+	var tuning := _director.tuning
+	_check(tuning.hopper_share_max > 0.0 and RunTuning.new().hopper_share_max == 0.0, "quota dei saltatori solo nel tuning della ferrovia")
+	var elapsed := _director.elapsed
+	_director.elapsed = 0.0
+	_check(is_zero_approx(_director.current_hopper_share()), "all'inizio nessun saltatore")
+	_director.elapsed = tuning.hopper_start_seconds + tuning.hopper_ramp_seconds * 3.0
+	_check(is_equal_approx(_director.current_hopper_share(), tuning.hopper_share_max), "a rampa finita la quota massima (%.0f%%)" % (tuning.hopper_share_max * 100.0))
+	_director.elapsed = elapsed
+	# Un fossato di 6 celle lungo i binari, a sud della fascia: un rottamatore e un saltatore lo attraversano.
+	var center := _grid.cell_at(Vector3.ZERO)
+	var cells: Array[Vector2i] = []
+	for k in range(-3, 3):
+		cells.append(Vector2i(center.x - 5, center.y + 12 + k))
+	_grid.set_cell_states(cells, LOWERED)
+	_player.global_position = Vector3(0.0, 0.88, 12.0)
+	_player.velocity = Vector3.ZERO
+	await _frames(3)
+	var walker := _director.spawn_at(_cell_world(Vector2i(center.x - 5, center.y + 12)))
+	var hopper := _director.spawn_kind(_cell_world(Vector2i(center.x - 5, center.y + 13)), &"hopper")
+	_check(hopper.kind == &"hopper" and hopper.ignores_lowered and not walker.ignores_lowered, "il saltatore ignora le celle Lowered")
+	_check(hopper.health == maxi(ceili(walker.health * tuning.hopper_health_share), 1), "meno vita (%d contro %d)" % [hopper.health, walker.health])
+	_check(hopper._body.material_override != walker._body.material_override, "e di un altro colore")
+	await _frames(40)
+	var walker_speed := Vector2(walker.velocity.x, walker.velocity.z).length()
+	var hopper_speed := Vector2(hopper.velocity.x, hopper.velocity.z).length()
+	_check(_grid.cell_state_at(walker.global_position) == LOWERED and _grid.cell_state_at(hopper.global_position) == LOWERED,
+		"entrambi ancora nel fossato")
+	_check(absf(walker_speed - tuning.enemy_speed * (1.0 - _grid.lowered_speed_penalty())) < 0.4, "il rottamatore nel fossato va a %.1f m/s" % walker_speed)
+	_check(absf(hopper_speed - tuning.enemy_speed) < 0.4, "il saltatore nel fossato va a %.1f m/s, piena velocita" % hopper_speed)
+	for enemy: Enemy in [walker, hopper]:
+		enemy.queue_free()
+	_director.enemies.clear()
+	_grid.set_cell_states(cells, NORMAL)

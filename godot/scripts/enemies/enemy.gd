@@ -59,6 +59,10 @@ var spike_cooldown := 0.0
 var self_driven := false
 ## Moltiplicatore della velocita dell'orda: i rottamatori veloci (D-056) ne hanno piu di 1.
 var speed_scale := 1.0
+## Tipo (scavenger, runner, hopper): per test, simulazioni e log.
+var kind: StringName = &"scavenger"
+## I saltatori (D-066) non vengono rallentati dalle celle Lowered.
+var ignores_lowered := false
 ## Raggio in piu rispetto a un rottamatore, per i colpi (corpi grandi).
 var hit_radius_bonus := 0.0
 ## Commissione (D-045): il direttore lo porta a `errand_point` invece che dal giocatore.

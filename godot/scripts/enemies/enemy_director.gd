@@ -14,6 +14,8 @@ const SCAVENGER_MODEL := preload("res://assets/models/scavenger.glb")
 const BODY_COLOR := Color(0.42, 0.1, 0.05)
 ## Lineare: scafo dei rottamatori veloci (D-056), blu elettrico per distinguerli a colpo d'occhio.
 const RUNNER_COLOR := Color(0.05, 0.22, 0.85)
+## Lineare: scafo dei saltatori (D-066), verde acido.
+const HOPPER_COLOR := Color(0.18, 0.75, 0.08)
 const SEPARATION_RADIUS := 0.8
 const SEPARATION_WEIGHT := 1.6
 ## Sotto questa distanza dal giocatore si punta dritto, senza waypoint.
@@ -47,8 +49,10 @@ var _spawn_timer := 1.0
 var _body_mesh: Mesh
 var _base_material: ShaderMaterial
 var _runner_material: ShaderMaterial
-## Rottamatori veloci nati finora.
+var _hopper_material: ShaderMaterial
+## Rottamatori veloci e saltatori nati finora.
 var runners_spawned := 0
+var hoppers_spawned := 0
 var _flash_material := StandardMaterial3D.new()
 # Riusati a ogni passo (R-10): secchi di separazione e copia dell'elenco dei nemici.
 var _buckets: Dictionary[Vector2i, Array] = {}
@@ -63,6 +67,7 @@ func _ready() -> void:
 	_body_mesh = ActorModel.mesh_of(SCAVENGER_MODEL)
 	_base_material = ActorModel.paint_material(BODY_COLOR, 2.0)
 	_runner_material = ActorModel.paint_material(RUNNER_COLOR, 3.0)
+	_hopper_material = ActorModel.paint_material(HOPPER_COLOR, 3.0)
 	_flash_material.albedo_color = Color.WHITE
 	_flash_material.emission_enabled = true
 	_flash_material.emission = Color.WHITE
@@ -97,17 +102,37 @@ func current_runner_share() -> float:
 	return tuning.runner_share_max * t
 
 
+## Quota di saltatori fra i nuovi nati, in questo momento del livello (D-066).
+func current_hopper_share() -> float:
+	if tuning.hopper_share_max <= 0.0 or elapsed < tuning.hopper_start_seconds:
+		return 0.0
+	var t := clampf((elapsed - tuning.hopper_start_seconds) / maxf(tuning.hopper_ramp_seconds, 1.0), 0.0, 1.0)
+	return tuning.hopper_share_max * t
+
+
 ## Crea un nemico in un punto preciso (test, eventi scriptati). [param runner]:
 ## rottamatore veloce, con meno vita.
 func spawn_at(world: Vector3, runner := false) -> Enemy:
+	return spawn_kind(world, &"runner" if runner else &"scavenger")
+
+
+## Crea un nemico del tipo dato: `scavenger` (base), `runner` (veloce, meno vita),
+## `hopper` (saltatore: meno vita, non rallentato dalle celle Lowered).
+func spawn_kind(world: Vector3, kind: StringName) -> Enemy:
 	var enemy := Enemy.new()
 	enemy.name = "Enemy%d" % (kills + enemies.size())
-	if runner:
-		runners_spawned += 1
-		enemy.speed_scale = tuning.runner_speed / maxf(tuning.enemy_speed, 0.01)
-		enemy.setup(maxi(ceili(current_enemy_health() * tuning.runner_health_share), 1), _body_mesh, _runner_material, _flash_material)
-	else:
-		enemy.setup(current_enemy_health(), _body_mesh, _base_material, _flash_material)
+	enemy.kind = kind
+	match kind:
+		&"runner":
+			runners_spawned += 1
+			enemy.speed_scale = tuning.runner_speed / maxf(tuning.enemy_speed, 0.01)
+			enemy.setup(maxi(ceili(current_enemy_health() * tuning.runner_health_share), 1), _body_mesh, _runner_material, _flash_material)
+		&"hopper":
+			hoppers_spawned += 1
+			enemy.ignores_lowered = true
+			enemy.setup(maxi(ceili(current_enemy_health() * tuning.hopper_health_share), 1), _body_mesh, _hopper_material, _flash_material)
+		_:
+			enemy.setup(current_enemy_health(), _body_mesh, _base_material, _flash_material)
 	add_enemy(enemy, Vector3(world.x, Enemy.spawn_height(), world.z))
 	return enemy
 
@@ -158,6 +183,10 @@ func _spawn_batch() -> void:
 		var point: Vector3 = origin + offset
 		if path_field != null and not path_field.is_walkable(point):
 			point = origin
+		var hopper_share := current_hopper_share()
+		if hopper_share > 0.0 and rng.randf() < hopper_share:
+			spawn_kind(point, &"hopper")
+			continue
 		var share := current_runner_share()
 		spawn_at(point, share > 0.0 and rng.randf() < share)
 
@@ -237,7 +266,7 @@ func _move_enemies(delta: float) -> void:
 		# I nemici in commissione (portatori del boss) restano come sono (specifica, sezione 5).
 		if in_dark and not enemy.has_errand:
 			speed *= tuning.night_dark_speed_scale
-		if grid != null and grid.cell_state_at(pos) == TerrainState.CellState.LOWERED:
+		if grid != null and not enemy.ignores_lowered and grid.cell_state_at(pos) == TerrainState.CellState.LOWERED:
 			speed *= 1.0 - penalty
 		var desired := direction.limit_length(1.0) * speed
 		var planar := Vector3(enemy.velocity.x, 0.0, enemy.velocity.z).move_toward(desired, ACCELERATION * delta)
@@ -257,6 +286,7 @@ func is_in_dark(world: Vector3) -> bool:
 func set_night(factor: float) -> void:
 	_base_material.set_shader_parameter(&"emission_energy", lerpf(2.0, 6.0, factor))
 	_runner_material.set_shader_parameter(&"emission_energy", lerpf(3.0, 7.0, factor))
+	_hopper_material.set_shader_parameter(&"emission_energy", lerpf(3.0, 7.0, factor))
 
 
 ## Riporta un nemico disperso sull'anello di comparsa. False se non c'e posto.

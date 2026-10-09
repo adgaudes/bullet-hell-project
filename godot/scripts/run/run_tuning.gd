@@ -135,6 +135,15 @@ extends Resource
 ## Quota della vita di un rottamatore normale (minimo 1).
 @export_range(0.1, 1.0) var runner_health_share := 0.5
 
+@export_group("Hoppers")
+## Saltatori (D-066, livello 2): rottamatori leggeri che **non vengono rallentati dalle
+## celle Lowered** (le saltano). Compaiono da `hopper_start_seconds` fino a
+## `hopper_share_max` dei nuovi nati in `hopper_ramp_seconds`; 0 = nessuno (livello 1).
+@export var hopper_start_seconds := 120.0
+@export var hopper_ramp_seconds := 300.0
+@export_range(0.0, 1.0) var hopper_share_max := 0.0
+@export_range(0.1, 1.0) var hopper_health_share := 0.5
+
 @export_group("Courtyard")
 ## Mura iniziali del cortile: anello di celle Raised a questa distanza dal centro
 ## della griglia, con un varco al centro di ogni lato. 0 = nessuna mura.
