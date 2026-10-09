@@ -88,9 +88,13 @@ godot_console --headless --path godot --fixed-fps 60 --script res://tests/econom
 godot_console --headless --path godot --fixed-fps 60 --script res://tests/day_night_tests.gd
 godot_console --headless --path godot --fixed-fps 60 --script res://tests/lamp_tests.gd
 godot_console --headless --path godot --fixed-fps 60 --script res://tests/height_terrain_tests.gd
+godot_console --headless --path godot --fixed-fps 60 --script res://tests/railway_tests.gd
+godot_console --headless --path godot --fixed-fps 60 --script res://tests/train_tests.gd
+godot_console --headless --path godot --fixed-fps 60 --script res://tests/driller_tests.gd
+godot_console --headless --path godot --fixed-fps 60 --script res://tests/campaign_tests.gd
 ```
 
-Al 9 ottobre 2026 le suite in `godot/tests/` sono 26 (le altre: boss, district, ruins_arena, settings, button_prompts, character_animator, addons, player, terrain, terrain_tool, slice_b, live_rebuild); il gate le trova da solo. Dal 9 ottobre il gate **fallisce anche se una suite stampa `SCRIPT ERROR` o `ERROR:`** (allowlist esplicita in `Invoke-GodotChecks.ps1` per l'errore noto del renderer fittizio): un errore runtime provocato apposta da un test va stampato come marker, non con `push_error`.
+Al 9 ottobre 2026 (sera) le suite in `godot/tests/` sono 30 (le altre: boss, district, ruins_arena, settings, button_prompts, character_animator, addons, player, terrain, terrain_tool, slice_b, live_rebuild); il gate le trova da solo. Dal 9 ottobre il gate **fallisce anche se una suite stampa `SCRIPT ERROR` o `ERROR:`** (allowlist esplicita in `Invoke-GodotChecks.ps1` per l'errore noto del renderer fittizio): un errore runtime provocato apposta da un test va stampato come marker, non con `push_error`.
 
 Piu semplice: `tools/godot/Invoke-GodotChecks.ps1` esegue tutte le suite presenti in `godot/tests/`.
 
@@ -151,6 +155,8 @@ Catture di Officina, mappa di fine livello e menu iniziale: `godot_console --pat
 Trappola verificata (6 ottobre 2026): `add_child()` su un nodo fratello **durante il `_ready` della scena** fallisce ("Parent node is busy setting up children") e il nodo resta fuori dall'albero senza altri sintomi. Usare `add_child.call_deferred()`.
 
 Catture del ciclo giorno/notte (D-058: giorno con indicatore, tramonto a meta, notte nel faro, notte al buio con 20 rottamatori, Torcia e Faro al massimo): `godot_console --path godot --resolution 1280x800 --fixed-fps 60 --quit-after 3000 --script res://tests/tools/capture_night.gd -- --out=../output/night`. Per giocare subito la notte: `godot --path godot -- --night-at=5`; `--night-at=0` la spegne (anche nel simulatore). Costo del direttore di notte con sei lampioni: `benchmark_arena.gd -- --enemies=70 --night`. In gioco il tool cicla scava → rialza → lampione con lo stesso tasto del modo.
+
+Livello 2, la ferrovia (D-067): per giocarlo `godot --path godot -- --level=railway` (`--level=` salta il menu come `--autostart`; `--boss-at=60` anticipa la Trivella). Catture: `godot_console --path godot --resolution 1280x800 --fixed-fps 60 --quit-after 6000 --script res://tests/tools/capture_railway.gd -- --out=../output/railway` (annuncio del treno, treno che passa, fascia spianata, Trivella in mira, in carica e stordita) e `capture_district.gd -- --scene=railway --out=../output/railway` (panoramica dall'alto, `--visit=x,z`). Mappa di campagna e schermata di vittoria con "Prossimo livello": `... --quit-after 900 --script res://tests/tools/capture_campaign.gd -- --out=../output/campaign`. Simulazioni sulla ferrovia: `simulate_runs.gd -- --level=railway ...`. Trappola verificata (9 ottobre 2026): in uno script di cattura **con finestra la fisica e a 120 Hz**, non a 60 come nei test: `_boss_warning_left = 0.05` e sei `physics_frame` non bastano a far entrare il boss; chiamare `run.call_boss()` e attendere dodici passi con `_boss_warning_left = 0.01`. Trappola della sessione: un heredoc bash che contiene backtick non viene eseguito dallo strumento Bash di Claude Code; gli script di patch in Python vanno scritti in un file e lanciati con `python -I`.
 
 Catture del boss (annuncio, rottamatore carico e cantiere, Demolitore con barricata, vittoria): `godot_console --path godot --resolution 1280x800 --fixed-fps 60 --script res://tests/tools/capture_boss.gd -- --out=../output/boss`. Per giocare subito il boss: `godot --path godot -- --boss-at=60`.
 

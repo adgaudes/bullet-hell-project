@@ -40,6 +40,17 @@ Dalla review del 7 ottobre 2026 (`docs/REVIEWS/ARENA_RUN_LEVEL_2026-10-07.md`). 
 
 Noto da prima: ogni run ha lo **stesso quartiere** (il seme cambia orda e carte, non la mappa; R-16); la cella viola all'angolo sud-ovest e un residuo della parita Unreal (R-28); i valori di boss, Officina e carte **non sono bilanciati**.
 
+## Livello 2, la ferrovia (D-067, 9 ottobre 2026)
+
+Si sblocca vincendo il quartiere (mappa di campagna da "Gioca") oppure subito con `godot --path godot -- --level=railway`; `--boss-at=60` anticipa la Trivella, `--night-at=0` spegne la notte. Nessuno l'ha giocato. Oltre alle domande del livello 1:
+
+23. Il **treno**: hai capito dall'annuncio da dove arrivava e quanto tempo avevi? Ti ha mai preso senza che te lo aspettassi? Hai usato i binari come trappola per l'orda, o per colpire la Trivella?
+24. I **vagoni sui binari** (rottami che il treno spazza via): li hai scavati prima del treno? Valeva il rischio?
+25. I **saltatori** (verdi): li riconosci? Hai capito che i fossati non li fermano? Ti hanno costretto a usare i muri?
+26. La **Trivella**: hai capito dalla striscia a terra dove stava per caricare? Hai usato un terrapieno per fermarla e sparare mentre era ferma? I suoi solchi ti hanno aiutato o intralciato?
+27. Il corridoio stretto e lungo: ti sembra un altro livello o lo stesso con una forma diversa? Durata e difficolta rispetto al quartiere?
+28. **Mappa di campagna** e "Prossimo livello": chiari? Qualcosa che mancava?
+
 ## Cosa annotare oltre alle domande della specifica
 
 - **Animazioni dell'ingegnere** (D-060, D-062, solo editor): corsa, corse laterali e indietro con la mira ferma, capriola sullo scatto, affondo sul tool. Resa, ritmo, durata: e la prima volta che qualcuno le vede in movimento.

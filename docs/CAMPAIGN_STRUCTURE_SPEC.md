@@ -85,7 +85,7 @@ Fra i livelli: Officina con 6-8 upgrade permanenti. Dopo il livello 3: schermata
 3. Durata 12-15 minuti per livello, 3 livelli per la prima campagna: giusto per un primo playtest?
 4. I tre boss proposti: il Demolitore come primo va bene?
 
-Senza risposta, l'agente procede con le proposte cosi come sono.
+Senza risposta, l'agente procede con le proposte cosi come sono. **Fatto il 9 ottobre 2026 (D-066):** rottami come valuta, meta alla morte, 3 livelli, Demolitore primo boss; livello 2 (ferrovia, Trivella) implementato (D-067, `RAILWAY_LEVEL_SPEC.md`); mappa di campagna e catalogo dei livelli in codice (`LevelCatalog`, `CampaignMapPanel`). Il Cantiere (livello 3, Gru) e nel catalogo come "in costruzione".
 
 ## 9. Conseguenze tecniche
 

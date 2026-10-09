@@ -12,6 +12,7 @@ extends SceneTree
 ##   --hz=60                         passi fisici al secondo (il gioco ne usa 120)
 ##   --boss-at=N                     letto da ArenaRun: anticipa il boss
 ##   --night-at=N                    letto da ArenaRun: anticipa il tramonto (0 = niente notte)
+##   --level=railway                 livello da simulare (LevelCatalog; default il quartiere)
 ##   Lo scrapper, di notte, piazza un lampione dove sta (3 rottami, max 6): riga `lamps=`.
 ## Con `--fixed-fps 60` e 60 passi fisici al secondo una run e ripetibile: stesso
 ## seme e stesso bot danno la stessa riga. Senza finestra gira gia alla massima
@@ -35,7 +36,8 @@ extends SceneTree
 ## Marker: PROTOTYPE01_SIM (una riga per run), PROTOTYPE01_SIM_SUMMARY,
 ## PROTOTYPE01_SIM_AFFORD (run necessarie per ogni livello dell'Officina).
 
-const RunScene := preload("res://scenes/main/arena_run.tscn")
+## Scena del livello scelto con `--level=` (default: il primo del catalogo).
+var _scene_path := LevelCatalog.scene_of(LevelCatalog.first())
 
 ## Con `--trace=N` stampa lo stato ogni N secondi di gioco (PROTOTYPE01_SIM_TRACE):
 ## serve a trovare dove due run che dovrebbero essere uguali si separano.
@@ -138,6 +140,10 @@ func _parse_arguments() -> void:
 			_max_seconds = arg.trim_prefix("--max-seconds=").to_float()
 		elif arg.begins_with("--trace="):
 			_trace_every = arg.trim_prefix("--trace=").to_float()
+		elif arg.begins_with("--level="):
+			var level := StringName(arg.trim_prefix("--level="))
+			if LevelCatalog.is_playable(level):
+				_scene_path = LevelCatalog.scene_of(level)
 		elif arg.begins_with("--hz="):
 			_hz = maxi(arg.trim_prefix("--hz=").to_int(), 30)
 	if _bots.is_empty():
@@ -171,7 +177,7 @@ func _simulate(bot: StringName, run_seed: int) -> Dictionary:
 		if _profile_levels[id] > 0:
 			profile.levels[id] = _profile_levels[id]
 
-	_scene = RunScene.instantiate()
+	_scene = (load(_scene_path) as PackedScene).instantiate()
 	root.add_child(_scene)
 	_run = _scene.get_node(^"Run")
 	_player = _scene.get_node(^"Player")

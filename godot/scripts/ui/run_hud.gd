@@ -262,8 +262,10 @@ func event_warning_text() -> String:
 	return _boss_warning.text if _boss_warning.visible else ""
 
 
+## Un annuncio con la freccia (boss o treno) e a schermo; gli avvisi semplici
+## (notte, titolo del livello) non contano.
 func is_boss_warning_visible() -> bool:
-	return _boss_warning.visible
+	return _boss_warning.visible and _boss_arrow.visible
 
 
 func set_boss_health(health: int, max_health: int) -> void:

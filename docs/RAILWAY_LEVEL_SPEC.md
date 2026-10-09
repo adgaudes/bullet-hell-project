@@ -1,6 +1,6 @@
 # Livello 2: la ferrovia — specifica
 
-**Stato:** proposta dell'agente (9 ottobre 2026), scritta applicando `CAMPAIGN_STRUCTURE_SPEC.md` sezione 6 con le risposte "per default" alle domande della sezione 8 (D-066). Il proprietario non ha ancora giocato il livello 1: tutto cio che segue si ritocca dopo il playtest. Valori **non bilanciati**.
+**Stato:** **implementata il 9 ottobre 2026** (D-066, D-067) cosi come scritta, con una differenza: la Trivella devia dalle rovine seguendo il campo di percorso quando la linea diretta e chiusa (sezione 5). Il proprietario non ha ancora giocato ne il livello 1 ne questo: tutto cio che segue si ritocca dopo il playtest. Valori **non bilanciati**. Per giocarlo: dal menu, Gioca, mappa di campagna (sbloccato dopo una vittoria nel quartiere), oppure `godot --path godot -- --level=railway`; `--boss-at=60` anticipa la Trivella. Catture in `output/railway/` e `output/campaign/`.
 
 ## 1. In una frase
 

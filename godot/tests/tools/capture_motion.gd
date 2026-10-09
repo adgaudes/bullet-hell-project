@@ -128,7 +128,7 @@ func _initialize() -> void:
 		await physics_frame
 		if run.boss != null:
 			break
-	var boss := run.boss
+	var boss := run.boss as Demolisher
 	# Dentro il cortile, senza attrazione per i muri: cosi cammina verso il giocatore.
 	var attraction := boss.wall_attraction_radius
 	boss.wall_attraction_radius = 0.0
