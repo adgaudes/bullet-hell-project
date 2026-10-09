@@ -20,10 +20,12 @@ var _states := PackedByteArray()
 ## Ridimensiona la griglia. Come in Unreal lo stato e azzerato solo se cambia
 ## il numero di celle; altrimenti e conservato attraverso la ricostruzione.
 func resize(new_width: int, new_height: int) -> void:
+	var shape_changed := new_width != width or new_height != height
 	width = new_width
 	height = new_height
 	var count := new_width * new_height
-	if _states.size() != count:
+	# Anche a parita di conteggio una forma diversa (7x9 -> 9x7) sposta le celle (T-10).
+	if _states.size() != count or shape_changed:
 		_states.resize(count)
 		_states.fill(CellState.NORMAL)
 

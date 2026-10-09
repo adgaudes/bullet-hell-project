@@ -484,6 +484,19 @@ func return_to_menu() -> void:
 	get_tree().change_scene_to_file(MAIN_MENU_SCENE)
 
 
+## Abbandono dalla pausa (R-20, D-064): vale come una morte, si incassa la stessa quota.
+## Niente mappa ne pannello: chi abbandona vuole uscire.
+func abandon_run() -> void:
+	if is_over:
+		return
+	is_over = true
+	director.spawning = false
+	var scrap := scrap_out(false)
+	var banked := _bank(scrap, false)
+	print("PROTOTYPE01_RUN_ABANDONED time=%.1f level=%d kills=%d scrap=%d banked=%d seed=%d"
+		% [elapsed, progression.level, director.kills, scrap, banked, run_seed])
+
+
 ## Mappa del campo come l'ha lasciato il giocatore, per la schermata di fine livello.
 func build_run_map() -> Image:
 	var buildings: Array[Rect2] = []
@@ -709,16 +722,8 @@ func _on_player_died() -> void:
 
 
 static func _boss_call_from_command_line(default_seconds: float) -> float:
-	for arg in OS.get_cmdline_user_args():
-		if arg.begins_with("--boss-at="):
-			return arg.trim_prefix("--boss-at=").to_float()
-	return default_seconds
+	return RunLaunchOptions.boss_call_seconds(default_seconds)
 
 
 static func _seed_from_command_line() -> int:
-	for arg in OS.get_cmdline_user_args():
-		if arg.begins_with("--seed="):
-			return arg.trim_prefix("--seed=").to_int()
-	var rng := RandomNumberGenerator.new()
-	rng.randomize()
-	return rng.randi() & 0x7fffffff
+	return RunLaunchOptions.run_seed()

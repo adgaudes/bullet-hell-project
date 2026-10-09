@@ -99,6 +99,11 @@ func open_settings_only() -> void:
 func return_to_menu() -> void:
 	_overlay.hide()
 	get_viewport().gui_release_focus()
+	# Abbandono a meta run: la run incassa la quota di morte prima di sparire (R-20).
+	var scene := get_tree().current_scene
+	var run := scene.find_child("Run", false, false) if scene != null else null
+	if run != null and run.has_method(&"abandon_run"):
+		run.call(&"abandon_run")
 	get_tree().paused = false
 	get_tree().change_scene_to_file(MAIN_MENU_SCENE)
 

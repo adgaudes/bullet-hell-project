@@ -109,7 +109,21 @@ func _test_persistence() -> void:
 	config.set_value("upgrades", "inventato", 3)
 	config.save(TEMP_PATH)
 	_check(loaded.load_profile(TEMP_PATH) == OK and loaded.scrap == 0 and loaded.runs == 0, "valori non validi diventano zero")
-	_check(loaded.level_of(&"base_health") == 3 and not loaded.levels.has(&"inventato"), "livelli oltre il massimo ridotti, id sconosciuti ignorati")
+	_check(loaded.level_of(&"base_health") == 3 and not loaded.levels.has(&"inventato"), "livelli oltre il massimo ridotti, id sconosciuti non applicati")
+	# R-19: l'id sconosciuto sopravvive a un salvataggio e il file porta la versione.
+	loaded.scrap = 7
+	_check(loaded.save_profile() == OK and loaded.last_save_error == OK, "salvataggio atomico riuscito")
+	var reread := ConfigFile.new()
+	_check(reread.load(TEMP_PATH) == OK and reread.get_value("upgrades", "inventato", 0) == 3
+		and reread.get_value("profile", "version", 0) == PlayerProfileService.VERSION and reread.get_value("profile", "scrap", 0) == 7,
+		"id sconosciuto conservato e versione scritta")
+	_check(not FileAccess.file_exists(TEMP_PATH + ".tmp"), "nessun file temporaneo lasciato in giro")
+	# R-18: percorso non scrivibile: errore riportato, non ignorato.
+	var broken: PlayerProfileService = ProfileScript.new()
+	broken.profile_path = "user://non_esiste_dir/sub/profile.cfg"
+	broken.scrap = 1
+	_check(broken.save_profile() != OK and broken.last_save_error != OK, "salvataggio impossibile: errore riportato in last_save_error")
+	broken.free()
 	loaded.load_profile("user://non_esiste_profile.cfg")
 	_check(loaded.scrap == 0 and loaded.levels.is_empty(), "file assente: profilo nuovo")
 	profile.free()
@@ -195,6 +209,24 @@ func _test_banking_and_workshop_flow() -> void:
 	Input.parse_input_event(cancel)
 	await _frames(2)
 	_check(closed[0] and not workshop.is_open and panel.is_open, "B chiude l'Officina e torna alla schermata di fine livello")
+	await _end_run(scene)
+	# R-20: abbandonare dalla pausa incassa la quota di morte.
+	scene = _start_run()
+	await _frames(3)
+	run = scene.get_node(^"Run")
+	var companion: Companion = scene.get_node(^"Companion")
+	companion.add_capacity(0, 4)
+	var abandon_expected := run.scrap_out(false)
+	var scrap_before := profile.scrap
+	var pause_menu := root.get_node("PauseMenu")
+	pause_menu.call(&"pause_game")
+	await _frames(1)
+	run.abandon_run()
+	_check(run.is_over and profile.scrap == scrap_before + abandon_expected and abandon_expected > 0,
+		"abbandono: incassata la quota di morte (%d)" % abandon_expected)
+	run.abandon_run()
+	_check(profile.scrap == scrap_before + abandon_expected, "un secondo abbandono non incassa due volte")
+	pause_menu.call(&"resume_game")
 	await _end_run(scene)
 	# Il livello successivo parte con cio che si e comprato.
 	scene = _start_run()

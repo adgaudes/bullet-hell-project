@@ -9,6 +9,9 @@ extends Node
 signal changed
 
 const DEFAULT_PATH := "user://profile.cfg"
+## Versione del file (R-19): un profilo di versione piu alta viene letto per quello che si
+## capisce; le voci sconosciute si conservano e si riscrivono, non si perdono.
+const VERSION := 1
 
 ## Percorso del salvataggio; vuoto = non si salva (test).
 var profile_path := DEFAULT_PATH
@@ -20,6 +23,12 @@ var runs := 0
 var victories := 0
 ## Livelli di campagna sbloccati (per ora ne esiste uno solo).
 var levels_unlocked := 1
+## Esito dell'ultimo salvataggio (R-18): OK, oppure l'errore che i pannelli possono mostrare.
+var last_save_error := OK
+## Versione letta dal file (0 = file senza versione o assente).
+var loaded_version := 0
+## Upgrade con id non in catalogo (file di una versione diversa): conservati tali e quali.
+var _unknown_upgrades: Dictionary[String, int] = {}
 
 
 func _init() -> void:
@@ -42,6 +51,7 @@ func reset() -> void:
 	runs = 0
 	victories = 0
 	levels_unlocked = 1
+	_unknown_upgrades.clear()
 
 
 func level_of(id: StringName) -> int:
@@ -98,6 +108,7 @@ func load_profile(path_override: String = "") -> Error:
 		return OK
 	if error != OK:
 		return error
+	loaded_version = _validated_count(config.get_value("profile", "version", 0))
 	scrap = _validated_count(config.get_value("profile", "scrap", 0))
 	runs = _validated_count(config.get_value("profile", "runs", 0))
 	victories = _validated_count(config.get_value("profile", "victories", 0))
@@ -107,6 +118,10 @@ func load_profile(path_override: String = "") -> Error:
 		var level := mini(_validated_count(config.get_value("upgrades", String(id), 0)), (entry.costs as Array).size())
 		if level > 0:
 			levels[id] = level
+	if config.has_section("upgrades"):
+		for key in config.get_section_keys("upgrades"):
+			if PermanentCatalog.find(StringName(key)).is_empty():
+				_unknown_upgrades[key] = _validated_count(config.get_value("upgrades", key, 0))
 	return OK
 
 
@@ -116,13 +131,20 @@ func save_profile(path_override: String = "") -> Error:
 	if profile_path.is_empty():
 		return OK
 	var config := ConfigFile.new()
+	config.set_value("profile", "version", VERSION)
 	config.set_value("profile", "scrap", scrap)
 	config.set_value("profile", "runs", runs)
 	config.set_value("profile", "victories", victories)
 	config.set_value("profile", "levels_unlocked", levels_unlocked)
 	for id: StringName in levels:
 		config.set_value("upgrades", String(id), levels[id])
-	return config.save(profile_path)
+	for key in _unknown_upgrades:
+		config.set_value("upgrades", key, _unknown_upgrades[key])
+	last_save_error = ConfigIO.save_atomic(config, profile_path)
+	if last_save_error != OK:
+		# Marker su stderr, non push_error: il gate conta le righe "ERROR:" e qui un test lo provoca apposta.
+		printerr("PROTOTYPE01_PROFILE_SAVE_FAILED path=%s error=%d" % [profile_path, last_save_error])
+	return last_save_error
 
 
 static func _validated_count(value: Variant) -> int:

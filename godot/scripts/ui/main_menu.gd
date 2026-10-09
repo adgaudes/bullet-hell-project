@@ -5,7 +5,6 @@ extends Control
 ## passa subito al livello: smoke test, catture e prove rapide non si fermano qui.
 
 const RUN_SCENE := "res://scenes/main/arena_run.tscn"
-const AUTOSTART_ARGS: Array[String] = ["--autostart", "--seed=", "--boss-at=", "--capture="]
 const SCRAP_COLOR := Color(0.95, 0.5, 0.15)
 
 @export var workshop: WorkshopPanel
@@ -53,11 +52,7 @@ func _exit_tree() -> void:
 
 ## Vero se la riga di comando chiede di saltare il menu.
 static func wants_autostart(args: PackedStringArray) -> bool:
-	for arg in args:
-		for prefix in AUTOSTART_ARGS:
-			if arg.begins_with(prefix):
-				return true
-	return false
+	return RunLaunchOptions.wants_autostart(args)
 
 
 func start_run() -> void:

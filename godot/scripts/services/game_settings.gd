@@ -99,7 +99,7 @@ func save_settings(path_override: String = "") -> Error:
 	config.set_value("audio", "master_volume", master_volume)
 	config.set_value("audio", "sfx_volume", sfx_volume)
 	save_count += 1
-	return config.save(settings_path)
+	return ConfigIO.save_atomic(config, settings_path)
 
 
 ## Applica le opzioni grafiche e audio; il viewport esplicito rende la logica testabile.

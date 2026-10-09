@@ -35,10 +35,7 @@ func _ready() -> void:
 ## Con `-- --capture=<percorso.png>` salva un PNG del primo frame utile ed esce.
 ## Richiede una finestra reale: in --headless i frame non vengono disegnati.
 func _capture_if_requested() -> void:
-	var path := ""
-	for arg in OS.get_cmdline_user_args():
-		if arg.begins_with("--capture="):
-			path = arg.trim_prefix("--capture=")
+	var path := RunLaunchOptions.capture_path()
 	if path.is_empty():
 		return
 	for i in 10:

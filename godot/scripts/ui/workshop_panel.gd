@@ -47,9 +47,20 @@ func _ready() -> void:
 	_scrap_label.add_theme_font_size_override(&"font_size", 22)
 	_scrap_label.add_theme_color_override(&"font_color", SCRAP_COLOR)
 	column.add_child(_scrap_label)
+	# Le voci scorrono (R-21): il catalogo puo crescere oltre lo schermo del Deck e il
+	# fuoco del controller resta sempre visibile.
+	var scroll := ScrollContainer.new()
+	scroll.follow_focus = true
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.custom_minimum_size = Vector2(0, 0)
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	column.add_child(scroll)
 	_rows = VBoxContainer.new()
 	_rows.add_theme_constant_override(&"separation", 6)
-	column.add_child(_rows)
+	_rows.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(_rows)
+	# Il pannello non supera lo schermo: 800 px meno titolo, totale, Torna e prompt.
+	scroll.custom_minimum_size.y = minf(float(PermanentCatalog.all().size()) * 64.0, 420.0)
 	for entry in PermanentCatalog.all():
 		var id: StringName = entry.id
 		var button := Button.new()

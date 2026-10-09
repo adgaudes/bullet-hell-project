@@ -68,7 +68,9 @@ func _ready() -> void:
 	_kills_label = _label(top, HORIZONTAL_ALIGNMENT_RIGHT)
 
 	_health_row = HBoxContainer.new()
-	_health_row.position = Vector2(24, 56)
+	_health_row.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	_health_row.offset_left = 24
+	_health_row.offset_top = 56
 	_health_row.add_theme_constant_override(&"separation", 6)
 	_health_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(_health_row)
