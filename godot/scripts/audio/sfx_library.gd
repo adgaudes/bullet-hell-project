@@ -23,15 +23,57 @@ const IDS: Array[StringName] = [
 ]
 
 static var _cache: Dictionary[StringName, AudioStreamWAV] = {}
+## Sintesi in corso nel WorkerThreadPool (R-40): id del task e PCM gia codificato
+## per id, scritto dal thread sotto mutex e letto dal thread principale solo a task finito.
+static var _precache_task := -1
+static var _precache_mutex := Mutex.new()
+static var _precache_pcm: Dictionary[StringName, PackedByteArray] = {}
 
 
 ## Stream per id, costruiti una sola volta per processo (il riavvio della run
-## ricarica la scena ma non risintetizza nulla).
+## ricarica la scena ma non risintetizza nulla). Se `precache_async` e in corso
+## ne aspetta la fine e usa il suo lavoro; altrimenti sintetizza qui, in modo sincrono.
 static func build_all() -> Dictionary[StringName, AudioStreamWAV]:
-	if _cache.is_empty():
+	if not _cache.is_empty():
+		return _cache
+	if _precache_task >= 0:
+		WorkerThreadPool.wait_for_task_completion(_precache_task)
+		_precache_task = -1
+		_precache_mutex.lock()
+		var pcm := _precache_pcm
+		_precache_pcm = {}
+		_precache_mutex.unlock()
+		for id in IDS:
+			_cache[id] = _wrap(pcm[id])
+	else:
 		for id in IDS:
 			_cache[id] = build(id)
 	return _cache
+
+
+## Avvia la sintesi di tutta la libreria in un thread del WorkerThreadPool (dal menu
+## iniziale, cosi "Gioca" non la paga). Solo buffer puri nel thread; gli
+## AudioStreamWAV nascono sul thread principale in `build_all`. Innocuo se ripetuto.
+static func precache_async() -> void:
+	if not _cache.is_empty() or _precache_task >= 0:
+		return
+	_precache_task = WorkerThreadPool.add_task(SfxLibrary._precache_in_thread, false, "SfxLibrary.precache")
+
+
+## Vero quando `build_all` non deve piu sintetizzare ne aspettare.
+static func is_precached() -> bool:
+	if not _cache.is_empty():
+		return true
+	return _precache_task >= 0 and WorkerThreadPool.is_task_completed(_precache_task)
+
+
+static func _precache_in_thread() -> void:
+	var pcm: Dictionary[StringName, PackedByteArray] = {}
+	for id in IDS:
+		pcm[id] = _encode(_synthesize(id))
+	_precache_mutex.lock()
+	_precache_pcm = pcm
+	_precache_mutex.unlock()
 
 
 ## Sintetizza un singolo suono; null per un id sconosciuto.
@@ -39,7 +81,7 @@ static func build(id: StringName) -> AudioStreamWAV:
 	var samples := _synthesize(id)
 	if samples.is_empty():
 		return null
-	return _to_stream(samples)
+	return _wrap(_encode(samples))
 
 
 static func duration_of(stream: AudioStreamWAV) -> float:
@@ -212,7 +254,8 @@ static func _layer(b: PackedFloat32Array, rng: RandomNumberGenerator, wave: Wave
 
 
 ## Normalizza al picco, arrotonda le creste, sfuma la coda e codifica PCM 16 bit.
-static func _to_stream(samples: PackedFloat32Array) -> AudioStreamWAV:
+## Solo buffer: puo girare in un thread.
+static func _encode(samples: PackedFloat32Array) -> PackedByteArray:
 	var peak := 0.0
 	for value in samples:
 		peak = maxf(peak, absf(value))
@@ -227,6 +270,11 @@ static func _to_stream(samples: PackedFloat32Array) -> AudioStreamWAV:
 		if i >= count - fade:
 			value *= float(count - 1 - i) / float(fade)
 		data.encode_s16(i * 2, clampi(roundi(value * 32767.0), -32768, 32767))
+	return data
+
+
+## Risorsa audio dal PCM: sul thread principale.
+static func _wrap(data: PackedByteArray) -> AudioStreamWAV:
 	var stream := AudioStreamWAV.new()
 	stream.format = AudioStreamWAV.FORMAT_16_BITS
 	stream.mix_rate = MIX_RATE

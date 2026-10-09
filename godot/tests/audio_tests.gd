@@ -31,6 +31,7 @@ var _menu: LevelUpMenu
 
 func _initialize() -> void:
 	Engine.physics_ticks_per_second = 60
+	await _test_precache()
 	_test_library()
 	_scene = RunScene.instantiate()
 	root.add_child(_scene)
@@ -90,6 +91,34 @@ func _peak(stream: AudioStreamWAV) -> int:
 	for i in stream.data.size() / 2:
 		peak = maxi(peak, absi(stream.data.decode_s16(i * 2)))
 	return peak
+
+
+## R-40: la libreria si sintetizza in un thread del WorkerThreadPool (avviato dal menu);
+## a lavoro finito build_all sul thread principale costa quasi nulla.
+func _test_precache() -> void:
+	print("precache")
+	_check(not SfxLibrary.is_precached(), "all'avvio la cache e vuota")
+	# Costo della sintesi sincrona, per confronto (stesso lavoro che faceva RunAudio._ready).
+	var start := Time.get_ticks_usec()
+	for id in EXPECTED_IDS:
+		SfxLibrary.build(id)
+	var sync_us := Time.get_ticks_usec() - start
+	SfxLibrary.precache_async()
+	var started := Time.get_ticks_msec()
+	var frames := 0
+	while not SfxLibrary.is_precached() and Time.get_ticks_msec() - started < 10000:
+		await process_frame
+		frames += 1
+	var wait_ms := Time.get_ticks_msec() - started
+	_check(SfxLibrary.is_precached(), "la sintesi in thread finisce (%d ms, %d frame)" % [wait_ms, frames])
+	start = Time.get_ticks_usec()
+	var streams := SfxLibrary.build_all()
+	var build_us := Time.get_ticks_usec() - start
+	print("PROTOTYPE01_SFX_PRECACHE sync_us=%d thread_wait_ms=%d build_all_us=%d" % [sync_us, wait_ms, build_us])
+	_check(build_us < 5000, "dopo il precaricamento build_all costa < 5 ms (%d us)" % build_us)
+	_check(streams.size() == EXPECTED_IDS.size() and streams[&"nail_shot"].data == SfxLibrary.build(&"nail_shot").data,
+		"gli stream dal thread sono identici alla sintesi sincrona")
+	_check(SfxLibrary.build_all() == streams, "build_all restituisce sempre la stessa cache")
 
 
 func _test_library() -> void:
