@@ -12,7 +12,8 @@ func _initialize() -> void:
 	_test_defaults()
 	_test_apply()
 	_test_persistence()
-	_test_volume_validation()
+	await _test_volume_validation()
+	await _test_deferred_save()
 	await _test_pause_and_focus()
 	await _test_volume_sliders()
 	await _test_aim_inversion()
@@ -113,15 +114,59 @@ func _test_volume_validation() -> void:
 	loaded.load_settings(temp_path)
 	_check(is_zero_approx(loaded.master_volume), "volume negativo limitato a 0")
 	_check(is_equal_approx(loaded.sfx_volume, GameSettingsScript.DEFAULT_SFX_VOLUME), "NaN: default")
-	# I setter salvano: il percorso resta quello temporaneo.
+	# U-04: interi e booleani di tipo sbagliato nel file non passano (`int("abc")`
+	# sarebbe 0 = "Illimitato", `bool("false")` sarebbe true).
+	config.set_value("graphics", "fps_cap", "abc")
+	config.set_value("graphics", "msaa_3d", 2.0)
+	config.set_value("graphics", "window_mode", true)
+	config.set_value("graphics", "render_scale", "meta")
+	config.set_value("controls", "invert_aim_x", "false")
+	config.set_value("controls", "invert_aim_y", 1)
+	config.save(temp_path)
+	loaded.load_settings(temp_path)
+	_check(loaded.fps_cap == GameSettingsScript.DEFAULT_FPS_CAP, "fps_cap non intero: default (%d)" % loaded.fps_cap)
+	_check(loaded.msaa_3d == GameSettingsScript.DEFAULT_MSAA_3D and loaded.window_mode == GameSettingsScript.DEFAULT_WINDOW_MODE,
+		"msaa_3d e window_mode non interi: default")
+	_check(is_equal_approx(loaded.render_scale, GameSettingsScript.DEFAULT_RENDER_SCALE), "render_scale non numerica: default")
+	_check(not loaded.invert_aim_x and not loaded.invert_aim_y, "inversioni non booleane: false")
+	# I setter salvano a fine frame: il percorso resta quello temporaneo.
 	loaded.set_master_volume(1.4)
 	loaded.set_sfx_volume(0.45)
 	_check(is_equal_approx(loaded.master_volume, 1.0) and is_equal_approx(loaded.sfx_volume, 0.45), "i setter limitano a 0-1")
+	await process_frame
 	var reloaded := GameSettingsScript.new()
 	reloaded.load_settings(temp_path)
-	_check(is_equal_approx(reloaded.sfx_volume, 0.45), "i setter salvano subito")
+	_check(is_equal_approx(reloaded.sfx_volume, 0.45), "i setter salvano a fine frame")
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(temp_path))
 	loaded.free()
+	reloaded.free()
+	_settings().apply_settings(root)
+
+
+## Un cursore trascinato chiama il setter a ogni passo: una sola scrittura per frame (U-05).
+func _test_deferred_save() -> void:
+	print("deferred save")
+	var temp_path := "user://settings_test_deferred_%d.cfg" % Time.get_ticks_usec()
+	var settings := GameSettingsScript.new()
+	settings.settings_path = temp_path
+	var emitted := [0]
+	settings.changed.connect(func() -> void: emitted[0] += 1)
+	for i in 20:
+		settings.set_master_volume(1.0 - i * 0.05)
+	_check(settings.save_count == 0 and not FileAccess.file_exists(temp_path), "nel frame dei 20 cambi nessuna scrittura")
+	_check(emitted[0] == 20, "ogni cambio emette changed subito (%d)" % emitted[0])
+	await process_frame
+	_check(settings.save_count == 1 and FileAccess.file_exists(temp_path), "a fine frame una sola scrittura (%d)" % settings.save_count)
+	var reloaded := GameSettingsScript.new()
+	reloaded.load_settings(temp_path)
+	_check(is_equal_approx(reloaded.master_volume, 0.05), "con l'ultimo valore (%.2f)" % reloaded.master_volume)
+	await process_frame
+	_check(settings.save_count == 1, "senza altri cambi non si riscrive")
+	settings.set_sfx_volume(0.3)
+	await process_frame
+	_check(settings.save_count == 2, "un cambio in un altro frame scrive di nuovo")
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(temp_path))
+	settings.free()
 	reloaded.free()
 	_settings().apply_settings(root)
 

@@ -44,6 +44,8 @@ func _ready() -> void:
 ## [param offer]: voci di UpgradeCatalog; [param levels]: livello attuale per id.
 func open(offer: Array[Dictionary], levels: Dictionary, player_level: int) -> void:
 	for button in _buttons:
+		# Tolte subito dall'albero: le carte vecchie non restano un frame accanto alle nuove (U-07).
+		_cards.remove_child(button)
 		button.queue_free()
 	_buttons.clear()
 	_title.text = "LIVELLO %d  -  scegli un pezzo" % player_level

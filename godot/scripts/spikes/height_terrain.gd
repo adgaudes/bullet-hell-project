@@ -15,6 +15,10 @@ const CELL := 0.5
 const MIN_HEIGHT := -2.0
 const MAX_HEIGHT := 3.5
 const SHADER := preload("res://resources/materials/height_terrain.gdshader")
+## File del rilievo: magic, versione, vertici per lato, byte non compressi, poi zstd.
+const SAVE_MAGIC := "HTER"
+const SAVE_VERSION := 1
+const SAVE_HEADER_SIZE := 16
 
 ## Lato del terreno in metri (centrato sull'origine).
 @export var size_m := 96.0
@@ -144,23 +148,43 @@ func slide_move(from: Vector3, to: Vector3, max_grade: float) -> Vector3:
 	return reached
 
 
+## Scrive il rilievo in [param path]; restituisce i byte scritti, 0 se fallisce.
+## Scrittura su `.tmp` e rinomina: un crash a meta lascia intatto il file precedente.
 func save_heights(path: String) -> int:
-	var file := FileAccess.open(path, FileAccess.WRITE)
+	var temp_path := path + ".tmp"
+	var file := FileAccess.open(temp_path, FileAccess.WRITE)
 	if file == null:
 		return 0
 	var bytes := heights.to_byte_array().compress(FileAccess.COMPRESSION_ZSTD)
+	file.store_buffer(SAVE_MAGIC.to_ascii_buffer())
+	file.store_32(SAVE_VERSION)
 	file.store_32(resolution)
 	file.store_32(heights.size() * 4)
 	file.store_buffer(bytes)
-	return bytes.size() + 8
+	file.close()
+	var absolute_temp := ProjectSettings.globalize_path(temp_path)
+	if DirAccess.rename_absolute(absolute_temp, ProjectSettings.globalize_path(path)) != OK:
+		DirAccess.remove_absolute(absolute_temp)
+		return 0
+	return bytes.size() + SAVE_HEADER_SIZE
 
 
+## Legge un file di [method save_heights] della stessa misura; falso (e rilievo
+## intatto) se manca, e troncato, di altra versione o di altra misura.
 func load_heights(path: String) -> bool:
 	var file := FileAccess.open(path, FileAccess.READ)
-	if file == null or file.get_32() != resolution:
+	if file == null or file.get_length() <= SAVE_HEADER_SIZE:
+		return false
+	if file.get_buffer(4).get_string_from_ascii() != SAVE_MAGIC or file.get_32() != SAVE_VERSION:
+		return false
+	if file.get_32() != resolution:
 		return false
 	var raw_size := file.get_32()
-	var loaded := file.get_buffer(file.get_length() - 8).decompress(raw_size, FileAccess.COMPRESSION_ZSTD).to_float32_array()
+	# Dimensione dichiarata controllata prima di decomprimere: niente buffer a piacere.
+	if raw_size != resolution * resolution * 4:
+		return false
+	var packed := file.get_buffer(file.get_length() - SAVE_HEADER_SIZE)
+	var loaded := packed.decompress(raw_size, FileAccess.COMPRESSION_ZSTD).to_float32_array()
 	if loaded.size() != heights.size():
 		return false
 	heights = loaded

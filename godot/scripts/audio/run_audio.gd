@@ -32,6 +32,9 @@ const SOUND_SETTINGS: Dictionary[StringName, Array] = {
 	&"carrier_pickup": [-10.0, 0.05, 0.08],
 	&"victory": [-4.0, 0.0, 0.5],
 }
+## Suoni che un player occupato non cede mai a un altro (R-36): sono rari e
+## portano un'informazione che il giocatore deve sentire fino in fondo.
+const PROTECTED_IDS: Array[StringName] = [&"boss_warning", &"victory"]
 
 @export var player: PlayerCharacter
 @export var weapon: AutoWeapon
@@ -47,9 +50,14 @@ const SOUND_SETTINGS: Dictionary[StringName, Array] = {
 var play_counts: Dictionary[StringName, int] = {}
 ## Ultimo id riprodotto.
 var last_played: StringName = &""
+## Dice se un player del gruppo e ancora occupato. In headless il driver fittizio
+## non fa mai finire una riproduzione: i test lo sostituiscono con player finti (P-08).
+var is_busy: Callable = func(stream_player: AudioStreamPlayer) -> bool: return stream_player.playing
 
 var _streams: Dictionary[StringName, AudioStreamWAV] = {}
 var _players: Array[AudioStreamPlayer] = []
+## Per player: id dell'ultimo suono assegnato.
+var _player_ids: Array[StringName] = []
 var _next_player := 0
 var _clock := 0.0
 var _next_allowed: Dictionary[StringName, float] = {}
@@ -69,6 +77,7 @@ func _ready() -> void:
 		stream_player.bus = bus
 		add_child(stream_player)
 		_players.append(stream_player)
+		_player_ids.append(&"")
 	_connect_signals()
 
 
@@ -88,8 +97,12 @@ func play(id: StringName, volume_db := 0.0) -> bool:
 	var base_db: float = settings[0]
 	var jitter: float = settings[1]
 	var min_interval: float = settings[2]
+	var index := _take_player()
+	if index < 0:
+		return false
 	_next_allowed[id] = _clock + min_interval
-	var stream_player := _take_player()
+	_player_ids[index] = id
+	var stream_player := _players[index]
 	stream_player.stream = stream
 	stream_player.volume_db = base_db + volume_db
 	stream_player.pitch_scale = 1.0 + _rng.randf_range(-jitter, jitter)
@@ -118,17 +131,22 @@ func sound_ids() -> Array[StringName]:
 	return ids
 
 
-## Primo player libero a partire dall'ultimo usato; se sono tutti occupati
-## riusa il piu vecchio.
-func _take_player() -> AudioStreamPlayer:
-	for i in _players.size():
-		var index := (_next_player + i) % _players.size()
-		if not _players[index].playing:
-			_next_player = (index + 1) % _players.size()
-			return _players[index]
-	var oldest := _players[_next_player]
-	_next_player = (_next_player + 1) % _players.size()
-	return oldest
+## Indice del primo player libero a partire dall'ultimo usato; se sono tutti
+## occupati ruba il piu vecchio che non stia suonando un id protetto. -1 se
+## restano solo suoni protetti: meglio perdere un effetto che tagliarli.
+func _take_player() -> int:
+	var count := _players.size()
+	for i in count:
+		var index := (_next_player + i) % count
+		if not is_busy.call(_players[index]):
+			_next_player = (index + 1) % count
+			return index
+	for i in count:
+		var index := (_next_player + i) % count
+		if _player_ids[index] not in PROTECTED_IDS:
+			_next_player = (index + 1) % count
+			return index
+	return -1
 
 
 func _connect_signals() -> void:

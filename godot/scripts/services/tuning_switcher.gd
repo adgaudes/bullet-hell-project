@@ -1,8 +1,9 @@
 class_name TuningSwitcher
 extends CanvasLayer
 ## Strumento di playtest: alterna preset di PlayerTuning a caldo con l'azione
-## `debug_next_tuning` (Tab, croce destra) e la modalita VSync con
-## `debug_cycle_vsync` (F2, croce sinistra), mostrando lo stato per qualche secondo.
+## `debug_next_tuning` (Tab) e la modalita VSync con `debug_cycle_vsync` (F2),
+## mostrando lo stato per qualche secondo. Solo tastiera: la croce direzionale e
+## la navigazione dei menu (U-12).
 ## Serve a scegliere provando invece che descrivendo. Non e UI di gioco.
 
 @export var player: PlayerCharacter

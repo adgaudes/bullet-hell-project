@@ -51,6 +51,7 @@ func _initialize() -> void:
 	_weapon.set_physics_process(false)
 	_test_node_setup()
 	await _test_rate_limit()
+	await _test_pool()
 	_test_buses_and_volume()
 	await _test_combat_events()
 	await _test_player_events()
@@ -189,6 +190,53 @@ func _test_rate_limit() -> void:
 			played += 1
 	_check(played == EXPECTED_IDS.size(), "tutti gli id riproducibili, compresi quelli del boss (%d)" % played)
 	await _frames(40)
+
+
+## Gruppo di player con stato "occupato" finto (P-08): in headless `playing` non torna
+## mai falso, quindi il predicato `is_busy` si sostituisce e si controlla chi viene
+## scelto. I suoni protetti (boss_warning, victory) non si rubano mai (R-36).
+func _test_pool() -> void:
+	print("pool")
+	var busy := {}
+	_audio.is_busy = func(stream_player: AudioStreamPlayer) -> bool: return busy.has(stream_player)
+	_audio._player_ids.fill(&"")
+	_audio._next_player = 0
+	await _frames(40)
+	var first: Array[StringName] = [&"boss_warning", &"victory", &"nail_shot", &"enemy_death", &"xp_pickup",
+		&"scrap_pickup", &"scrap_spend", &"terrain_dig", &"terrain_raise", &"tool_reject"]
+	var played := 0
+	for id in first:
+		var index: int = _audio._next_player
+		if _audio.play(id):
+			played += 1
+		busy[_audio._players[index]] = true
+	_check(played == first.size() and _audio._player_ids == first, "dieci suoni su dieci player liberi: uno ciascuno, nessun furto")
+	_check(busy.size() == RunAudio.POOL_SIZE, "ora sono tutti occupati")
+	await _frames(40)
+	# Tutti occupati: si ruba il piu vecchio, saltando i protetti anche dopo il giro completo.
+	var stolen: Array[StringName] = [&"dash", &"player_hurt", &"level_up", &"upgrade_chosen", &"boss_spawn",
+		&"boss_demolish", &"boss_barricade", &"carrier_pickup", &"player_death", &"nail_shot", &"enemy_death", &"xp_pickup"]
+	played = 0
+	var protected_kept := true
+	for id in stolen:
+		if _audio.play(id):
+			played += 1
+		protected_kept = protected_kept and _audio._player_ids[0] == &"boss_warning" and _audio._player_ids[1] == &"victory"
+	_check(played == stolen.size(), "tutti occupati: %d suoni rubano un player (%d)" % [stolen.size(), played])
+	# Otto slot liberi (2-9): il nono furto riparte dal 2, il dodicesimo arriva al 5.
+	_check(_audio._player_ids[2] == &"player_death" and _audio._player_ids[5] == &"xp_pickup", "ruba il piu vecchio non protetto, in giro")
+	_check(protected_kept and _audio._players[0].stream == _audio.stream_for(&"boss_warning") and _audio._players[1].stream == _audio.stream_for(&"victory"),
+		"boss_warning e victory non vengono mai interrotti")
+	# Solo suoni protetti in corso: meglio perdere l'effetto che tagliarli.
+	await _frames(40)
+	_audio._player_ids.fill(&"victory")
+	var dashes := _count(&"dash")
+	_check(not _audio.play(&"dash") and _count(&"dash") == dashes, "con soli suoni protetti in corso il nuovo effetto si perde")
+	_audio._player_ids.fill(&"")
+	_audio._next_player = 0
+	_audio.is_busy = func(stream_player: AudioStreamPlayer) -> bool: return stream_player.playing
+	await _frames(40)
+	_check(_audio.play(&"dash") and _count(&"dash") == dashes + 1, "ripristinato il predicato reale, suona di nuovo")
 
 
 func _test_buses_and_volume() -> void:

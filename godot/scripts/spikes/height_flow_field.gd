@@ -35,14 +35,18 @@ var _half := 0.0
 func rebuild(terrain: HeightTerrain, goal: Vector3, max_grade: float) -> void:
 	assert(is_equal_approx(SUBSTEPS * HeightTerrain.CELL, CELL), "CELL deve essere multiplo della maglia del terreno")
 	_half = terrain.half_extent()
-	side = int(round(_half * 2.0 / CELL)) + 1
+	var res := terrain.resolution
+	# Solo le caselle il cui vertice sta nella maglia: con un lato non multiplo di CELL
+	# (es. 100 m) l'ultima striscia di terreno resta fuori dal campo e `cell_of` la
+	# riporta sulla casella di bordo (U-01).
+	side = (res - 1) / SUBSTEPS + 1
+	assert((side - 1) * SUBSTEPS < res, "l'ultima casella deve avere il vertice nella maglia")
 	var count := side * side
 	next.resize(count)
 	next.fill(-1)
 	distance.resize(count)
 	distance.fill(-1.0)
 	var heights := terrain.heights
-	var res := terrain.resolution
 	var max_rise := max_grade * HeightTerrain.CELL
 	var max_rise_diagonal := max_rise * 1.41421356
 

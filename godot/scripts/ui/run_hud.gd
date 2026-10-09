@@ -28,6 +28,10 @@ var _controls: ButtonPrompts
 var _marker_arrows: Array[Polygon2D] = []
 var _marker_labels: Array[Label] = []
 var _markers_shown := 0
+## Ultimi valori scritti nelle etichette: la stringa si rifa solo quando cambiano (U-06).
+var _time_shown := -1
+var _boss_seconds_shown := -1
+var _boss_direction_shown := ""
 
 
 func _ready() -> void:
@@ -127,7 +131,11 @@ func _ready() -> void:
 
 ## Annuncio dell'arrivo: [param direction] e nel mondo (-Z = alto dello schermo).
 func set_boss_warning(direction_name: String, direction: Vector3, seconds_left: float) -> void:
-	_boss_warning.text = "IL DEMOLITORE ARRIVA DA %s  -  %d" % [direction_name, int(ceil(maxf(seconds_left, 0.0)))]
+	var seconds := int(ceil(maxf(seconds_left, 0.0)))
+	if seconds != _boss_seconds_shown or direction_name != _boss_direction_shown:
+		_boss_seconds_shown = seconds
+		_boss_direction_shown = direction_name
+		_boss_warning.text = "IL DEMOLITORE ARRIVA DA %s  -  %d" % [direction_name, seconds]
 	_boss_warning.show()
 	var size := _root.size
 	var screen_direction := Vector2(direction.x, direction.z).normalized()
@@ -226,18 +234,31 @@ func set_xp(xp: int, needed: int, level: int) -> void:
 	_level_label.text = "LIVELLO %d" % level
 
 
+## Le tacche si riusano: si creano o tolgono solo se cambia la vita massima, a ogni
+## colpo cambia solo il colore (U-07).
 func set_health(health: int, max_health: int) -> void:
-	for child in _health_row.get_children():
-		child.queue_free()
-	for i in max_health:
-		var pip := ColorRect.new()
-		pip.custom_minimum_size = Vector2(22, 22)
-		pip.color = HEALTH_ON if i < health else HEALTH_OFF
-		pip.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		_health_row.add_child(pip)
+	if _health_row.get_child_count() != max_health:
+		for child in _health_row.get_children():
+			# Tolta subito dall'albero: non resta un frame accanto alle nuove.
+			_health_row.remove_child(child)
+			child.queue_free()
+		for i in max_health:
+			var pip := ColorRect.new()
+			pip.custom_minimum_size = Vector2(22, 22)
+			pip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			_health_row.add_child(pip)
+	for i in _health_row.get_child_count():
+		var pip: ColorRect = _health_row.get_child(i)
+		var color := HEALTH_ON if i < health else HEALTH_OFF
+		if pip.color != color:
+			pip.color = color
 
 
 func set_time(seconds: float) -> void:
+	var total := int(seconds)
+	if total == _time_shown:
+		return
+	_time_shown = total
 	_time_label.text = format_time(seconds)
 
 

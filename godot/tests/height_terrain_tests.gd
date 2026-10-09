@@ -143,6 +143,20 @@ func _test_flow_field() -> void:
 	field.rebuild(terrain, pit, GRADE)
 	_check(field.distance[field.cell_of(start)] > 0.0, "ma nella fossa si puo scendere")
 	terrain.free()
+	# Lato non multiplo di CELL (U-01): il campo tiene solo le caselle con vertice nella
+	# maglia e i punti oltre l'ultima si riportano sul bordo, senza indici fuori maglia.
+	var odd := _terrain(100.0)
+	var odd_field := HeightFlowField.new()
+	odd_field.rebuild(odd, Vector3.ZERO, GRADE)
+	var expected_side := (odd.resolution - 1) / HeightFlowField.SUBSTEPS + 1
+	_check(odd.resolution == 201 and odd_field.side == expected_side and odd_field.distance.size() == expected_side * expected_side,
+		"lato di 100 m: %d caselle per lato su 201 vertici" % odd_field.side)
+	var far_corner := Vector3(49.9, 0.0, 49.9)
+	var corner_cell := odd_field.cell_of(far_corner)
+	_check(corner_cell == expected_side * expected_side - 1 and odd_field.distance[corner_cell] > 60.0
+		and odd_field.direction_at(far_corner).length() > 0.9,
+		"l'angolo estremo cade nell'ultima casella e ha una strada (%.1f m)" % odd_field.distance[corner_cell])
+	odd.free()
 
 
 func _test_save() -> void:
@@ -157,6 +171,31 @@ func _test_save() -> void:
 	_check(other.load_heights(path) and other.heights == terrain.heights, "ricaricato, e identico")
 	var smaller := _terrain(24.0)
 	_check(not smaller.load_heights(path), "un rilievo di un'altra misura viene rifiutato")
+	# U-10: scrittura su .tmp e rinomina, anche sopra un file esistente.
+	terrain.sculpt(Vector3(10.0, 0.0, -10.0), 2.0, 0.5)
+	_check(terrain.save_heights(path) > 8 and not FileAccess.file_exists(path + ".tmp"), "si risalva sopra il file precedente senza lasciare il .tmp")
+	_check(other.load_heights(path) and other.heights == terrain.heights, "e il file nuovo e quello ricaricato")
+	# U-10: file vuoti, troncati o con dimensione dichiarata falsa si rifiutano
+	# prima di decomprimere, lasciando il rilievo com'era.
+	var before := other.heights.duplicate()
+	var bytes := FileAccess.get_file_as_bytes(path)
+	var bad_files := {
+		"empty": PackedByteArray(),
+		"short": bytes.slice(0, 10),
+		"truncated": bytes.slice(0, 20),
+		"wrong_magic": bytes.duplicate(),
+		"lying_size": bytes.duplicate(),
+	}
+	bad_files["wrong_magic"].encode_u32(0, 0)
+	bad_files["lying_size"].encode_u32(12, 16)
+	for label: String in bad_files:
+		var bad_path := "user://height_terrain_tests_%s.bin" % label
+		var bad_file := FileAccess.open(bad_path, FileAccess.WRITE)
+		bad_file.store_buffer(bad_files[label])
+		bad_file.close()
+		_check(not other.load_heights(bad_path) and other.heights == before, "file %s rifiutato, rilievo intatto" % label)
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(bad_path))
+	_check(not other.load_heights("user://height_terrain_tests_missing.bin"), "file assente rifiutato")
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
 	terrain.free()
 	other.free()

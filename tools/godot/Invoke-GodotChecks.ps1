@@ -40,6 +40,24 @@ $expectedMarkers = @(
     "PROTOTYPE01_PATH_FIELD_READY"
 )
 
+# Righe di errore runtime di Godot che non fanno fallire il gate. Ogni voce e un
+# errore noto e spiegato; aggiungerne una solo con il motivo accanto.
+$allowedErrorPatterns = @(
+    # P-09 (review 9 ottobre 2026): il renderer fittizio di --headless stampa
+    # `ERROR: Parameter "material" is null` quando TerrainGrid libera la scena.
+    # Non e un bug del progetto: con finestra reale non compare.
+    'Parameter "material" is null'
+)
+
+# Righe `SCRIPT ERROR` o `ERROR:` nell'output, tolte quelle in allowlist (U-03).
+function Get-RuntimeErrors([string]$text) {
+    $lines = @($text -split "`n" | Where-Object { $_ -match "SCRIPT ERROR|^ERROR:" })
+    return @($lines | Where-Object {
+        $line = $_
+        -not ($allowedErrorPatterns | Where-Object { $line -match [regex]::Escape($_) })
+    })
+}
+
 function Invoke-Captured([string]$file, [string[]]$arguments, [int]$timeoutSeconds = 300) {
     # Processo separato con timeout: un test che non chiama quit() non deve
     # bloccare il gate per sempre (successo davvero, vedi GODOT_WORKFLOW.md).
@@ -53,7 +71,9 @@ function Invoke-Captured([string]$file, [string[]]$arguments, [int]$timeoutSecon
     $finished = $process.WaitForExit($timeoutSeconds * 1000)
     if (-not $finished) {
         # Il launcher godot_console avvia un processo figlio: chiudere l'albero intero.
-        & taskkill /F /T /PID $process.Id 2>&1 | Out-Null
+        # Niente redirezione di stderr: con $ErrorActionPreference = "Stop" un
+        # processo gia uscito farebbe abortire il gate invece di riportare TIMEOUT (U-15).
+        try { & taskkill /F /T /PID $process.Id | Out-Null } catch { }
     }
     $text = ((Get-Content $outFile -Raw) + "`n" + (Get-Content $errFile -Raw))
     Remove-Item $outFile, $errFile -ErrorAction SilentlyContinue
@@ -65,7 +85,7 @@ function Invoke-Captured([string]$file, [string[]]$arguments, [int]$timeoutSecon
 
 function Test-Markers([string]$text) {
     $missing = @($expectedMarkers | Where-Object { -not $text.Contains($_) })
-    $errors = @($text -split "`n" | Where-Object { $_ -match "SCRIPT ERROR|^ERROR:" })
+    $errors = Get-RuntimeErrors $text
     if ($missing.Count -gt 0) { Write-Host "  FAIL marker mancanti: $($missing -join ', ')" }
     if ($errors.Count -gt 0) { Write-Host "  FAIL errori runtime:`n$($errors -join "`n")" }
     return ($missing.Count -eq 0 -and $errors.Count -eq 0)
@@ -96,10 +116,13 @@ Get-ChildItem -Path (Join-Path $project "tests") -Filter *.gd | ForEach-Object {
     $resPath = "res://tests/" + $_.Name
     $result = Invoke-Captured $godot @("--headless", "--path", "$project", "--fixed-fps", "60", "--script", $resPath)
     $summary = ($result.Text -split "`n" | Where-Object { $_ -match "PROTOTYPE01_TESTS" }) -join ""
-    if ($result.Code -ne 0 -or -not $summary.Contains("PASS")) {
+    # Una suite verde che scatena un errore runtime non asserito e comunque FAIL (U-03).
+    $errors = Get-RuntimeErrors $result.Text
+    if ($result.Code -ne 0 -or -not $summary.Contains("PASS") -or $errors.Count -gt 0) {
         $failures++
-        Write-Host "  FAIL $resPath (exit $($result.Code))"
-        $result.Text -split "`n" | Where-Object { $_ -match "FAIL|SCRIPT ERROR|TIMEOUT" } | ForEach-Object { Write-Host "       $_" }
+        Write-Host "  FAIL $resPath (exit $($result.Code), errori runtime $($errors.Count))"
+        $result.Text -split "`n" | Where-Object { $_ -match "FAIL|TIMEOUT" } | ForEach-Object { Write-Host "       $_" }
+        $errors | ForEach-Object { Write-Host "       $_" }
     } else {
         Write-Host "  ok   $resPath $summary"
     }

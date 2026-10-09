@@ -15,6 +15,12 @@ const EXPECTED_ACTIONS: Array[StringName] = [
 	&"aim_up", &"aim_down", &"aim_left", &"aim_right",
 	&"dash", &"terrain_tool", &"terrain_mode", &"pause",
 ]
+## Azioni dei menu: in Godot 4.7 nascono senza pulsanti joypad, il progetto le
+## ridefinisce con A e B (trappola in GODOT_WORKFLOW.md). Se l'editor rigenera
+## project.godot i menu non si confermano piu col controller: qui si controlla.
+const MENU_ACTIONS: Array[StringName] = [&"ui_accept", &"ui_cancel"]
+## La mira e solo da stick destro: non ha un equivalente tastiera (il mouse punta).
+const JOYPAD_ONLY_PREFIX := "aim_"
 
 
 func _ready() -> void:
@@ -42,24 +48,42 @@ func _capture_if_requested() -> void:
 	get_tree().quit()
 
 
-## Verifica che ogni azione esista e abbia almeno un evento associato.
+## Verifica che ogni azione esista e che, tranne la mira, abbia sia un evento
+## tastiera/mouse sia uno joypad: controller e tastiera devono restare equivalenti (U-13).
 func _report_input_map() -> void:
 	var missing: Array[StringName] = []
 	var unbound: Array[StringName] = []
-	for action in EXPECTED_ACTIONS:
+	var incomplete: Array[StringName] = []
+	var actions := EXPECTED_ACTIONS + MENU_ACTIONS
+	for action in actions:
 		if not InputMap.has_action(action):
 			missing.append(action)
-		elif InputMap.action_get_events(action).is_empty():
+			continue
+		var events := InputMap.action_get_events(action)
+		if events.is_empty():
 			unbound.append(action)
+		elif not String(action).begins_with(JOYPAD_ONLY_PREFIX) and not _has_keyboard_and_joypad(events):
+			incomplete.append(action)
 
-	print("PROTOTYPE01_INPUT_ACTIONS total=%d missing=%d unbound=%d"
-		% [EXPECTED_ACTIONS.size(), missing.size(), unbound.size()])
-	if missing.is_empty() and unbound.is_empty():
+	print("PROTOTYPE01_INPUT_ACTIONS total=%d missing=%d unbound=%d incomplete=%d"
+		% [actions.size(), missing.size(), unbound.size(), incomplete.size()])
+	if missing.is_empty() and unbound.is_empty() and incomplete.is_empty():
 		print("PROTOTYPE01_INPUT_READY")
 	if not missing.is_empty():
 		push_error("Azioni mancanti nella mappa input: %s" % str(missing))
 	if not unbound.is_empty():
 		push_warning("Azioni senza eventi: %s" % str(unbound))
+	if not incomplete.is_empty():
+		push_error("Azioni senza tastiera/mouse o senza joypad: %s" % str(incomplete))
+
+
+static func _has_keyboard_and_joypad(events: Array[InputEvent]) -> bool:
+	var keyboard := false
+	var joypad := false
+	for event in events:
+		keyboard = keyboard or event is InputEventKey or event is InputEventMouseButton
+		joypad = joypad or event is InputEventJoypadButton or event is InputEventJoypadMotion
+	return keyboard and joypad
 
 
 ## Rende esplicita la conversione di scala, principale fonte di errore
