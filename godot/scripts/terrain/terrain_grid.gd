@@ -98,7 +98,11 @@ var _meshes: Dictionary[int, BoxMesh] = {}
 var _shapes: Dictionary[int, BoxShape3D] = {}
 ## Un MultiMeshInstance3D per stato; ogni cella ha un'istanza in ognuno, visibile solo in quello del suo stato.
 var _batches: Dictionary[int, MultiMeshInstance3D] = {}
-var _raised_body: StaticBody3D
+## Un corpo statico per blocco di COLLISION_CHUNK x COLLISION_CHUNK celle (T-03): l'AABB di
+## ogni corpo copre solo il suo blocco, cosi `move_and_slide` e i raggi dei chiodi
+## incontrano poche forme invece di tutte le celle Raised dell'arena.
+const COLLISION_CHUNK := 8
+var _raised_bodies: Dictionary[Vector2i, StaticBody3D] = {}
 ## Indice di cella -> forma di collisione, creata al primo rialzo e poi disattivata/riattivata.
 var _raised_shapes: Dictionary[int, CollisionShape3D] = {}
 ## Materiale dell'anteprima (colore per istanza) e dei lotti (colore dal MultiMesh).
@@ -125,9 +129,10 @@ func rebuild() -> void:
 		remove_child(batch)
 		batch.queue_free()
 	_batches.clear()
-	if _raised_body != null:
-		remove_child(_raised_body)
-		_raised_body.queue_free()
+	for body in _raised_bodies.values():
+		remove_child(body)
+		body.queue_free()
+	_raised_bodies.clear()
 	_raised_shapes.clear()
 	if _preview != null:
 		remove_child(_preview)
@@ -161,11 +166,6 @@ func rebuild() -> void:
 		add_child(batch)
 		_batches[cell_state] = batch
 
-	_raised_body = StaticBody3D.new()
-	_raised_body.name = "RaisedCells"
-	_raised_body.collision_layer = 1
-	_raised_body.collision_mask = 0
-	add_child(_raised_body)
 
 	for y in state.height:
 		for x in state.width:
@@ -279,6 +279,21 @@ func presented_cell_count() -> int:
 
 
 ## Forme di collisione attive (una per cella Raised).
+## Corpo statico del blocco che contiene la cella, creato alla prima cella Raised del blocco.
+## Figlio diretto della griglia: chi controlla `collider.get_parent() == grid` resta valido.
+func _raised_body_for(cell: Vector2i) -> StaticBody3D:
+	var chunk := Vector2i(cell.x / COLLISION_CHUNK, cell.y / COLLISION_CHUNK)
+	var body: StaticBody3D = _raised_bodies.get(chunk)
+	if body == null:
+		body = StaticBody3D.new()
+		body.name = "RaisedCells_%d_%d" % [chunk.x, chunk.y]
+		body.collision_layer = 1
+		body.collision_mask = 0
+		add_child(body)
+		_raised_bodies[chunk] = body
+	return body
+
+
 func active_collision_count() -> int:
 	var count := 0
 	for shape in _raised_shapes.values():
@@ -422,7 +437,7 @@ func _apply_presentation(cell: Vector2i, deferred: bool) -> void:
 		collision.shape = _shapes[TerrainState.CellState.RAISED]
 		collision.position = cell_local_position(cell, TerrainState.CellState.RAISED)
 		collision.disabled = true
-		_raised_body.add_child(collision)
+		_raised_body_for(cell).add_child(collision)
 		_raised_shapes[index] = collision
 	if deferred:
 		collision.set_deferred(&"disabled", not raised)
