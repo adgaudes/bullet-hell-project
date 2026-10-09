@@ -54,3 +54,14 @@ Regola col terreno, leggibile al primo incontro: **carica in linea retta e scava
 ## 7. Verifica
 
 Suite nuove: `railway_tests.gd` (pianta rettangolare, fascia libera, depositi sui binari, cortile a cavallo), `train_tests.gd` (preavviso, celle spianate, nemici travolti, giocatore spinto, lampioni), `driller_tests.gd` (carica dritta, solco, muro che ferma e stordisce, danno doppio, riposo, sconfitta che chiude il livello), `campaign_tests.gd` (catalogo, sblocco, mappa, prossimo livello, `--level=`). Catture: `capture_railway.gd` (panoramica, treno in arrivo, Trivella in carica). Simulazioni: `simulate_runs.gd -- --level=railway`.
+
+## 8. Prime simulazioni (9 ottobre 2026, bot di D-055, semi 1-3, `--level=railway`)
+
+| Bot | Esito | Fine run (s) | Rottami fuori | Note |
+|---|---|---|---|---|
+| passive (fermo nel cortile) | 3 morti | 24-36 | 1 | nel quartiere resisteva molto di piu: qui i varchi est e ovest sono larghi tre celle (la fascia dei binari) e l'orda entra subito |
+| novice | 1 vittoria, 2 morti | 473-1118 | 2-18 | una morte prima della Trivella, una durante |
+| kiter | 2 vittorie, 1 morte | 778-912 | 7-32 | Trivella battuta in 60-190 s dall'arrivo, con 3-4 punti vita |
+| scrapper | 3 vittorie | 798-882 | 14-16 | Trivella battuta in 80-160 s, mai sotto 5 punti vita; 6-9 lampioni piazzati (il treno ne abbatte) |
+
+Letture: (1) la **Trivella e debole**: cade in uno o tre minuti senza che i bot usino muri per stordirla (non sanno farlo), quindi per un giocatore che li usa sara ancora piu rapida: alzare vita o ridurre la finestra di stordimento dopo il playtest; (2) il **cortile di partenza aperto sui binari** cambia l'inizio del livello: chi resta fermo muore in mezzo minuto; e voluto (il livello 2 non e un tutorial) ma va visto a mano; (3) i rottami portati fuori sono simili al quartiere per kiter e scrapper (D-055: 1-3 run per upgrade). Il treno non ha mai ucciso un bot (si muovono fuori dalla fascia); quante volte abbia travolto l'orda non e nei marker di riepilogo. Simulazioni fatte con la build di questa sera, 4 processi in parallelo, circa 6 minuti.
