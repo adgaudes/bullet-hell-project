@@ -72,7 +72,7 @@ const BATCH_NAMES := {
 const NATURAL_STATE_TINT := {
 	TerrainState.CellState.NORMAL: 0.12,
 	TerrainState.CellState.LOWERED: 0.85,
-	TerrainState.CellState.RAISED: 0.8,
+	TerrainState.CellState.RAISED: 0.55,
 }
 const NATURAL_PROTECTED_TINT := 0.75
 

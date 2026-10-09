@@ -67,6 +67,9 @@ void fragment() {
 	// Cornice e davanzale: il vano sembra incassato invece che dipinto (D-069).
 	col = mix(col, col * 0.72, frame * present * allowed);
 	col = mix(col, window_col, win);
+	// Linea di solaio a ogni piano: la facciata si legge come edificio (D-070).
+	float slab_line = step(fract(uv.y / floor_height + 0.04), 0.05) * win_amount * side * step(2.0, world_pos.y);
+	col = mix(col, col * 0.78, slab_line);
 
 	// Verde: muschio sopra, rampicanti dall'alto e dal basso sulle pareti.
 	float vine_n = fbm(vec2(uv.x * 0.8, uv.y * 0.11));

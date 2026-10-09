@@ -207,6 +207,12 @@ def build_companion_cart():
     # Scarico storto, di lato.
     b.cyl(0.045, 0.34, (0.31, 0.14, 0.8), RUST, sides=6, rot=(0.0, 8.0, 0.0))
     b.cyl(0.06, 0.06, (0.335, 0.14, 0.97), DARK_METAL, sides=6, rot=(0.0, 8.0, 0.0))
+    # Antenna con bandierina corallo e ruota di scorta sul fianco (D-070): si vedono
+    # dall'alto e distinguono il compagno dai rottamatori.
+    b.box((0.03, 0.03, 0.55), (-0.3, -0.42, 1.0), DARK_METAL)
+    b.box((0.03, 0.16, 0.1), (-0.3, -0.34, 1.22), CORAL)
+    b.cyl(0.15, 0.08, (-0.42, -0.1, 0.52), TIRE, axis="x", sides=8)
+    b.cyl(0.06, 0.09, (-0.42, -0.1, 0.52), HAZARD, axis="x", sides=6)
     return b.to_object("CompanionCart")
 
 
@@ -229,6 +235,12 @@ def build_scavenger():
         b.box((0.11, 0.34, 0.11), (side * 0.3, 0.38, 0.27), STEEL, rot=(0.0, 0.0, side * 14.0))
         b.box((0.09, 0.2, 0.14), (side * 0.22, 0.6, 0.27), WORN_STEEL, rot=(0.0, 0.0, side * 30.0),
               front=(0.4, 0.4))
+    # Toppe d'acciaio sui fianchi, antenna storta con spia e scarichi dietro (D-070).
+    for side in (-1.0, 1.0):
+        b.box((0.03, 0.22, 0.14), (side * 0.285, -0.12, 0.44), WORN_STEEL)
+        b.cyl(0.035, 0.12, (side * 0.14, -0.38, 0.56), DARK_METAL, axis="y", sides=6)
+    b.box((0.025, 0.025, 0.36), (-0.2, -0.22, 0.8), DARK_METAL, rot=(0.0, -12.0, 0.0))
+    b.box((0.06, 0.06, 0.06), (-0.24, -0.22, 0.98), ENEMY_EYE, emit=True)
     return b.to_object("Scavenger")
 
 

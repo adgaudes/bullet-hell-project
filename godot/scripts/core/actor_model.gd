@@ -5,6 +5,9 @@ extends RefCounted
 ## `suit`, `stripe`) che qui si rimappano sui materiali del gioco.
 
 const PAINT_SHADER := preload("res://resources/materials/actor_paint.gdshader")
+const OUTLINE_SHADER := preload("res://resources/materials/actor_outline.gdshader")
+
+static var _outline_material: ShaderMaterial
 
 
 ## La mesh dell'unico oggetto di un modello importato.
@@ -30,7 +33,17 @@ static func paint_material(tint_linear := Color.WHITE, emission_energy := 2.0, r
 	material.set_shader_parameter(&"tint", tint_linear.linear_to_srgb())
 	material.set_shader_parameter(&"emission_energy", emission_energy)
 	material.set_shader_parameter(&"roughness", roughness)
+	material.next_pass = outline_material()
 	return material
+
+
+## Contorno scuro condiviso (D-070): seconda passata a facce interne, spinte lungo la
+## normale; stacca gli attori dal suolo nella camera di gioco.
+static func outline_material() -> ShaderMaterial:
+	if _outline_material == null:
+		_outline_material = ShaderMaterial.new()
+		_outline_material.shader = OUTLINE_SHADER
+	return _outline_material
 
 
 ## Assegna a ogni superficie il materiale col suo nome semantico; le altre restano come sono.

@@ -110,12 +110,6 @@ var _occupancy := PackedByteArray()
 var _occupancy_columns := 0
 var _occupancy_rows := 0
 var _unit_box: BoxMesh
-## Corone dei muri e tondini di ferro di tutte le rovine, in due MultiMesh (D-068).
-var _crown_buffer := PackedFloat32Array()
-var _crown_count := 0
-var _rebar_buffer := PackedFloat32Array()
-var _rebar_count := 0
-var _crown_material: ShaderMaterial
 
 
 func _init() -> void:
@@ -167,10 +161,7 @@ func _compose() -> void:
 	_plan_courtyards()
 	_plan_deposits()
 	_plan_trenches()
-	_crown_buffer.clear()
-	_crown_count = 0
-	_rebar_buffer.clear()
-	_rebar_count = 0
+	_reset_ruin_details()
 	_build_blocks()
 	_build_props()
 	_build_perimeter()
@@ -539,42 +530,6 @@ func _wall_crown(body: Node3D, wall_at: Vector3, along_x: bool, segment: float,
 		var xform := body.transform * Transform3D(lean.scaled_local(Vector3(0.07, rebar_height, 0.07)), local)
 		_append_instance(_rebar_buffer, _rebar_count, xform, Color(0.16, 0.09, 0.05))
 		_rebar_count += 1
-
-
-## Accoda un'istanza (trasformazione completa e colore) al buffer di un MultiMesh.
-static func _append_instance(buffer: PackedFloat32Array, index: int, xform: Transform3D, color: Color) -> void:
-	buffer.resize((index + 1) * 16)
-	var base := index * 16
-	var b := xform.basis
-	var o := xform.origin
-	buffer[base] = b.x.x
-	buffer[base + 1] = b.y.x
-	buffer[base + 2] = b.z.x
-	buffer[base + 3] = o.x
-	buffer[base + 4] = b.x.y
-	buffer[base + 5] = b.y.y
-	buffer[base + 6] = b.z.y
-	buffer[base + 7] = o.y
-	buffer[base + 8] = b.x.z
-	buffer[base + 9] = b.y.z
-	buffer[base + 10] = b.z.z
-	buffer[base + 11] = o.z
-	buffer[base + 12] = color.r
-	buffer[base + 13] = color.g
-	buffer[base + 14] = color.b
-	buffer[base + 15] = color.a
-
-
-## I due MultiMesh delle corone e dei tondini: due draw call per tutte le rovine.
-func _build_ruin_details() -> void:
-	if _crown_material == null:
-		_crown_material = ShaderMaterial.new()
-		_crown_material.shader = RUIN_SHADER
-		_crown_material.set_shader_parameter(&"batched", true)
-	_add_multimesh("RuinCrowns", _unit_box_mesh(), _crown_buffer, _crown_count, _crown_material)
-	_add_multimesh("RuinRebar", _unit_box_mesh(), _rebar_buffer, _rebar_count, _dark_material)
-	stats.crown_pieces = _crown_count
-	stats.rebar = _rebar_count
 
 
 func _build_props() -> void:

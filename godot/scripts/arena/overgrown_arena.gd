@@ -90,6 +90,14 @@ var _foliage_material: ShaderMaterial
 var _canopy_material: ShaderMaterial
 var _grass_material: ShaderMaterial
 var _litter_material: StandardMaterial3D
+## Corone dei muri e tondini di ferro di tutte le rovine e torri, in due MultiMesh
+## (D-068, D-070): le sottoclassi accodano con `_append_instance`.
+var _crown_buffer := PackedFloat32Array()
+var _crown_count := 0
+var _rebar_buffer := PackedFloat32Array()
+var _rebar_count := 0
+var _crown_material: ShaderMaterial
+var _shared_bush: ArrayMesh
 var _metal_material: StandardMaterial3D
 var _tire_material: StandardMaterial3D
 var _trunk_material: StandardMaterial3D
@@ -146,6 +154,7 @@ func rebuild() -> void:
 
 ## Composizione della piazza (48x48 m). Le sottoclassi (RuinsDistrict) la sostituiscono.
 func _compose() -> void:
+	_reset_ruin_details()
 	_build_ground()
 	_build_boundary()
 	_build_north()
@@ -154,6 +163,7 @@ func _compose() -> void:
 	_build_west_train()
 	_build_south_edge()
 	_build_ring_props()
+	_build_ruin_details()
 	_build_ground_cover()
 	_add_sun()
 	_add_environment()
@@ -328,6 +338,45 @@ func _unit_box_mesh() -> BoxMesh:
 	return _shared_box
 
 
+## Ciuffo di cespuglio: sfera a pochi segmenti, vertici spostati a caso lungo il
+## raggio, facce piatte (una mesh condivisa per tutti i cespugli).
+func _bush_mesh() -> ArrayMesh:
+	if _shared_bush != null:
+		return _shared_bush
+	var sphere := SphereMesh.new()
+	sphere.radius = 1.0
+	sphere.height = 2.0
+	sphere.radial_segments = 8
+	sphere.rings = 5
+	var arrays := sphere.get_mesh_arrays()
+	var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+	var indices: PackedInt32Array = arrays[Mesh.ARRAY_INDEX]
+	var moved := PackedVector3Array()
+	moved.resize(vertices.size())
+	for i in vertices.size():
+		var v := vertices[i]
+		# I vertici condivisi (stessa posizione) devono muoversi insieme: rumore sulla posizione.
+		var k := _hash12(Vector2(v.x * 3.1 + v.y * 1.7, v.z * 2.3 - v.y * 0.9))
+		moved[i] = v * (0.82 + 0.36 * k) if v.y > -0.95 else v * 0.9
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var t := 0
+	while t + 2 < indices.size():
+		var a := moved[indices[t]]
+		var b := moved[indices[t + 1]]
+		var c := moved[indices[t + 2]]
+		var normal := (b - a).cross(c - a)
+		if normal.length_squared() > 0.0:
+			normal = normal.normalized()
+			for p in [a, b, c]:
+				st.set_normal(normal)
+				st.set_color(Color.WHITE)
+				st.add_vertex(p)
+		t += 3
+	_shared_bush = st.commit()
+	return _shared_bush
+
+
 func _unit_sphere_mesh() -> SphereMesh:
 	if _shared_sphere == null:
 		_shared_sphere = SphereMesh.new()
@@ -421,8 +470,104 @@ func _tower(node_name: String, center: Vector2, footprint: Vector2, height: floa
 		var p := Vector3(center.x + _rng.randf_range(-0.35, 0.35) * footprint.x, height,
 			center.y + _rng.randf_range(-0.35, 0.35) * footprint.y)
 		_bush(p, _rng.randf_range(1.4, 2.6), false)
+	# Bordo del tetto spezzato e, a volte, una lastra di facciata crollata (D-070).
+	_edge_crown(center, footprint, height, yaw, tint)
+	if facade_vines and _rng.randf() < 0.45:
+		_fallen_slab(node_name, center, footprint, height, yaw, tint)
 	if facade_vines:
 		_facade_vines(center, footprint, height)
+
+
+## Frammenti e tondini lungo i quattro bordi del tetto di una torre, nei MultiMesh condivisi.
+func _edge_crown(center: Vector2, footprint: Vector2, height: float, yaw_deg: float, tint: Color) -> void:
+	var xform := Transform3D(Basis(Vector3.UP, deg_to_rad(yaw_deg)), Vector3(center.x, 0.0, center.y))
+	var linear := tint.srgb_to_linear()
+	for side in 4:
+		var along_x := side < 2
+		var direction := 1.0 if side % 2 == 0 else -1.0
+		var length := footprint.x if along_x else footprint.y
+		var across := direction * ((footprint.y if along_x else footprint.x) * 0.5 - 0.3)
+		var pieces := maxi(2, int(length / 2.5))
+		for i in pieces:
+			if _rng.randf() < 0.4:
+				continue
+			var along := -length * 0.5 + length * (i + _rng.randf_range(0.2, 0.8)) / pieces
+			var size := Vector3(_rng.randf_range(0.6, 1.6), _rng.randf_range(0.2, 0.7), _rng.randf_range(0.4, 0.6))
+			if not along_x:
+				size = Vector3(size.z, size.y, size.x)
+			var local := Vector3(along, height + size.y * 0.5, across) if along_x else Vector3(across, height + size.y * 0.5, along)
+			var tilt := Basis(Vector3.FORWARD if along_x else Vector3.RIGHT, _rng.randf_range(-0.15, 0.15))
+			_append_instance(_crown_buffer, _crown_count, xform * Transform3D(tilt.scaled_local(size), local),
+				Color(linear * _rng.randf_range(0.8, 0.95), 0.4))
+			_crown_count += 1
+			if _rng.randf() < 0.5:
+				var rebar_height := _rng.randf_range(0.5, 1.3)
+				var lean := Basis.from_euler(Vector3(_rng.randf_range(-0.4, 0.4), 0.0, _rng.randf_range(-0.4, 0.4)))
+				var rebar_local := local + Vector3(0.0, size.y * 0.5 + rebar_height * 0.4, 0.0)
+				_append_instance(_rebar_buffer, _rebar_count,
+					xform * Transform3D(lean.scaled_local(Vector3(0.08, rebar_height, 0.08)), rebar_local),
+					Color(0.16, 0.09, 0.05))
+				_rebar_count += 1
+
+
+## Lastra di facciata staccata dalla torre, appoggiata di sbieco al piede del lato sud.
+func _fallen_slab(node_name: String, center: Vector2, footprint: Vector2, height: float,
+		yaw_deg: float, tint: Color) -> void:
+	var size := Vector3(footprint.x * _rng.randf_range(0.25, 0.4), minf(height * 0.3, 7.0), 0.3)
+	var lean := deg_to_rad(_rng.randf_range(55.0, 70.0))
+	var x := center.x + _rng.randf_range(-0.3, 0.3) * footprint.x
+	var z := center.y + footprint.y * 0.5 + cos(lean) * size.y * 0.5 + 0.2
+	var basis := Basis(Vector3.UP, deg_to_rad(yaw_deg)) * Basis(Vector3.RIGHT, lean)
+	var body := _static_body(node_name + "Slab", Transform3D(Basis(), Vector3(x, sin(lean) * size.y * 0.5 + 0.1, z)))
+	var mi := _mesh_child(body, _unit_box_mesh(), _ruin_material, Transform3D(basis.scaled_local(size), Vector3.ZERO))
+	mi.set_instance_shader_parameter(&"base_tint", tint * 0.9)
+	mi.set_instance_shader_parameter(&"top_y", size.y)
+	mi.set_instance_shader_parameter(&"overgrowth", 0.6)
+	mi.set_instance_shader_parameter(&"windows", 0.0)
+	mi.set_instance_shader_parameter(&"vine_reach", 0.3)
+
+
+func _reset_ruin_details() -> void:
+	_crown_buffer.clear()
+	_crown_count = 0
+	_rebar_buffer.clear()
+	_rebar_count = 0
+
+
+## Accoda un'istanza (trasformazione completa e colore) al buffer di un MultiMesh.
+static func _append_instance(buffer: PackedFloat32Array, index: int, xform: Transform3D, color: Color) -> void:
+	buffer.resize((index + 1) * 16)
+	var base := index * 16
+	var b := xform.basis
+	var o := xform.origin
+	buffer[base] = b.x.x
+	buffer[base + 1] = b.y.x
+	buffer[base + 2] = b.z.x
+	buffer[base + 3] = o.x
+	buffer[base + 4] = b.x.y
+	buffer[base + 5] = b.y.y
+	buffer[base + 6] = b.z.y
+	buffer[base + 7] = o.y
+	buffer[base + 8] = b.x.z
+	buffer[base + 9] = b.y.z
+	buffer[base + 10] = b.z.z
+	buffer[base + 11] = o.z
+	buffer[base + 12] = color.r
+	buffer[base + 13] = color.g
+	buffer[base + 14] = color.b
+	buffer[base + 15] = color.a
+
+
+## I due MultiMesh delle corone e dei tondini: due draw call per tutte le rovine e torri.
+func _build_ruin_details() -> void:
+	if _crown_material == null:
+		_crown_material = ShaderMaterial.new()
+		_crown_material.shader = RUIN_SHADER
+		_crown_material.set_shader_parameter(&"batched", true)
+	_add_multimesh("RuinCrowns", _unit_box_mesh(), _crown_buffer, _crown_count, _crown_material)
+	_add_multimesh("RuinRebar", _unit_box_mesh(), _rebar_buffer, _rebar_count, _dark_material)
+	stats.crown_pieces = _crown_count
+	stats.rebar = _rebar_count
 
 
 ## Rampicanti pendenti sulla facciata sud (quella vista dalla camera).
@@ -463,7 +608,7 @@ func _tree(base: Vector3, scale: float) -> void:
 	stats.trees += 1
 
 
-## Cespuglio: sfere schiacciate, senza collisione.
+## Cespuglio: ciuffi sfaccettati e bitorzoluti (D-070), senza collisione.
 func _bush(base: Vector3, size: float, count_as_prop := true) -> void:
 	var root := Node3D.new()
 	root.name = "Bush"
@@ -473,8 +618,9 @@ func _bush(base: Vector3, size: float, count_as_prop := true) -> void:
 	for i in _rng.randi_range(2, 4):
 		var r := size * _rng.randf_range(0.35, 0.6)
 		var offset := Vector3(_rng.randf_range(-0.5, 0.5) * size, r * 0.35, _rng.randf_range(-0.5, 0.5) * size)
-		# Sfera unitaria scalata: raggio r, altezza 1,2 r.
-		var mi := _mesh_child(root, _unit_sphere_mesh(), _foliage_material, Transform3D(Basis().scaled(Vector3(r, r * 0.6, r)), offset))
+		# Ciuffo unitario scalato e girato: raggio r, altezza circa 1,3 r.
+		var basis := Basis(Vector3.UP, _rng.randf_range(0.0, TAU)).scaled(Vector3(r, r * 0.65, r))
+		var mi := _mesh_child(root, _bush_mesh(), _foliage_material, Transform3D(basis, offset))
 		mi.set_instance_shader_parameter(&"tint", tint * _rng.randf_range(0.8, 1.1))
 	if count_as_prop:
 		stats.props += 1

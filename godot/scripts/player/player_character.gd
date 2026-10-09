@@ -117,6 +117,7 @@ func _ready() -> void:
 	# Il colore di vertice della tuta e solo ombreggiatura: la tinta e lo stato (dash, colpo).
 	_body_material.vertex_color_use_as_albedo = true
 	_body_material.roughness = 0.8
+	_body_material.next_pass = ActorModel.outline_material()
 	ActorModel.apply_materials(_body, {
 		"suit": _body_material,
 		# Lampada dell'elmetto e punta dell'attrezzo: l'indicatore del fronte, luminoso.
