@@ -122,6 +122,15 @@ func _ready() -> void:
 		print("PROTOTYPE01_TERRAIN_GRID_READY Width=%d Height=%d" % [state.width, state.height])
 
 
+## Cambia la cella protetta (o la toglie con (-1,-1)) aggiornando la resa delle celle toccate,
+## senza ricostruire la griglia.
+func set_protected_cell(cell: Vector2i) -> void:
+	var previous := state.protected_cell
+	state.protected_cell = cell
+	_update_cell_presentation(previous)
+	_update_cell_presentation(cell)
+
+
 ## Ricostruzione idempotente: rimuove sempre i nodi generati in precedenza.
 func rebuild() -> void:
 	var start_usec := Time.get_ticks_usec()

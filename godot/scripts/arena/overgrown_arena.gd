@@ -273,6 +273,28 @@ func _box(size: Vector3) -> BoxMesh:
 	return mesh
 
 
+## Mesh unitarie condivise (R-32): cespugli e macerie si scalano nella trasformazione invece
+## di creare una mesh (e una draw call con vertex buffer proprio) per pezzo.
+var _shared_box: BoxMesh
+var _shared_sphere: SphereMesh
+
+
+func _unit_box_mesh() -> BoxMesh:
+	if _shared_box == null:
+		_shared_box = _box(Vector3.ONE)
+	return _shared_box
+
+
+func _unit_sphere_mesh() -> SphereMesh:
+	if _shared_sphere == null:
+		_shared_sphere = SphereMesh.new()
+		_shared_sphere.radius = 1.0
+		_shared_sphere.height = 2.0
+		_shared_sphere.radial_segments = 9
+		_shared_sphere.rings = 5
+	return _shared_sphere
+
+
 ## Istanzia un modello Blender e rimappa i materiali semantici sugli shader dell'arena.
 ## `params` sono gli instance uniform da impostare su ogni mesh del modello.
 func _model(scene: PackedScene, parent: Node3D, local: Transform3D, params: Dictionary) -> Node3D:
@@ -400,13 +422,9 @@ func _bush(base: Vector3, size: float, count_as_prop := true) -> void:
 	var tint := _pick(LEAF_TINTS)
 	for i in _rng.randi_range(2, 4):
 		var r := size * _rng.randf_range(0.35, 0.6)
-		var sphere := SphereMesh.new()
-		sphere.radius = r
-		sphere.height = r * 1.2
-		sphere.radial_segments = 9
-		sphere.rings = 5
 		var offset := Vector3(_rng.randf_range(-0.5, 0.5) * size, r * 0.35, _rng.randf_range(-0.5, 0.5) * size)
-		var mi := _mesh_child(root, sphere, _foliage_material, Transform3D(Basis(), offset))
+		# Sfera unitaria scalata: raggio r, altezza 1,2 r.
+		var mi := _mesh_child(root, _unit_sphere_mesh(), _foliage_material, Transform3D(Basis().scaled(Vector3(r, r * 0.6, r)), offset))
 		mi.set_instance_shader_parameter(&"tint", tint * _rng.randf_range(0.8, 1.1))
 	if count_as_prop:
 		stats.props += 1
@@ -435,7 +453,7 @@ func _rubble(center: Vector3, spread: float) -> void:
 		var basis := Basis.from_euler(Vector3(_rng.randf_range(-0.35, 0.35), _rng.randf_range(0.0, TAU),
 			_rng.randf_range(-0.35, 0.35)))
 		var pos := Vector3(_rng.randf_range(-spread, spread), size.y * 0.35, _rng.randf_range(-spread, spread))
-		var mi := _mesh_child(body, _box(size), _ruin_material, Transform3D(basis, pos))
+		var mi := _mesh_child(body, _unit_box_mesh(), _ruin_material, Transform3D(basis.scaled_local(size), pos))
 		mi.set_instance_shader_parameter(&"base_tint", _pick(CONCRETE_TINTS))
 		mi.set_instance_shader_parameter(&"top_y", center.y + pos.y + size.y)
 		mi.set_instance_shader_parameter(&"overgrowth", 0.7)

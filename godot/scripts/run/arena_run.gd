@@ -97,6 +97,9 @@ func _ready() -> void:
 	director.rng.seed = run_seed + 1
 	_boss_rng.seed = run_seed + 2
 	_check_scale()
+	# La cella protetta (0,0) e un residuo della parita Unreal (smoke test): nel livello
+	# nessuna cella e intoccabile (R-28).
+	grid.set_protected_cell(Vector2i(-1, -1))
 	boss_call_at = _boss_call_from_command_line(tuning.boss_call_seconds)
 
 	player.invulnerability_seconds = tuning.player_invulnerability
