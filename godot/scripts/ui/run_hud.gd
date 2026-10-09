@@ -11,6 +11,7 @@ const BOSS_COLOR := Color(0.95, 0.6, 0.08)
 const DAY_COLOR := Color(1.0, 0.9, 0.55)
 const NIGHT_COLOR := Color(0.6, 0.65, 1.0)
 const TRAIN_COLOR := Color(1.0, 0.45, 0.3)
+const TITLE_COLOR := Color(0.97, 0.93, 0.82)
 ## Distanza della freccia di direzione dal centro dello schermo, in frazione del lato corto.
 const ARROW_RADIUS_RATIO := 0.36
 ## Ingombro di una scritta degli indicatori, per non sovrapporle.
@@ -345,14 +346,19 @@ func set_day_phase(phase: int, seconds_to_dusk: float) -> void:
 
 ## Avviso del tramonto o della notte, nello spazio dell'annuncio del boss, che ha la precedenza.
 func show_night_notice(text: String, seconds: float) -> void:
-	# Solo l'annuncio del boss (quello con la freccia) ha la precedenza; un avviso notte
+	show_notice(text, seconds, NIGHT_COLOR)
+
+
+## Avviso semplice senza freccia (notte, titolo del livello), nel colore dato.
+func show_notice(text: String, seconds: float, color: Color) -> void:
+	# Solo l'annuncio del boss (quello con la freccia) ha la precedenza; un avviso
 	# precedente viene sostituito.
 	if _boss_arrow.visible:
 		return
 	_night_notice_text = text
 	_night_notice_left = seconds
 	_boss_warning.text = text
-	_boss_warning.add_theme_color_override(&"font_color", NIGHT_COLOR)
+	_boss_warning.add_theme_color_override(&"font_color", color)
 	_boss_warning.show()
 
 

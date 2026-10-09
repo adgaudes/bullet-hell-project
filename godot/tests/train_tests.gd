@@ -46,6 +46,9 @@ func _initialize() -> void:
 	await _test_warning()
 	await _test_pass_flattens_and_hits()
 	await _test_second_train_from_the_other_side()
+	# T-12: i nodi messi in coda con queue_free vanno liberati prima di uscire, o
+	# il motore segnala istanze ObjectDB perse all'uscita.
+	await _frames(2)
 	print("PROTOTYPE01_TESTS %s failures=%d" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
 

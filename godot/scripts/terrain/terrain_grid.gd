@@ -35,10 +35,14 @@ const PREVIEW_HEIGHT_CM := 5.0
 const PREVIEW_LIFT_CM := 2.0
 ## Istanza nascosta di un MultiMesh: scala zero, nessun triangolo disegnato.
 const HIDDEN_TRANSFORM := Transform3D(Vector3.ZERO, Vector3.ZERO, Vector3.ZERO, Vector3.ZERO)
+## Due lotti (T-07): le celle piatte (Normal e Lowered, un cubo unitario scalato in Y
+## dallo stato, senza ombre) e i terrapieni (con ombre). Ogni cella ha un'istanza in
+## entrambi, visibile in uno solo: prima erano tre lotti e due istanze degeneri per cella.
+const FLAT_BATCH := TerrainState.CellState.NORMAL
+const RAISED_BATCH := TerrainState.CellState.RAISED
 const BATCH_NAMES := {
-	TerrainState.CellState.LOWERED: "CellsLowered",
-	TerrainState.CellState.NORMAL: "CellsNormal",
-	TerrainState.CellState.RAISED: "CellsRaised",
+	FLAT_BATCH: "CellsFlat",
+	RAISED_BATCH: "CellsRaised",
 }
 
 @export var tuning: TerrainTuning:
@@ -118,9 +122,24 @@ var _rebuild_pending := false
 func _ready() -> void:
 	if tuning == null:
 		tuning = TerrainTuning.new()
+	# La frangia d'erba dello shader dipende dalla quota mondo dei terrapieni (T-11):
+	# se il nodo viene spostato nell'editor, i materiali la rileggono.
+	set_notify_transform(true)
 	rebuild()
 	if not Engine.is_editor_hint():
 		print("PROTOTYPE01_TERRAIN_GRID_READY Width=%d Height=%d" % [state.width, state.height])
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_TRANSFORM_CHANGED and is_inside_tree() and not _heights_cm.is_empty():
+		for material in [_material, _batch_material]:
+			if material != null:
+				material.set_shader_parameter(&"raised_top", raised_top_y())
+
+
+## Quota mondo della cima di una cella Raised (letta dallo shader per la frangia d'erba).
+func raised_top_y() -> float:
+	return global_position.y + UnrealSpace.length(_heights_cm[TerrainState.CellState.RAISED])
 
 
 ## Cambia la cella protetta (o la toglie con (-1,-1)) aggiornando la resa delle celle toccate,
@@ -166,21 +185,25 @@ func rebuild() -> void:
 		var shape := BoxShape3D.new()
 		shape.size = mesh.size
 		_shapes[cell_state] = shape
+	# Il lotto piatto usa un cubo alto 1 m scalato in Y dall'altezza dello stato.
+	var flat_mesh := BoxMesh.new()
+	flat_mesh.size = Vector3(visual_size, 1.0, visual_size)
+	for batch_state: int in BATCH_NAMES:
 		var multimesh := MultiMesh.new()
 		multimesh.transform_format = MultiMesh.TRANSFORM_3D
 		multimesh.use_colors = true
 		multimesh.use_custom_data = true
-		multimesh.mesh = mesh
+		multimesh.mesh = _meshes[RAISED_BATCH] if batch_state == RAISED_BATCH else flat_mesh
 		multimesh.instance_count = count
 		var batch := MultiMeshInstance3D.new()
-		batch.name = BATCH_NAMES[cell_state]
+		batch.name = BATCH_NAMES[batch_state]
 		batch.multimesh = multimesh
 		batch.material_override = _batch_material
 		# Solo i terrapieni proiettano un'ombra che si vede; le altre celle sono lastre.
 		batch.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON \
-			if cell_state == TerrainState.CellState.RAISED else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			if batch_state == RAISED_BATCH else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		add_child(batch)
-		_batches[cell_state] = batch
+		_batches[batch_state] = batch
 
 
 	for y in state.height:
@@ -207,8 +230,7 @@ func _make_material(batched: bool) -> ShaderMaterial:
 	material.set_shader_parameter(&"batched", batched)
 	material.set_shader_parameter(&"plaza_radius", plaza_radius)
 	if is_inside_tree():
-		material.set_shader_parameter(&"raised_top",
-			global_position.y + UnrealSpace.length(_heights_cm[TerrainState.CellState.RAISED]))
+		material.set_shader_parameter(&"raised_top", raised_top_y())
 	return material
 
 
@@ -296,7 +318,7 @@ func lowered_speed_penalty() -> float:
 ## Celle presentate (istanze di ogni lotto): uguale a state.cell_count() se la
 ## costruzione e coerente. Per test e benchmark.
 func presented_cell_count() -> int:
-	var batch: MultiMeshInstance3D = _batches.get(TerrainState.CellState.NORMAL)
+	var batch: MultiMeshInstance3D = _batches.get(FLAT_BATCH)
 	return batch.multimesh.instance_count if batch != null else 0
 
 
@@ -437,12 +459,16 @@ func _apply_presentation(cell: Vector2i, deferred: bool) -> void:
 	var cell_state := state.get_state(cell)
 	var index := cell.y * state.width + cell.x
 	var tint: float = NATURAL_PROTECTED_TINT if state.is_protected(cell) else NATURAL_STATE_TINT[cell_state]
+	var own_batch := RAISED_BATCH if cell_state == TerrainState.CellState.RAISED else FLAT_BATCH
 	for batch_state: int in _batches:
 		var multimesh := _batches[batch_state].multimesh
-		if batch_state != cell_state:
+		if batch_state != own_batch:
 			multimesh.set_instance_transform(index, HIDDEN_TRANSFORM)
 			continue
-		multimesh.set_instance_transform(index, Transform3D(Basis(), cell_local_position(cell, cell_state)))
+		var basis := Basis()
+		if batch_state == FLAT_BATCH:
+			basis = basis.scaled(Vector3(1.0, UnrealSpace.length(_heights_cm[cell_state]), 1.0))
+		multimesh.set_instance_transform(index, Transform3D(basis, cell_local_position(cell, cell_state)))
 		multimesh.set_instance_color(index, _cell_color(cell, cell_state))
 		multimesh.set_instance_custom_data(index, Color(1.0 if natural_ground else 0.0, tint, 0.0, 0.0))
 

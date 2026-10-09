@@ -155,7 +155,7 @@ func _ready() -> void:
 	_refresh_xp()
 	var title := LevelCatalog.title_of(level_id)
 	if not title.is_empty():
-		hud.show_night_notice("LIVELLO %d: %s" % [LevelCatalog.index_of(level_id) + 1, title.to_upper()], 4.0)
+		hud.show_notice("LIVELLO %d: %s" % [LevelCatalog.index_of(level_id) + 1, title.to_upper()], 4.0, RunHud.TITLE_COLOR)
 	print("PROTOTYPE01_RUN_START seed=%d level=%s" % [run_seed, level_id])
 
 
@@ -204,8 +204,10 @@ func _refresh_marker_targets() -> void:
 			continue
 		# I vagoni sui binari (livello 2) sono depositi di rottami a tutti gli effetti.
 		var is_deposit: bool = feature.kind == &"deposit" or feature.kind == &"wagon"
+		# Il baricentro vero del blocco (R-29): i depositi 2x2 non hanno una cella centrale.
+		var marker: Vector2 = feature.get("marker", feature.center)
 		_marker_targets.append({
-			center = Vector3(feature.center.x, 0.0, feature.center.y),
+			center = Vector3(marker.x, 0.0, marker.y),
 			kind = &"deposit" if is_deposit else &"courtyard",
 			text = "ROTTAMI" if is_deposit else "CORTILE",
 			color = MARKER_DEPOSIT_COLOR if is_deposit else MARKER_COURTYARD_COLOR,

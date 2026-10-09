@@ -26,6 +26,9 @@ func _initialize() -> void:
 	_test_boundary_is_closed()
 	await _test_player_stays_inside()
 	_test_cells_use_natural_ground()
+	# T-12: i nodi messi in coda con queue_free vanno liberati prima di uscire, o
+	# il motore segnala istanze ObjectDB perse all'uscita.
+	await _frames(2)
 	print("PROTOTYPE01_TESTS %s failures=%d" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -112,7 +115,7 @@ func _test_cells_use_natural_ground() -> void:
 	print("natural cells")
 	# In --headless il renderer fittizio non conserva colori e dati custom dei
 	# MultiMesh (GODOT_WORKFLOW.md): si verifica la configurazione, non i valori.
-	var batch: MultiMeshInstance3D = _grid.get_node(^"CellsNormal")
+	var batch: MultiMeshInstance3D = _grid.get_node(^"CellsFlat")
 	_check(_grid.natural_ground, "griglia in modalita naturale")
 	_check(batch.multimesh.use_colors and batch.multimesh.use_custom_data, "il lotto porta colore e dati custom per cella")
 	_check(bool(batch.material_override.get_shader_parameter(&"batched")), "il lotto legge il colore dal MultiMesh")

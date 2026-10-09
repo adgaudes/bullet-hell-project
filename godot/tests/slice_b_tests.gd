@@ -22,6 +22,9 @@ func _initialize() -> void:
 	await _test_hazard_blocked_by_player_raise()
 	await _reload_scene()
 	await _test_lane_follows_grid()
+	# T-12: i nodi messi in coda con queue_free vanno liberati prima di uscire, o
+	# il motore segnala istanze ObjectDB perse all'uscita.
+	await _frames(2)
 	print("PROTOTYPE01_TESTS %s failures=%d" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
 

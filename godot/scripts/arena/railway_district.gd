@@ -157,7 +157,7 @@ func _plan_wagons() -> void:
 		var center := snap_to_cell(Vector2(x, 0.0))
 		terrain_features.append({
 			kind = &"wagon", center = center, state = TerrainState.CellState.RAISED, offsets = offsets,
-			gates = [], radius = 2, tint = WAGON_TINT,
+			gates = [], radius = 2, tint = WAGON_TINT, marker = feature_centroid(center, offsets),
 		})
 		stats.features += 1
 		stats.wagons += 1

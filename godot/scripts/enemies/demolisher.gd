@@ -132,6 +132,8 @@ var _last_forward_speed := 0.0
 ## Beccheggio da spostamento del peso: (angolo, velocita angolare).
 var _shift := Vector2.ZERO
 var _windup_weight := 0.0
+## Riusato a ogni passo (E-08): chi va tolto dalla squadra o dai muri ignorati.
+var _to_remove: Array = []
 
 
 func setup_demolisher(hp: int, flash_material: Material) -> void:
@@ -225,7 +227,7 @@ func drive(delta: float) -> void:
 	if retarget:
 		_retarget_left = RETARGET_SECONDS
 		_recruit_carriers()
-		if not _site_is_valid() and _crew.keys().any(func(c: Enemy) -> bool: return c.carrying_scrap):
+		if not _site_is_valid() and _any_carrier_loaded():
 			_choose_site()
 		_try_build_at_site()
 
@@ -380,14 +382,30 @@ func _reachable(point: Vector3) -> bool:
 
 ## Toglie dalla squadra chi e morto o e stato rimosso (l'orda che si ritira).
 func _prune_crew() -> void:
-	for carrier in _crew.keys():
+	_to_remove.clear()
+	for carrier in _crew:
 		if not is_instance_valid(carrier) or carrier.is_dead:
-			_crew.erase(carrier)
+			_to_remove.append(carrier)
+	for carrier in _to_remove:
+		_crew.erase(carrier)
+
+
+func _any_carrier_loaded() -> bool:
+	for carrier: Enemy in _crew:
+		if carrier.carrying_scrap:
+			return true
+	return false
 
 
 func _tick_crew(delta: float) -> void:
 	_prune_crew()
-	for carrier: Enemy in _crew.keys():
+	# `_release` toglie dal dizionario: si scorre una copia leggera solo se serve.
+	_to_remove.clear()
+	for carrier: Enemy in _crew:
+		_to_remove.append(carrier)
+	for carrier: Enemy in _to_remove:
+		if not _crew.has(carrier):
+			continue
 		var waiting := carrier.carrying_scrap and not _site_is_valid()
 		if waiting:
 			# Senza cantiere valido aspetta accanto al boss, senza far scadere il tempo (R-04):
@@ -446,7 +464,10 @@ func _release(carrier: Enemy, drop_scrap: bool) -> void:
 
 func _dismiss_crew() -> void:
 	_prune_crew()
-	for carrier: Enemy in _crew.keys():
+	_to_remove.clear()
+	for carrier: Enemy in _crew:
+		_to_remove.append(carrier)
+	for carrier: Enemy in _to_remove:
 		_release(carrier, true)
 	_clear_site()
 
@@ -537,10 +558,15 @@ func _wall_stalled(delta: float) -> bool:
 
 
 func _tick_ignored_walls(delta: float) -> void:
-	for cell in _ignored_walls.keys():
+	if _ignored_walls.is_empty():
+		return
+	_to_remove.clear()
+	for cell in _ignored_walls:
 		_ignored_walls[cell] -= delta
 		if _ignored_walls[cell] <= 0.0:
-			_ignored_walls.erase(cell)
+			_to_remove.append(cell)
+	for cell in _to_remove:
+		_ignored_walls.erase(cell)
 
 
 ## Cella per una barricata: a due celle dal boss verso il giocatore (o accanto, se
@@ -576,8 +602,10 @@ func _cell_is_free(cell: Vector2i) -> bool:
 		return false
 	if _planar(center - global_position).length() < BODY_RADIUS + step * 0.75:
 		return false
-	if director != null and director.enemies_near(center, step * 0.75).any(func(e: Enemy) -> bool: return e != self):
-		return false
+	if director != null:
+		for other in director.enemies_near(center, step * 0.75):
+			if other != self:
+				return false
 	# Un rottame a terra non va sepolto (lo sposterebbe ScrapField, ma meglio non costruirci sopra).
 	if scrap_field != null and scrap_field.count_on_cell(cell) > 0:
 		return false

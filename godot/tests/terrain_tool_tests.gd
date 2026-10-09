@@ -85,6 +85,9 @@ func _initialize() -> void:
 	_check(changes[0] >= 6, "modifiche rapide con cambi di modalita applicate (%d)" % changes[0])
 	_check(_count_cells() == 49, "sempre 49 celle")
 
+	# T-12: i nodi messi in coda con queue_free vanno liberati prima di uscire, o
+	# il motore segnala istanze ObjectDB perse all'uscita.
+	await _frames(2)
 	print("PROTOTYPE01_TESTS %s failures=%d" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -124,12 +127,12 @@ func _send(action: StringName) -> void:
 
 func _count_cells() -> int:
 	var grid := _grid
-	# Tre lotti (uno per stato) e nessun duplicato; il conteggio e quello delle istanze.
+	# Due lotti (celle piatte e terrapieni, T-07) e nessun duplicato; il conteggio e quello delle istanze.
 	var batches := 0
 	for child in grid.get_children():
 		if child is MultiMeshInstance3D and not child.is_queued_for_deletion():
 			batches += 1
-	return grid.presented_cell_count() if batches == 3 else -batches
+	return grid.presented_cell_count() if batches == 2 else -batches
 
 
 ## I valori attesi sono quelli del riferimento Unreal, non del preset di default.

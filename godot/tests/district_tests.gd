@@ -37,6 +37,9 @@ func _initialize() -> void:
 	await _test_far_path_and_spawn()
 	await _test_window_follows_player()
 	await _test_markers()
+	# T-12: i nodi messi in coda con queue_free vanno liberati prima di uscire, o
+	# il motore segnala istanze ObjectDB perse all'uscita.
+	await _frames(2)
 	print("PROTOTYPE01_TESTS %s failures=%d" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -65,7 +68,29 @@ func _test_scale() -> void:
 	for child in _grid.get_children():
 		if child is MultiMeshInstance3D:
 			batches += 1
-	_check(batches == 3, "tre lotti MultiMesh, uno per stato")
+	_check(batches == 2, "due lotti MultiMesh: celle piatte e terrapieni (T-07)")
+	var flat: MultiMeshInstance3D = _grid.get_node(^"CellsFlat")
+	var lowered_cell := Vector2i(-1, -1)
+	var normal_cell := Vector2i(-1, -1)
+	for y in _grid.state.height:
+		for x in _grid.state.width:
+			var cell := Vector2i(x, y)
+			if _grid.state.get_state(cell) == LOWERED and lowered_cell.x < 0:
+				lowered_cell = cell
+			elif _grid.state.get_state(cell) == NORMAL and normal_cell.x < 0:
+				normal_cell = cell
+	# In --headless il renderer fittizio conserva solo l'origine delle istanze, non la base
+	# (scala): le scale si verificano solo con una finestra (capture_district).
+	if DisplayServer.get_name() != "headless":
+		var lowered_scale := flat.multimesh.get_instance_transform(lowered_cell.y * _grid.state.width + lowered_cell.x).basis.get_scale().y
+		var normal_scale := flat.multimesh.get_instance_transform(normal_cell.y * _grid.state.width + normal_cell.x).basis.get_scale().y
+		_check(absf(lowered_scale - 0.04) < 0.001 and absf(normal_scale - 0.12) < 0.001,
+			"nel lotto piatto l'altezza viene dalla scala dell'istanza (%.2f, %.2f)" % [lowered_scale, normal_scale])
+		var raised_batch: MultiMeshInstance3D = _grid.get_node(^"CellsRaised")
+		_check(raised_batch.multimesh.get_instance_transform(normal_cell.y * _grid.state.width + normal_cell.x).basis.get_scale().is_zero_approx(),
+			"una cella Normal e nascosta nel lotto dei terrapieni")
+	else:
+		_check(lowered_cell.x >= 0 and normal_cell.x >= 0, "celle Lowered e Normal presenti per il controllo delle scale (solo con finestra)")
 	_check(is_equal_approx(_path.half_extent, _district.play_half_extent), "campo di percorso esteso all'arena")
 	_check(is_equal_approx(_grid.plaza_radius, _district.plaza_radius()), "raggio della piazza condiviso fra suolo e celle")
 
@@ -230,16 +255,17 @@ func _test_markers() -> void:
 	var nearest := INF
 	var nearest_center := Vector2.ZERO
 	for f: Dictionary in _district.terrain_features:
-		if f.kind == &"deposit" and f.center.length() >= ArenaRun.MARKER_MIN_DISTANCE and f.center.length() < nearest:
-			nearest = f.center.length()
-			nearest_center = f.center
+		var marker: Vector2 = f.marker
+		if f.kind == &"deposit" and marker.length() >= ArenaRun.MARKER_MIN_DISTANCE and marker.length() < nearest:
+			nearest = marker.length()
+			nearest_center = marker
 	var first: Dictionary = deposits[0] if not deposits.is_empty() else {}
 	_check(not first.is_empty() and absf(first.distance - nearest) < 0.1 and first.direction.normalized().dot(nearest_center.normalized()) > 0.99,
 		"il primo deposito indicato e il piu vicino (%.0f m)" % nearest)
 	# Scavato del tutto, sparisce dagli indicatori.
 	var cells: Array[Vector2i] = []
 	for f: Dictionary in _district.terrain_features:
-		if f.kind == &"deposit" and f.center == nearest_center:
+		if f.kind == &"deposit" and f.marker == nearest_center:
 			var center := _grid.cell_at(Vector3(f.center.x, 0.0, f.center.y))
 			for offset: Vector2i in f.offsets:
 				cells.append(center + offset)
@@ -249,6 +275,18 @@ func _test_markers() -> void:
 	for m: Dictionary in run.current_markers():
 		still = still or (m.text == "ROTTAMI" and absf(m.distance - nearest) < 0.1)
 	_check(not still, "un deposito esaurito non e piu indicato")
+	# R-29: il marker di un deposito 2x2 sta al centro del blocco, a mezza cella dalla cella di ancoraggio.
+	var even_ok := true
+	var even_found := false
+	for f: Dictionary in _district.terrain_features:
+		if f.kind != &"deposit":
+			continue
+		var centroid := RuinsDistrict.feature_centroid(f.center, f.offsets)
+		even_ok = even_ok and (f.marker as Vector2).is_equal_approx(centroid)
+		if f.offsets.size() == 4:
+			even_found = true
+			even_ok = even_ok and absf((f.marker as Vector2).distance_to(f.center) - RuinsDistrict.CELL * sqrt(2.0) * 0.5) < 0.01
+	_check(even_found and even_ok, "i depositi 2x2 hanno il marker al centro del blocco (R-29)")
 
 
 func _test_window_follows_player() -> void:

@@ -141,6 +141,9 @@ func spawn_kind(world: Vector3, kind: StringName) -> Enemy:
 func add_enemy(enemy: Enemy, world: Vector3) -> void:
 	add_child(enemy)
 	enemy.global_position = world
+	# Entra nell'albero all'origine e viene spostato nello stesso passo: senza questo
+	# l'interpolazione fisica lo disegnerebbe per un frame fra l'origine e l'anello (E-10).
+	enemy.reset_physics_interpolation()
 	enemy.died.connect(_on_enemy_died)
 	enemies.append(enemy)
 

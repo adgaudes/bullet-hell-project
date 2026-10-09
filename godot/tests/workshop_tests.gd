@@ -18,6 +18,9 @@ func _initialize() -> void:
 	await _test_permanent_upgrades_apply()
 	await _test_banking_and_workshop_flow()
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(TEMP_PATH))
+	# T-12: i nodi messi in coda con queue_free vanno liberati prima di uscire, o
+	# il motore segnala istanze ObjectDB perse all'uscita.
+	await _frames(2)
 	print("PROTOTYPE01_TESTS %s failures=%d" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
 

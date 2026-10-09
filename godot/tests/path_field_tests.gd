@@ -48,6 +48,9 @@ func _initialize() -> void:
 	await _test_full_field_mode_unchanged()
 	await _test_spawn_ring_and_leash()
 	await _test_rectangular_arena()
+	# T-12: i nodi messi in coda con queue_free vanno liberati prima di uscire, o
+	# il motore segnala istanze ObjectDB perse all'uscita.
+	await _frames(2)
 	print("PROTOTYPE01_TESTS %s failures=%d" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -256,6 +259,8 @@ func _test_spawn_ring_and_leash() -> void:
 	_check(director.leashed == 1, "nemico a 60 m riportato (%d)" % director.leashed)
 	_check(d <= director.tuning.spawn_ring_max + 0.5, "ora sta sull'anello (%0.1f m)" % d)
 	var near := director.spawn_at(Vector3(10.0, 0.0, 0.0))
+	# E-10 (reset_physics_interpolation alla nascita) non si verifica in headless:
+	# get_global_transform_interpolated restituisce la trasformazione corrente anche senza reset.
 	await _frames(2)
 	_check(director.leashed == 1, "nemico a 10 m non toccato")
 	var dn := Vector3(near.global_position.x, 0.0, near.global_position.z).length()

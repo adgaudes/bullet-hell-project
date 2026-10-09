@@ -246,6 +246,17 @@ static func cell_offset_to_world(offset: Vector2i) -> Vector2:
 	return Vector2(offset.y * CELL, -offset.x * CELL)
 
 
+## Baricentro mondo (XZ) delle celle di un punto di interesse: per i blocchi di lato pari
+## (depositi 2x2, vagoni) non coincide con la cella di ancoraggio `center` (R-29).
+static func feature_centroid(center: Vector2, offsets: Array[Vector2i]) -> Vector2:
+	if offsets.is_empty():
+		return center
+	var sum := Vector2.ZERO
+	for offset in offsets:
+		sum += cell_offset_to_world(offset)
+	return center + sum / offsets.size()
+
+
 ## Celle dell'anello di mura a distanza [param radius], senza i varchi dei lati
 ## in [param gates]; con [param broken] > 0 una quota casuale di celle manca.
 func _ring_offsets(radius: int, gates: Array[int], broken := 0.0) -> Array[Vector2i]:
@@ -268,10 +279,11 @@ func _ring_offsets(radius: int, gates: Array[int], broken := 0.0) -> Array[Vecto
 
 func _add_feature(kind: StringName, center: Vector2, cell_state: TerrainState.CellState,
 		offsets: Array[Vector2i], gates: Array[int], radius: int, reserve_half: Vector2, margin: float) -> void:
+	var marker := feature_centroid(center, offsets)
 	terrain_features.append({
-		kind = kind, center = center, state = cell_state, offsets = offsets, gates = gates, radius = radius,
+		kind = kind, center = center, state = cell_state, offsets = offsets, gates = gates, radius = radius, marker = marker,
 	})
-	_reserve(_rect_around(center, reserve_half, margin))
+	_reserve(_rect_around(marker, reserve_half, margin))
 	stats.features += 1
 
 

@@ -40,6 +40,9 @@ func _initialize() -> void:
 	await _test_spawn_and_path_in_corridor()
 	await _test_markers_include_wagons()
 	await _test_hoppers()
+	# T-12: i nodi messi in coda con queue_free vanno liberati prima di uscire, o
+	# il motore segnala istanze ObjectDB perse all'uscita.
+	await _frames(2)
 	print("PROTOTYPE01_TESTS %s failures=%d" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -275,8 +278,9 @@ func _test_markers_include_wagons() -> void:
 	var nearest := INF
 	var nearest_kind: StringName = &""
 	for f: Dictionary in _district.terrain_features:
-		if (f.kind == &"deposit" or f.kind == &"wagon") and f.center.length() >= ArenaRun.MARKER_MIN_DISTANCE and f.center.length() < nearest:
-			nearest = f.center.length()
+		var marker: Vector2 = f.marker
+		if (f.kind == &"deposit" or f.kind == &"wagon") and marker.length() >= ArenaRun.MARKER_MIN_DISTANCE and marker.length() < nearest:
+			nearest = marker.length()
 			nearest_kind = f.kind
 	var first: Dictionary = deposits[0] if not deposits.is_empty() else {}
 	_check(not first.is_empty() and absf(first.distance - nearest) < 0.1, "il primo indicato e il piu vicino (%s a %.0f m)" % [nearest_kind, nearest])
