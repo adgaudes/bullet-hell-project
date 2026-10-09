@@ -128,6 +128,8 @@ Benchmark del campo di percorso su un'arena sintetica grande (D-039): `godot_con
 
 Catture della run (combattimento e level-up): `godot_console --path godot --resolution 1280x800 --fixed-fps 60 --script res://tests/tools/capture_run.gd -- --out=../output/run`.
 
+Catture ravvicinate con camera libera (D-068, per giudicare i dettagli che la camera di gioco mostra da lontano): `godot_console --path godot --resolution 1280x800 --fixed-fps 60 --quit-after 3000 --script res://tests/tools/capture_closeup.gd -- --out=../output/district --at=62,1.5,62 --from=50,7,76 --name=ruin_close` (ogni terna `--at/--from/--name` e una cattura; `--scene=railway` per il livello 2).
+
 Catture dell'arena grande (D-042: partenza, panoramica dall'alto di tutta l'arena senza nebbia, combattimento dopo un minuto): `godot_console --path godot --resolution 1280x800 --fixed-fps 60 --script res://tests/tools/capture_district.gd -- --out=../output/district`. Con `--visit=x,z` (ripetibile) salva anche la vista di gioco col giocatore in quel punto (`visit_0.png`, ...) ed esce senza la cattura del combattimento: utile per guardare da vicino rovine e oggetti.
 
 Modelli degli attori (D-050): `"/c/Program Files/Blender Foundation/Blender 5.2/blender.exe" -b --factory-startup --python tools/blender/build_actor_assets.py`, poi `godot_console --headless --path godot --editor --quit`. Catture ravvicinate e dalla camera di gioco: `godot_console --path godot --resolution 1280x800 --fixed-fps 60 --script res://tests/tools/capture_actors.gd -- --out=../output/actors`.

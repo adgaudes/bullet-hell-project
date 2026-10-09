@@ -28,6 +28,10 @@ const OCCUPANCY_STEP := 1.0
 const SHELL_WALL_THICKNESS := 0.5
 const SHELL_MIN_WALL := 1.3
 const SHELL_VINE_REACH := 0.3
+## Corona spezzata in cima ai muri (D-068): altezze dei pezzi e dei tondini, misura della porta.
+const CROWN_PIECE_HEIGHT := Vector2(0.12, 0.42)
+const REBAR_HEIGHT := Vector2(0.3, 0.8)
+const DOOR_SIZE := Vector2(1.0, 2.1)
 
 @export_group("District")
 ## Raggio della piazza centrale: dentro il suolo e lastricato, fuori prevale il verde.
@@ -106,6 +110,12 @@ var _occupancy := PackedByteArray()
 var _occupancy_columns := 0
 var _occupancy_rows := 0
 var _unit_box: BoxMesh
+## Corone dei muri e tondini di ferro di tutte le rovine, in due MultiMesh (D-068).
+var _crown_buffer := PackedFloat32Array()
+var _crown_count := 0
+var _rebar_buffer := PackedFloat32Array()
+var _rebar_count := 0
+var _crown_material: ShaderMaterial
 
 
 func _init() -> void:
@@ -157,9 +167,14 @@ func _compose() -> void:
 	_plan_courtyards()
 	_plan_deposits()
 	_plan_trenches()
+	_crown_buffer.clear()
+	_crown_count = 0
+	_rebar_buffer.clear()
+	_rebar_count = 0
 	_build_blocks()
 	_build_props()
 	_build_perimeter()
+	_build_ruin_details()
 	_build_ground_cover()
 	_add_sun()
 	_add_environment()
@@ -445,16 +460,25 @@ func _ruin_shell(node_name: String, base: Vector3, size: Vector3, yaw_deg: float
 		var length := size.x if along_x else inner.y
 		var segments := maxi(2, roundi(length / 3.0))
 		var segment := length / segments
+		var door_segment := _rng.randi_range(0, segments - 1) if side == 0 else -1
 		for s in segments:
 			var wall_height := maxf(SHELL_MIN_WALL, size.y * _rng.randf_range(0.4, 1.0))
 			if _rng.randf() < 0.3:
 				wall_height = size.y
 			var along := -length * 0.5 + segment * (s + 0.5)
 			var across := direction * ((size.z if along_x else size.x) * 0.5 - t * 0.5)
-			_shell_piece(body,
-				Vector3(along, wall_height * 0.5, across) if along_x else Vector3(across, wall_height * 0.5, along),
+			var at := Vector3(along, wall_height * 0.5, across) if along_x else Vector3(across, wall_height * 0.5, along)
+			_shell_piece(body, at,
 				Vector3(segment, wall_height, t) if along_x else Vector3(t, wall_height, segment),
 				tint, base.y + wall_height, overgrowth, 1.0)
+			# Cima spezzata: pezzi irregolari e tondini sui tratti crollati (D-068).
+			if wall_height < size.y - 0.3:
+				_wall_crown(body, at, along_x, segment, wall_height, t, tint)
+			# Una porta scura sulla facciata sud (quella vista dalla camera).
+			if s == door_segment and wall_height >= DOOR_SIZE.y + 0.2 and segment >= DOOR_SIZE.x + 0.6:
+				var door_at := Vector3(along, DOOR_SIZE.y * 0.5, across + direction * (t * 0.5 + 0.02))
+				_mesh_child(body, _unit_box_mesh(), _dark_material,
+					Transform3D(Basis.from_scale(Vector3(DOOR_SIZE.x, DOOR_SIZE.y, 0.06)), door_at))
 	# Macerie sul pavimento.
 	for i in _rng.randi_range(2, 4):
 		var chunk := Vector3(_rng.randf_range(0.5, 1.6), _rng.randf_range(0.25, 0.7), _rng.randf_range(0.5, 1.4))
@@ -484,6 +508,73 @@ func _shell_piece(body: Node3D, at: Vector3, size: Vector3, tint: Color, top_y: 
 	mi.set_instance_shader_parameter(&"overgrowth", overgrowth)
 	mi.set_instance_shader_parameter(&"windows", windows)
 	mi.set_instance_shader_parameter(&"vine_reach", SHELL_VINE_REACH)
+
+
+## Corona di un tratto di muro crollato: due o tre pezzi bassi, sfalsati, sulla cima,
+## e qualche tondino di ferro storto che sporge. Vanno nei MultiMesh condivisi
+## (`_build_ruin_details`), in coordinate mondo: nessun nodo in piu per rovina.
+func _wall_crown(body: Node3D, wall_at: Vector3, along_x: bool, segment: float,
+		wall_height: float, thickness: float, tint: Color) -> void:
+	var top := wall_at + Vector3(0.0, wall_height * 0.5, 0.0)
+	for i in _rng.randi_range(2, 3):
+		var piece_length := segment * _rng.randf_range(0.18, 0.4)
+		var piece_height := _rng.randf_range(CROWN_PIECE_HEIGHT.x, CROWN_PIECE_HEIGHT.y)
+		var shift := _rng.randf_range(-0.5, 0.5) * (segment - piece_length)
+		# Frammenti, non lastre: spessore ridotto, un po' fuori asse, tinta piu sporca.
+		var piece_thickness := thickness * _rng.randf_range(0.55, 0.95)
+		var across := _rng.randf_range(-0.5, 0.5) * (thickness - piece_thickness)
+		var local := top + (Vector3(shift, piece_height * 0.5, across) if along_x else Vector3(across, piece_height * 0.5, shift))
+		var scale := Vector3(piece_length, piece_height, piece_thickness) if along_x else Vector3(piece_thickness, piece_height, piece_length)
+		var tilt := Basis(Vector3.FORWARD if along_x else Vector3.RIGHT, _rng.randf_range(-0.12, 0.12))
+		var xform := body.transform * Transform3D(tilt.scaled_local(scale), local)
+		# Il colore di istanza arriva allo shader senza la conversione sRGB degli
+		# instance uniform `source_color`: si converte qui per avere la tinta del muro.
+		_append_instance(_crown_buffer, _crown_count, xform, Color(tint.srgb_to_linear() * _rng.randf_range(0.8, 0.95), 0.3))
+		_crown_count += 1
+	for i in _rng.randi_range(0, 2):
+		var rebar_height := _rng.randf_range(REBAR_HEIGHT.x, REBAR_HEIGHT.y)
+		var shift := _rng.randf_range(-0.45, 0.45) * segment
+		var local := top + (Vector3(shift, rebar_height * 0.5, 0.0) if along_x else Vector3(0.0, rebar_height * 0.5, shift))
+		var lean := Basis.from_euler(Vector3(_rng.randf_range(-0.35, 0.35), 0.0, _rng.randf_range(-0.35, 0.35)))
+		var xform := body.transform * Transform3D(lean.scaled_local(Vector3(0.07, rebar_height, 0.07)), local)
+		_append_instance(_rebar_buffer, _rebar_count, xform, Color(0.16, 0.09, 0.05))
+		_rebar_count += 1
+
+
+## Accoda un'istanza (trasformazione completa e colore) al buffer di un MultiMesh.
+static func _append_instance(buffer: PackedFloat32Array, index: int, xform: Transform3D, color: Color) -> void:
+	buffer.resize((index + 1) * 16)
+	var base := index * 16
+	var b := xform.basis
+	var o := xform.origin
+	buffer[base] = b.x.x
+	buffer[base + 1] = b.y.x
+	buffer[base + 2] = b.z.x
+	buffer[base + 3] = o.x
+	buffer[base + 4] = b.x.y
+	buffer[base + 5] = b.y.y
+	buffer[base + 6] = b.z.y
+	buffer[base + 7] = o.y
+	buffer[base + 8] = b.x.z
+	buffer[base + 9] = b.y.z
+	buffer[base + 10] = b.z.z
+	buffer[base + 11] = o.z
+	buffer[base + 12] = color.r
+	buffer[base + 13] = color.g
+	buffer[base + 14] = color.b
+	buffer[base + 15] = color.a
+
+
+## I due MultiMesh delle corone e dei tondini: due draw call per tutte le rovine.
+func _build_ruin_details() -> void:
+	if _crown_material == null:
+		_crown_material = ShaderMaterial.new()
+		_crown_material.shader = RUIN_SHADER
+		_crown_material.set_shader_parameter(&"batched", true)
+	_add_multimesh("RuinCrowns", _unit_box_mesh(), _crown_buffer, _crown_count, _crown_material)
+	_add_multimesh("RuinRebar", _unit_box_mesh(), _rebar_buffer, _rebar_count, _dark_material)
+	stats.crown_pieces = _crown_count
+	stats.rebar = _rebar_count
 
 
 func _build_props() -> void:

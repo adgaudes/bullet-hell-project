@@ -16,6 +16,7 @@ const GROUND_SHADER := preload("res://resources/materials/ruins_ground.gdshader"
 const RUIN_SHADER := preload("res://resources/materials/ruin_overgrown.gdshader")
 const RUST_SHADER := preload("res://resources/materials/rusted_metal.gdshader")
 const FOLIAGE_SHADER := preload("res://resources/materials/foliage.gdshader")
+const GRASS_SHADER := preload("res://resources/materials/grass_blades.gdshader")
 ## Modelli generati da tools/blender/build_arena_assets.py (D-037).
 const CAR_MODEL := preload("res://assets/models/wrecked_car.glb")
 const CARRIAGE_MODEL := preload("res://assets/models/train_carriage.glb")
@@ -78,6 +79,7 @@ var _ruin_material: ShaderMaterial
 var _rust_material: ShaderMaterial
 var _foliage_material: ShaderMaterial
 var _canopy_material: ShaderMaterial
+var _grass_material: ShaderMaterial
 var _metal_material: StandardMaterial3D
 var _tire_material: StandardMaterial3D
 var _trunk_material: StandardMaterial3D
@@ -241,6 +243,10 @@ func _make_materials() -> void:
 	_canopy_material = ShaderMaterial.new()
 	_canopy_material.shader = FOLIAGE_SHADER
 	_canopy_material.set_shader_parameter(&"sway", 0.012)
+	_grass_material = ShaderMaterial.new()
+	_grass_material.shader = GRASS_SHADER
+	_grass_material.set_shader_parameter(&"blade_texture", _blade_texture())
+	_grass_material.set_shader_parameter(&"sway", 0.05)
 	_metal_material = StandardMaterial3D.new()
 	_metal_material.albedo_color = Color(0.30, 0.22, 0.17)
 	_metal_material.metallic = 0.4
@@ -731,11 +737,11 @@ func _build_ground_cover() -> void:
 		elif tuft_count < grass_tufts:
 			var s := _rng.randf_range(0.7, 1.5)
 			_write_instance(tufts, tuft_count, yaw, Vector3(s, s * _rng.randf_range(0.8, 1.4), s), Vector3(p.x, height, p.y),
-				_pick(LEAF_TINTS) * _rng.randf_range(0.7, 1.0))
+				_pick(LEAF_TINTS) * _rng.randf_range(1.05, 1.45))
 			tuft_count += 1
 	tufts.resize(tuft_count * 16)
 	flower_buffer.resize(flower_count * 16)
-	_add_multimesh("GrassTufts", _tuft_mesh(), tufts, tuft_count)
+	_add_multimesh("GrassTufts", _tuft_mesh(), tufts, tuft_count, _grass_material)
 	_add_multimesh("Flowers", _flower_mesh(), flower_buffer, flower_count)
 	stats.tufts = tuft_count
 	stats.flowers = flower_count
@@ -766,7 +772,8 @@ static func _write_instance(buffer: PackedFloat32Array, index: int, yaw: float, 
 	buffer[base + 15] = color.a
 
 
-func _add_multimesh(node_name: String, mesh: Mesh, buffer: PackedFloat32Array, count: int) -> void:
+func _add_multimesh(node_name: String, mesh: Mesh, buffer: PackedFloat32Array, count: int,
+		material: Material = null) -> void:
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_3D
 	mm.use_colors = true
@@ -777,27 +784,71 @@ func _add_multimesh(node_name: String, mesh: Mesh, buffer: PackedFloat32Array, c
 	var mmi := MultiMeshInstance3D.new()
 	mmi.name = node_name
 	mmi.multimesh = mm
-	mmi.material_override = _foliage_material
+	mmi.material_override = material if material != null else _foliage_material
 	mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_add_generated(mmi)
 
 
-## Ciuffo: tre lame triangolari incrociate.
+## Ciuffo (D-068): tre quad incrociati a 60 gradi con la texture delle lame; la
+## scala per istanza li porta a 0,3-0,65 m. UV.y = 0 in punta, 1 al piede.
+const TUFT_HALF_WIDTH := 0.2
+const TUFT_HEIGHT := 0.44
+
+
 func _tuft_mesh() -> ArrayMesh:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	for k in 3:
-		var a := TAU * float(k) / 3.0
-		var side := Vector3(cos(a), 0.0, sin(a)) * 0.09
-		var lean := Vector3(-sin(a), 0.0, cos(a)) * 0.08
-		st.set_normal(Vector3.UP)
-		st.set_color(Color(0.7, 0.7, 0.7))
-		st.add_vertex(-side)
-		st.set_color(Color(0.7, 0.7, 0.7))
-		st.add_vertex(side)
-		st.set_color(Color(1.0, 1.0, 0.9))
-		st.add_vertex(Vector3(0.0, 0.32, 0.0) + lean)
+		var a := TAU * float(k) / 3.0 * 0.5
+		var side := Vector3(cos(a), 0.0, sin(a)) * TUFT_HALF_WIDTH
+		var lean := Vector3(-sin(a), 0.0, cos(a)) * 0.05
+		var corners: Array[Vector3] = [-side, side, side + Vector3(0.0, TUFT_HEIGHT, 0.0) + lean,
+			-side + Vector3(0.0, TUFT_HEIGHT, 0.0) + lean]
+		var uvs: Array[Vector2] = [Vector2(0.0, 1.0), Vector2(1.0, 1.0), Vector2(1.0, 0.0), Vector2(0.0, 0.0)]
+		for index in [0, 1, 2, 0, 2, 3]:
+			st.set_normal(Vector3.UP)
+			st.set_color(Color.WHITE)
+			st.set_uv(uvs[index])
+			st.add_vertex(corners[index])
 	return st.commit()
+
+
+static var _shared_blade_texture: ImageTexture
+
+
+## Texture delle lame generata da codice (RGBA 64x96): quattro lame affusolate e un
+## po' curve, alpha 1 dentro, con mipmap. Condivisa fra tutte le arene.
+static func _blade_texture() -> ImageTexture:
+	if _shared_blade_texture != null:
+		return _shared_blade_texture
+	var w := 64
+	var h := 96
+	var image := Image.create(w, h, true, Image.FORMAT_RGBA8)
+	image.fill(Color(1.0, 1.0, 1.0, 0.0))
+	# Ogni lama: piede (x, larghezza), punta spostata di `drift`, un po' piu corta delle altre.
+	var blades: Array[Vector4] = [Vector4(0.18, 0.13, -0.08, 0.98), Vector4(0.42, 0.16, 0.05, 1.0),
+		Vector4(0.64, 0.12, 0.10, 0.9), Vector4(0.84, 0.11, -0.04, 0.82)]
+	for y in h:
+		var v := float(y) / float(h - 1)  # 0 in punta, 1 al piede
+		for x in w:
+			var u := (float(x) + 0.5) / float(w)
+			var inside := false
+			for blade in blades:
+				var length: float = blade.w
+				var t := 1.0 - v  # 0 al piede, 1 in cima alla texture
+				if t > length:
+					continue
+				var k := t / length  # 0 al piede, 1 in punta della lama
+				var center: float = blade.x + blade.z * k * k
+				var half: float = blade.y * 0.5 * (1.0 - k * k) + 0.004
+				if absf(u - center) <= half:
+					inside = true
+					break
+			if inside:
+				image.set_pixel(x, y, Color(1.0, 1.0, 1.0, 1.0))
+	image.generate_mipmaps()
+	_shared_blade_texture = ImageTexture.create_from_image(image)
+	return _shared_blade_texture
 
 
 ## Fiore: piccolo bocciolo su uno stelo.
@@ -858,6 +909,7 @@ func _add_sun() -> void:
 	sun.light_color = SUN_COLOR
 	sun.light_energy = 1.4
 	sun.shadow_enabled = true
+	sun.shadow_blur = 1.6
 	sun.directional_shadow_max_distance = 90.0
 	_add_generated(sun)
 
@@ -890,9 +942,12 @@ func _add_environment() -> void:
 	environment.fog_depth_end = 160.0
 	environment.fog_depth_curve = 1.6
 	environment.fog_sun_scatter = 0.15
+	# La skyline lontana prende il colore del cielo (D-068).
+	environment.fog_aerial_perspective = 0.35
 	environment.ssao_enabled = true
-	environment.ssao_radius = 1.6
-	environment.ssao_intensity = 1.6
+	environment.ssao_radius = 2.0
+	environment.ssao_intensity = 2.2
+	environment.ssao_light_affect = 0.2
 	environment.glow_enabled = true
 	environment.glow_intensity = 0.4
 	environment.glow_bloom = 0.05
