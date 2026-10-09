@@ -10,7 +10,7 @@ Principio guida:
 
 > Prima dimostriamo che e divertente. Poi dimostriamo che e producibile. Solo dopo costruiamo tutto il resto.
 
-## Stato operativo al 6 ottobre 2026
+## Stato operativo al 9 ottobre 2026
 
 > **Engine: Godot 4.7.2** (D-019). Le fasi di prodotto qui descritte restano valide: cambia la tecnologia, non la sequenza ne i gate. I riferimenti a Unreal, Visual Studio e MCP Epic nelle sezioni successive sono storici; il codice Unreal e nel tag `unreal-prototype-final`. Dettaglio della migrazione: `docs/MIGRATION_STATUS.md`; parita: `docs/GODOT_PARITY_CHECKLIST.md`.
 
@@ -45,6 +45,7 @@ Principio guida:
   - 6 ottobre 2026: **corse laterali e all'indietro, scavo e capriola dell'ingegnere** (D-062), da cinque animazioni Mixamo scaricate dal proprietario e riportate sullo scheletro: la mira resta ferma mentre le gambe seguono la marcia, lo scatto fa la capriola, il tool del terreno un affondo. Gate verde. **Resa da giudicare dal proprietario**; build non riesportate.
   - 6 ottobre 2026: **spike del terreno a rilievo continuo** (D-063): il proprietario vuole scolpire liberamente montagnette e solchi invece dei blocchi, e una pianta non squadrata. Scena isolata `scenes/spikes/terrain_spike.tscn` funzionante nelle catture e a 120 fps su PC. Il livello a celle resta invariato.
   - 9 ottobre 2026: **spike del terreno completato** (D-063): il campo di percorso ora misura la strada in metri e controlla la pendenza vertice per vertice come chi cammina (le tre verifiche fallite erano errori del campo e del test: direzione letta dal punto invece che dalla casella, passi contati alla Chebyshev, campionamento troppo grosso); suite `tests/height_terrain_tests.gd` nel gate, 36 controlli verdi; campo 6 ms. **Prova del proprietario da fare.**
+  - 9 ottobre 2026, in sintesi: **69 correzioni dalle due review** (nessuna gravita A aperta; dettaglio e misure in `docs/REVIEWS/FULL_CODE_2026-10-09.md`), **spike del terreno completato**, **ciclo giorno/notte con lampioni completo**, build Windows e Linux riesportate con tutto. **Dal 7 ottobre il proprietario non ha ancora giocato nulla di tutto questo.**
 - **Fasi 4-14:** non iniziate formalmente. Esperimenti tecnici anticipati non equivalgono al superamento dei relativi gate.
 
 **Prossimo passo (in ordine):**

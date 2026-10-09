@@ -85,7 +85,12 @@ godot_console --headless --path godot --fixed-fps 60 --script res://tests/menu_t
 godot_console --headless --path godot --fixed-fps 60 --script res://tests/flow_preview_tests.gd
 godot_console --headless --path godot --fixed-fps 60 --script res://tests/actor_motion_tests.gd
 godot_console --headless --path godot --fixed-fps 60 --script res://tests/economy_tests.gd
+godot_console --headless --path godot --fixed-fps 60 --script res://tests/day_night_tests.gd
+godot_console --headless --path godot --fixed-fps 60 --script res://tests/lamp_tests.gd
+godot_console --headless --path godot --fixed-fps 60 --script res://tests/height_terrain_tests.gd
 ```
+
+Al 9 ottobre 2026 le suite in `godot/tests/` sono 26 (le altre: boss, district, ruins_arena, settings, button_prompts, character_animator, addons, player, terrain, terrain_tool, slice_b, live_rebuild); il gate le trova da solo. Dal 9 ottobre il gate **fallisce anche se una suite stampa `SCRIPT ERROR` o `ERROR:`** (allowlist esplicita in `Invoke-GodotChecks.ps1` per l'errore noto del renderer fittizio): un errore runtime provocato apposta da un test va stampato come marker, non con `push_error`.
 
 Piu semplice: `tools/godot/Invoke-GodotChecks.ps1` esegue tutte le suite presenti in `godot/tests/`.
 

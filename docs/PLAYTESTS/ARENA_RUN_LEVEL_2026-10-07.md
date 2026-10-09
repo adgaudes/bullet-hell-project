@@ -8,9 +8,11 @@
 
 | Modo | Cosa contiene | Come |
 |---|---|---|
-| **Editor, F5** (consigliato) | tutto fino a D-062: animazioni dell'ingegnere, glifi dei tasti, addon | aprire `godot/project.godot`, F5: parte dal menu iniziale |
-| Build Windows in `LocalBuilds/Prototype01-Godot-Win64/` | ferma a D-056: ingegnere statico, niente glifi, niente Debug Menu | doppio clic su `Prototype01.exe` |
+| **Editor, F5** (consigliato) | tutto fino a D-065: animazioni, glifi, addon, le 69 correzioni delle review, ciclo giorno/notte con lampioni (D-058) | aprire `godot/project.godot`, F5: parte dal menu iniziale |
+| Build Windows in `LocalBuilds/Prototype01-Godot-Win64/` | **riesportata il 9 ottobre 2026**, identica all'editor | doppio clic su `Prototype01.exe` |
 | Boss subito | come l'editor, con il Demolitore a 60 secondi | da terminale nella cartella del progetto: `godot --path godot -- --boss-at=60` |
+| Notte subito | tramonto dopo 5 secondi invece di 4:30 | `godot --path godot -- --night-at=5` |
+| Senza notte | il livello come prima di D-058, per confronto | `godot --path godot -- --night-at=0` |
 | Run ripetibile | stesso seme, stessa orda e stesse carte | `godot --path godot -- --seed=7` (sostituire il numero) |
 
 Nell'editor il pannello Output stampa `PROTOTYPE01_RUN_START seed=N`: **annota il seme** quando succede qualcosa di strano, cosi si rigioca la stessa run. F3 cicla il Debug Menu (fps e frametime).
@@ -43,7 +45,8 @@ Noto da prima: ogni run ha lo **stesso quartiere** (il seme cambia orda e carte,
 - **Animazioni dell'ingegnere** (D-060, D-062, solo editor): corsa, corse laterali e indietro con la mira ferma, capriola sullo scatto, affondo sul tool. Resa, ritmo, durata: e la prima volta che qualcuno le vede in movimento.
 - **Audio** (D-048): e tutto sintetizzato e nessuno l'ha ascoltato. Volume, fastidio, suoni che mancano o che coprono gli altri.
 - **Glifi dei tasti** (D-059): giusti per il tuo controller? Cambiano quando passi al mouse?
-- **Fps** con F3 nel momento piu affollato e durante il boss, a 1280x800.
+- **Fps** con F3 nel momento piu affollato e durante il boss, a 1280x800, e **di notte con l'orda attorno** (il buio costa poco sulla CPU, ma le luci vere non sono mai state viste su un altro PC).
+- **Notte e lampioni** (D-058, nuovo, mai giocato da nessuno): il tramonto si nota in tempo? Il bordo della luce si capisce senza spiegazioni? Uscire dalla luce di notte e una scelta tesa o un errore da non ripetere? I lampioni (terza modalita del tool, 3 rottami, massimo 6) cambiano dove combatti, o li ignori? La notte e leggibile sul tuo schermo? Il prezzo e i raggi sono numeri di partenza: **annota se la notte e troppo dura o troppo facile** e in quale minuto.
 - Per ogni cosa strana: **seme, minuto di gioco, cosa stavi facendo.**
 
 ## Esito
