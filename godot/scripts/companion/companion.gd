@@ -140,7 +140,7 @@ func _physics_process(delta: float) -> void:
 ## di inseguimento dietro al giocatore.
 func _choose_destination() -> Vector3:
 	if scrap_field != null and carried < capacity:
-		var scrap: Variant = scrap_field.nearest(player.global_position, tuning.pickup_radius_from_player)
+		var scrap: Variant = _nearest_reachable_scrap()
 		if scrap != null:
 			return scrap
 	# Lontano dal giocatore segue il campo di percorso, che aggira le mura.
@@ -156,6 +156,22 @@ func _choose_destination() -> Vector3:
 	if back.is_zero_approx():
 		back = Vector3.BACK
 	return player.global_position + back.normalized() * tuning.follow_distance
+
+
+## Rottame piu vicino al giocatore che abbia una strada nel campo di percorso (R-05):
+## uno oltre un muro chiuso farebbe spingere il compagno contro le mura per sempre.
+func _nearest_reachable_scrap() -> Variant:
+	var best: Variant = null
+	var best_distance := INF
+	var routed := path_field != null and path_field.is_ready()
+	for position in scrap_field.positions_near(player.global_position, tuning.pickup_radius_from_player):
+		if routed and path_field.cost_at(position) == PathField.UNREACHABLE:
+			continue
+		var distance := _planar_distance(position, player.global_position)
+		if distance < best_distance:
+			best_distance = distance
+			best = position
+	return best
 
 
 func _collect_scrap() -> void:

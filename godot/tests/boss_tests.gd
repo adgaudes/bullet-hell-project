@@ -45,6 +45,7 @@ func _initialize() -> void:
 	await _test_abandons_unreachable_wall()
 	await _test_no_carrier_without_route()
 	await _test_spawn_point_is_walkable()
+	await _test_companion_ignores_sealed_scrap()
 	await _test_site_moves_when_occupied()
 	await _test_carrier_waits_without_site()
 	await _test_trench_slows()
@@ -358,6 +359,33 @@ func _test_spawn_point_is_walkable() -> void:
 	block.free()
 	await _frames(2)
 	_path.scan_static_obstacles()
+
+
+## R-05: il compagno non punta a un rottame chiuso dentro un anello di celle Raised.
+func _test_companion_ignores_sealed_scrap() -> void:
+	print("companion ignores sealed scrap")
+	_place_player(Vector3.ZERO)
+	var companion: Companion = _scene.get_node(^"Companion")
+	var scrap_cell := _grid.cell_at(Vector3(4.8, 0.0, 0.0))
+	var ring: Array[Vector2i] = []
+	for dy in range(-1, 2):
+		for dx in range(-1, 2):
+			if dx != 0 or dy != 0:
+				ring.append(scrap_cell + Vector2i(dx, dy))
+	_grid.set_cell_states(ring, RAISED)
+	_path.solve()
+	var before := _scrap.count()
+	_scrap.spawn_on_cell(scrap_cell, NORMAL)
+	var sealed := _cell_world(scrap_cell)
+	var destination: Vector3 = companion._choose_destination()
+	_check(_planar_distance(destination, sealed) > 1.0, "il rottame sigillato non e la destinazione del compagno")
+	_grid.set_cell_states(ring, NORMAL)
+	_path.solve()
+	destination = companion._choose_destination()
+	_check(_planar_distance(destination, sealed) < 0.5, "riaperto, il rottame torna a essere la destinazione")
+	_scrap.take_near(sealed, 1.0, 1)
+	_check(_scrap.count() == before, "pulizia")
+	await _frames(2)
 
 
 ## R-03: cantiere occupato dal giocatore con scorta sufficiente: ne sceglie un altro e costruisce.
