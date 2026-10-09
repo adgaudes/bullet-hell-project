@@ -1,4 +1,4 @@
-[gd_scene load_steps=23 format=3]
+[gd_scene load_steps=24 format=3]
 
 [ext_resource type="Script" path="res://scripts/services/skeleton_probe.gd" id="1_probe"]
 [ext_resource type="Script" path="res://scripts/arena/railway_district.gd" id="2_arena"]
@@ -22,6 +22,7 @@
 [ext_resource type="Script" path="res://scripts/audio/run_audio.gd" id="18_audio"]
 [ext_resource type="Script" path="res://scripts/ui/workshop_panel.gd" id="19_workshop"]
 [ext_resource type="Script" path="res://scripts/navigation/flow_preview.gd" id="20_flow"]
+[ext_resource type="Script" path="res://scripts/run/train_event.gd" id="22_train"]
 
 [node name="RailwayRun" type="Node3D"]
 script = ExtResource("1_probe")
@@ -106,10 +107,22 @@ script = ExtResource("19_workshop")
 script = ExtResource("20_day_night")
 district = NodePath("../District")
 
-[node name="Run" type="Node" parent="." node_paths=PackedStringArray("district", "player", "companion", "grid", "director", "weapon", "xp_field", "hud", "level_up_menu", "game_over", "workshop", "day_night", "lamp_field")]
+[node name="TrainEvent" type="Node3D" parent="." node_paths=PackedStringArray("grid", "district", "player", "companion", "director", "lamp_field", "scrap_field", "hud")]
+script = ExtResource("22_train")
+grid = NodePath("../TerrainGrid")
+district = NodePath("../District")
+player = NodePath("../Player")
+companion = NodePath("../Companion")
+director = NodePath("../EnemyDirector")
+lamp_field = NodePath("../LampField")
+scrap_field = NodePath("../ScrapField")
+hud = NodePath("../RunHud")
+
+[node name="Run" type="Node" parent="." node_paths=PackedStringArray("district", "player", "companion", "grid", "director", "weapon", "xp_field", "hud", "level_up_menu", "game_over", "workshop", "day_night", "lamp_field", "train_event")]
 script = ExtResource("14_run")
 day_night = NodePath("../DayNightCycle")
 lamp_field = NodePath("../LampField")
+train_event = NodePath("../TrainEvent")
 tuning = ExtResource("11_run_tuning")
 district = NodePath("../District")
 player = NodePath("../Player")

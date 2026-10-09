@@ -10,6 +10,7 @@ const XP_COLOR := Color(0.1, 0.85, 0.65)
 const BOSS_COLOR := Color(0.95, 0.6, 0.08)
 const DAY_COLOR := Color(1.0, 0.9, 0.55)
 const NIGHT_COLOR := Color(0.6, 0.65, 1.0)
+const TRAIN_COLOR := Color(1.0, 0.45, 0.3)
 ## Distanza della freccia di direzione dal centro dello schermo, in frazione del lato corto.
 const ARROW_RADIUS_RATIO := 0.36
 ## Ingombro di una scritta degli indicatori, per non sovrapporle.
@@ -153,14 +154,20 @@ func _ready() -> void:
 	set_kills(0)
 
 
-## Annuncio dell'arrivo: [param direction] e nel mondo (-Z = alto dello schermo).
+## Annuncio dell'arrivo del boss: [param direction] e nel mondo (-Z = alto dello schermo).
 func set_boss_warning(direction_name: String, direction: Vector3, seconds_left: float) -> void:
+	set_event_warning("IL DEMOLITORE ARRIVA DA %s" % direction_name, direction, seconds_left, BOSS_COLOR)
+
+
+## Annuncio con conto alla rovescia e freccia a bordo schermo verso [param direction]
+## (nel mondo): boss in arrivo, treno in arrivo (livello 2).
+func set_event_warning(text: String, direction: Vector3, seconds_left: float, color: Color) -> void:
 	var seconds := int(ceil(maxf(seconds_left, 0.0)))
-	if seconds != _boss_seconds_shown or direction_name != _boss_direction_shown:
+	if seconds != _boss_seconds_shown or text != _boss_direction_shown:
 		_boss_seconds_shown = seconds
-		_boss_direction_shown = direction_name
-		_boss_warning.text = "IL DEMOLITORE ARRIVA DA %s  -  %d" % [direction_name, seconds]
-		_boss_warning.add_theme_color_override(&"font_color", BOSS_COLOR)
+		_boss_direction_shown = text
+		_boss_warning.text = "%s  -  %d" % [text, seconds]
+		_boss_warning.add_theme_color_override(&"font_color", color)
 		_night_notice_left = 0.0
 	_boss_warning.show()
 	var size := _root.size
@@ -231,8 +238,18 @@ func marker_count() -> int:
 
 
 func clear_boss_warning() -> void:
+	clear_event_warning()
+
+
+func clear_event_warning() -> void:
 	_boss_warning.hide()
 	_boss_arrow.hide()
+	_boss_seconds_shown = -1
+	_boss_direction_shown = ""
+
+
+func event_warning_text() -> String:
+	return _boss_warning.text if _boss_warning.visible else ""
 
 
 func is_boss_warning_visible() -> bool:

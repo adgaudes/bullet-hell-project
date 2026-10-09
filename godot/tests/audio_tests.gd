@@ -12,7 +12,7 @@ const EXPECTED_IDS: Array[StringName] = [
 	&"scrap_pickup", &"scrap_spend", &"level_up", &"upgrade_chosen",
 	&"boss_warning", &"victory",
 	&"boss_spawn", &"boss_demolish", &"boss_barricade", &"carrier_pickup",
-	&"dusk", &"nightfall",
+	&"dusk", &"nightfall", &"train_horn",
 ]
 const FREQUENT_IDS: Array[StringName] = [&"nail_shot", &"enemy_death", &"xp_pickup", &"scrap_pickup"]
 

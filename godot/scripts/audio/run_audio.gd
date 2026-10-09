@@ -33,10 +33,11 @@ const SOUND_SETTINGS: Dictionary[StringName, Array] = {
 	&"victory": [-4.0, 0.0, 0.5],
 	&"dusk": [-6.0, 0.0, 1.0],
 	&"nightfall": [-4.0, 0.0, 1.0],
+	&"train_horn": [-4.0, 0.0, 0.8],
 }
 ## Suoni che un player occupato non cede mai a un altro (R-36): sono rari e
 ## portano un'informazione che il giocatore deve sentire fino in fondo.
-const PROTECTED_IDS: Array[StringName] = [&"boss_warning", &"victory"]
+const PROTECTED_IDS: Array[StringName] = [&"boss_warning", &"victory", &"train_horn"]
 
 @export var player: PlayerCharacter
 @export var weapon: AutoWeapon
@@ -182,6 +183,11 @@ func _connect_signals() -> void:
 		run.night_phase_changed.connect(_on_night_phase)
 		if run.lamp_field != null:
 			run.lamp_field.lamp_placed.connect(func(_cell: Vector2i) -> void: play(&"terrain_raise"))
+		if run.train_event != null:
+			# Fischio al preavviso e all'ingresso; un tonfo per ogni cosa travolta.
+			run.train_event.train_warned.connect(func(_direction: Vector3, _seconds: float) -> void: play(&"train_horn"))
+			run.train_event.train_passing.connect(func(_direction: Vector3) -> void: play(&"train_horn"))
+			run.train_event.train_hit.connect(func(_what: StringName) -> void: play(&"boss_demolish"))
 
 
 func _on_health_changed(health: int, _max_health: int) -> void:

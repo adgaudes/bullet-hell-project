@@ -55,6 +55,8 @@ const BOSS_DIRECTIONS := [
 @export var day_night: DayNightCycle
 ## Lampioni (D-058, tappa 2); senza nodo il tool ha due modalita.
 @export var lamp_field: LampField
+## Treno della ferrovia (D-066, livello 2); senza nodo non passa nessun treno.
+@export var train_event: TrainEvent
 
 var progression := RunProgression.new()
 var elapsed := 0.0
@@ -113,6 +115,7 @@ func _ready() -> void:
 	_boss_rng.seed = run_seed + 2
 	_check_scale()
 	_setup_night()
+	_setup_train()
 	# La cella protetta (0,0) e un residuo della parita Unreal (smoke test): nel livello
 	# nessuna cella e intoccabile (R-28).
 	grid.set_protected_cell(Vector2i(-1, -1))
@@ -154,6 +157,8 @@ func _physics_process(delta: float) -> void:
 	elapsed += delta
 	hud.set_time(elapsed)
 	_tick_night()
+	if train_event != null:
+		train_event.advance(elapsed, delta)
 	_tick_boss(delta)
 	_tick_markers(delta)
 	_open_next_level_up()
@@ -297,6 +302,8 @@ func _spawn_boss() -> void:
 	director.add_enemy(boss, Vector3(point.x, Demolisher.boss_spawn_height(), point.z))
 	boss.rotation.y = atan2(boss_direction.x, boss_direction.z)
 	boss.died.connect(_on_boss_died)
+	if train_event != null:
+		train_event.boss = boss
 	hud.set_boss_health(boss.health, boss.max_health)
 	boss_spawned.emit(boss)
 	print("PROTOTYPE01_BOSS_SPAWNED direction=%s x=%.1f z=%.1f health=%d" % [boss_direction_name, point.x, point.z, boss.health])
@@ -512,6 +519,22 @@ func restart() -> void:
 func return_to_menu() -> void:
 	get_tree().paused = false
 	get_tree().change_scene_to_file(MAIN_MENU_SCENE)
+
+
+# --- Treno della ferrovia (D-066) ---------------------------------------------------
+
+func _setup_train() -> void:
+	if train_event == null:
+		return
+	train_event.first_seconds = tuning.train_first_seconds
+	train_event.next_at = tuning.train_first_seconds
+	train_event.interval_seconds = tuning.train_interval_seconds
+	train_event.warning_seconds = tuning.train_warning_seconds
+	train_event.speed = tuning.train_speed
+	train_event.carriages = tuning.train_carriages
+	train_event.player_damage = tuning.train_player_damage
+	train_event.boss_damage = tuning.train_boss_damage
+	train_event.rng.seed = run_seed + 3
 
 
 # --- Ciclo giorno/notte (D-058, tappa 1) -----------------------------------------

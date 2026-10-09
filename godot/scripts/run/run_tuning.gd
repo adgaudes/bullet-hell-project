@@ -74,6 +74,17 @@ extends Resource
 ## Level-up consecutivi senza carte Rare prima della garanzia (regola 4).
 @export var pity_level_ups := 4
 
+@export_group("Train")
+## Treno della ferrovia (D-066), solo dove la scena ha un nodo TrainEvent: primo passaggio,
+## intervallo, preavviso, velocita, vagoni, danno al giocatore e al boss travolti.
+@export var train_first_seconds := 90.0
+@export var train_interval_seconds := 150.0
+@export var train_warning_seconds := 10.0
+@export var train_speed := 18.0
+@export var train_carriages := 5
+@export var train_player_damage := 2
+@export var train_boss_damage := 30
+
 @export_group("Boss")
 ## Secondi di livello prima della chiamata del boss (CAMPAIGN_STRUCTURE_SPEC: livello di 12-15 minuti).
 ## 0 = nessun boss. `-- --boss-at=N` sulla riga di comando lo anticipa.

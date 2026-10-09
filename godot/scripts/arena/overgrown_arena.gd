@@ -321,6 +321,13 @@ func _unit_sphere_mesh() -> SphereMesh:
 
 ## Istanzia un modello Blender e rimappa i materiali semantici sugli shader dell'arena.
 ## `params` sono gli instance uniform da impostare su ogni mesh del modello.
+## Istanza di un modello dell'arena con i materiali condivisi, per chi sta fuori
+## dall'arena (il treno del livello 2): il nodo appartiene a [param parent], non alla
+## ricostruzione dell'arena.
+func spawn_model(scene: PackedScene, parent: Node3D, local: Transform3D, params: Dictionary) -> Node3D:
+	return _model(scene, parent, local, params)
+
+
 func _model(scene: PackedScene, parent: Node3D, local: Transform3D, params: Dictionary) -> Node3D:
 	var model := scene.instantiate() as Node3D
 	model.transform = local
