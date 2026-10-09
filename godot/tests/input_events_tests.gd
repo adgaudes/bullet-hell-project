@@ -25,6 +25,12 @@ func _initialize() -> void:
 	await _test_move_actuation_threshold()
 	await _reload_scene()
 	await _test_tuning_switcher()
+	await _reload_scene()
+	_use_reference_tuning(_player)
+	await _test_hold_per_source()
+	await _reload_scene()
+	_use_reference_tuning(_player)
+	await _test_mouse_aim_switch()
 	print("PROTOTYPE01_TESTS %s failures=%d" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -167,6 +173,93 @@ func _test_tuning_switcher() -> void:
 	await _frames(240)
 	Input.action_release(&"move_right")
 	_check(absf(_player.velocity.x - 5.5) < 0.01, "velocita del preset Pesante 5,5 m/s (got %.3f)" % _player.velocity.x)
+
+
+## P-02: ogni sorgente tiene l'azione per conto suo. Clic sinistro tenuto, grilletto
+## tirato, clic rilasciato, grilletto che varia: un solo comando dello strumento.
+func _test_hold_per_source() -> void:
+	print("hold per source")
+	var cell := Vector2i(5, 3)
+	_grid.apply_command_at(_player.terrain_target, TerrainState.ToolMode.DIG)
+	_player.terrain_tool_mode = TerrainState.ToolMode.RAISE
+	var changes := [0]
+	_grid.cell_changed.connect(func(_c, _s): changes[0] += 1)
+	_mouse_button(MOUSE_BUTTON_LEFT, true)
+	await _frames(2)
+	_check(changes[0] == 1, "il clic comanda (got %d)" % changes[0])
+	_joy_motion(TRIGGER_RIGHT, 0.6)
+	await _frames(1)
+	_joy_motion(TRIGGER_RIGHT, 1.0)
+	await _frames(1)
+	_mouse_button(MOUSE_BUTTON_LEFT, false)
+	await _frames(1)
+	_joy_motion(TRIGGER_RIGHT, 0.8)
+	await _frames(1)
+	_joy_motion(TRIGGER_RIGHT, 1.0)
+	await _frames(2)
+	_check(changes[0] == 1 and _grid.state.get_state(cell) == TerrainState.CellState.NORMAL,
+		"grilletto tirato, clic rilasciato, grilletto che varia: nessun comando in piu (got %d)" % changes[0])
+	_joy_motion(TRIGGER_RIGHT, 0.0)
+	await _frames(1)
+	_mouse_button(MOUSE_BUTTON_LEFT, true)
+	await _frames(2)
+	_mouse_button(MOUSE_BUTTON_LEFT, false)
+	await _frames(1)
+	_check(changes[0] == 2 and _grid.state.get_state(cell) == TerrainState.CellState.RAISED,
+		"rilasciato tutto, una nuova pressione comanda di nuovo (got %d)" % changes[0])
+
+
+## P-01: la mira passa al mouse solo con uno spostamento cumulativo di 6 px entro
+## 0,25 s; con il mouse fermo da 0,5 s lo stick sinistro la riporta al controller.
+func _test_mouse_aim_switch() -> void:
+	print("mouse aim switch")
+	_check(_player.aim_device == PlayerCharacter.AimDevice.GAMEPAD, "si parte dal controller")
+	_mouse_motion(Vector2(1.0, 0.0))
+	await _frames(2)
+	_check(_player.aim_device == PlayerCharacter.AimDevice.GAMEPAD, "1 px di mouse non cambia dispositivo")
+	# La finestra scade (0,33 s): i pixel precedenti non contano piu.
+	await _frames(20)
+	_mouse_motion(Vector2(1.0, 0.0))
+	await _frames(1)
+	_mouse_motion(Vector2(0.0, 1.5))
+	await _frames(2)
+	_check(_player.aim_device == PlayerCharacter.AimDevice.GAMEPAD, "tocchi sparsi sotto soglia non cambiano dispositivo")
+	_mouse_motion(Vector2(8.0, 0.0))
+	await _frames(2)
+	_check(_player.aim_device == PlayerCharacter.AimDevice.MOUSE, "8 px di mouse -> mira mouse")
+	_joy_motion(LEFT_X, 1.0)
+	await _frames(10)
+	_check(_player.aim_device == PlayerCharacter.AimDevice.MOUSE, "stick sinistro col mouse appena mosso: resta il mouse")
+	await _frames(30)
+	_check(_player.aim_device == PlayerCharacter.AimDevice.GAMEPAD, "stick sinistro con mouse fermo da 0,5 s -> torna al controller")
+	_joy_motion(LEFT_X, 0.0)
+	await _frames(2)
+	# Tre frazioni di pixel in rapida successione sommano oltre la soglia: e un movimento vero.
+	for i in 3:
+		_mouse_motion(Vector2(2.5, 0.0))
+		await _frames(1)
+	await _frames(1)
+	_check(_player.aim_device == PlayerCharacter.AimDevice.MOUSE, "7,5 px cumulativi in 3 frame -> mira mouse")
+	await _frames(10)
+
+
+## [param relative] in pixel del viewport di gioco. Trappola: in headless la finestra
+## e 64x64 e lo stretch `canvas_items` scala `relative` di 20 prima che arrivi ai nodi.
+func _mouse_motion(relative: Vector2) -> void:
+	var event := InputEventMouseMotion.new()
+	event.position = Vector2(640.0, 400.0)
+	event.global_position = event.position
+	event.relative = relative * root.get_final_transform().get_scale()
+	Input.parse_input_event(event)
+
+
+func _mouse_button(button: MouseButton, pressed: bool) -> void:
+	var event := InputEventMouseButton.new()
+	event.button_index = button
+	event.pressed = pressed
+	event.position = Vector2(640.0, 400.0)
+	event.global_position = event.position
+	Input.parse_input_event(event)
 
 
 func _joy_motion(axis: JoyAxis, value: float) -> void:

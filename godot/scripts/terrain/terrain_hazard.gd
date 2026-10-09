@@ -33,6 +33,8 @@ var is_resting := false
 var _rest_left := 0.0
 var _shape := SphereShape3D.new()
 var _query := PhysicsShapeQueryParameters3D.new()
+## Stessa sfera contro il solo giocatore; creata una volta, riusata a ogni passo (T-09).
+var _player_query := PhysicsShapeQueryParameters3D.new()
 var _mesh: MeshInstance3D
 
 
@@ -43,6 +45,8 @@ func _ready() -> void:
 	_shape.radius = radius
 	_query.shape = _shape
 	_query.collision_mask = WORLD_STATIC_LAYER
+	_player_query.shape = _shape
+	_player_query.collision_mask = PLAYER_LAYER
 
 	var sphere := SphereMesh.new()
 	sphere.radius = radius
@@ -113,11 +117,8 @@ func _physics_process(delta: float) -> void:
 
 
 func _check_player_hit() -> bool:
-	var query := PhysicsShapeQueryParameters3D.new()
-	query.shape = _shape
-	query.transform = global_transform
-	query.collision_mask = PLAYER_LAYER
-	var hits := get_world_3d().direct_space_state.intersect_shape(query, 1)
+	_player_query.transform = global_transform
+	var hits := get_world_3d().direct_space_state.intersect_shape(_player_query, 1)
 	if hits.is_empty():
 		return false
 	var body: Node3D = hits[0].collider

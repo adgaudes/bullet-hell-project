@@ -58,6 +58,9 @@ const TWIST_RATE := 14.0
 ## Durata (s) dell'affondo di scavo e della capriola, qualunque sia la lunghezza dell'animazione.
 const DIG_SECONDS := 0.45
 const DODGE_SECONDS := 0.4
+## Il colpo subito prende solo il busto (DIG_BONES) e dura al massimo questo: in mezzo
+## all'orda le gambe continuano a correre (R-39).
+const HIT_SECONDS := 0.35
 
 var _tree: AnimationTree
 var _player: AnimationPlayer
@@ -75,17 +78,37 @@ var _fired: Dictionary[StringName, int] = {}
 
 
 ## Crea l'animatore per [param model] e lo aggiunge come suo figlio; null se il modello
-## non ha scheletro e animazioni.
+## non ha scheletro e animazioni, o se manca un clip richiesto (avviso con l'elenco).
+## Un secondo `attach` sullo stesso modello restituisce l'animatore esistente (R-37).
 static func attach(model: Node) -> CharacterAnimator:
+	for child in model.get_children():
+		if child is CharacterAnimator:
+			return child
 	var players := model.find_children("*", "AnimationPlayer", true, false)
 	var skeletons := model.find_children("*", "Skeleton3D", true, false)
 	if players.is_empty() or skeletons.is_empty():
 		return null
+	var player := players[0] as AnimationPlayer
+	var missing := PackedStringArray()
+	for animation in required_clips():
+		if not player.has_animation(animation):
+			missing.append(animation)
+	if not missing.is_empty():
+		push_warning("CharacterAnimator: %s senza i clip %s, nessuna animazione" % [model.name, ", ".join(missing)])
+		return null
 	var animator := CharacterAnimator.new()
 	animator.name = "CharacterAnimator"
 	model.add_child(animator)
-	animator._build(players[0], skeletons[0])
+	animator._build(player, skeletons[0])
 	return animator
+
+
+## Clip che il modello deve avere perche l'animatore funzioni.
+static func required_clips() -> Array[StringName]:
+	var clips: Array[StringName] = [IDLE, AIM, HIT, DEATH, DIG, DODGE]
+	for gait: StringName in GAITS:
+		clips.append(GAITS[gait][0])
+	return clips
 
 
 ## Miscela corrente fermo (0) / corsa (1).
@@ -169,7 +192,8 @@ func revive() -> void:
 
 
 func _fire(action: StringName) -> void:
-	if _dead:
+	# A movimento spento la richiesta non si accoda: partirebbe alla riaccensione (P-10).
+	if _dead or _frozen or not ActorMotion.enabled:
 		return
 	_fired[action] = fired_count(action) + 1
 	_tree.set("parameters/%s_shot/request" % action, AnimationNodeOneShot.ONE_SHOT_REQUEST_FIRE)
@@ -208,12 +232,14 @@ func _build(player: AnimationPlayer, skeleton: Skeleton3D) -> void:
 	blend.connect_node(&"upper", 0, &"move")
 	blend.connect_node(&"upper", 1, &"aim")
 
-	# Azioni a comando, una sopra l'altra: scavo (solo busto), capriola, colpo.
+	# Azioni a comando, una sopra l'altra: scavo (solo busto), capriola, colpo (solo busto).
 	var rates: Dictionary[String, float] = {}
 	var dig_shot := _one_shot(blend, "dig", DIG, DIG_SECONDS, &"upper", rates)
 	_filter(dig_shot, player.get_animation(DIG), DIG_BONES)
 	_one_shot(blend, "dodge", DODGE, DODGE_SECONDS, &"dig_shot", rates)
-	_one_shot(blend, "hit", HIT, 0.0, &"dodge_shot", rates)
+	var hit_seconds := minf(HIT_SECONDS, player.get_animation(HIT).length)
+	var hit_shot := _one_shot(blend, "hit", HIT, hit_seconds, &"dodge_shot", rates)
+	_filter(hit_shot, player.get_animation(HIT), DIG_BONES)
 	blend.connect_node(&"output", 0, &"hit_shot")
 
 	_tree = AnimationTree.new()

@@ -61,6 +61,7 @@ var _last_carried := 0
 func _ready() -> void:
 	# Vittoria, sconfitta e level-up suonano a gioco fermo.
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	# Cache gia pronta (o in arrivo dal thread avviato dal menu); altrimenti sintesi sincrona.
 	_streams = SfxLibrary.build_all()
 	var bus := SFX_BUS if AudioServer.get_bus_index(SFX_BUS) >= 0 else &"Master"
 	for i in POOL_SIZE:

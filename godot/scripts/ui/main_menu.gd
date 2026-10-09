@@ -36,6 +36,9 @@ func _ready() -> void:
 	if _profile != null:
 		_profile.changed.connect(_refresh)
 	_refresh()
+	# Gli effetti sonori si sintetizzano in un thread mentre il menu e aperto: "Gioca"
+	# li trova pronti invece di pagarli al caricamento del livello (R-40).
+	SfxLibrary.precache_async()
 	print("PROTOTYPE01_MENU_READY")
 	if wants_autostart(OS.get_cmdline_user_args()):
 		start_run.call_deferred()
