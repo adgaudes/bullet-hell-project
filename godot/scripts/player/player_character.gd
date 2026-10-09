@@ -114,15 +114,22 @@ func _ready() -> void:
 		tuning = PlayerTuning.new()
 	_movement.configure(tuning)
 
-	# Il colore di vertice della tuta e solo ombreggiatura: la tinta e lo stato (dash, colpo).
-	_body_material.vertex_color_use_as_albedo = true
-	_body_material.roughness = 0.8
+	# La tuta: la tinta e lo stato (dash, colpo) va in `albedo_color`. Col modello rifinito
+	# (D-071) l'ombreggiatura sta nella texture cotta; con quello a blocchi nel colore di vertice.
+	var suit_source := ActorModel.surface_material(_body, "suit") as StandardMaterial3D
+	if suit_source != null and suit_source.albedo_texture != null:
+		_body_material.albedo_texture = suit_source.albedo_texture
+		_body_material.roughness = suit_source.roughness
+	else:
+		_body_material.vertex_color_use_as_albedo = true
+		_body_material.roughness = 0.8
 	_body_material.next_pass = ActorModel.outline_material()
-	ActorModel.apply_materials(_body, {
-		"suit": _body_material,
-		# Lampada dell'elmetto e punta dell'attrezzo: l'indicatore del fronte, luminoso.
-		"detail": ActorModel.paint_material(Color.WHITE, 2.5),
-	})
+	var overrides: Dictionary[String, Material] = {"suit": _body_material}
+	if ActorModel.surface_material(_body, "detail") != null:
+		# Modello a blocchi: lampada dell'elmetto e punta dell'attrezzo dallo shader a colori di vertice.
+		overrides["detail"] = ActorModel.paint_material(Color.WHITE, 2.5)
+	ActorModel.apply_materials(_body, overrides)
+	ActorModel.outline_remaining_surfaces(_body)
 	_base_body_scale = _body.scale
 	_set_body_color(BODY_COLOR_LINEAR)
 	_model_rest = _model.transform

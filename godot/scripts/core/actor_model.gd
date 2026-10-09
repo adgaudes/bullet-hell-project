@@ -53,3 +53,26 @@ static func apply_materials(instance: MeshInstance3D, materials: Dictionary[Stri
 		var semantic := source.resource_name if source != null else ""
 		if materials.has(semantic):
 			instance.set_surface_override_material(surface, materials[semantic])
+
+
+## Il materiale importato della superficie con quel nome semantico, o null.
+static func surface_material(instance: MeshInstance3D, semantic: String) -> Material:
+	for surface in instance.mesh.get_surface_count():
+		var source := instance.mesh.surface_get_material(surface)
+		if source != null and source.resource_name == semantic:
+			return source
+	return null
+
+
+## Alle superfici importate non ancora sovrascritte (texture cotte, D-071) aggiunge il
+## contorno: una copia del materiale con `next_pass`, cosi la risorsa importata resta intatta.
+static func outline_remaining_surfaces(instance: MeshInstance3D) -> void:
+	for surface in instance.mesh.get_surface_count():
+		if instance.get_surface_override_material(surface) != null:
+			continue
+		var source := instance.mesh.surface_get_material(surface)
+		if source == null:
+			continue
+		var copy := source.duplicate() as Material
+		copy.next_pass = outline_material()
+		instance.set_surface_override_material(surface, copy)

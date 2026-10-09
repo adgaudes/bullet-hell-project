@@ -58,7 +58,11 @@ func _initialize() -> void:
 	var names := PackedStringArray()
 	for surface in mesh.mesh.get_surface_count():
 		names.append(mesh.mesh.surface_get_material(surface).resource_name)
-	_check(names.has("suit") and names.has("detail"), "superfici `suit` e `detail` (%s)" % ", ".join(names))
+	_check(names.has("suit") and names.has("lamp") and names.has("gear"), "superfici `suit`, `gear` e `lamp` (%s)" % ", ".join(names))
+	var suit := ActorModel.surface_material(mesh, "suit") as StandardMaterial3D
+	_check(suit != null and suit.albedo_texture != null, "la tuta ha la texture cotta (D-071)")
+	var lamp := ActorModel.surface_material(mesh, "lamp") as StandardMaterial3D
+	_check(lamp != null and lamp.emission_enabled, "la lampada e emissiva")
 	var bounds := mesh.get_aabb()
 	_check(bounds.size.y > 1.2, "la mesh ha l'altezza di un personaggio (%.2f m a riposo)" % bounds.size.y)
 

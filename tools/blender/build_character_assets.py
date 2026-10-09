@@ -391,7 +391,7 @@ class Builder:
         return obj
 
 
-def export(skeleton, obj, asset_name, root_name):
+def export(skeleton, obj, asset_name, root_name, vertex_color="ACTIVE"):
     root = bpy.data.objects.new(root_name, None)
     bpy.context.collection.objects.link(root)
     # L'export ignora la rotazione dell'oggetto armatura: la porta un nodo intermedio.
@@ -420,7 +420,7 @@ def export(skeleton, obj, asset_name, root_name):
         export_optimize_animation_size=True,
         export_skins=True,
         export_def_bones=False,
-        export_vertex_color="ACTIVE",
+        export_vertex_color=vertex_color,
         export_all_vertex_colors=False,
     )
     xs = [v.co.x for v in obj.data.vertices]
@@ -436,8 +436,8 @@ def export(skeleton, obj, asset_name, root_name):
 
 # --- Personaggi --------------------------------------------------------------------
 
-def build_player_engineer():
-    """Ingegnere: tozzo, gambe corte, busto e spalle larghi, testa e mani grandi; in piedi
+def build_player_engineer_blocky():
+    """Ingegnere a blocchi (D-060, D-062), tenuto per confronto: tozzo, gambe corte, busto e spalle larghi, testa e mani grandi; in piedi
     arriva a circa 1,75 m con l'elmetto, come la capsula. Tuta (materiale `suit`, colorata
     dal codice), elmetto crema con lampada ciano, zaino-officina verde petrolio con rotolo,
     bombola e antenna, attrezzo da terreno nella mano destra con la punta ciano. Disegnato
@@ -514,18 +514,401 @@ def build_player_engineer():
     return s, obj, "PlayerEngineer"
 
 
+
+# --- Personaggio rifinito (D-071) ------------------------------------------------------
+
+BAKE_SIZE = 1024
+BAKE_SAMPLES = 48
+
+
+def sock(sockets, identifier):
+    """Presa di un nodo per identificatore (i nodi Mix hanno piu prese con lo stesso nome)."""
+    for socket in sockets:
+        if socket.identifier == identifier:
+            return socket
+    raise KeyError(identifier)
+
+
+class RefinedBuilder:
+    """Pezzi come oggetti separati con smussi (Bevel) o forme arrotondate (Subdivision),
+    poi uniti in una mesh sola, con un gruppo di vertici per osso. Il colore di base
+    sta nell'attributo `Col` e serve solo alla cottura: la texture cotta porta colore,
+    usura degli spigoli, occlusione e sporco. Materiali semantici: `suit` (tinta dal
+    codice), `gear` (fisso), `lamp` (emissivo)."""
+
+    def __init__(self):
+        self.pieces = []
+        self.materials = {}
+        for name in ("suit", "gear", "lamp"):
+            mat = bpy.data.materials.get(name) or bpy.data.materials.new(name)
+            mat.use_nodes = True
+            self.materials[name] = mat
+
+    # -- primitive ------------------------------------------------------------------
+
+    def _mesh_object(self, name, bm, bone, color, mat, rot, center):
+        matrix = Matrix.Translation(Vector(center)) @ Euler(
+            (math.radians(rot[0]), math.radians(rot[1]), math.radians(rot[2])), "XYZ").to_matrix().to_4x4()
+        bmesh.ops.transform(bm, verts=bm.verts, matrix=matrix)
+        bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+        col = bm.loops.layers.float_color.new("Col")
+        for face in bm.faces:
+            face.smooth = True
+            for loop in face.loops:
+                loop[col] = (color[0], color[1], color[2], 1.0)
+        mesh = bpy.data.meshes.new(name)
+        bm.to_mesh(mesh)
+        bm.free()
+        mesh.materials.append(self.materials[mat])
+        obj = bpy.data.objects.new(name, mesh)
+        bpy.context.collection.objects.link(obj)
+        group = obj.vertex_groups.new(name=bone)
+        group.add(list(range(len(mesh.vertices))), 1.0, "REPLACE")
+        self.pieces.append(obj)
+        return obj
+
+    @staticmethod
+    def _finish_piece(obj, bevel, segments, subsurf, sharp_deg):
+        bpy.ops.object.select_all(action="DESELECT")
+        obj.select_set(True)
+        bpy.context.view_layer.objects.active = obj
+        if bevel > 0.0:
+            mod = obj.modifiers.new("Bevel", "BEVEL")
+            mod.width = bevel
+            mod.segments = segments
+            mod.limit_method = "ANGLE"
+            mod.angle_limit = math.radians(30.0)
+            mod.use_clamp_overlap = True
+            bpy.ops.object.modifier_apply(modifier=mod.name)
+        if subsurf > 0:
+            mod = obj.modifiers.new("Subdivision", "SUBSURF")
+            mod.levels = subsurf
+            mod.render_levels = subsurf
+            bpy.ops.object.modifier_apply(modifier=mod.name)
+        bpy.ops.object.shade_smooth()
+        if sharp_deg is not None:
+            try:
+                bpy.ops.object.shade_smooth_by_angle(angle=math.radians(sharp_deg))
+            except (AttributeError, TypeError):
+                pass
+
+    def box(self, bone, size, center, color, mat="gear", rot=(0.0, 0.0, 0.0), bevel=0.02, segments=2,
+            subsurf=0, sharp=40.0, top=(1.0, 1.0), bottom=(1.0, 1.0), front=(1.0, 1.0), back=(1.0, 1.0)):
+        """Scatola smussata (`bevel`) o arrotondata (`subsurf`); stesse rastremazioni del Builder."""
+        bm = bmesh.new()
+        verts = bmesh.ops.create_cube(bm, size=1.0)["verts"]
+        for v in verts:
+            x, y, z = v.co.x, v.co.y, v.co.z
+            tb = top if z > 0.0 else bottom
+            fb = front if y < 0.0 else back
+            v.co = Vector((x * size[0] * tb[0] * fb[0], y * size[1] * tb[1], z * size[2] * fb[1]))
+        obj = self._mesh_object("Piece", bm, bone, color, mat, rot, center)
+        self._finish_piece(obj, min(bevel, min(size) * 0.45), segments, subsurf, None if subsurf else sharp)
+        return obj
+
+    def cyl(self, bone, radius, depth, center, color, mat="gear", axis="z", sides=12, radius_top=None,
+            rot=(0.0, 0.0, 0.0), bevel=0.015, segments=2, sharp=40.0):
+        bm = bmesh.new()
+        verts = bmesh.ops.create_cone(
+            bm, cap_ends=True, cap_tris=False, segments=sides, radius1=radius,
+            radius2=radius if radius_top is None else radius_top, depth=depth)["verts"]
+        if axis == "x":
+            bmesh.ops.rotate(bm, verts=verts, matrix=Matrix.Rotation(math.radians(90.0), 3, "Y"))
+        elif axis == "y":
+            bmesh.ops.rotate(bm, verts=verts, matrix=Matrix.Rotation(math.radians(-90.0), 3, "X"))
+        obj = self._mesh_object("Piece", bm, bone, color, mat, rot, center)
+        self._finish_piece(obj, min(bevel, depth * 0.4, radius * 0.4), segments, 0, sharp)
+        return obj
+
+    def sphere(self, bone, radius, center, color, mat="gear", scale=(1.0, 1.0, 1.0), cut_below=None,
+               rot=(0.0, 0.0, 0.0)):
+        """Sfera liscia (facoltativamente schiacciata e tagliata sotto `cut_below`, in locale)."""
+        bm = bmesh.new()
+        bmesh.ops.create_uvsphere(bm, u_segments=16, v_segments=10, radius=radius)
+        if cut_below is not None:
+            below = [v for v in bm.verts if v.co.z < cut_below]
+            bmesh.ops.delete(bm, geom=below, context="VERTS")
+            rim = [e for e in bm.edges if e.is_boundary]
+            if rim:
+                bmesh.ops.holes_fill(bm, edges=rim)
+        for v in bm.verts:
+            v.co = Vector((v.co.x * scale[0], v.co.y * scale[1], v.co.z * scale[2]))
+        obj = self._mesh_object("Piece", bm, bone, color, mat, rot, center)
+        self._finish_piece(obj, 0.0, 1, 0, 60.0)
+        return obj
+
+    # -- unione, UV, cottura -----------------------------------------------------------
+
+    def to_object(self, name, skeleton):
+        for piece in self.pieces:
+            for group in piece.vertex_groups:
+                if group.name not in skeleton.joints:
+                    raise RuntimeError("Osso inesistente: %s" % group.name)
+        bpy.ops.object.select_all(action="DESELECT")
+        for piece in self.pieces:
+            piece.select_set(True)
+        bpy.context.view_layer.objects.active = self.pieces[0]
+        bpy.ops.object.join()
+        obj = bpy.context.view_layer.objects.active
+        obj.name = name
+        obj.data.name = name
+        attribute = obj.data.color_attributes["Col"]
+        obj.data.color_attributes.active_color = attribute
+        obj.data.color_attributes.render_color_index = obj.data.color_attributes.find("Col")
+        # UV per la texture cotta.
+        bpy.ops.object.mode_set(mode="EDIT")
+        bpy.ops.mesh.select_all(action="SELECT")
+        bpy.ops.uv.smart_project(angle_limit=math.radians(66.0), island_margin=0.004)
+        bpy.ops.object.mode_set(mode="OBJECT")
+        self._bake(obj, name)
+        obj.parent = skeleton.obj
+        obj.modifiers.new("Armature", "ARMATURE").object = skeleton.obj
+        return obj
+
+    def _bake(self, obj, name):
+        """Cuoce colore, usura degli spigoli, occlusione e sporco in una texture, poi
+        rimonta i materiali definitivi (Principled con la texture; `lamp` emissivo)."""
+        image = bpy.data.images.new(name + "_albedo", BAKE_SIZE, BAKE_SIZE)
+        image.colorspace_settings.name = "sRGB"
+        for mat_name, mat in self.materials.items():
+            self._bake_graph(mat, image, mat_name)
+        scene = bpy.context.scene
+        scene.render.engine = "CYCLES"
+        scene.cycles.device = "CPU"
+        scene.cycles.samples = BAKE_SAMPLES
+        scene.render.bake.margin = 6
+        scene.render.bake.use_clear = True
+        bpy.ops.object.select_all(action="DESELECT")
+        obj.select_set(True)
+        bpy.context.view_layer.objects.active = obj
+        bpy.ops.object.bake(type="EMIT")
+        image.pack()
+        for mat_name, mat in self.materials.items():
+            self._final_graph(mat, image, mat_name)
+        print("BAKED %s %dx%d samples=%d" % (image.name, BAKE_SIZE, BAKE_SIZE, BAKE_SAMPLES))
+
+    @staticmethod
+    def _bake_graph(mat, image, kind):
+        tree = mat.node_tree
+        tree.nodes.clear()
+        nodes, links = tree.nodes, tree.links
+        out = nodes.new("ShaderNodeOutputMaterial")
+        emit = nodes.new("ShaderNodeEmission")
+        links.new(emit.outputs["Emission"], out.inputs["Surface"])
+        col = nodes.new("ShaderNodeAttribute")
+        col.attribute_name = "Col"
+        # Usura degli spigoli: la curvatura (pointiness) schiarisce i bordi.
+        geo = nodes.new("ShaderNodeNewGeometry")
+        wear_ramp = nodes.new("ShaderNodeValToRGB")
+        wear_ramp.color_ramp.elements[0].position = 0.5
+        wear_ramp.color_ramp.elements[0].color = (1.0, 1.0, 1.0, 1.0)
+        wear_ramp.color_ramp.elements[1].position = 0.62
+        wear_ramp.color_ramp.elements[1].color = (1.35, 1.3, 1.2, 1.0)
+        links.new(geo.outputs["Pointiness"], wear_ramp.inputs["Fac"])
+        # Occlusione: scurisce gli incavi.
+        ao = nodes.new("ShaderNodeAmbientOcclusion")
+        ao.inputs["Distance"].default_value = 0.18
+        ao.samples = 8
+        ao_ramp = nodes.new("ShaderNodeValToRGB")
+        ao_ramp.color_ramp.elements[0].position = 0.3
+        ao_ramp.color_ramp.elements[0].color = (0.55, 0.52, 0.5, 1.0)
+        ao_ramp.color_ramp.elements[1].position = 0.95
+        ao_ramp.color_ramp.elements[1].color = (1.0, 1.0, 1.0, 1.0)
+        links.new(ao.outputs["AO"], ao_ramp.inputs["Fac"])
+        # Grana e sporco: rumore fine e macchie larghe; piu sporco verso i piedi.
+        coords = nodes.new("ShaderNodeTexCoord")
+        grain = nodes.new("ShaderNodeTexNoise")
+        grain.inputs["Scale"].default_value = 40.0 if kind == "suit" else 25.0
+        grain.inputs["Detail"].default_value = 4.0
+        grain_ramp = nodes.new("ShaderNodeValToRGB")
+        grain_ramp.color_ramp.elements[0].position = 0.3
+        grain_ramp.color_ramp.elements[0].color = (0.86, 0.85, 0.84, 1.0)
+        grain_ramp.color_ramp.elements[1].position = 0.7
+        grain_ramp.color_ramp.elements[1].color = (1.0, 1.0, 1.0, 1.0)
+        links.new(coords.outputs["Object"], grain.inputs["Vector"])
+        links.new(grain.outputs["Fac"], grain_ramp.inputs["Fac"])
+        stains = nodes.new("ShaderNodeTexNoise")
+        stains.inputs["Scale"].default_value = 6.0
+        stains.inputs["Detail"].default_value = 3.0
+        stains_ramp = nodes.new("ShaderNodeValToRGB")
+        stains_ramp.color_ramp.elements[0].position = 0.42
+        stains_ramp.color_ramp.elements[0].color = (0.62, 0.55, 0.46, 1.0)
+        stains_ramp.color_ramp.elements[1].position = 0.55
+        stains_ramp.color_ramp.elements[1].color = (1.0, 1.0, 1.0, 1.0)
+        links.new(coords.outputs["Object"], stains.inputs["Vector"])
+        links.new(stains.outputs["Fac"], stains_ramp.inputs["Fac"])
+        height = nodes.new("ShaderNodeSeparateXYZ")
+        links.new(coords.outputs["Object"], height.inputs["Vector"])
+        mud = nodes.new("ShaderNodeMapRange")
+        mud.inputs["From Min"].default_value = 0.05
+        mud.inputs["From Max"].default_value = 0.6
+        mud.inputs["To Min"].default_value = 0.0
+        mud.inputs["To Max"].default_value = 1.0
+        links.new(height.outputs["Z"], mud.inputs["Value"])
+        mud_mix = nodes.new("ShaderNodeMix")
+        mud_mix.data_type = "RGBA"
+        sock(mud_mix.inputs, "A_Color").default_value = (0.45, 0.33, 0.2, 1.0)
+        links.new(mud.outputs["Result"], sock(mud_mix.inputs, "Factor_Float"))
+
+        def multiply(a, b):
+            node = nodes.new("ShaderNodeMix")
+            node.data_type = "RGBA"
+            node.blend_type = "MULTIPLY"
+            sock(node.inputs, "Factor_Float").default_value = 1.0
+            links.new(a, sock(node.inputs, "A_Color"))
+            links.new(b, sock(node.inputs, "B_Color"))
+            return sock(node.outputs, "Result_Color")
+
+        shaded = multiply(col.outputs["Color"], wear_ramp.outputs["Color"])
+        shaded = multiply(shaded, ao_ramp.outputs["Color"])
+        shaded = multiply(shaded, grain_ramp.outputs["Color"])
+        if kind != "lamp":
+            shaded = multiply(shaded, stains_ramp.outputs["Color"])
+            links.new(shaded, sock(mud_mix.inputs, "B_Color"))
+            shaded = sock(mud_mix.outputs, "Result_Color")
+        links.new(shaded, emit.inputs["Color"])
+        target = nodes.new("ShaderNodeTexImage")
+        target.image = image
+        nodes.active = target
+
+    @staticmethod
+    def _final_graph(mat, image, kind):
+        tree = mat.node_tree
+        tree.nodes.clear()
+        nodes, links = tree.nodes, tree.links
+        out = nodes.new("ShaderNodeOutputMaterial")
+        shader = nodes.new("ShaderNodeBsdfPrincipled")
+        tex = nodes.new("ShaderNodeTexImage")
+        tex.image = image
+        links.new(tex.outputs["Color"], shader.inputs["Base Color"])
+        shader.inputs["Roughness"].default_value = {"suit": 0.85, "gear": 0.65, "lamp": 0.4}[kind]
+        if kind == "lamp":
+            links.new(tex.outputs["Color"], shader.inputs["Emission Color"])
+            shader.inputs["Emission Strength"].default_value = 3.0
+        links.new(shader.outputs["BSDF"], out.inputs["Surface"])
+
+
+def build_player_engineer_refined():
+    """Ingegnere rifinito (D-071): stesse proporzioni e scheletro della versione a
+    blocchi, ma pezzi smussati, testa, mani e stivali arrotondati, ginocchiere,
+    cinturone con tasche, sciarpa, occhialoni e respiratore, elmetto a cupola con tesa
+    e lampada, zaino con tubi e bombola, attrezzo con serbatoio; colore, usura,
+    occlusione e sporco cotti in una texture 1024."""
+    s = Skeleton()
+    b = RefinedBuilder()
+    SUIT = shade(0.82)
+    SUIT_DARK = shade(0.62)
+    STEEL = (0.42, 0.42, 0.44)
+
+    # Gambe: coscia e stinco smussati, ginocchiera arrotondata, stivale a punta tonda con suola.
+    for side, sign in ((".L", 1.0), (".R", -1.0)):
+        hip, knee, ankle = s.head("DEF-thigh" + side), s.head("DEF-shin" + side), s.head("DEF-foot" + side)
+        b.box("DEF-thigh" + side, (0.24, 0.28, hip.z - knee.z + 0.1), (hip.x, 0.0, (hip.z + knee.z) * 0.5 + 0.01),
+              SUIT_DARK, mat="suit", bevel=0.05, segments=3)
+        b.box("DEF-shin" + side, (0.22, 0.26, knee.z - ankle.z + 0.06), (hip.x, 0.01, (knee.z + ankle.z) * 0.5 + 0.03),
+              SUIT_DARK, mat="suit", bevel=0.05, segments=3)
+        b.box("DEF-shin" + side, (0.26, 0.14, 0.16), (hip.x, -0.1, knee.z - 0.01), LEATHER, subsurf=2)
+        b.box("DEF-foot" + side, (0.27, 0.42, 0.2), (hip.x, -0.06, 0.13), BOOT, subsurf=2, front=(0.8, 0.6))
+        b.box("DEF-foot" + side, (0.29, 0.44, 0.05), (hip.x, -0.06, 0.03), DARK_METAL, bevel=0.015)
+        b.box("DEF-foot" + side, (0.25, 0.06, 0.14), (hip.x, 0.14, 0.2), LEATHER, bevel=0.02)
+
+    hips_z = s.head(HIPS).z
+    waist_z = s.head(SPINE).z
+    chest_z = s.head(CHEST).z
+    neck_z = s.tail(CHEST).z
+    # Bacino, cinturone con fibbia e tasche arrotondate.
+    b.box(HIPS, (0.54, 0.38, 0.24), (0.0, 0.0, hips_z + 0.05), SUIT_DARK, mat="suit", bevel=0.06, segments=3,
+          bottom=(0.8, 0.9))
+    b.box(HIPS, (0.58, 0.42, 0.1), (0.0, 0.0, waist_z - 0.02), LEATHER, bevel=0.02)
+    b.box(HIPS, (0.1, 0.03, 0.08), (0.0, -0.22, waist_z - 0.02), STEEL, bevel=0.01)
+    b.box(HIPS, (0.17, 0.11, 0.18), (0.22, -0.22, waist_z - 0.08), CANVAS, subsurf=1)
+    b.box(HIPS, (0.14, 0.1, 0.15), (-0.24, 0.2, waist_z - 0.08), CANVAS, subsurf=1)
+    # Busto in due pezzi, pettorina con cerniera, taschino.
+    b.box(SPINE, (0.56, 0.4, chest_z - waist_z + 0.08), (0.0, 0.0, (waist_z + chest_z) * 0.5 + 0.02), SUIT,
+          mat="suit", bevel=0.06, segments=3)
+    b.box(CHEST, (0.68, 0.46, neck_z - chest_z + 0.1), (0.0, 0.0, (chest_z + neck_z) * 0.5), SUIT, mat="suit",
+          bevel=0.08, segments=3, bottom=(0.84, 0.88))
+    b.box(CHEST, (0.03, 0.02, neck_z - waist_z - 0.06), (0.0, -0.24, (waist_z + neck_z) * 0.5), DARK_METAL, bevel=0.005)
+    b.box(CHEST, (0.16, 0.03, 0.12), (-0.16, -0.245, (chest_z + neck_z) * 0.5 + 0.02), SUIT_DARK, mat="suit", bevel=0.01)
+    b.box(CHEST, (0.1, 0.02, 0.06), (0.14, -0.25, (chest_z + neck_z) * 0.5 + 0.05), CORAL, bevel=0.008)
+    # Sciarpa arrotondata attorno al collo.
+    b.cyl(CHEST, 0.27, 0.12, (0.0, -0.01, neck_z + 0.03), CORAL, sides=14, bevel=0.04, segments=3)
+    b.box(CHEST, (0.1, 0.06, 0.18), (0.16, -0.2, neck_z - 0.07), CORAL, subsurf=1)
+
+    # Zaino-officina: corpo smussato, tasca, rotolo, bombola con valvola, tubo, antenna con bandierina.
+    pack_z = (chest_z + neck_z) * 0.5 - 0.04
+    b.box(CHEST, (0.5, 0.32, 0.48), (0.0, 0.37, pack_z), TEAL, bevel=0.05, segments=3)
+    b.box(CHEST, (0.28, 0.08, 0.22), (-0.04, 0.55, pack_z - 0.02), CANVAS, subsurf=1)
+    b.cyl(CHEST, 0.11, 0.64, (0.0, 0.39, pack_z - 0.32), CANVAS, axis="x", sides=14, bevel=0.03)
+    b.cyl(CHEST, 0.085, 0.46, (-0.32, 0.39, pack_z), COPPER, sides=14, bevel=0.03)
+    b.cyl(CHEST, 0.04, 0.08, (-0.32, 0.39, pack_z + 0.26), STEEL, sides=10, bevel=0.01)
+    b.cyl(CHEST, 0.025, 0.3, (-0.2, 0.45, pack_z + 0.2), DARK_METAL, sides=8, rot=(0.0, 50.0, 0.0), bevel=0.005)
+    b.cyl(CHEST, 0.018, 0.78, (0.2, 0.47, pack_z + 0.55), DARK_METAL, sides=8, bevel=0.004)
+    b.box(CHEST, (0.03, 0.2, 0.13), (0.2, 0.58, pack_z + 0.86), CORAL, bevel=0.006)
+    for x in (-0.2, 0.2):
+        b.box(CHEST, (0.06, 0.1, 0.5), (x, 0.17, pack_z - 0.02), LEATHER, bevel=0.015)
+
+    # Testa arrotondata, occhialoni con lenti, respiratore con filtri, elmetto a cupola con tesa e lampada.
+    head_z = s.head(HEAD).z
+    b.box(HEAD, (0.4, 0.38, 0.32), (0.0, -0.02, head_z + 0.17), SKIN, bevel=0.12, segments=4)
+    b.box(HEAD, (0.06, 0.05, 0.06), (0.0, -0.2, head_z + 0.14), SKIN, subsurf=2)
+    for x in (-0.11, 0.11):
+        b.cyl(HEAD, 0.075, 0.06, (x, -0.2, head_z + 0.22), DARK_METAL, axis="y", sides=14, bevel=0.015)
+        b.cyl(HEAD, 0.055, 0.02, (x, -0.235, head_z + 0.22), CYAN_LIGHT, mat="lamp", axis="y", sides=12, bevel=0.005)
+    b.box(HEAD, (0.24, 0.05, 0.04), (0.0, -0.2, head_z + 0.22), DARK_METAL, bevel=0.01)
+    b.box(HEAD, (0.3, 0.12, 0.13), (0.0, -0.17, head_z + 0.06), shade(0.7), bevel=0.03, segments=3)
+    for x in (-0.12, 0.12):
+        b.cyl(HEAD, 0.045, 0.05, (x, -0.22, head_z + 0.05), STEEL, axis="y", sides=10, bevel=0.01)
+    b.cyl(HEAD, 0.35, 0.05, (0.0, -0.04, head_z + 0.32), CREAM, sides=18, bevel=0.015, segments=3)
+    b.sphere(HEAD, 0.29, (0.0, -0.01, head_z + 0.31), CREAM, scale=(1.0, 1.0, 0.85), cut_below=0.0)
+    b.cyl(HEAD, 0.07, 0.1, (0.0, -0.27, head_z + 0.43), DARK_METAL, axis="y", sides=12, bevel=0.015)
+    b.cyl(HEAD, 0.06, 0.03, (0.0, -0.33, head_z + 0.43), CYAN_LIGHT, mat="lamp", axis="y", sides=12, bevel=0.005)
+
+    # Braccia: spallaccio, braccio e avambraccio smussati, polsino, guantone arrotondato con pollice.
+    for side, sign in ((".L", 1.0), (".R", -1.0)):
+        shoulder, elbow, wrist = (s.head("DEF-upper_arm" + side), s.head("DEF-forearm" + side),
+                                  s.head("DEF-hand" + side))
+        b.box("DEF-shoulder" + side, (0.28, 0.36, 0.14), (shoulder.x - sign * 0.01, shoulder.y - 0.03, shoulder.z + 0.1),
+              SUIT, mat="suit", bevel=0.05, segments=3, top=(0.8, 0.8))
+        b.box("DEF-upper_arm" + side, (abs(elbow.x - shoulder.x) + 0.1, 0.21, 0.21),
+              ((shoulder.x + elbow.x) * 0.5, shoulder.y, shoulder.z), SUIT, mat="suit", bevel=0.06, segments=3)
+        b.box("DEF-forearm" + side, (abs(wrist.x - elbow.x) + 0.06, 0.2, 0.2),
+              ((elbow.x + wrist.x) * 0.5 + sign * 0.02, elbow.y, elbow.z), SUIT_DARK, mat="suit", bevel=0.06, segments=3)
+        b.cyl("DEF-forearm" + side, 0.115, 0.07, (wrist.x - sign * 0.02, wrist.y, wrist.z), LEATHER, axis="x",
+              sides=14, bevel=0.015)
+        b.box("DEF-hand" + side, (0.2, 0.22, 0.2), (wrist.x + sign * 0.1, wrist.y, wrist.z), LEATHER, subsurf=2)
+        b.box("DEF-hand" + side, (0.09, 0.08, 0.08), (wrist.x + sign * 0.06, wrist.y - 0.13, wrist.z + 0.02), LEATHER,
+              subsurf=2)
+
+    # Attrezzo da terreno nella destra: canna, serbatoio con valvola, impugnatura, punta luminosa.
+    grip = s.head("DEF-hand.R") + Vector((-0.09, 0.0, 0.0))
+    b.box("DEF-hand.R", (0.64, 0.12, 0.12), (grip.x - 0.2, grip.y, grip.z - 0.16), DARK_METAL, bevel=0.03, segments=3)
+    b.cyl("DEF-hand.R", 0.11, 0.3, (grip.x + 0.02, grip.y, grip.z - 0.2), COPPER, axis="x", sides=14, bevel=0.03)
+    b.cyl("DEF-hand.R", 0.03, 0.06, (grip.x + 0.02, grip.y, grip.z - 0.06), STEEL, sides=10, bevel=0.008)
+    b.cyl("DEF-hand.R", 0.03, 0.14, (grip.x - 0.3, grip.y, grip.z - 0.07), LEATHER, sides=10, bevel=0.008)
+    b.cyl("DEF-hand.R", 0.09, 0.08, (grip.x - 0.5, grip.y, grip.z - 0.16), STEEL, axis="x", sides=14, bevel=0.01)
+    b.box("DEF-hand.R", (0.1, 0.2, 0.2), (grip.x - 0.58, grip.y, grip.z - 0.16), CYAN_LIGHT, mat="lamp", bevel=0.03,
+          segments=3)
+    obj = b.to_object("PlayerEngineerMesh", s)
+    return s, obj, "PlayerEngineer"
+
+
+# Nome dell'asset -> (costruttore, colore di vertice nell'export). Il modello rifinito ha
+# il colore nella texture cotta: il colore di vertice resterebbe e Godot lo moltiplicherebbe.
 ASSETS = {
-    "player_engineer": build_player_engineer,
+    "player_engineer": (build_player_engineer_refined, "NONE"),
+    "player_engineer_blocky": (build_player_engineer_blocky, "ACTIVE"),
 }
 
 
 def main():
     argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
-    names = argv or list(ASSETS)
+    names = argv or ["player_engineer"]
     for name in names:
         bpy.ops.wm.read_factory_settings(use_empty=True)
-        skeleton, obj, root_name = ASSETS[name]()
-        export(skeleton, obj, name, root_name)
+        builder, vertex_color = ASSETS[name]
+        skeleton, obj, root_name = builder()
+        export(skeleton, obj, name, root_name, vertex_color)
 
 
 main()
