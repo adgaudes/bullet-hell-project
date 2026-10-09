@@ -102,13 +102,18 @@ func setup(hp: int, body_mesh: Mesh, base_material: Material, flash_material: Ma
 	_flash_material = flash_material
 	_body = MeshInstance3D.new()
 	_body.mesh = body_mesh
-	_body.material_override = base_material
+	ActorModel.dress(_body, base_material)
 	# Origine del modello a terra, quella del nemico al centro della capsula.
 	_body.position.y = -HEIGHT * 0.5
 	add_child(_body)
 	_body_rest = _body.transform
 	_gait_serial += 1
 	_gait_phase = fmod(_gait_serial * GAIT_PHASE_STEP, TAU)
+
+
+## Il materiale "vernice" di questo nemico (base, veloce o saltatore).
+func paint_material() -> Material:
+	return _base_material
 
 
 ## Restituisce true se il colpo lo uccide.
@@ -163,7 +168,7 @@ func tick_visuals(delta: float) -> void:
 	if _flash_left > 0.0:
 		_flash_left -= delta
 		if _flash_left <= 0.0:
-			_body.material_override = _base_material
+			ActorModel.dress(_body, _base_material)
 	if ActorMotion.enabled:
 		_animate(delta)
 	elif not _at_rest:

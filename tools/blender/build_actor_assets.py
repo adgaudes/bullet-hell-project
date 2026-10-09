@@ -29,6 +29,9 @@ import bmesh
 import bpy
 from mathutils import Euler, Matrix, Vector
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from refined import StaticBuilder  # noqa: E402
+
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 OUT_DIR = os.path.join(ROOT, "godot", "assets", "models")
 
@@ -142,7 +145,7 @@ class Builder:
         return obj
 
 
-def export(obj, asset_name):
+def export(obj, asset_name, vertex_color="ACTIVE"):
     os.makedirs(OUT_DIR, exist_ok=True)
     path = os.path.join(OUT_DIR, asset_name + ".glb")
     bpy.ops.object.select_all(action="DESELECT")
@@ -157,7 +160,7 @@ def export(obj, asset_name):
         export_cameras=False,
         export_lights=False,
         export_animations=False,
-        export_vertex_color="ACTIVE",
+        export_vertex_color=vertex_color,
         export_all_vertex_colors=False,
     )
     xs = [v.co.x for v in obj.data.vertices]
@@ -172,7 +175,7 @@ def export(obj, asset_name):
 
 # --- Attori ------------------------------------------------------------------------
 
-def build_companion_cart():
+def build_companion_cart_blocky():
     """Compagno: carretto improvvisato di 0,8 x 1,0 m. Cofano chiaro davanti (ci si monta
     la torretta, a y = 0,25 e z = 0,65), cassone di assi dietro col pianale a z = 0,60
     (i cubetti di rottame ci stanno sopra), archetto posteriore a z = 0,80 per la calamita,
@@ -216,7 +219,7 @@ def build_companion_cart():
     return b.to_object("CompanionCart")
 
 
-def build_scavenger():
+def build_scavenger_blocky():
     """Rottamatore: macchina-granchio tozza. Scafo color ruggine (vernice), muso a cuneo
     con visiera luminosa che sporge (si vede anche dall'alto), due chele in avanti,
     cingoli scuri, portapacchi piatto a z = 0,66 per il rottame. Una sola superficie."""
@@ -244,7 +247,7 @@ def build_scavenger():
     return b.to_object("Scavenger")
 
 
-def build_demolisher():
+def build_demolisher_blocky():
     """Demolitore: ruspa di rottami, capsula 0,9 x 2,4 m. Cingoli scuri, scafo giallo
     (vernice), cofano in avanti con griglia, cabina scura arretrata con fessura rossa
     luminosa e lampeggiante sul tetto, ciminiere, contrappeso dietro. La lama e un asset
@@ -280,7 +283,7 @@ def build_demolisher():
     return b.to_object("Demolisher")
 
 
-def build_demolisher_blade():
+def build_demolisher_blade_blocky():
     """Lama da demolizione: larga 2,3 m, alta 1,1 m, concava, con filo consumato in basso,
     denti di rottame in cima e bracci di spinta verso lo scafo. Origine al centro della
     lama (il codice la tiene a 0,6 m da terra, 1,15 m davanti al boss, e la fa martellare)."""
@@ -299,7 +302,7 @@ def build_demolisher_blade():
     return b.to_object("DemolisherBlade")
 
 
-def build_driller():
+def build_driller_blocky():
     """Trivella (D-066): macchina da galleria su cingoli, capsula 0,9 x 2,4 m come il
     Demolitore. Scafo basso e tozzo (vernice), collare d'acciaio in avanti dove si
     innesta la punta (asset separato `driller_bit`, che il codice fa girare), cabina
@@ -334,7 +337,7 @@ def build_driller():
     return b.to_object("Driller")
 
 
-def build_driller_bit():
+def build_driller_bit_blocky():
     """Punta della Trivella: cono d'acciaio lungo 1,5 m con tre creste elicoidali e
     denti consumati. Origine alla base del cono (dove si innesta nel collare); l'asse
     e +Y (in Godot -Z): il codice la fa girare attorno al proprio asse."""
@@ -352,23 +355,224 @@ def build_driller_bit():
     return b.to_object("DrillerBit")
 
 
+# --- Attori rifiniti con texture cotta (D-072) ------------------------------------------
+# Stesse misure e origini dei modelli a blocchi (il codice di gioco le usa), pezzi
+# smussati o arrotondati, dettagli in piu, colore e usura cotti in una texture.
+
+PAINT = (0.86, 0.86, 0.84)
+PAINT_DARK = (0.62, 0.62, 0.6)
+
+
+def build_companion_cart():
+    """Compagno rifinito: carretto con cofano bombato, parafanghi, cassone di assi,
+    faro ciclopico, ruote con mozzo, antenna con bandierina e ruota di scorta."""
+    b = StaticBuilder()
+    for x in (-0.4, 0.4):
+        for y in (-0.3, 0.3):
+            b.cyl(0.2, 0.16, (x, y, 0.2), TIRE, axis="x", sides=14, bevel=0.03, segments=3)
+            b.cyl(0.1, 0.18, (x, y, 0.2), HAZARD, axis="x", sides=10, bevel=0.02)
+            b.cyl(0.04, 0.2, (x, y, 0.2), DARK_METAL, axis="x", sides=8, bevel=0.01)
+            b.box((0.2, 0.5, 0.1), (x, y, 0.42), PAINT_DARK, paint=True, bevel=0.03, segments=3)
+    b.box((0.62, 0.98, 0.16), (0.0, 0.0, 0.3), DARK_METAL, bevel=0.03, segments=3)
+    # Cofano bombato con presa d'aria, pannello verde, paraurti.
+    b.box((0.7, 0.44, 0.3), (0.0, 0.29, 0.5), PAINT, paint=True, front=(0.88, 0.8), bevel=0.07, segments=4)
+    for i in range(3):
+        b.box((0.3, 0.015, 0.02), (-0.14, 0.2 + i * 0.05, 0.66), DARK_METAL, bevel=0.004)
+    b.box((0.3, 0.3, 0.02), (-0.14, 0.27, 0.655), TEAL, bevel=0.006)
+    b.box((0.76, 0.08, 0.1), (0.0, 0.52, 0.3), STEEL, bevel=0.025, segments=3)
+    b.cyl(0.11, 0.06, (-0.12, 0.5, 0.44), WARM_LIGHT, emit=True, axis="y", sides=14, bevel=0.01)
+    b.cyl(0.13, 0.04, (-0.12, 0.48, 0.44), DARK_METAL, axis="y", sides=14, bevel=0.01)
+    b.cyl(0.06, 0.05, (0.2, 0.5, 0.42), WARM_LIGHT, emit=True, axis="y", sides=10, bevel=0.008)
+    b.box((0.64, 0.05, 0.1), (0.0, 0.49, 0.585), HAZARD, bevel=0.012)
+    b.box((0.72, 0.1, 0.035), (0.0, 0.44, 0.665), HAZARD, bevel=0.008)
+    # Cassone: corpo, pianale, sponde di assi con montanti.
+    b.box((0.7, 0.58, 0.22), (0.0, -0.21, 0.47), PAINT, paint=True, bottom=(0.9, 0.95), bevel=0.04, segments=3)
+    b.box((0.74, 0.6, 0.03), (0.0, -0.21, 0.585), DARK_METAL, bevel=0.008)
+    for x in (-0.37, 0.37):
+        for k in range(2):
+            b.box((0.05, 0.6, 0.065), (x, -0.21, 0.63 + k * 0.075), WOOD, bevel=0.012)
+        for y in (-0.48, 0.06):
+            b.box((0.06, 0.04, 0.18), (x, y, 0.68), DARK_METAL, bevel=0.008)
+    for k in range(2):
+        b.box((0.74, 0.05, 0.065), (0.0, 0.08, 0.63 + k * 0.075), WOOD, bevel=0.012)
+    b.box((0.2, 0.02, 0.1), (0.12, -0.52, 0.5), RUST, bevel=0.005)
+    # Archetto posteriore per la calamita.
+    for x in (-0.33, 0.33):
+        b.cyl(0.03, 0.22, (x, -0.45, 0.69), STEEL, sides=10, bevel=0.008)
+    b.cyl(0.035, 0.72, (0.0, -0.45, 0.77), STEEL, axis="x", sides=10, bevel=0.008)
+    # Scarico storto, antenna con bandierina, ruota di scorta.
+    b.cyl(0.045, 0.34, (0.31, 0.14, 0.8), RUST, sides=10, rot=(0.0, 8.0, 0.0), bevel=0.01)
+    b.cyl(0.06, 0.06, (0.335, 0.14, 0.97), DARK_METAL, sides=10, rot=(0.0, 8.0, 0.0), bevel=0.012)
+    b.cyl(0.015, 0.55, (-0.3, -0.42, 1.0), DARK_METAL, sides=8, bevel=0.004)
+    b.box((0.03, 0.16, 0.1), (-0.3, -0.34, 1.22), CORAL, bevel=0.006)
+    b.cyl(0.15, 0.08, (-0.42, -0.1, 0.52), TIRE, axis="x", sides=14, bevel=0.025, segments=3)
+    b.cyl(0.07, 0.09, (-0.42, -0.1, 0.52), HAZARD, axis="x", sides=10, bevel=0.015)
+    return b.to_object("CompanionCart")
+
+
+def build_scavenger():
+    """Rottamatore rifinito: scafo bombato, muso a cuneo con visiera incassata, chele
+    articolate, cingoli con rulli, toppe, scarichi e antenna con spia."""
+    b = StaticBuilder()
+    track = [(-0.37, 0.1), (-0.27, 0.0), (0.27, 0.0), (0.37, 0.1), (0.3, 0.27), (-0.3, 0.27)]
+    for x in (-0.3, 0.3):
+        b.profile(track, 0.16, (x, -0.02, 0.0), TIRE, bevel=0.03, segments=3)
+        for y in (-0.22, 0.0, 0.22):
+            b.cyl(0.06, 0.18, (x, y - 0.02, 0.1), STEEL, axis="x", sides=10, bevel=0.012)
+    b.box((0.56, 0.56, 0.34), (0.0, -0.06, 0.43), PAINT, paint=True, top=(0.82, 0.86), bevel=0.07, segments=4)
+    b.box((0.4, 0.4, 0.06), (0.0, -0.06, 0.63), DARK_METAL, bevel=0.015, segments=3)
+    b.box((0.34, 0.12, 0.2), (0.0, -0.38, 0.42), DARK_METAL, bevel=0.03, segments=3)
+    # Muso e visiera incassata.
+    b.box((0.42, 0.26, 0.26), (0.0, 0.32, 0.4), PAINT_DARK, paint=True, front=(0.7, 0.6), bevel=0.05, segments=3)
+    b.box((0.34, 0.11, 0.11), (0.0, 0.4, 0.53), DARK_METAL, bevel=0.015)
+    b.box((0.3, 0.1, 0.09), (0.0, 0.425, 0.53), ENEMY_EYE, emit=True, bevel=0.012)
+    # Chele: braccio, snodo e punta chiara, convergenti.
+    for side in (-1.0, 1.0):
+        b.box((0.11, 0.34, 0.11), (side * 0.3, 0.38, 0.27), STEEL, rot=(0.0, 0.0, side * 14.0), bevel=0.025, segments=3)
+        b.sphere(0.075, (side * 0.26, 0.54, 0.27), DARK_METAL)
+        b.box((0.09, 0.2, 0.14), (side * 0.22, 0.6, 0.27), WORN_STEEL, rot=(0.0, 0.0, side * 30.0),
+              front=(0.4, 0.4), bevel=0.02, segments=3)
+    # Toppe, bulloni, scarichi, antenna con spia.
+    for side in (-1.0, 1.0):
+        b.box((0.03, 0.22, 0.14), (side * 0.285, -0.12, 0.44), WORN_STEEL, bevel=0.008)
+        for y in (-0.2, -0.04):
+            b.cyl(0.015, 0.02, (side * 0.3, y, 0.49), DARK_METAL, axis="x", sides=6, bevel=0.003)
+        b.cyl(0.035, 0.12, (side * 0.14, -0.38, 0.56), DARK_METAL, axis="y", sides=10, bevel=0.008)
+    b.cyl(0.012, 0.36, (-0.2, -0.22, 0.8), DARK_METAL, sides=8, rot=(0.0, -12.0, 0.0), bevel=0.003)
+    b.sphere(0.04, (-0.24, -0.22, 0.98), ENEMY_EYE, emit=True)
+    return b.to_object("Scavenger")
+
+
+def build_demolisher():
+    """Demolitore rifinito: cingoli con rulli, scafo e cofano smussati con griglia e
+    prese d'aria, cabina con feritoia rossa e lampeggiante, ciminiere, contrappeso."""
+    b = StaticBuilder()
+    track = [(-1.05, 0.25), (-0.8, 0.0), (0.8, 0.0), (1.05, 0.25), (1.05, 0.5), (0.85, 0.72),
+             (-0.85, 0.72), (-1.05, 0.5)]
+    for x in (-0.72, 0.72):
+        b.profile(track, 0.42, (x, 0.0, 0.0), TIRE, bevel=0.06, segments=3)
+        for y in (-0.6, 0.0, 0.6):
+            b.cyl(0.2, 0.46, (x, y, 0.36), STEEL, axis="x", sides=14, bevel=0.03, segments=3)
+            b.cyl(0.08, 0.5, (x, y, 0.36), DARK_METAL, axis="x", sides=10, bevel=0.015)
+    b.box((1.2, 1.9, 0.75), (0.0, -0.05, 0.95), PAINT, paint=True, top=(0.94, 0.96), bevel=0.1, segments=4)
+    b.box((1.05, 0.85, 0.46), (0.0, 0.45, 1.52), PAINT, paint=True, front=(0.9, 0.82), bevel=0.08, segments=4)
+    b.box((0.8, 0.06, 0.34), (0.0, 0.89, 1.5), DARK_METAL, bevel=0.012)
+    for x in (-0.24, 0.0, 0.24):
+        b.box((0.07, 0.08, 0.34), (x, 0.9, 1.5), HAZARD, bevel=0.012)
+    for i in range(4):
+        b.box((0.5, 0.03, 0.025), (0.22, 0.25 + i * 0.1, 1.755), DARK_METAL, bevel=0.005)
+    b.box((1.0, 0.9, 0.7), (0.0, -0.42, 1.95), DARK_METAL, top=(0.9, 0.9), bevel=0.06, segments=3)
+    b.box((0.84, 0.1, 0.18), (0.0, 0.03, 2.03), STEEL, bevel=0.015)
+    b.box((0.82, 0.08, 0.16), (0.0, 0.04, 2.03), BOSS_EYE, emit=True, bevel=0.012)
+    b.box((1.08, 1.0, 0.1), (0.0, -0.42, 2.33), PAINT_DARK, paint=True, bevel=0.03, segments=3)
+    b.cyl(0.11, 0.14, (0.0, -0.1, 2.44), BOSS_EYE, emit=True, sides=12, bevel=0.02)
+    b.cyl(0.13, 0.03, (0.0, -0.1, 2.385), DARK_METAL, sides=12, bevel=0.008)
+    b.cyl(0.09, 0.8, (0.38, 0.5, 2.1), DARK_METAL, sides=12, bevel=0.02)
+    b.cyl(0.12, 0.12, (0.38, 0.5, 2.5), RUST, sides=12, bevel=0.02)
+    b.cyl(0.07, 0.5, (-0.4, 0.62, 1.95), DARK_METAL, sides=12, bevel=0.015)
+    b.box((1.3, 0.3, 0.6), (0.0, -1.08, 0.98), DARK_METAL, back=(0.9, 0.8), bevel=0.06, segments=3)
+    b.box((0.5, 0.03, 0.3), (-0.2, -1.235, 1.0), HAZARD, bevel=0.008)
+    for x in (-0.61, 0.61):
+        b.box((0.03, 0.7, 0.3), (x, -0.3, 1.0), RUST, bevel=0.008)
+        for y in (-0.55, -0.05):
+            b.cyl(0.03, 0.03, (x * 1.03, y, 1.1), DARK_METAL, axis="x", sides=8, bevel=0.005)
+    return b.to_object("Demolisher")
+
+
+def build_demolisher_blade():
+    """Lama rifinita: stessa origine al centro, filo consumato, denti, bracci di spinta."""
+    b = StaticBuilder()
+    blade = [(-0.1, -0.5), (0.2, -0.5), (0.08, -0.2), (0.05, 0.15), (0.14, 0.5), (-0.1, 0.5)]
+    b.profile(blade, 2.3, (0.0, 0.0, 0.0), DARK_METAL, bevel=0.03, segments=3)
+    b.box((2.34, 0.14, 0.12), (0.0, 0.16, -0.46), WORN_STEEL, bevel=0.03, segments=3)
+    for i in range(6):
+        x = -0.95 + i * 0.38
+        b.box((0.2, 0.18, 0.26), (x, 0.03, 0.6), WORN_STEEL, top=(0.15, 0.3), bevel=0.02)
+    for i in range(4):
+        b.box((0.26, 0.03, 0.5), (-0.84 + i * 0.56, -0.115, 0.05), HAZARD, rot=(0.0, 25.0, 0.0), bevel=0.006)
+    for x in (-1.04, 1.04):
+        b.box((0.14, 1.2, 0.2), (x, -0.68, -0.2), STEEL, bevel=0.03, segments=3)
+        b.box((0.16, 0.3, 0.34), (x, -0.2, -0.16), DARK_METAL, bevel=0.03, segments=3)
+        b.cyl(0.05, 0.2, (x, -0.2, -0.16), WORN_STEEL, axis="x", sides=10, bevel=0.01)
+    return b.to_object("DemolisherBlade")
+
+
+def build_driller():
+    """Trivella rifinita: cingoli con rulli, scafo basso smussato, collare con bulloni,
+    cabina con feritoie, serbatoi con cinghie, scarico."""
+    b = StaticBuilder()
+    track = [(-1.1, 0.25), (-0.85, 0.0), (0.85, 0.0), (1.1, 0.25), (1.1, 0.5), (0.9, 0.72),
+             (-0.9, 0.72), (-1.1, 0.5)]
+    for x in (-0.7, 0.7):
+        b.profile(track, 0.46, (x, 0.0, 0.0), TIRE, bevel=0.06, segments=3)
+        for y in (-0.65, 0.0, 0.65):
+            b.cyl(0.2, 0.5, (x, y, 0.36), STEEL, axis="x", sides=14, bevel=0.03, segments=3)
+            b.cyl(0.08, 0.54, (x, y, 0.36), DARK_METAL, axis="x", sides=10, bevel=0.015)
+    b.box((1.3, 2.0, 0.7), (0.0, -0.1, 0.95), PAINT, paint=True, front=(0.85, 0.9), top=(0.92, 0.96),
+          bevel=0.1, segments=4)
+    b.cyl(0.62, 0.5, (0.0, 1.05, 1.0), STEEL, axis="y", sides=16, radius_top=0.5, bevel=0.04, segments=3)
+    b.cyl(0.7, 0.1, (0.0, 0.82, 1.0), DARK_METAL, axis="y", sides=16, bevel=0.02)
+    for i in range(8):
+        a = math.radians(i * 45.0)
+        b.cyl(0.045, 0.06, (math.cos(a) * 0.62, 0.86, 1.0 + math.sin(a) * 0.62), WORN_STEEL, axis="y", sides=8,
+              bevel=0.008)
+    b.box((1.0, 0.8, 0.62), (0.0, -0.55, 1.6), DARK_METAL, top=(0.9, 0.9), bevel=0.06, segments=3)
+    for x in (-0.28, 0.28):
+        b.box((0.36, 0.1, 0.12), (x, -0.14, 1.72), STEEL, bevel=0.012)
+        b.box((0.34, 0.08, 0.1), (x, -0.13, 1.72), BOSS_EYE, emit=True, bevel=0.01)
+    b.box((1.06, 0.88, 0.1), (0.0, -0.55, 1.95), PAINT_DARK, paint=True, bevel=0.03, segments=3)
+    for x in (-0.62, 0.62):
+        b.cyl(0.17, 1.1, (x, 0.1, 1.42), RUST, axis="y", sides=14, bevel=0.04, segments=3)
+        for y in (-0.3, 0.5):
+            b.cyl(0.18, 0.04, (x, y, 1.42), DARK_METAL, axis="y", sides=14, bevel=0.006)
+    b.cyl(0.08, 0.7, (-0.35, -0.8, 2.2), DARK_METAL, sides=12, bevel=0.015)
+    b.cyl(0.11, 0.1, (-0.35, -0.8, 2.56), RUST, sides=12, bevel=0.02)
+    b.box((1.2, 0.04, 0.26), (0.0, -1.12, 0.95), HAZARD, bevel=0.008)
+    return b.to_object("Driller")
+
+
+def build_driller_bit():
+    """Punta rifinita: cono d'acciaio con creste elicoidali smussate e denti."""
+    b = StaticBuilder()
+    b.cyl(0.52, 1.5, (0.0, 0.75, 0.0), WORN_STEEL, axis="y", sides=16, radius_top=0.06, bevel=0.03, segments=3)
+    for i in range(3):
+        for k in range(5):
+            t = k / 5.0
+            a = math.radians(i * 120.0 + t * 200.0)
+            r = 0.5 - t * 0.42
+            y = 0.1 + t * 1.3
+            b.box((0.12, 0.3, 0.1), (math.cos(a) * r, y, math.sin(a) * r), DARK_METAL,
+                  rot=(0.0, math.degrees(a) + 90.0, 0.0), bevel=0.02, segments=3)
+    b.cyl(0.1, 0.12, (0.0, 1.52, 0.0), STEEL, axis="y", sides=10, radius_top=0.02, bevel=0.01)
+    return b.to_object("DrillerBit")
+
+
+# Nome -> (costruttore, colore di vertice nell'export): i rifiniti hanno il colore nella texture.
 ASSETS = {
-    "companion_cart": build_companion_cart,
-    "scavenger": build_scavenger,
-    "demolisher": build_demolisher,
-    "demolisher_blade": build_demolisher_blade,
-    "driller": build_driller,
-    "driller_bit": build_driller_bit,
+    "companion_cart": (build_companion_cart, "NONE"),
+    "scavenger": (build_scavenger, "NONE"),
+    "demolisher": (build_demolisher, "NONE"),
+    "demolisher_blade": (build_demolisher_blade, "NONE"),
+    "driller": (build_driller, "NONE"),
+    "driller_bit": (build_driller_bit, "NONE"),
+    "companion_cart_blocky": (build_companion_cart_blocky, "ACTIVE"),
+    "scavenger_blocky": (build_scavenger_blocky, "ACTIVE"),
+    "demolisher_blocky": (build_demolisher_blocky, "ACTIVE"),
+    "demolisher_blade_blocky": (build_demolisher_blade_blocky, "ACTIVE"),
+    "driller_blocky": (build_driller_blocky, "ACTIVE"),
+    "driller_bit_blocky": (build_driller_bit_blocky, "ACTIVE"),
 }
+REFINED = ("companion_cart", "scavenger", "demolisher", "demolisher_blade", "driller", "driller_bit")
 
 
 def main():
     argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
-    names = argv or list(ASSETS)
+    names = argv or list(REFINED)
     for name in names:
         bpy.ops.wm.read_factory_settings(use_empty=True)
-        obj = ASSETS[name]()
-        export(obj, name)
+        builder, vertex_color = ASSETS[name]
+        obj = builder()
+        export(obj, name, vertex_color)
 
 
 main()

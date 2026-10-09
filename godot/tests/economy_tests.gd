@@ -171,7 +171,7 @@ func _test_runners() -> void:
 	var runner := _director.spawn_at(Vector3(3.0, 0.0, 20.0), true)
 	_check(runner.health == maxi(ceili(walker.health * tuning.runner_health_share), 1) and runner.health <= walker.health,
 		"il veloce ha meno vita (%d contro %d)" % [runner.health, walker.health])
-	_check(runner._body.material_override != walker._body.material_override, "e di un altro colore")
+	_check(runner.paint_material() != walker.paint_material(), "e di un altro colore")
 	await _frames(60)
 	var walker_speed := Vector2(walker.velocity.x, walker.velocity.z).length()
 	var runner_speed := Vector2(runner.velocity.x, runner.velocity.z).length()

@@ -311,7 +311,7 @@ func _test_hoppers() -> void:
 	var hopper := _director.spawn_kind(_cell_world(Vector2i(center.x - 5, center.y + 13)), &"hopper")
 	_check(hopper.kind == &"hopper" and hopper.ignores_lowered and not walker.ignores_lowered, "il saltatore ignora le celle Lowered")
 	_check(hopper.health == maxi(ceili(walker.health * tuning.hopper_health_share), 1), "meno vita (%d contro %d)" % [hopper.health, walker.health])
-	_check(hopper._body.material_override != walker._body.material_override, "e di un altro colore")
+	_check(hopper.paint_material() != walker.paint_material(), "e di un altro colore")
 	await _frames(40)
 	var walker_speed := Vector2(walker.velocity.x, walker.velocity.z).length()
 	var hopper_speed := Vector2(hopper.velocity.x, hopper.velocity.z).length()

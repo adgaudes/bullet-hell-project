@@ -47,9 +47,9 @@ var spike_interval := 0.8
 var rng := RandomNumberGenerator.new()
 var _spawn_timer := 1.0
 var _body_mesh: Mesh
-var _base_material: ShaderMaterial
-var _runner_material: ShaderMaterial
-var _hopper_material: ShaderMaterial
+var _base_material: Material
+var _runner_material: Material
+var _hopper_material: Material
 ## Rottamatori veloci e saltatori nati finora.
 var runners_spawned := 0
 var hoppers_spawned := 0
@@ -65,9 +65,9 @@ func _ready() -> void:
 		tuning = RunTuning.new()
 	# Una mesh e un materiale per tutta l'orda: un nemico costa una draw call.
 	_body_mesh = ActorModel.mesh_of(SCAVENGER_MODEL)
-	_base_material = ActorModel.paint_material(BODY_COLOR, 2.0)
-	_runner_material = ActorModel.paint_material(RUNNER_COLOR, 3.0)
-	_hopper_material = ActorModel.paint_material(HOPPER_COLOR, 3.0)
+	_base_material = ActorModel.textured_paint(_body_mesh, BODY_COLOR, 2.0)
+	_runner_material = ActorModel.textured_paint(_body_mesh, RUNNER_COLOR, 3.0)
+	_hopper_material = ActorModel.textured_paint(_body_mesh, HOPPER_COLOR, 3.0)
 	_flash_material.albedo_color = Color.WHITE
 	_flash_material.emission_enabled = true
 	_flash_material.emission = Color.WHITE
@@ -285,11 +285,15 @@ func is_in_dark(world: Vector3) -> bool:
 	return night_active and light_field != null and not light_field.is_lit(world)
 
 
-## Visiera dell'orda piu accesa di notte: i due materiali condivisi, nessun costo per nemico.
+## Visiera dell'orda piu accesa di notte: materiali condivisi, nessun costo per nemico.
+## Col modello rifinito (D-072) la luce sta nella superficie `lamp`, una per tutta l'orda.
 func set_night(factor: float) -> void:
-	_base_material.set_shader_parameter(&"emission_energy", lerpf(2.0, 6.0, factor))
-	_runner_material.set_shader_parameter(&"emission_energy", lerpf(3.0, 7.0, factor))
-	_hopper_material.set_shader_parameter(&"emission_energy", lerpf(3.0, 7.0, factor))
+	if _base_material is ShaderMaterial:
+		(_base_material as ShaderMaterial).set_shader_parameter(&"emission_energy", lerpf(2.0, 6.0, factor))
+		(_runner_material as ShaderMaterial).set_shader_parameter(&"emission_energy", lerpf(3.0, 7.0, factor))
+		(_hopper_material as ShaderMaterial).set_shader_parameter(&"emission_energy", lerpf(3.0, 7.0, factor))
+	else:
+		ActorModel.set_lamp_energy(_body_mesh, lerpf(3.0, 12.0, factor))
 
 
 ## Riporta un nemico disperso sull'anello di comparsa. False se non c'e posto.

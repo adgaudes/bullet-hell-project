@@ -77,3 +77,6 @@ steamworks_sdk/
 tools/ContentBuilder/content/
 tools/ContentBuilder/output/
 
+
+# Cache di Python degli script Blender
+tools/blender/__pycache__/

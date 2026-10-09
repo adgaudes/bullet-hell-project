@@ -110,11 +110,11 @@ func setup_driller(hp: int, flash_material: Material) -> void:
 	var collision := CollisionShape3D.new()
 	collision.shape = shape
 	add_child(collision)
-	_base_material = ActorModel.paint_material(BODY_COLOR, 2.5, 0.7)
-	_flash_material = flash_material
 	_body = MeshInstance3D.new()
 	_body.mesh = ActorModel.mesh_of(BODY_MODEL)
-	_body.material_override = _base_material
+	_base_material = ActorModel.textured_paint(_body.mesh, BODY_COLOR, 2.5, 0.7)
+	_flash_material = flash_material
+	ActorModel.dress(_body, _base_material)
 	_body.position.y = -BODY_HEIGHT * 0.5
 	_rig = Node3D.new()
 	_rig.name = "Rig"
@@ -123,7 +123,7 @@ func setup_driller(hp: int, flash_material: Material) -> void:
 	_bit = MeshInstance3D.new()
 	_bit.name = "Bit"
 	_bit.mesh = ActorModel.mesh_of(BIT_MODEL)
-	_bit.material_override = ActorModel.paint_material(Color.WHITE, 0.0, 0.5)
+	ActorModel.dress(_bit, ActorModel.textured_paint(_bit.mesh, Color.WHITE, 0.0, 0.5))
 	_bit.position = BIT_REST
 	_rig.add_child(_bit)
 	_aim_strip = MeshInstance3D.new()

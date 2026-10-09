@@ -155,11 +155,11 @@ func setup_demolisher(hp: int, flash_material: Material) -> void:
 	# Modelli `demolisher` e `demolisher_blade` (tools/blender/build_actor_assets.py):
 	# origine dello scafo a terra, quella del boss al centro della capsula. Lo scafo e
 	# "vernice" tinta con BODY_COLOR; fessura rossa e lampeggiante sono luminosi.
-	_base_material = ActorModel.paint_material(BODY_COLOR, 2.5, 0.7)
-	_flash_material = flash_material
 	_body = MeshInstance3D.new()
 	_body.mesh = ActorModel.mesh_of(BODY_MODEL)
-	_body.material_override = _base_material
+	_base_material = ActorModel.textured_paint(_body.mesh, BODY_COLOR, 2.5, 0.7)
+	_flash_material = flash_material
+	ActorModel.dress(_body, _base_material)
 	_body.position.y = -BODY_HEIGHT * 0.5
 	_rig = Node3D.new()
 	_rig.name = "Rig"
@@ -168,7 +168,7 @@ func setup_demolisher(hp: int, flash_material: Material) -> void:
 	# La lama resta un nodo a parte: il codice la fa martellare.
 	_blade = MeshInstance3D.new()
 	_blade.mesh = ActorModel.mesh_of(BLADE_MODEL)
-	_blade.material_override = ActorModel.paint_material(Color.WHITE, 0.0, 0.5)
+	ActorModel.dress(_blade, ActorModel.textured_paint(_blade.mesh, Color.WHITE, 0.0, 0.5))
 	_blade.position = BLADE_REST
 	_rig.add_child(_blade)
 

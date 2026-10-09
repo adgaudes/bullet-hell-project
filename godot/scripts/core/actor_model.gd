@@ -55,6 +55,85 @@ static func apply_materials(instance: MeshInstance3D, materials: Dictionary[Stri
 			instance.set_surface_override_material(surface, materials[semantic])
 
 
+## Materiale "vernice" per un modello: con la texture cotta (D-071, D-072: superficie
+## `paint` o `suit` con `albedo_texture`) e uno StandardMaterial3D con la texture e la
+## tinta in `albedo_color`; con un modello a blocchi lo shader a colori di vertice.
+static func textured_paint(mesh: Mesh, tint_linear := Color.WHITE, emission_energy := 2.0, roughness := 0.8) -> Material:
+	# Un modello rifinito ha la texture su tutte le superfici; la "vernice" puo mancare
+	# (la lama del Demolitore): allora il materiale serve solo a vestire il resto.
+	var standard: StandardMaterial3D = null
+	for semantic in ["paint", "suit"]:
+		standard = _surface_material_of(mesh, semantic) as StandardMaterial3D
+		if standard != null and standard.albedo_texture != null:
+			break
+		standard = null
+	if standard == null:
+		for surface in mesh.get_surface_count():
+			var any := mesh.surface_get_material(surface) as StandardMaterial3D
+			if any != null and any.albedo_texture != null:
+				standard = any
+				break
+	if standard == null:
+		return paint_material(tint_linear, emission_energy, roughness)
+	var material := StandardMaterial3D.new()
+	material.albedo_texture = standard.albedo_texture
+	material.albedo_color = tint_linear.linear_to_srgb()
+	material.roughness = standard.roughness
+	material.next_pass = outline_material()
+	return material
+
+
+## Veste una mesh con il materiale "vernice": sulla superficie `paint`/`suit` se il
+## modello ha la texture cotta (le altre superfici tengono il materiale importato, con
+## il contorno), altrimenti come `material_override` dell'intero modello a blocchi.
+static func dress(instance: MeshInstance3D, paint: Material) -> void:
+	if paint is ShaderMaterial:
+		instance.material_override = paint
+		return
+	instance.material_override = null
+	for surface in instance.mesh.get_surface_count():
+		var source := instance.mesh.surface_get_material(surface)
+		var semantic := source.resource_name if source != null else ""
+		if semantic == "paint" or semantic == "suit":
+			instance.set_surface_override_material(surface, paint)
+		elif source != null:
+			instance.set_surface_override_material(surface, _outlined_copy(source))
+
+
+const OUTLINED_COPY_META := &"outlined_copy"
+
+
+## Copia con contorno di un materiale importato, una per materiale: la condividono
+## tutte le istanze (i rottamatori restano una draw call per superficie). La copia
+## vive come metadato del materiale importato, cosi muore con lui (niente RID persi
+## all'uscita, che il gate conta come errori).
+static func _outlined_copy(source: Material) -> Material:
+	if not source.has_meta(OUTLINED_COPY_META):
+		var copy := source.duplicate() as Material
+		copy.next_pass = outline_material()
+		source.set_meta(OUTLINED_COPY_META, copy)
+	return source.get_meta(OUTLINED_COPY_META) as Material
+
+
+## Energia della luce della superficie `lamp` di un modello rifinito (occhi, fari):
+## agisce sulla copia condivisa con il contorno, quindi su tutte le istanze.
+static func set_lamp_energy(mesh: Mesh, energy: float) -> void:
+	var source := _surface_material_of(mesh, "lamp")
+	if source == null:
+		return
+	var lamp := _outlined_copy(source) as StandardMaterial3D
+	if lamp != null:
+		lamp.emission_energy_multiplier = energy
+
+
+static func _surface_material_of(mesh: Mesh, semantic: String) -> Material:
+	for surface in mesh.get_surface_count():
+		var source := mesh.surface_get_material(surface)
+		if source != null and source.resource_name == semantic:
+			return source
+	return null
+
+
 ## Il materiale importato della superficie con quel nome semantico, o null.
 static func surface_material(instance: MeshInstance3D, semantic: String) -> Material:
 	for surface in instance.mesh.get_surface_count():

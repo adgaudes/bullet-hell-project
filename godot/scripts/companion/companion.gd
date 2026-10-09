@@ -244,12 +244,17 @@ func _build_visuals() -> void:
 	_last_yaw = rotation.y
 	# Modello `companion_cart` (tools/blender/build_actor_assets.py): la carrozzeria e
 	# "vernice" tinta con BODY_COLOR, la striscia del muso e la superficie `stripe`.
-	var stripe_material := StandardMaterial3D.new()
-	stripe_material.albedo_color = STRIPE_COLOR.linear_to_srgb()
-	ActorModel.apply_materials(ActorModel.mesh_instance_of($Model), {
-		"detail": ActorModel.paint_material(BODY_COLOR, 2.5),
-		"stripe": stripe_material,
-	})
+	var body := ActorModel.mesh_instance_of($Model)
+	if ActorModel.surface_material(body, "paint") != null:
+		# Modello rifinito (D-072): carrozzeria dalla texture cotta, tinta BODY_COLOR.
+		ActorModel.dress(body, ActorModel.textured_paint(body.mesh, BODY_COLOR, 2.5))
+	else:
+		var stripe_material := StandardMaterial3D.new()
+		stripe_material.albedo_color = STRIPE_COLOR.linear_to_srgb()
+		ActorModel.apply_materials(body, {
+			"detail": ActorModel.paint_material(BODY_COLOR, 2.5),
+			"stripe": stripe_material,
+		})
 
 	var cargo_mesh := BoxMesh.new()
 	cargo_mesh.size = Vector3.ONE * CARGO_SIZE
