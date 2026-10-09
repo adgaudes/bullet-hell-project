@@ -24,6 +24,8 @@ func _initialize() -> void:
 	await _test_hazard_assist()
 	await _reload_scene()
 	await _test_hazard_hits_player()
+	await _reload_scene()
+	await _test_scrap_field_offset_and_cap()
 	print("PROTOTYPE01_TESTS %s failures=%d" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -114,6 +116,36 @@ func _test_hazard_hits_player() -> void:
 	_check(_hazard.is_resting, "dopo il colpo la sfera riparte da capo")
 	_check(Vector2(_player.global_position.x - start.x, _player.global_position.z - start.z).length() < 0.01,
 		"il giocatore non viene spinto")
+
+
+## P-03: il bob lavora in coordinate locali, quindi il campo puo stare ovunque.
+## R-09: al tetto MAX_SCRAPS uno scavo ricicla il rottame piu lontano, non viene scartato.
+func _test_scrap_field_offset_and_cap() -> void:
+	print("scrap field offset and cap")
+	_hazard.set_physics_process(false)
+	_companion.set_physics_process(false)  # nessuna raccolta
+	_scraps.position.y = 1.0
+	_scraps.spawn(Vector3(3.0, 0.5, 3.0))
+	await _frames(3)
+	var found: Variant = _scraps.nearest(Vector3(3.0, 0.0, 3.0), 0.1)
+	_check(found != null and absf((found as Vector3).y - 0.5) <= ScrapField.BOB_HEIGHT + 0.001,
+		"campo a y=1: il rottame resta alla quota mondo chiesta (got %s)" % str(found))
+	_check(_scraps.is_processing(), "con rottami a terra il bob gira")
+
+	for i in ScrapField.MAX_SCRAPS - 1:
+		_scraps.spawn(Vector3(30.0 + i, 0.5, 30.0))
+	_check(_scraps.count() == ScrapField.MAX_SCRAPS and _scraps.capped_count == 0, "al tetto senza riciclo (%d)" % _scraps.count())
+	var farthest := Vector3(30.0 + ScrapField.MAX_SCRAPS - 2, 0.5, 30.0)
+	_scraps.spawn(Vector3(0.0, 0.5, 0.0))
+	await _frames(2)
+	_check(_scraps.count() == ScrapField.MAX_SCRAPS and _scraps.capped_count == 1, "oltre il tetto il conteggio resta a MAX_SCRAPS")
+	_check(_scraps.nearest(Vector3.ZERO, 0.1) != null, "il nuovo rottame esiste")
+	_check(_scraps.nearest(farthest, 0.1) == null and _scraps.nearest(Vector3(3.0, 0.0, 3.0), 0.1) != null,
+		"riciclato il piu lontano dal nuovo, non il piu vicino")
+	var taken := _scraps.take_near(Vector3(30.0 + ScrapField.MAX_SCRAPS * 0.5, 0.0, 30.0), 100.0, ScrapField.MAX_SCRAPS)
+	await _frames(1)
+	_check(taken == ScrapField.MAX_SCRAPS and _scraps.count() == 0, "take_near rimuove tutti i rottami nel raggio (%d)" % taken)
+	_check(not _scraps.is_processing(), "senza rottami il bob si ferma")
 
 
 func _preview_is_red() -> bool:

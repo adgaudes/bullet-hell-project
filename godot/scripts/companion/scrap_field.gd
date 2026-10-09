@@ -19,6 +19,9 @@ const BOB_SPEED := 3.0
 ## dallo smontare una cella rialzata (mura, depositi, barricate), che sono finite.
 @export var bare_ground_yields_scrap := true
 
+## Quante volte il tetto `MAX_SCRAPS` ha fatto riciclare un rottame (per i test).
+var capped_count := 0
+
 var _scraps: Array[MeshInstance3D] = []
 var _mesh := BoxMesh.new()
 var _material := StandardMaterial3D.new()
@@ -28,6 +31,8 @@ var _time := 0.0
 func _ready() -> void:
 	_mesh.size = Vector3.ONE * SCRAP_SIZE
 	_material.albedo_color = SCRAP_COLOR.linear_to_srgb()
+	# Il bob gira solo quando c'e almeno un rottame (P-04).
+	set_process(false)
 	if grid != null:
 		grid.command_applied.connect(_on_command_applied)
 		grid.cell_changed.connect(_on_cell_changed)
@@ -39,14 +44,20 @@ func count() -> int:
 
 func spawn(world_position: Vector3) -> void:
 	if _scraps.size() >= MAX_SCRAPS:
-		return
+		# Al tetto si ricicla il rottame piu lontano dal nuovo (cioe dal giocatore che
+		# sta scavando): uno scavo produce sempre qualcosa di visibile (R-09).
+		_remove_at(_farthest_index(world_position))
+		capped_count += 1
+		print("PROTOTYPE01_SCRAP_CAPPED")
 	var scrap := MeshInstance3D.new()
 	scrap.mesh = _mesh
 	scrap.material_override = _material
 	add_child(scrap)
 	scrap.global_position = world_position
-	scrap.set_meta(&"base_y", world_position.y)
+	# Quota di riposo del bob in coordinate locali: il campo puo non stare all'origine (P-03).
+	scrap.set_meta(&"base_y", scrap.position.y)
 	_scraps.append(scrap)
+	set_process(true)
 	print("PROTOTYPE01_SCRAP_SPAWNED")
 	scrap_spawned.emit(world_position)
 
@@ -99,14 +110,33 @@ func spawn_on_ground(world: Vector3) -> void:
 ## Rimuove fino a [param max_count] rottami entro [param radius]; restituisce quanti.
 func take_near(origin: Vector3, radius: float, max_count: int) -> int:
 	var taken := 0
-	for scrap in _scraps.duplicate():
+	# All'indietro: rimuovere non sposta gli indici ancora da visitare, niente copia (P-04).
+	for i in range(_scraps.size() - 1, -1, -1):
 		if taken >= max_count:
 			break
-		if _planar_distance(scrap.global_position, origin) <= radius:
-			_scraps.erase(scrap)
-			scrap.queue_free()
+		if _planar_distance(_scraps[i].global_position, origin) <= radius:
+			_remove_at(i)
 			taken += 1
 	return taken
+
+
+func _remove_at(index: int) -> void:
+	_scraps[index].queue_free()
+	_scraps.remove_at(index)
+	if _scraps.is_empty():
+		set_process(false)
+
+
+## Indice del rottame piu lontano (piano XZ) da [param origin].
+func _farthest_index(origin: Vector3) -> int:
+	var best := 0
+	var best_distance := -1.0
+	for i in _scraps.size():
+		var distance := _planar_distance(_scraps[i].global_position, origin)
+		if distance > best_distance:
+			best_distance = distance
+			best = i
+	return best
 
 
 func _process(delta: float) -> void:
@@ -138,9 +168,8 @@ func _on_cell_changed(cell: Vector2i, new_state: TerrainState.CellState) -> void
 		var target := _free_neighbor(cell)
 		var local := grid.cell_local_position(target, grid.state.get_state(target))
 		local.y = local.y * 2.0 + SCRAP_SIZE
-		var world := grid.to_global(local)
-		scrap.global_position = world
-		scrap.set_meta(&"base_y", world.y)
+		scrap.global_position = grid.to_global(local)
+		scrap.set_meta(&"base_y", scrap.position.y)
 		moved = true
 	if moved:
 		print("PROTOTYPE01_SCRAP_UNBURIED X=%d Y=%d" % [cell.x, cell.y])

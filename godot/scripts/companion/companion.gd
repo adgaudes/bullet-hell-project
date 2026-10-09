@@ -340,7 +340,8 @@ func _update_motion(delta: float) -> void:
 ## fa ballare i cubetti, ognuno con la sua fase.
 func _apply_rig(rig: Transform3D, wobble: float) -> void:
 	_model.transform = rig * _model_rest
-	for i in mini(carried, _cargo.size()):
+	# Tutti i cubetti, anche quelli nascosti: a interruttore spento tornano a riposo (P-05).
+	for i in _cargo.size():
 		var pose := Transform3D(Basis.IDENTITY, _cargo_rest[i])
 		if wobble > 0.0:
 			var beat := _motion_time * TAU * CARGO_WOBBLE_HZ + i * 1.9

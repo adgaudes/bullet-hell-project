@@ -62,6 +62,26 @@ func _initialize() -> void:
 	var bounds := mesh.get_aabb()
 	_check(bounds.size.y > 1.2, "la mesh ha l'altezza di un personaggio (%.2f m a riposo)" % bounds.size.y)
 
+	print("Attach")
+	_check(CharacterAnimator.attach(_model) == _animator and _model.find_children("*", "AnimationTree", true, false).size() == 1,
+		"un secondo attach restituisce l'animatore esistente, senza un secondo albero")
+	# Stesso modello senza il clip Dig: libreria ricostruita a parte, l'originale resta intatto.
+	var broken: Node3D = MODEL.instantiate()
+	root.add_child(broken)
+	var broken_player: AnimationPlayer = broken.find_children("*", "AnimationPlayer", true, false)[0]
+	var library_name: StringName = broken_player.get_animation_library_list()[0]
+	var source := broken_player.get_animation_library(library_name)
+	var partial := AnimationLibrary.new()
+	for clip in source.get_animation_list():
+		if clip != CharacterAnimator.DIG:
+			partial.add_animation(clip, source.get_animation(clip))
+	broken_player.remove_animation_library(library_name)
+	broken_player.add_animation_library(library_name, partial)
+	_check(CharacterAnimator.attach(broken) == null and broken.find_children("*", "AnimationTree", true, false).is_empty(),
+		"senza il clip Dig: nessun animatore e nessun albero (solo un avviso)")
+	_check(player.has_animation(CharacterAnimator.DIG), "il modello originale conserva i suoi clip")
+	broken.free()
+
 	print("Fermo e corsa")
 	await _frames(20)
 	_check(_animator.move_blend() < 0.01 and is_zero_approx(_animator.twist()), "da fermo: nessuna corsa, nessuna torsione")
@@ -124,8 +144,18 @@ func _initialize() -> void:
 	await _frames(40)
 	_check(not tree.get(&"parameters/dig_shot/active") and absf(_hips_pose.origin.y - standing) < 0.05,
 		"lo scavo finisce e non sposta il bacino")
+	# R-39: colpito in corsa, il colpo prende il busto e le gambe continuano a correre.
+	_animator.set_locomotion(Vector3(0.0, 0.0, -SPEED), REFERENCE_SPEED)
+	await _frames(20)
 	_animator.play_hit()
-	await _frames(30)
+	await _frames(2)
+	_check(tree.get(&"parameters/hit_shot/active"), "il colpo parte a comando")
+	moved = await _hips_travel(10)
+	_check(moved > 0.005, "colpito in corsa il bacino continua a muoversi (%.3f m in 10 frame)" % moved)
+	await _frames(int(CharacterAnimator.HIT_SECONDS * 60.0) + 10)
+	_check(not tree.get(&"parameters/hit_shot/active"), "il colpo finisce entro HIT_SECONDS")
+	_animator.set_locomotion(Vector3.ZERO, REFERENCE_SPEED)
+	await _frames(40)
 	_check(tree.active and _animator.fired_count(&"dodge") == 1 and _animator.fired_count(&"dig") == 1 and _animator.fired_count(&"hit") == 1,
 		"dopo le azioni la miscela e ancora attiva")
 	_animator.play_death()
@@ -141,7 +171,12 @@ func _initialize() -> void:
 	var blend := _animator.move_blend()
 	moved = await _hips_travel(20)
 	_check(moved < 0.0001 and is_equal_approx(blend, _animator.move_blend()), "con ActorMotion spento le ossa restano ferme")
+	# P-10: a movimento spento le azioni a comando non si accodano.
+	_animator.play_dig()
+	_check(_animator.fired_count(&"dig") == 1, "a movimento spento lo scavo e ignorato")
 	ActorMotion.enabled = true
+	await _frames(2)
+	_check(not tree.get(&"parameters/dig_shot/active"), "e non parte alla riaccensione")
 	moved = await _hips_travel(20)
 	_check(moved > 0.01, "riacceso, la corsa riprende")
 	_finish()

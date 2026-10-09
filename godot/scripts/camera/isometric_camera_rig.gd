@@ -31,6 +31,10 @@ var _camera: Camera3D
 
 
 func _ready() -> void:
+	# Nell'editor il nodo resta com'e nel .tscn: top_level, interpolazione e
+	# trasformazione scritti qui finirebbero nella scena al salvataggio (P-06).
+	if Engine.is_editor_hint():
+		return
 	top_level = true
 	# Il rig si muove in _process: niente interpolazione propria, legge quella del bersaglio.
 	physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
@@ -40,20 +44,19 @@ func _ready() -> void:
 		_camera.name = "Camera"
 		add_child(_camera)
 	_apply()
-	if not Engine.is_editor_hint():
-		_camera.make_current()
-		print("PROTOTYPE01_CAMERA_READY arm=%.1fm pitch=%.0f hfov=%.0f"
-			% [UnrealSpace.length(arm_length_cm), pitch_degrees, horizontal_fov_degrees])
+	_camera.make_current()
+	print("PROTOTYPE01_CAMERA_READY arm=%.1fm pitch=%.0f hfov=%.0f"
+		% [UnrealSpace.length(arm_length_cm), pitch_degrees, horizontal_fov_degrees])
 
 
 func _process(_delta: float) -> void:
-	# Nell'editor il rig si posiziona solo in _apply(): seguirlo a ogni frame
-	# riscriverebbe la trasformazione salvata nella scena.
 	if target != null and not Engine.is_editor_hint():
 		global_position = target.get_global_transform_interpolated().origin
 
 
 func _apply() -> void:
+	if Engine.is_editor_hint():
+		return
 	# Rig orientato verso -Z (forward Godot = +X Unreal, yaw 0).
 	global_basis = Basis.from_euler(Vector3(deg_to_rad(pitch_degrees), 0.0, 0.0))
 	_camera.position = Vector3(0.0, 0.0, UnrealSpace.length(arm_length_cm))
