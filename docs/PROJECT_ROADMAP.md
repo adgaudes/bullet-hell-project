@@ -56,6 +56,7 @@ Principio guida:
 
 **Prossimo passo (in ordine):**
 
+0a. **Passate artistiche (D-068 → D-072), giudizio del proprietario sulle catture:** arena (erba, rovine, terrapieni, torri, detriti, colore), contorno degli attori, ingegnere e tutti gli attori rifiniti con texture cotta. Catture: `output/district/`, `output/actors/` (prima in `output/actors_before/`), `output/character/` (prima in `output/character_before/`), `output/night/`. Esito atteso: Continua / Modifica / Scarta per ciascun passo; poi scegliere fra **ingegnere ancora** (volto, normal map, pesi) e **ambiente con la stessa pipeline**. Misura su Steam Deck prima di chiudere: le primitive sono quasi raddoppiate.
 0. **Terreno libero (D-063), prova del proprietario:** lo spike e completo (9 ottobre 2026: campo di percorso corretto, suite nel gate, catture e misure rifatte). Tocca al proprietario provare `scenes/spikes/terrain_spike.tscn`; solo dopo il suo si scrivere il piano di migrazione del livello vero al rilievo continuo. Dettaglio in `docs/MIGRATION_STATUS.md`.
 
 1. **Struttura di campagna**: specifica del 5 ottobre 2026 (`docs/CAMPAIGN_STRUCTURE_SPEC.md`); **il 9 ottobre 2026 si e proceduto con le proposte** (D-066): catalogo, mappa di campagna, sblocchi, livello 2 (D-067). Le 4 risposte restano da confermare dal proprietario. Prossimo contenuto: il **Cantiere** (livello 3, Gru), da fare solo dopo il playtest dei primi due.
