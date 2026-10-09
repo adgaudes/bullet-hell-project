@@ -4,8 +4,10 @@ extends SceneTree
 ## Produce: overview (tutta l'arena dall'alto), start (vista di gioco alla partenza),
 ## poi, dopo un minuto di orda, combat. Con `--visit=x,z` (ripetibile) aggiunge una
 ## vista di gioco col giocatore in quel punto (visit_0, visit_1, ...) ed esce senza combat.
+## Con `--scene=railway` cattura il livello 2 (`railway_run.tscn`).
 
 var _out := "../output/district"
+var _scene_path := "res://scenes/main/arena_run.tscn"
 var _visits: Array[Vector2] = []
 
 
@@ -13,11 +15,13 @@ func _initialize() -> void:
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--out="):
 			_out = arg.trim_prefix("--out=")
+		elif arg.begins_with("--scene="):
+			_scene_path = "res://scenes/main/%s_run.tscn" % arg.trim_prefix("--scene=")
 		elif arg.begins_with("--visit="):
 			var parts := arg.trim_prefix("--visit=").split(",")
 			_visits.append(Vector2(parts[0].to_float(), parts[1].to_float()))
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("res://").path_join(_out))
-	var scene: Node3D = preload("res://scenes/main/arena_run.tscn").instantiate()
+	var scene: Node3D = (load(_scene_path) as PackedScene).instantiate()
 	root.add_child(scene)
 	var player: PlayerCharacter = scene.get_node(^"Player")
 	var director: EnemyDirector = scene.get_node(^"EnemyDirector")

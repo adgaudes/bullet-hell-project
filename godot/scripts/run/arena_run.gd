@@ -189,7 +189,8 @@ func _refresh_marker_targets() -> void:
 				break
 		if not standing:
 			continue
-		var is_deposit: bool = feature.kind == &"deposit"
+		# I vagoni sui binari (livello 2) sono depositi di rottami a tutti gli effetti.
+		var is_deposit: bool = feature.kind == &"deposit" or feature.kind == &"wagon"
 		_marker_targets.append({
 			center = Vector3(feature.center.x, 0.0, feature.center.y),
 			kind = &"deposit" if is_deposit else &"courtyard",
@@ -477,6 +478,9 @@ func _build_terrain_layout() -> void:
 		for offset: Vector2i in feature.offsets:
 			cells.append(center + offset)
 		grid.set_cell_states(cells, feature.state)
+		if feature.has("tint"):
+			for cell in cells:
+				grid.set_raised_tint(cell, feature.tint)
 		if feature.state == TerrainState.CellState.RAISED:
 			raised += cells.size()
 		else:
