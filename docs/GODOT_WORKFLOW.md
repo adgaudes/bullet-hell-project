@@ -94,7 +94,7 @@ godot_console --headless --path godot --fixed-fps 60 --script res://tests/drille
 godot_console --headless --path godot --fixed-fps 60 --script res://tests/campaign_tests.gd
 ```
 
-Al 9 ottobre 2026 (sera) le suite in `godot/tests/` sono 30 (le altre: boss, district, ruins_arena, settings, button_prompts, character_animator, addons, player, terrain, terrain_tool, slice_b, live_rebuild); il gate le trova da solo. Dal 9 ottobre il gate **fallisce anche se una suite stampa `SCRIPT ERROR` o `ERROR:`** (allowlist esplicita in `Invoke-GodotChecks.ps1` per l'errore noto del renderer fittizio): un errore runtime provocato apposta da un test va stampato come marker, non con `push_error`.
+Al 9 ottobre 2026 (sera) le suite in `godot/tests/` sono 30 (le altre: boss, district, ruins_arena, settings, button_prompts, character_animator, addons, player, terrain, terrain_tool, slice_b, live_rebuild); il gate le trova da solo. Dal 9 ottobre il gate **fallisce anche se una suite stampa `SCRIPT ERROR` o `ERROR:`** (allowlist esplicita in `Invoke-GodotChecks.ps1` per l'errore noto del renderer fittizio): un errore runtime provocato apposta da un test va stampato come marker, non con `push_error`. Regola dal 9 ottobre 2026 (T-12): una suite che ha fatto `queue_free()` di una scena attende due `physics_frame` prima di `quit()`, altrimenti il motore segnala istanze ObjectDB perse all'uscita.
 
 Piu semplice: `tools/godot/Invoke-GodotChecks.ps1` esegue tutte le suite presenti in `godot/tests/`.
 
@@ -112,7 +112,7 @@ Trappola verificata: **il nome globale di un autoload non esiste** in `--check-o
 
 Trappola verificata: in Godot 4.7 le azioni predefinite **`ui_accept` e `ui_cancel` non hanno pulsanti joypad**. Il progetto le ridefinisce con A e B: senza, i menu non si confermano col controller.
 
-Trappola verificata (6 ottobre 2026): in `--headless` il renderer fittizio **non conserva colori e dati custom dei MultiMesh** (`get_instance_color` e `get_instance_custom_data` restituiscono zero; le trasformazioni si). Un test headless puo verificare `use_colors`, `use_custom_data` e i conteggi, non i valori: per quelli serve una cattura con finestra.
+Trappola verificata (9 ottobre 2026): in `--headless` `get_instance_transform` di un MultiMesh restituisce la sola origine, con base identita: le scale per istanza (lotto piatto della griglia, T-07) si verificano solo con finestra. Trappola verificata (6 ottobre 2026): in `--headless` il renderer fittizio **non conserva colori e dati custom dei MultiMesh** (`get_instance_color` e `get_instance_custom_data` restituiscono zero; le trasformazioni si). Un test headless puo verificare `use_colors`, `use_custom_data` e i conteggi, non i valori: per quelli serve una cattura con finestra.
 
 Trappola verificata (6 ottobre 2026): un `CPUParticles3D` creato da codice va **posizionato prima di `add_child`** (`top_level = true` e `position`): con `global_position` impostata dopo l'ingresso nell'albero i frammenti di un'emissione `one_shot` partono dall'origine. Nessun test headless lo vede: l'ha mostrato una cattura.
 
