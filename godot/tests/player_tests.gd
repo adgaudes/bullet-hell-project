@@ -120,7 +120,7 @@ func _test_player_in_scene() -> void:
 	var motion := InputEventMouseMotion.new()
 	motion.position = camera.unproject_position(target_point)
 	motion.global_position = motion.position
-	motion.relative = Vector2(4.0, 0.0)
+	motion.relative = Vector2(8.0, 0.0)
 	Input.parse_input_event(motion)
 	await _frames(2)
 	_check(player.aim_device == PlayerCharacter.AimDevice.MOUSE, "movimento mouse -> mira mouse")
@@ -164,8 +164,34 @@ func _test_player_in_scene() -> void:
 	await _frames(2)
 	_check(player.is_dashing, "dash di nuovo disponibile dopo il cooldown")
 
+	# R-17: un rilascio avvenuto in pausa non arriva al personaggio. Alla ripresa
+	# l'azione non deve ripetersi ne restare "premuta" (mangerebbe la pressione dopo).
+	var mode_before := player.terrain_tool_mode
+	_send_key(KEY_Q, true)
+	await _frames(2)
+	_check(player.terrain_tool_mode != mode_before, "Q cambia modalita del tool")
+	paused = true
+	await _frames(2)
+	_send_key(KEY_Q, false)
+	await _frames(2)
+	paused = false
+	await _frames(3)
+	_check(player.terrain_tool_mode != mode_before, "ripresa dopo il rilascio in pausa: nessun comando ripetuto")
+	_send_key(KEY_Q, true)
+	await _frames(2)
+	_check(player.terrain_tool_mode == mode_before, "la pressione successiva non viene scartata")
+	_send_key(KEY_Q, false)
+	await _frames(1)
+
 	scene.queue_free()
 	await _frames(1)
+
+
+func _send_key(physical_key: Key, pressed: bool) -> void:
+	var event := InputEventKey.new()
+	event.physical_keycode = physical_key
+	event.pressed = pressed
+	Input.parse_input_event(event)
 
 
 ## Pressione e rilascio come eventi reali, consegnati al frame successivo.

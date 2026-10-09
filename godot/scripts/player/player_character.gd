@@ -28,26 +28,8 @@ const HIT_FLASH_SECONDS := 0.3
 # --- Movimento procedurale (ActorMotion): solo sul nodo visivo `Model`. La scala del
 # dash resta su `_body` (figlio di `Model`) e i colori sul materiale: si compongono.
 # Il passo non e qui: lo fanno le animazioni dello scheletro (`_animator`, D-060).
-## Inclinazione (rad) verso la direzione di marcia a piena velocita di cammino, e tetto
-## del rapporto di velocita: nel dash si piega di piu, ma non oltre LEAN_ANGLE * LEAN_SPEED_CAP.
-const LEAN_ANGLE := 0.12
-const LEAN_SPEED_CAP := 1.8
-## Velocita (1/s) con cui l'inclinazione insegue il movimento.
-const LEAN_RATE := 14.0
-## Dash: schiacciamento alla partenza e allungamento all'arrivo (frazione dell'altezza),
-## durata dell'impulso (s). La larghezza compensa di meta, per conservare il volume a occhio.
-const DASH_SQUASH := 0.2
-const DASH_STRETCH := 0.14
-const DASH_PULSE_SECONDS := 0.13
-## Rinculo della chiodatrice: durata (s), arretramento (m) e inclinazione (rad) opposti al colpo.
-const RECOIL_SECONDS := 0.1
-const RECOIL_BACK := 0.07
-const RECOIL_TILT := 0.07
-## Sussulto quando e colpito: durata (s), schiacciamento (frazione), arretramento (m), busto indietro (rad).
-const FLINCH_SECONDS := 0.24
-const FLINCH_SQUASH := 0.14
-const FLINCH_BACK := 0.1
-const FLINCH_PITCH := 0.16
+# I parametri (inclinazione, impulsi del dash, rinculo, sussulto) sono nel PlayerTuning,
+# gruppo "Motion" (R-41).
 
 @export var tuning: PlayerTuning
 ## Griglia su cui agisce il tool (SetTerrainGrid in Unreal). Opzionale.
@@ -86,8 +68,17 @@ var _dash_direction := Vector3.ZERO
 ## Tempo dall'attivazione del dash: durata e cooldown si misurano entrambi da qui.
 var _time_since_dash := 0.0
 var _effective_dash_duration := 0.0
-var _held_actions: Dictionary[StringName, bool] = {}
+## Per azione: le sorgenti (classe dell'evento: tasto, pulsante o asse del joypad, mouse)
+## che la tengono premuta. Il comando parte solo quando nessuna sorgente la tiene (P-02).
+var _held_actions: Dictionary[StringName, Dictionary] = {}
 var _pending_actions: Array[StringName] = []
+## Spostamento del mouse sommato nella finestra corrente e tempo che resta alla finestra (P-01).
+var _mouse_delta_accum := 0.0
+var _mouse_delta_window_left := 0.0
+## Secondi dall'ultimo movimento del mouse.
+var _mouse_idle_seconds := 0.0
+## Stick sinistro letto dagli eventi del joypad (non dalle azioni: la tastiera non conta).
+var _left_stick := Vector2.ZERO
 var _body_material := StandardMaterial3D.new()
 var _base_body_scale := Vector3.ONE
 var _hit_flash_left := 0.0
@@ -141,22 +132,55 @@ func _ready() -> void:
 
 func _input(event: InputEvent) -> void:
 	var motion := event as InputEventMouseMotion
-	if motion != null and motion.relative.length() > tuning.mouse_aim_delta_threshold:
-		_set_aim_device(AimDevice.MOUSE)
+	if motion != null:
+		# Spostamento cumulativo in una finestra breve: un tocco del trackpad o del
+		# giroscopio (frazioni di pixel) non ruba la mira al controller.
+		if _mouse_delta_window_left <= 0.0:
+			_mouse_delta_accum = 0.0
+			_mouse_delta_window_left = tuning.mouse_aim_delta_window
+		_mouse_delta_accum += motion.relative.length()
+		_mouse_idle_seconds = 0.0
+		if _mouse_delta_accum >= tuning.mouse_aim_delta_threshold:
+			_mouse_delta_accum = 0.0
+			_mouse_delta_window_left = 0.0
+			_set_aim_device(AimDevice.MOUSE)
+		return
+	var joy := event as InputEventJoypadMotion
+	if joy != null:
+		if joy.axis == JOY_AXIS_LEFT_X:
+			_left_stick.x = joy.axis_value
+		elif joy.axis == JOY_AXIS_LEFT_Y:
+			_left_stick.y = joy.axis_value
 
 
 ## Rileva il fronte di pressione: un grilletto analogico invia un evento a ogni
 ## variazione sopra la dead zone e non deve ripetere il comando. I modificatori
 ## sono ignorati come in Unreal. Il comando e eseguito al passo fisico successivo,
 ## come l'input Unreal elaborato prima del Tick: nessuna pressione va persa.
+## Ogni sorgente (tasto, grilletto, pulsante, mouse) tiene l'azione per conto suo:
+## rilasciarne una mentre un'altra e premuta non riarma il comando (P-02).
 func _unhandled_input(event: InputEvent) -> void:
 	for action in STARTED_ACTIONS:
 		if not event.is_action(action):
 			continue
-		var pressed := event.is_action_pressed(action)
-		if pressed and not _held_actions.get(action, false):
-			_pending_actions.append(action)
-		_held_actions[action] = pressed
+		var sources: Dictionary = _held_actions.get_or_add(action, {})
+		var was_held := not sources.is_empty()
+		var source := event.get_class()
+		if event.is_action_pressed(action):
+			sources[source] = true
+			if not was_held:
+				_pending_actions.append(action)
+		else:
+			sources.erase(source)
+
+
+## Un rilascio avvenuto in pausa non arriva mai: alla ripresa nessuna azione e
+## "ancora premuta", altrimenti la pressione successiva verrebbe scartata (R-17).
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_UNPAUSED:
+		_held_actions.clear()
+		_pending_actions.clear()
+		_left_stick = Vector2.ZERO
 
 
 func _run_pending_actions() -> void:
@@ -177,7 +201,13 @@ func _physics_process(delta: float) -> void:
 	var move_direction := _read_move_direction()
 
 	var aim_input := _raw_aim_input()
-	if aim_input.length_squared() > tuning.aim_stick_dead_zone * tuning.aim_stick_dead_zone:
+	var dead_zone_sq := tuning.aim_stick_dead_zone * tuning.aim_stick_dead_zone
+	_mouse_idle_seconds += delta
+	_mouse_delta_window_left = maxf(_mouse_delta_window_left - delta, 0.0)
+	if aim_input.length_squared() > dead_zone_sq:
+		_set_aim_device(AimDevice.GAMEPAD)
+	elif _left_stick.length_squared() > dead_zone_sq and _mouse_idle_seconds > tuning.mouse_aim_idle_seconds:
+		# Si gioca col controller e il mouse e fermo: la mira torna allo stick.
 		_set_aim_device(AimDevice.GAMEPAD)
 	_apply_facing_rotation(aim_input, delta)
 
@@ -373,7 +403,7 @@ func _start_dash() -> void:
 	is_dashing = true
 	_time_since_dash = 0.0
 	_effective_dash_duration = maxf(tuning.dash_duration, 0.01)
-	_set_body_color(tuning.dash_color_linear)
+	_set_state_color(tuning.dash_color_linear)
 	_body.scale = _base_body_scale * tuning.dash_scale_multiplier
 	if _animator != null:
 		_animator.play_dodge()
@@ -398,12 +428,12 @@ func _end_dash() -> void:
 	velocity.x = 0.0
 	velocity.z = 0.0
 	_body.scale = _base_body_scale
-	_set_body_color(tuning.dash_cooldown_color_linear)
+	_set_state_color(tuning.dash_cooldown_color_linear)
 
 
 func _end_dash_cooldown() -> void:
 	is_dash_on_cooldown = false
-	_set_body_color(BODY_COLOR_LINEAR)
+	_set_state_color(BODY_COLOR_LINEAR)
 	print("PROTOTYPE01_DASH_READY")
 	dash_ready.emit()
 
@@ -468,6 +498,14 @@ func _set_body_color(linear_color: Color) -> void:
 	_body_material.albedo_color = linear_color.linear_to_srgb()
 
 
+## Colore di stato (dash, cooldown, riposo): il lampo rosso del danno ha la precedenza
+## finche dura; alla sua fine `_update_hit_flash` applica il colore giusto (P-07).
+func _set_state_color(linear_color: Color) -> void:
+	if _hit_flash_left > 0.0:
+		return
+	_set_body_color(linear_color)
+
+
 # --- Movimento procedurale ---------------------------------------------------------------
 
 ## Rinculo visivo di un colpo. [param world_direction] e la direzione in cui il corpo
@@ -499,10 +537,10 @@ func _update_motion(delta: float) -> void:
 			_motion_at_rest = true
 		return
 
-	var lean := local_velocity.limit_length(walk_speed * LEAN_SPEED_CAP) / walk_speed * LEAN_ANGLE
+	var lean := local_velocity.limit_length(walk_speed * tuning.lean_speed_cap) / walk_speed * tuning.lean_angle
 	# Avanti e -Z: beccheggio negativo = busto in avanti; rollio negativo = verso destra.
-	_lean_pitch = ActorMotion.smooth(_lean_pitch, lean.z, LEAN_RATE, delta)
-	_lean_roll = ActorMotion.smooth(_lean_roll, -lean.x, LEAN_RATE, delta)
+	_lean_pitch = ActorMotion.smooth(_lean_pitch, lean.z, tuning.lean_rate, delta)
+	_lean_roll = ActorMotion.smooth(_lean_roll, -lean.x, tuning.lean_rate, delta)
 	var pitch := _lean_pitch
 	var roll := _lean_roll
 	var slide := Vector3.ZERO
@@ -510,22 +548,22 @@ func _update_motion(delta: float) -> void:
 	if is_dashing != _was_dashing:
 		_was_dashing = is_dashing
 		_dash_pulse = -1.0 if is_dashing else 1.0
-	_dash_pulse = move_toward(_dash_pulse, 0.0, delta / DASH_PULSE_SECONDS)
+	_dash_pulse = move_toward(_dash_pulse, 0.0, delta / tuning.dash_pulse_seconds)
 	var pulse := _dash_pulse * _dash_pulse
-	var height := 1.0 + (pulse * DASH_STRETCH if _dash_pulse > 0.0 else -pulse * DASH_SQUASH)
+	var height := 1.0 + (pulse * tuning.dash_stretch if _dash_pulse > 0.0 else -pulse * tuning.dash_squash)
 
 	if _recoil > 0.0:
-		_recoil = maxf(_recoil - delta / RECOIL_SECONDS, 0.0)
+		_recoil = maxf(_recoil - delta / tuning.recoil_seconds, 0.0)
 		var punch := _recoil * _recoil
-		slide += _recoil_direction * (RECOIL_BACK * punch)
-		pitch += _recoil_direction.z * RECOIL_TILT * punch
-		roll -= _recoil_direction.x * RECOIL_TILT * punch
+		slide += _recoil_direction * (tuning.recoil_back * punch)
+		pitch += _recoil_direction.z * tuning.recoil_tilt * punch
+		roll -= _recoil_direction.x * tuning.recoil_tilt * punch
 	if _flinch > 0.0:
-		_flinch = maxf(_flinch - delta / FLINCH_SECONDS, 0.0)
+		_flinch = maxf(_flinch - delta / tuning.flinch_seconds, 0.0)
 		var hurt := _flinch * _flinch
-		height *= 1.0 - FLINCH_SQUASH * hurt
-		slide.z += FLINCH_BACK * hurt
-		pitch += FLINCH_PITCH * hurt
+		height *= 1.0 - tuning.flinch_squash * hurt
+		slide.z += tuning.flinch_back * hurt
+		pitch += tuning.flinch_pitch * hurt
 
 	var width := 1.0 - (height - 1.0) * 0.5
 	var pose := Basis.from_euler(Vector3(pitch, 0.0, roll)).scaled_local(Vector3(width, height, width))

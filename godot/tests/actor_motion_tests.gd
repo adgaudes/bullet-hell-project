@@ -161,7 +161,7 @@ func _test_player() -> void:
 	_check(absf(max_bob) < EPSILON and absf(min_bob) < EPSILON, "camminando il modello non sale ne scende (max %.3f)" % max_bob)
 	_check(_player._animator != null and _player._animator.move_blend() > 0.5,
 		"camminando l'animatore passa alla corsa (%.2f)" % (_player._animator.move_blend() if _player._animator != null else -1.0))
-	_check(max_tilt > PlayerCharacter.LEAN_ANGLE * 0.7 and max_tilt <= PlayerCharacter.LEAN_ANGLE + EPSILON,
+	_check(max_tilt > _player.tuning.lean_angle * 0.7 and max_tilt <= _player.tuning.lean_angle + EPSILON,
 		"si inclina in avanti entro LEAN_ANGLE (%.3f rad)" % max_tilt)
 	_check((model.transform.basis.y.normalized()).z < -0.05, "l'inclinazione va nella direzione di marcia (avanti = -Z)")
 	_check(is_zero_approx(_player.rotation.x) and is_zero_approx(_player.rotation.z) and _player.scale.is_equal_approx(Vector3.ONE),
@@ -175,13 +175,13 @@ func _test_player() -> void:
 	_check(_player.is_dashing and _player._body.scale.is_equal_approx(_player._base_body_scale * _player.tuning.dash_scale_multiplier),
 		"nel dash la scala 1,15 del corpo visivo resta quella del codice di gioco")
 	var squash := model.transform.basis.get_scale()
-	_check(squash.y < 1.0 - PlayerCharacter.DASH_SQUASH * 0.3 and squash.y >= 1.0 - PlayerCharacter.DASH_SQUASH - EPSILON and squash.x > 1.0,
+	_check(squash.y < 1.0 - _player.tuning.dash_squash * 0.3 and squash.y >= 1.0 - _player.tuning.dash_squash - EPSILON and squash.x > 1.0,
 		"partenza del dash: schiacciato entro DASH_SQUASH (y %.3f)" % squash.y)
 	while _player.is_dashing:
 		await physics_frame
 	await physics_frame
 	var stretch := model.transform.basis.get_scale()
-	_check(stretch.y > 1.0 + PlayerCharacter.DASH_STRETCH * 0.3 and stretch.y <= 1.0 + PlayerCharacter.DASH_STRETCH + EPSILON,
+	_check(stretch.y > 1.0 + _player.tuning.dash_stretch * 0.3 and stretch.y <= 1.0 + _player.tuning.dash_stretch + EPSILON,
 		"arrivo del dash: allungato entro DASH_STRETCH (y %.3f)" % stretch.y)
 	_check(_player._body.scale.is_equal_approx(_player._base_body_scale), "a fine dash la scala del corpo visivo torna quella base")
 	Input.action_release(&"move_forward")
@@ -192,10 +192,10 @@ func _test_player() -> void:
 	_player.on_hit()
 	await physics_frame
 	var flinch := model.transform
-	_check(_player._hit_flash_left > 0.0 and flinch.origin.z - rest.origin.z > PlayerCharacter.FLINCH_BACK * 0.4
-		and flinch.origin.z - rest.origin.z <= PlayerCharacter.FLINCH_BACK + EPSILON and flinch.basis.get_scale().y < 1.0,
+	_check(_player._hit_flash_left > 0.0 and flinch.origin.z - rest.origin.z > _player.tuning.flinch_back * 0.4
+		and flinch.origin.z - rest.origin.z <= _player.tuning.flinch_back + EPSILON and flinch.basis.get_scale().y < 1.0,
 		"colpito: arretra e si schiaccia entro i limiti mentre lampeggia")
-	await _frames(int(PlayerCharacter.FLINCH_SECONDS * 60.0) + 12)
+	await _frames(int(_player.tuning.flinch_seconds * 60.0) + 12)
 	_check(model.transform.is_equal_approx(rest), "dopo il sussulto torna a riposo")
 
 	# Rinculo: opposto al colpo, nello spazio del personaggio.
@@ -203,9 +203,9 @@ func _test_player() -> void:
 	_player.kick(Vector3.RIGHT)
 	await physics_frame
 	var pushed := _player.global_basis * (model.transform.origin - rest.origin)
-	_check(pushed.x > PlayerCharacter.RECOIL_BACK * 0.3 and pushed.length() <= PlayerCharacter.RECOIL_BACK + EPSILON and absf(pushed.z) < 0.01,
+	_check(pushed.x > _player.tuning.recoil_back * 0.3 and pushed.length() <= _player.tuning.recoil_back + EPSILON and absf(pushed.z) < 0.01,
 		"rinculo nella direzione chiesta, entro RECOIL_BACK (%.3f m)" % pushed.length())
-	await _frames(int(PlayerCharacter.RECOIL_SECONDS * 60.0) + 12)
+	await _frames(int(_player.tuning.recoil_seconds * 60.0) + 12)
 	_check(model.transform.is_equal_approx(rest), "dopo il rinculo torna a riposo")
 
 	# Collegamento opzionale all'arma, senza dipendenza diretta.
