@@ -12,6 +12,8 @@ extends Node
 signal boss_called(direction: Vector3)
 signal boss_spawned(boss: Demolisher)
 signal level_completed
+## Rilancio di DayNightCycle.phase_changed: HUD e audio non dipendono dal nodo del ciclo.
+signal night_phase_changed(phase: DayNightCycle.Phase)
 
 enum BossPhase { WAITING, WARNING, ACTIVE, DEFEATED }
 
@@ -49,12 +51,24 @@ const BOSS_DIRECTIONS := [
 @export var game_over: GameOverPanel
 ## Officina fra i livelli (D-049); opzionale.
 @export var workshop: WorkshopPanel
+## Ciclo giorno/notte (D-058); senza nodo il livello resta diurno.
+@export var day_night: DayNightCycle
 
 var progression := RunProgression.new()
 var elapsed := 0.0
 var is_over := false
 var run_seed := 0
 var companion_weapon: AutoWeapon
+## Luci logiche della notte: torcia del giocatore, faro del compagno (e lampioni, tappa 2).
+var light_field := LightField.new()
+var torch_light_id := 0
+var beacon_light_id := 0
+var torch_radius := 0.0
+var beacon_radius := 0.0
+var _torch: OmniLight3D
+var _beacon: OmniLight3D
+var _night_factor_applied := -1.0
+var _day_second_shown := -1
 var dig_blast_radius := 0.0
 var boss_phase := BossPhase.WAITING
 var boss: Demolisher
@@ -96,6 +110,7 @@ func _ready() -> void:
 	director.rng.seed = run_seed + 1
 	_boss_rng.seed = run_seed + 2
 	_check_scale()
+	_setup_night()
 	# La cella protetta (0,0) e un residuo della parita Unreal (smoke test): nel livello
 	# nessuna cella e intoccabile (R-28).
 	grid.set_protected_cell(Vector2i(-1, -1))
@@ -136,6 +151,7 @@ func _physics_process(delta: float) -> void:
 		return
 	elapsed += delta
 	hud.set_time(elapsed)
+	_tick_night()
 	_tick_boss(delta)
 	_tick_markers(delta)
 	_open_next_level_up()
@@ -483,6 +499,82 @@ func return_to_menu() -> void:
 	get_tree().change_scene_to_file(MAIN_MENU_SCENE)
 
 
+# --- Ciclo giorno/notte (D-058, tappa 1) -----------------------------------------
+
+func _setup_night() -> void:
+	torch_radius = tuning.torch_radius
+	beacon_radius = tuning.beacon_radius
+	torch_light_id = light_field.add_source(player, torch_radius)
+	if companion != null:
+		beacon_light_id = light_field.add_source(companion, beacon_radius)
+	director.light_field = light_field
+	if day_night == null:
+		return
+	day_night.night_start_seconds = RunLaunchOptions.night_start_seconds(tuning.night_start_seconds)
+	day_night.dusk_seconds = tuning.dusk_seconds
+	if day_night.district == null:
+		day_night.district = district
+	day_night.phase_changed.connect(_on_night_phase_changed)
+
+
+func _tick_night() -> void:
+	if day_night == null:
+		return
+	day_night.advance(elapsed)
+	var to_dusk := day_night.seconds_to_dusk(elapsed)
+	var second := int(to_dusk) if is_finite(to_dusk) else -2
+	if second != _day_second_shown or day_night.phase != DayNightCycle.Phase.DAY:
+		_day_second_shown = second
+		hud.set_day_phase(day_night.phase, to_dusk)
+	_update_game_lights()
+
+
+func _on_night_phase_changed(phase: DayNightCycle.Phase) -> void:
+	director.night_active = phase == DayNightCycle.Phase.NIGHT
+	match phase:
+		DayNightCycle.Phase.DUSK:
+			hud.show_night_notice("CALA LA NOTTE", 4.0)
+		DayNightCycle.Phase.NIGHT:
+			hud.show_night_notice("E NOTTE", 3.0)
+	night_phase_changed.emit(phase)
+
+
+## Le due OmniLight3D sono di ArenaRun, non delle scene del giocatore e del compagno
+## (piano, sezione 14): nascono alla prima chiamata e costano zero a fattore 0.
+func _update_game_lights() -> void:
+	var factor := day_night.night_factor
+	if _torch == null:
+		_torch = _make_game_light("TorchLight", player)
+		if companion != null:
+			_beacon = _make_game_light("BeaconLight", companion)
+	if is_equal_approx(factor, _night_factor_applied):
+		return
+	_night_factor_applied = factor
+	director.set_night(factor)
+	for pair in [[_torch, torch_radius], [_beacon, beacon_radius]]:
+		var light: OmniLight3D = pair[0]
+		if light == null:
+			continue
+		light.visible = factor > 0.0
+		light.light_energy = 2.2 * factor
+		light.omni_range = pair[1] * 1.15
+
+
+func _make_game_light(light_name: String, owner_node: Node3D) -> OmniLight3D:
+	var light := OmniLight3D.new()
+	light.name = light_name
+	light.position = Vector3(0.0, 1.6, 0.0)
+	light.light_color = Color(1.0, 0.9, 0.72)
+	light.shadow_enabled = false
+	light.visible = false
+	owner_node.add_child.call_deferred(light)
+	return light
+
+
+func is_night() -> bool:
+	return day_night != null and day_night.phase == DayNightCycle.Phase.NIGHT
+
+
 ## Abbandono dalla pausa (R-20, D-064): vale come una morte, si incassa la stessa quota.
 ## Niente mappa ne pannello: chi abbandona vuole uscire.
 func abandon_run() -> void:
@@ -586,6 +678,14 @@ func apply_upgrade(id: StringName, new_level: int) -> void:
 		&"lucky_scrap":
 			if companion != null:
 				companion.add_capacity(0, int(UpgradeCatalog.value(id, &"scrap_now")))
+		&"torch_range":
+			torch_radius = tuning.torch_radius + tuning.torch_radius_per_level * new_level
+			light_field.set_radius(torch_light_id, torch_radius)
+			_night_factor_applied = -1.0
+		&"beacon_range":
+			beacon_radius = tuning.beacon_radius + tuning.beacon_radius_per_level * new_level
+			light_field.set_radius(beacon_light_id, beacon_radius)
+			_night_factor_applied = -1.0
 		&"nail_jar":
 			var radius := UpgradeCatalog.value(id, &"radius")
 			var center := Vector3(player.global_position.x, 0.1, player.global_position.z)

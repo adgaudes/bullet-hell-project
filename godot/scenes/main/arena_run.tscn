@@ -1,4 +1,4 @@
-[gd_scene load_steps=21 format=3]
+[gd_scene load_steps=22 format=3]
 
 [ext_resource type="Script" path="res://scripts/services/skeleton_probe.gd" id="1_probe"]
 [ext_resource type="Script" path="res://scripts/arena/ruins_district.gd" id="2_arena"]
@@ -14,6 +14,7 @@
 [ext_resource type="Script" path="res://scripts/combat/auto_weapon.gd" id="12_weapon"]
 [ext_resource type="Script" path="res://scripts/progression/xp_field.gd" id="13_xp"]
 [ext_resource type="Script" path="res://scripts/run/arena_run.gd" id="14_run"]
+[ext_resource type="Script" path="res://scripts/run/day_night_cycle.gd" id="20_day_night"]
 [ext_resource type="Script" path="res://scripts/ui/run_hud.gd" id="15_hud"]
 [ext_resource type="Script" path="res://scripts/ui/level_up_menu.gd" id="16_level_up"]
 [ext_resource type="Script" path="res://scripts/ui/game_over_panel.gd" id="17_game_over"]
@@ -92,8 +93,13 @@ script = ExtResource("17_game_over")
 [node name="WorkshopPanel" type="CanvasLayer" parent="."]
 script = ExtResource("19_workshop")
 
-[node name="Run" type="Node" parent="." node_paths=PackedStringArray("district", "player", "companion", "grid", "director", "weapon", "xp_field", "hud", "level_up_menu", "game_over", "workshop")]
+[node name="DayNightCycle" type="Node" parent="." node_paths=PackedStringArray("district")]
+script = ExtResource("20_day_night")
+district = NodePath("../District")
+
+[node name="Run" type="Node" parent="." node_paths=PackedStringArray("district", "player", "companion", "grid", "director", "weapon", "xp_field", "hud", "level_up_menu", "game_over", "workshop", "day_night")]
 script = ExtResource("14_run")
+day_night = NodePath("../DayNightCycle")
 tuning = ExtResource("11_run_tuning")
 district = NodePath("../District")
 player = NodePath("../Player")

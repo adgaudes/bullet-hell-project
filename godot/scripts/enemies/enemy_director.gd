@@ -34,6 +34,12 @@ var kills := 0
 var leashed := 0
 var elapsed := 0.0
 ## Danno da contatto con le celle Raised (upgrade Terrapieni spinati); 0 = spento.
+## Notte (D-058): al buio, fuori dalle luci di `light_field`, i rottamatori corrono di piu
+## e mordono piu forte. Con `light_field` nullo o `night_active` falso nulla cambia.
+var light_field: LightField
+var night_active := false
+## Contatti avvenuti al buio (test e simulazione).
+var dark_contacts := 0
 var spike_damage := 0
 var spike_interval := 0.8
 var rng := RandomNumberGenerator.new()
@@ -223,6 +229,11 @@ func _move_enemies(delta: float) -> void:
 				direction = to_player.normalized()
 		direction += _separation(enemy) * SEPARATION_WEIGHT
 		var speed := tuning.enemy_speed * enemy.speed_scale
+		# Una sola domanda alla luce per nemico e per passo: vale per velocita e contatto.
+		var in_dark := night_active and light_field != null and not light_field.is_lit(pos)
+		# I nemici in commissione (portatori del boss) restano come sono (specifica, sezione 5).
+		if in_dark and not enemy.has_errand:
+			speed *= tuning.night_dark_speed_scale
 		if grid != null and grid.cell_state_at(pos) == TerrainState.CellState.LOWERED:
 			speed *= 1.0 - penalty
 		var desired := direction.limit_length(1.0) * speed
@@ -231,7 +242,18 @@ func _move_enemies(delta: float) -> void:
 		enemy.move_and_slide()
 		if planar.length() > 0.2:
 			enemy.rotation.y = atan2(-planar.x, -planar.z)
-		_apply_contacts(enemy)
+		_apply_contacts(enemy, in_dark)
+
+
+## Di notte e fuori da ogni luce logica?
+func is_in_dark(world: Vector3) -> bool:
+	return night_active and light_field != null and not light_field.is_lit(world)
+
+
+## Visiera dell'orda piu accesa di notte: i due materiali condivisi, nessun costo per nemico.
+func set_night(factor: float) -> void:
+	_base_material.set_shader_parameter(&"emission_energy", lerpf(2.0, 6.0, factor))
+	_runner_material.set_shader_parameter(&"emission_energy", lerpf(3.0, 7.0, factor))
 
 
 ## Riporta un nemico disperso sull'anello di comparsa. False se non c'e posto.
@@ -247,11 +269,15 @@ func _leash(enemy: Enemy) -> bool:
 	return true
 
 
-func _apply_contacts(enemy: Enemy) -> void:
+func _apply_contacts(enemy: Enemy, in_dark := false) -> void:
 	if enemy.is_dead:
 		return
 	if _planar(player.global_position - enemy.global_position).length() <= tuning.contact_radius:
-		player.take_damage(tuning.contact_damage)
+		var damage := tuning.contact_damage
+		if in_dark:
+			damage += tuning.night_dark_contact_bonus
+			dark_contacts += 1
+		player.take_damage(damage)
 		enemy.notify_contact()
 	if spike_damage > 0 and enemy.spike_cooldown <= 0.0 and grid != null:
 		for i in enemy.get_slide_collision_count():

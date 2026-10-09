@@ -31,6 +31,10 @@ var _time := 0.0
 func _ready() -> void:
 	_mesh.size = Vector3.ONE * SCRAP_SIZE
 	_material.albedo_color = SCRAP_COLOR.linear_to_srgb()
+	# Di notte i rottami si vedono da lontano (specifica giorno/notte, sezione 6).
+	_material.emission_enabled = true
+	_material.emission = SCRAP_COLOR.linear_to_srgb()
+	_material.emission_energy_multiplier = 0.6
 	# Il bob gira solo quando c'e almeno un rottame (P-04).
 	set_process(false)
 	if grid != null:

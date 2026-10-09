@@ -31,6 +31,8 @@ const SOUND_SETTINGS: Dictionary[StringName, Array] = {
 	&"boss_barricade": [-7.0, 0.05, 0.15],
 	&"carrier_pickup": [-10.0, 0.05, 0.08],
 	&"victory": [-4.0, 0.0, 0.5],
+	&"dusk": [-6.0, 0.0, 1.0],
+	&"nightfall": [-4.0, 0.0, 1.0],
 }
 ## Suoni che un player occupato non cede mai a un altro (R-36): sono rari e
 ## portano un'informazione che il giocatore deve sentire fino in fondo.
@@ -177,6 +179,7 @@ func _connect_signals() -> void:
 		run.boss_called.connect(_on_boss_called)
 		run.boss_spawned.connect(_on_boss_spawned)
 		run.level_completed.connect(play.bind(&"victory", 0.0))
+		run.night_phase_changed.connect(_on_night_phase)
 
 
 func _on_health_changed(health: int, _max_health: int) -> void:
@@ -220,6 +223,14 @@ func _on_boss_called(_direction: Vector3) -> void:
 
 ## Il Demolitore entra in campo: da qui si sentono muri smontati, rottami
 ## raccolti dalla sua squadra e barricate che si alzano (D-045).
+func _on_night_phase(phase: DayNightCycle.Phase) -> void:
+	match phase:
+		DayNightCycle.Phase.DUSK:
+			play(&"dusk")
+		DayNightCycle.Phase.NIGHT:
+			play(&"nightfall")
+
+
 func _on_boss_spawned(boss: Demolisher) -> void:
 	play(&"boss_spawn")
 	boss.wall_demolished.connect(func(_cell: Vector2i) -> void: play(&"boss_demolish"))

@@ -11,6 +11,20 @@ extends Resource
 ## Raggio entro cui i frammenti di esperienza volano verso il giocatore.
 @export var pickup_radius := 2.5
 
+@export_group("Night")
+## Secondi di livello all'inizio del tramonto (D-058). 0 = ciclo spento: il livello resta diurno.
+@export var night_start_seconds := 270.0
+@export var dusk_seconds := 45.0
+## Moltiplicatore di velocita dei rottamatori al buio (fuori da ogni luce) di notte.
+@export var night_dark_speed_scale := 1.35
+## Danno da contatto in piu al buio di notte.
+@export var night_dark_contact_bonus := 1
+@export var torch_radius := 6.0
+@export var beacon_radius := 11.0
+## Crescita per livello delle carte `torch_range` e `beacon_range`.
+@export var torch_radius_per_level := 1.5
+@export var beacon_radius_per_level := 2.0
+
 @export_group("Enemies")
 @export var enemy_speed := 2.2
 @export var enemy_health := 2

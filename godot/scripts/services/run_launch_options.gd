@@ -5,7 +5,7 @@ extends RefCounted
 ## aggiunta qui e, se deve saltare il menu, in AUTOSTART_PREFIXES.
 
 ## Opzioni che fanno saltare il menu iniziale e avviano subito il livello.
-const AUTOSTART_PREFIXES: Array[String] = ["--autostart", "--seed=", "--boss-at=", "--capture="]
+const AUTOSTART_PREFIXES: Array[String] = ["--autostart", "--seed=", "--boss-at=", "--night-at=", "--capture="]
 
 
 static func wants_autostart(args: PackedStringArray = OS.get_cmdline_user_args()) -> bool:
@@ -29,6 +29,12 @@ static func run_seed(args: PackedStringArray = OS.get_cmdline_user_args()) -> in
 ## Secondi alla chiamata del boss: `--boss-at=S`, altrimenti il tuning.
 static func boss_call_seconds(default_seconds: float, args: PackedStringArray = OS.get_cmdline_user_args()) -> float:
 	var value := _value_of("--boss-at=", args)
+	return value.to_float() if not value.is_empty() else default_seconds
+
+
+## Secondi all'inizio del tramonto: `--night-at=S` (0 = niente notte), altrimenti il tuning.
+static func night_start_seconds(default_seconds: float, args: PackedStringArray = OS.get_cmdline_user_args()) -> float:
+	var value := _value_of("--night-at=", args)
 	return value.to_float() if not value.is_empty() else default_seconds
 
 

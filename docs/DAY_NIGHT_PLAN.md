@@ -1,6 +1,6 @@
 # Ciclo giorno/notte, tappa 1 — piano di implementazione
 
-**Stato:** piano scritto il 7 ottobre 2026 senza Godot a disposizione (solo lettura del codice). Attua la sezione 10 di `DAY_NIGHT_SPEC.md` (D-058) per la tappa 1, "notte giocabile". I lampioni (tappa 2) restano fuori; dove una scelta di oggi li condiziona e segnalato.
+**Stato:** **implementato il 9 ottobre 2026** come descritto qui (scostamenti: l'indicatore dell'HUD usa le parole SOLE/TRAMONTO/NOTTE invece dei glifi; `--night-at` e in `RunLaunchOptions`; il direttore chiede alla luce una sola volta per nemico e per passo; la suite ha il caso del Demolitore per ultimo perche abbatterlo chiude il livello). Piano scritto il 7 ottobre 2026 senza Godot a disposizione (solo lettura del codice). Attua la sezione 10 di `DAY_NIGHT_SPEC.md` (D-058) per la tappa 1, "notte giocabile". I lampioni (tappa 2) restano fuori; dove una scelta di oggi li condiziona e segnalato.
 
 Scopo del documento: rendere la sessione che implementa puramente esecutiva. Ogni passo dice file, funzioni, segnali, valori e test. I punti di aggancio citati (nomi di funzioni e righe) sono stati verificati nel codice al commit `ad99f14`.
 

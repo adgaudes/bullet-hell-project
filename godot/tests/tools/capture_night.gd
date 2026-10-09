@@ -1,0 +1,63 @@
+extends SceneTree
+## Catture del ciclo giorno/notte (D-058, tappa 1), non e una suite. Con finestra reale:
+##   godot_console --path godot --resolution 1280x800 --fixed-fps 60 --quit-after 3000 --script res://tests/tools/capture_night.gd -- --out=../output/night
+## Produce: day (giorno, indicatore con il tempo al tramonto), dusk (tramonto a meta),
+## night_beacon (notte dentro il faro del compagno), night_dark (notte fuori dalle luci,
+## 20 rottamatori attorno), night_upgraded (Torcia e Faro al livello 3).
+
+var _out := "../output/night"
+var _scene: Node3D
+var _run: ArenaRun
+
+
+func _initialize() -> void:
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--out="):
+			_out = arg.trim_prefix("--out=")
+	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("res://").path_join(_out))
+	_scene = preload("res://scenes/main/arena_run.tscn").instantiate()
+	root.add_child(_scene)
+	_run = _scene.get_node(^"Run")
+	var player: PlayerCharacter = _scene.get_node(^"Player")
+	var companion: Companion = _scene.get_node(^"Companion")
+	var director: EnemyDirector = _scene.get_node(^"EnemyDirector")
+	director.spawning = false
+	(_scene.get_node(^"PlayerWeapon") as AutoWeapon).set_physics_process(false)
+	player._invulnerable_left = 3000.0
+	for i in 30:
+		await physics_frame
+	await _save("day")
+	# Tramonto a meta.
+	_run.elapsed = _run.day_night.night_start_seconds + _run.day_night.dusk_seconds * 0.5
+	for i in 20:
+		await physics_frame
+	await _save("dusk")
+	# Notte, accanto al compagno (faro).
+	_run.elapsed = _run.day_night.night_start_seconds + _run.day_night.dusk_seconds + 2.0
+	for i in 20:
+		await physics_frame
+	await _save("night_beacon")
+	# Notte lontano dal compagno, con l'orda attorno.
+	companion.set_physics_process(false)
+	companion.global_position = player.global_position + Vector3(40.0, 0.0, 0.0)
+	for i in 20:
+		director.spawn_at(player.global_position + Vector3(cos(i * 0.314) * 9.0, 0.0, sin(i * 0.314) * 9.0))
+	for i in 40:
+		await physics_frame
+	await _save("night_dark")
+	# Torcia e Faro al massimo.
+	companion.global_position = player.global_position + Vector3(6.0, 0.0, 0.0)
+	_run.apply_upgrade(&"torch_range", 3)
+	_run.apply_upgrade(&"beacon_range", 3)
+	for i in 20:
+		await physics_frame
+	await _save("night_upgraded")
+	quit()
+
+
+func _save(name: String) -> void:
+	for i in 3:
+		await RenderingServer.frame_post_draw
+	var path := _out.path_join(name + ".png")
+	var err := root.get_viewport().get_texture().get_image().save_png(path)
+	print("PROTOTYPE01_CAPTURE path=%s err=%d" % [path, err])

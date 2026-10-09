@@ -8,6 +8,8 @@ const HEALTH_ON := Color(0.95, 0.25, 0.15)
 const HEALTH_OFF := Color(0.18, 0.12, 0.12, 0.8)
 const XP_COLOR := Color(0.1, 0.85, 0.65)
 const BOSS_COLOR := Color(0.95, 0.6, 0.08)
+const DAY_COLOR := Color(1.0, 0.9, 0.55)
+const NIGHT_COLOR := Color(0.6, 0.65, 1.0)
 ## Distanza della freccia di direzione dal centro dello schermo, in frazione del lato corto.
 const ARROW_RADIUS_RATIO := 0.36
 ## Ingombro di una scritta degli indicatori, per non sovrapporle.
@@ -16,7 +18,12 @@ const MARKER_LABEL_SIZE := Vector2(120.0, 20.0)
 var _xp_bar: ProgressBar
 var _level_label: Label
 var _time_label: Label
+var _day_label: Label
 var _kills_label: Label
+var _day_phase_shown := -1
+var _day_second_shown := -1
+var _night_notice_left := 0.0
+var _night_notice_text := ""
 var _health_row: HBoxContainer
 var _boss_warning: Label
 var _boss_arrow: Polygon2D
@@ -65,6 +72,9 @@ func _ready() -> void:
 	root.add_child(top)
 	_level_label = _label(top, HORIZONTAL_ALIGNMENT_LEFT)
 	_time_label = _label(top, HORIZONTAL_ALIGNMENT_CENTER)
+	_day_label = _label(top, HORIZONTAL_ALIGNMENT_CENTER)
+	_day_label.add_theme_color_override(&"font_color", DAY_COLOR)
+	_day_label.hide()
 	_kills_label = _label(top, HORIZONTAL_ALIGNMENT_RIGHT)
 
 	_health_row = HBoxContainer.new()
@@ -138,6 +148,8 @@ func set_boss_warning(direction_name: String, direction: Vector3, seconds_left: 
 		_boss_seconds_shown = seconds
 		_boss_direction_shown = direction_name
 		_boss_warning.text = "IL DEMOLITORE ARRIVA DA %s  -  %d" % [direction_name, seconds]
+		_boss_warning.add_theme_color_override(&"font_color", BOSS_COLOR)
+		_night_notice_left = 0.0
 	_boss_warning.show()
 	var size := _root.size
 	var screen_direction := Vector2(direction.x, direction.z).normalized()
@@ -254,6 +266,56 @@ func set_health(health: int, max_health: int) -> void:
 		var color := HEALTH_ON if i < health else HEALTH_OFF
 		if pip.color != color:
 			pip.color = color
+
+
+## Indicatore sole/luna nella riga superiore: tempo al tramonto di giorno, poi la fase.
+## Con ciclo spento (`seconds_to_dusk` infinito) resta nascosto.
+func set_day_phase(phase: int, seconds_to_dusk: float) -> void:
+	if not is_finite(seconds_to_dusk):
+		_day_label.hide()
+		return
+	var second := int(ceil(seconds_to_dusk))
+	if phase == _day_phase_shown and (phase != DayNightCycle.Phase.DAY or second == _day_second_shown):
+		return
+	_day_phase_shown = phase
+	_day_second_shown = second
+	match phase:
+		DayNightCycle.Phase.DAY:
+			_day_label.text = "SOLE %s" % format_time(seconds_to_dusk)
+			_day_label.add_theme_color_override(&"font_color", DAY_COLOR)
+		DayNightCycle.Phase.DUSK:
+			_day_label.text = "TRAMONTO"
+			_day_label.add_theme_color_override(&"font_color", DAY_COLOR)
+		_:
+			_day_label.text = "NOTTE"
+			_day_label.add_theme_color_override(&"font_color", NIGHT_COLOR)
+	_day_label.show()
+
+
+## Avviso del tramonto o della notte, nello spazio dell'annuncio del boss, che ha la precedenza.
+func show_night_notice(text: String, seconds: float) -> void:
+	# Solo l'annuncio del boss (quello con la freccia) ha la precedenza; un avviso notte
+	# precedente viene sostituito.
+	if _boss_arrow.visible:
+		return
+	_night_notice_text = text
+	_night_notice_left = seconds
+	_boss_warning.text = text
+	_boss_warning.add_theme_color_override(&"font_color", NIGHT_COLOR)
+	_boss_warning.show()
+
+
+func is_night_notice_visible() -> bool:
+	return _night_notice_left > 0.0 and _boss_warning.visible and _boss_warning.text == _night_notice_text
+
+
+func _process(delta: float) -> void:
+	if _night_notice_left <= 0.0:
+		return
+	_night_notice_left -= delta
+	if _night_notice_left <= 0.0 and _boss_warning.text == _night_notice_text:
+		_boss_warning.hide()
+		_boss_warning.add_theme_color_override(&"font_color", BOSS_COLOR)
 
 
 func set_time(seconds: float) -> void:

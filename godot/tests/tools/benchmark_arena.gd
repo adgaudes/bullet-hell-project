@@ -24,12 +24,16 @@ func _initialize() -> void:
 	var player: PlayerCharacter = scene.get_node(^"Player")
 	var tuning: RunTuning = director.tuning
 	var enemy_target := tuning.max_alive
+	var night := false
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--enemies="):
 			enemy_target = arg.trim_prefix("--enemies=").to_int()
 		elif arg == "--no-motion":
 			# Senza il movimento procedurale degli attori: misura quanto costa.
 			ActorMotion.enabled = false
+		elif arg == "--night":
+			# Misura di notte: il ciclo e portato oltre il tramonto prima dell'orda.
+			night = true
 	director.spawning = false
 	# Il campo di percorso legge gli ostacoli dopo due passi fisici.
 	for i in 5:
@@ -63,6 +67,11 @@ func _initialize() -> void:
 		% [grid.state.cell_count(), grid.active_collision_count(), district.terrain_features.size(),
 			district.stats.blocks, district.stats.props, district.stats.trees, district.stats.tufts, district.stats.flowers])
 
+	if night:
+		var run: ArenaRun = scene.get_node(^"Run")
+		run.elapsed = run.day_night.night_start_seconds + run.day_night.dusk_seconds + 1.0
+		await physics_frame
+		print("PROTOTYPE01_ARENA_BENCH night phase=%s" % DayNightCycle.PHASE_NAMES[run.day_night.phase])
 	# Orda piena: tutti i nemici vivi, giocatore invulnerabile.
 	for i in WARMUP_FRAMES:
 		await physics_frame

@@ -11,6 +11,7 @@ extends SceneTree
 ##   --max-seconds=1500              oltre questo tempo di gioco la run e interrotta
 ##   --hz=60                         passi fisici al secondo (il gioco ne usa 120)
 ##   --boss-at=N                     letto da ArenaRun: anticipa il boss
+##   --night-at=N                    letto da ArenaRun: anticipa il tramonto (0 = niente notte)
 ## Con `--fixed-fps 60` e 60 passi fisici al secondo una run e ripetibile: stesso
 ## seme e stesso bot danno la stessa riga. Senza finestra gira gia alla massima
 ## velocita della CPU (una run fino al boss costa 2-5 minuti): per fare prima si
@@ -87,6 +88,8 @@ var _bot: StringName = &"passive"
 var _params: Dictionary = {}
 var _rng := RandomNumberGenerator.new()
 var _decision_left := 0.0
+## Decisioni del bot prese al buio (notte, fuori dalle luci).
+var _dark_samples := 0
 var _move := Vector2.ZERO
 var _aim := Vector2.ZERO
 var _dig_cooldown := 0.0
@@ -193,6 +196,7 @@ func _simulate(bot: StringName, run_seed: int) -> Dictionary:
 	_escape_left = 0.0
 	_digs = 0
 	_hits = 0
+	_dark_samples = 0
 	_health_at_boss = -1
 	_level_at_boss = -1
 	_player.health_changed.connect(_on_health_changed.bind([_player.health]))
@@ -237,9 +241,11 @@ func _simulate(bot: StringName, run_seed: int) -> Dictionary:
 		scrap_out = _run.scrap_out(victory), hits = _hits,
 	}
 	var outcome := "victory_at" if victory else ("timeout_at" if timed_out else "died_at")
-	print("PROTOTYPE01_SIM seed=%d bot=%s %s=%.1f level=%d kills=%d boss=%s boss_hp=%d hp=%d hits=%d hp_at_boss=%d level_at_boss=%d digs=%d scrap_carried=%d capacity=%d scrap_out=%d upgrades=%s wall_s=%.1f"
+	var night_phase := DayNightCycle.PHASE_NAMES[_run.day_night.phase] if _run.day_night != null else "DAY"
+	print("PROTOTYPE01_SIM seed=%d bot=%s %s=%.1f level=%d kills=%d boss=%s boss_hp=%d hp=%d hits=%d hp_at_boss=%d level_at_boss=%d digs=%d scrap_carried=%d capacity=%d scrap_out=%d upgrades=%s night=%s dark_contacts=%d dark_decisions=%d wall_s=%.1f"
 		% [run_seed, bot, outcome, result.time, result.level, result.kills, boss_state, boss_health, result.health,
 			_hits, _health_at_boss, _level_at_boss, _digs, result.carried, result.capacity, result.scrap_out, ",".join(upgrades),
+			night_phase, _director.dark_contacts, _dark_samples,
 			(Time.get_ticks_msec() - wall_start) / 1000.0])
 
 	paused = false
@@ -271,6 +277,8 @@ func _tick_bot(step: float) -> void:
 		_track_stuck(step)
 		if _decision_left <= 0.0:
 			_decision_left = _params.interval
+			if _director.is_in_dark(_player.global_position):
+				_dark_samples += 1
 			if _escape_left <= 0.0:
 				_move = _choose_direction()
 		if _params.digs:
