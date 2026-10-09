@@ -1,7 +1,7 @@
 extends SceneTree
 ## Test dello spike del terreno a rilievo continuo (HeightTerrain, HeightFlowField,
 ## TerrainSpike). Eseguire con:
-##   godot_console --headless --path godot --fixed-fps 60 --script res://tests/tools/height_terrain_tests.gd
+##   godot_console --headless --path godot --fixed-fps 60 --script res://tests/height_terrain_tests.gd
 ## Invarianti: il pennello alza e scava a campana e rende il volume spostato; livella
 ## porta alla quota chiesta; la quota si legge interpolata; si sale solo sotto la
 ## pendenza massima e si scende sempre; il campo di percorso aggira un argine e non
@@ -113,15 +113,15 @@ func _test_flow_field() -> void:
 	var goal := Vector3(0.0, 0.0, -12.0)
 	var start := Vector3(0.0, 0.0, 12.0)
 	field.rebuild(terrain, goal, GRADE)
-	var straight := field.steps[field.cell_of(start)]
-	_check(straight > 0 and absf(straight * HeightFlowField.CELL - 24.0) < 3.0, "in piano va dritto (%d passi)" % straight)
+	var straight := field.distance[field.cell_of(start)]
+	_check(straight > 0.0 and absf(straight - 24.0) < 3.0, "in piano va dritto (%.1f m)" % straight)
 	_check(field.direction_at(start).z < -0.9, "e la direzione punta al bersaglio")
 	# Argine alto fra i due, lungo 20 m.
 	for i in 21:
 		terrain.sculpt(Vector3(-10.0 + i, 0.0, 0.0), 2.0, 3.0)
 	field.rebuild(terrain, goal, GRADE)
-	var around := field.steps[field.cell_of(start)]
-	_check(around > straight + 4, "un argine allunga la strada (%d passi invece di %d)" % [around, straight])
+	var around := field.distance[field.cell_of(start)]
+	_check(around > straight + 4.0, "un argine allunga la strada (%.1f m invece di %.1f)" % [around, straight])
 	var cell := field.cell_of(start)
 	var crossed := false
 	var guard := 0
@@ -139,9 +139,9 @@ func _test_flow_field() -> void:
 	var pit := Vector3(14.0, 0.0, 14.0)
 	terrain.sculpt(pit, 2.5, -4.0)
 	field.rebuild(terrain, goal, GRADE)
-	_check(field.steps[field.cell_of(pit)] < 0 and field.direction_at(pit) == Vector3.ZERO, "dal fondo di una fossa ripida non c'e strada")
+	_check(field.distance[field.cell_of(pit)] < 0.0 and field.direction_at(pit) == Vector3.ZERO, "dal fondo di una fossa ripida non c'e strada")
 	field.rebuild(terrain, pit, GRADE)
-	_check(field.steps[field.cell_of(start)] > 0, "ma nella fossa si puo scendere")
+	_check(field.distance[field.cell_of(start)] > 0.0, "ma nella fossa si puo scendere")
 	terrain.free()
 
 
@@ -174,7 +174,7 @@ func _test_scene() -> void:
 	var player := spike.player
 	var ground := spike.terrain.height_at(player.global_position)
 	_check(absf(player.global_position.y - ground - TerrainSpike.PLAYER_HEIGHT) < EPSILON, "il giocatore e posato sul rilievo")
-	_check(spike.enemies.size() == TerrainSpike.ENEMY_COUNT and spike.field.steps[spike.field.cell_of(player.global_position)] == 0,
+	_check(spike.enemies.size() == TerrainSpike.ENEMY_COUNT and spike.field.distance[spike.field.cell_of(player.global_position)] == 0.0,
 		"rottamatori schierati e campo calcolato sul giocatore")
 
 	# Alzare consuma terra, scavare la rende, e il conto torna.

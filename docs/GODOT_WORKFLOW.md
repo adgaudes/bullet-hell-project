@@ -145,6 +145,8 @@ Trappola verificata (6 ottobre 2026): `add_child()` su un nodo fratello **durant
 
 Catture del boss (annuncio, rottamatore carico e cantiere, Demolitore con barricata, vittoria): `godot_console --path godot --resolution 1280x800 --fixed-fps 60 --script res://tests/tools/capture_boss.gd -- --out=../output/boss`. Per giocare subito il boss: `godot --path godot -- --boss-at=60`.
 
+Catture e misure dello spike del terreno a rilievo continuo (D-063: cumulo, trincea curva, argine e rampa, piazzola, rottamatori in marcia; riga `TERRAIN_SPIKE_BENCH` con costo di pennello e campo di percorso): `godot_console --path godot --resolution 1280x800 --fixed-fps 60 --quit-after 3000 --script res://tests/tools/capture_terrain_spike.gd -- --out=../output/terrain_spike`. Per giocarlo: `godot --path godot res://scenes/spikes/terrain_spike.tscn`. La suite e `tests/height_terrain_tests.gd` (nel gate).
+
 Benchmark dell'arena grande (costruzione, celle e collisioni, costo per passo del direttore dei nemici e dell'arma, draw call con finestra): `godot_console --path godot --resolution 1280x800 --script res://tests/tools/benchmark_arena.gd -- --enemies=70` (righe `PROTOTYPE01_ARENA_BENCH`). In `--headless` il monitor `TIME_PHYSICS_PROCESS` include l'attesa del loop e non e attendibile: fidarsi delle misure dirette `director_ms`, `weapon_ms`, `solve_ms`.
 
 Trappola verificata (5 ottobre 2026): in un test `extends SceneTree`, la scena aggiunta in `_initialize` riceve `_ready` solo al primo frame, e `_ready` riattiva il passo fisico dei nodi che definiscono `_physics_process`. Un `set_physics_process(false)` va quindi chiamato **dopo** aver atteso almeno un frame.

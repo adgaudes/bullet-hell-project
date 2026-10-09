@@ -1,85 +1,128 @@
 class_name HeightFlowField
 extends RefCounted
 ## SPIKE: campo di percorso sul terreno a rilievo continuo. Griglia grossa (CELL metri)
-## di quote campionate da HeightTerrain; una visita in ampiezza dal bersaglio dice a
-## ogni casella verso quale vicina andare. Un passaggio e ammesso se la salita non
-## supera `max_grade`; in discesa si passa sempre, quindi in una fossa ripida si entra
-## ma non si esce. Codice di prova: non e usato dal livello vero.
+## coi centri sui vertici di HeightTerrain; una visita a costo crescente dal bersaglio
+## (Dijkstra a code a secchi, costi interi come in PathField) dice a ogni casella verso
+## quale vicina andare e quanta strada manca, in metri. Un passaggio fra due caselle e
+## ammesso se, vertice per vertice lungo il tratto, chi cammina non trova mai una salita
+## oltre `max_grade`: lo stesso criterio di [method HeightTerrain.slide_move], cosi il
+## campo non promette strade che il rottamatore poi non riesce a fare. In discesa si
+## passa sempre, quindi in una fossa ripida si entra ma non si esce.
+## Codice di prova: non e usato dal livello vero.
 
-## Lato di una casella del campo, in metri.
+## Lato di una casella del campo, in metri: multiplo intero di HeightTerrain.CELL.
 const CELL := 1.5
-## Prima i quattro lati, poi le diagonali: a parita di passi si preferisce andare dritti.
-const NEIGHBORS: Array[Vector2i] = [
-	Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1),
-	Vector2i(1, 1), Vector2i(1, -1), Vector2i(-1, 1), Vector2i(-1, -1),
-]
+## Vertici del terreno per lato di casella: i sottopassi con cui si controlla la pendenza.
+const SUBSTEPS := int(CELL / HeightTerrain.CELL)
+## Costi interi in decimi di casella: le distanze in metri ne derivano.
+const ORTHO_COST := 10
+const DIAG_COST := 14
+const UNREACHED := 0x7fffffff
+## Prima i quattro lati, poi le diagonali.
+const DX: PackedInt32Array = [1, -1, 0, 0, 1, 1, -1, -1]
+const DZ: PackedInt32Array = [0, 0, 1, -1, 1, -1, 1, -1]
 
 var side := 0
 ## Per casella: indice della casella successiva verso il bersaglio, -1 se non ci si arriva.
 var next := PackedInt32Array()
-## Per casella: passi fino al bersaglio, -1 se non ci si arriva.
-var steps := PackedInt32Array()
+## Per casella: metri di strada fino al bersaglio, -1 se non ci si arriva.
+var distance := PackedFloat32Array()
 
 var _half := 0.0
-var _heights := PackedFloat32Array()
 
 
 ## Ricalcola il campo verso [param goal]. [param max_grade]: salita massima (m per m).
 func rebuild(terrain: HeightTerrain, goal: Vector3, max_grade: float) -> void:
+	assert(is_equal_approx(SUBSTEPS * HeightTerrain.CELL, CELL), "CELL deve essere multiplo della maglia del terreno")
 	_half = terrain.half_extent()
-	side = int(ceil(_half * 2.0 / CELL))
+	side = int(round(_half * 2.0 / CELL)) + 1
 	var count := side * side
-	_heights.resize(count)
-	for z in side:
-		for x in side:
-			_heights[z * side + x] = terrain.height_at(center_of(z * side + x))
 	next.resize(count)
 	next.fill(-1)
-	steps.resize(count)
-	steps.fill(-1)
+	distance.resize(count)
+	distance.fill(-1.0)
+	var heights := terrain.heights
+	var res := terrain.resolution
+	var max_rise := max_grade * HeightTerrain.CELL
+	var max_rise_diagonal := max_rise * 1.41421356
 
+	var dist := PackedInt32Array()
+	dist.resize(count)
+	dist.fill(UNREACHED)
+	var buckets: Array[PackedInt32Array] = []
+	var bucket_count := DIAG_COST + 1
+	buckets.resize(bucket_count)
+	for b in bucket_count:
+		buckets[b] = PackedInt32Array()
 	var start := cell_of(goal)
-	steps[start] = 0
+	dist[start] = 0
 	next[start] = start
-	var queue := PackedInt32Array([start])
-	var head := 0
-	while head < queue.size():
-		var current := queue[head]
-		head += 1
-		var cx := current % side
-		var cz := current / side
-		for offset in NEIGHBORS:
-			var nx := cx + offset.x
-			var nz := cz + offset.y
-			if nx < 0 or nz < 0 or nx >= side or nz >= side:
+	buckets[0].append(start)
+	var pending := 1
+	var level := 0
+	while pending > 0:
+		var bucket := buckets[level % bucket_count]
+		if bucket.is_empty():
+			level += 1
+			continue
+		buckets[level % bucket_count] = PackedInt32Array()
+		for current in bucket:
+			pending -= 1
+			if dist[current] != level:
 				continue
-			var neighbor := nz * side + nx
-			if steps[neighbor] >= 0:
-				continue
-			# Si cammina dalla vicina verso `current`: conta la salita in quel verso.
-			var run := CELL * (1.41421356 if offset.x != 0 and offset.y != 0 else 1.0)
-			if _heights[current] - _heights[neighbor] > max_grade * run:
-				continue
-			steps[neighbor] = steps[current] + 1
-			next[neighbor] = current
-			queue.append(neighbor)
+			var cx := current % side
+			var cz := current / side
+			for k in 8:
+				var ox := DX[k]
+				var oz := DZ[k]
+				var nx := cx + ox
+				var nz := cz + oz
+				if nx < 0 or nz < 0 or nx >= side or nz >= side:
+					continue
+				var neighbor := nz * side + nx
+				var diagonal := ox != 0 and oz != 0
+				var c := level + (DIAG_COST if diagonal else ORTHO_COST)
+				if dist[neighbor] <= c:
+					continue
+				# Si cammina dalla vicina verso `current`, un vertice del terreno alla volta.
+				var rise := max_rise_diagonal if diagonal else max_rise
+				var step := -oz * res - ox
+				var index := nz * SUBSTEPS * res + nx * SUBSTEPS
+				var previous := heights[index]
+				var passable := true
+				for s in SUBSTEPS:
+					index += step
+					var height := heights[index]
+					if height - previous > rise:
+						passable = false
+						break
+					previous = height
+				if not passable:
+					continue
+				dist[neighbor] = c
+				next[neighbor] = current
+				buckets[c % bucket_count].append(neighbor)
+				pending += 1
+	for i in count:
+		if dist[i] != UNREACHED:
+			distance[i] = dist[i] * (CELL / ORTHO_COST)
 
 
 func cell_of(point: Vector3) -> int:
-	var x := clampi(int((point.x + _half) / CELL), 0, side - 1)
-	var z := clampi(int((point.z + _half) / CELL), 0, side - 1)
+	var x := clampi(int(round((point.x + _half) / CELL)), 0, side - 1)
+	var z := clampi(int(round((point.z + _half) / CELL)), 0, side - 1)
 	return z * side + x
 
 
 func center_of(cell: int) -> Vector3:
-	return Vector3((cell % side + 0.5) * CELL - _half, 0.0, (cell / side + 0.5) * CELL - _half)
+	return Vector3((cell % side) * CELL - _half, 0.0, (cell / side) * CELL - _half)
 
 
-## Direzione in piano (unitaria) da seguire da [param point]; zero se da li non si arriva.
+## Direzione in piano (unitaria) da seguire da [param point]: quella fra il centro della
+## sua casella e quello della successiva. Zero se da li non si arriva o si e arrivati.
 func direction_at(point: Vector3) -> Vector3:
 	var cell := cell_of(point)
 	if next[cell] < 0:
 		return Vector3.ZERO
-	var toward := center_of(next[cell]) - point
-	toward.y = 0.0
+	var toward := center_of(next[cell]) - center_of(cell)
 	return toward.normalized() if toward.length_squared() > 0.0001 else Vector3.ZERO
