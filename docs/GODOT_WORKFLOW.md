@@ -145,7 +145,7 @@ Catture di Officina, mappa di fine livello e menu iniziale: `godot_console --pat
 
 Trappola verificata (6 ottobre 2026): `add_child()` su un nodo fratello **durante il `_ready` della scena** fallisce ("Parent node is busy setting up children") e il nodo resta fuori dall'albero senza altri sintomi. Usare `add_child.call_deferred()`.
 
-Catture del ciclo giorno/notte (D-058: giorno con indicatore, tramonto a meta, notte nel faro, notte al buio con 20 rottamatori, Torcia e Faro al massimo): `godot_console --path godot --resolution 1280x800 --fixed-fps 60 --quit-after 3000 --script res://tests/tools/capture_night.gd -- --out=../output/night`. Per giocare subito la notte: `godot --path godot -- --night-at=5`; `--night-at=0` la spegne (anche nel simulatore). Costo del direttore di notte: `benchmark_arena.gd -- --enemies=70 --night`.
+Catture del ciclo giorno/notte (D-058: giorno con indicatore, tramonto a meta, notte nel faro, notte al buio con 20 rottamatori, Torcia e Faro al massimo): `godot_console --path godot --resolution 1280x800 --fixed-fps 60 --quit-after 3000 --script res://tests/tools/capture_night.gd -- --out=../output/night`. Per giocare subito la notte: `godot --path godot -- --night-at=5`; `--night-at=0` la spegne (anche nel simulatore). Costo del direttore di notte con sei lampioni: `benchmark_arena.gd -- --enemies=70 --night`. In gioco il tool cicla scava → rialza → lampione con lo stesso tasto del modo.
 
 Catture del boss (annuncio, rottamatore carico e cantiere, Demolitore con barricata, vittoria): `godot_console --path godot --resolution 1280x800 --fixed-fps 60 --script res://tests/tools/capture_boss.gd -- --out=../output/boss`. Per giocare subito il boss: `godot --path godot -- --boss-at=60`.
 

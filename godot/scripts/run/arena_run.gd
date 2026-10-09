@@ -53,6 +53,8 @@ const BOSS_DIRECTIONS := [
 @export var workshop: WorkshopPanel
 ## Ciclo giorno/notte (D-058); senza nodo il livello resta diurno.
 @export var day_night: DayNightCycle
+## Lampioni (D-058, tappa 2); senza nodo il tool ha due modalita.
+@export var lamp_field: LampField
 
 var progression := RunProgression.new()
 var elapsed := 0.0
@@ -285,6 +287,7 @@ func _spawn_boss() -> void:
 	boss.walls_per_barricade = tuning.boss_walls_per_barricade
 	boss.max_barricades = tuning.boss_max_barricades
 	boss.scrap_field = companion.scrap_field if companion != null else null
+	boss.lamp_field = lamp_field
 	boss.max_carriers = tuning.boss_max_carriers
 	boss.carrier_scrap_radius = tuning.boss_carrier_scrap_radius
 	boss.carrier_recruit_radius = tuning.boss_carrier_recruit_radius
@@ -508,6 +511,14 @@ func _setup_night() -> void:
 	if companion != null:
 		beacon_light_id = light_field.add_source(companion, beacon_radius)
 	director.light_field = light_field
+	if lamp_field != null:
+		lamp_field.scrap_cost = tuning.lamp_scrap_cost
+		lamp_field.max_count = tuning.lamp_max_count
+		lamp_field.light_radius = tuning.lamp_light_radius
+		lamp_field.light_field = light_field
+		lamp_field.lamps_changed.connect(func(_count: int) -> void: _refresh_tool_hud())
+		player.terrain_mode_changed.connect(func(_mode: TerrainState.ToolMode) -> void: _refresh_tool_hud())
+		_refresh_tool_hud()
 	if day_night == null:
 		return
 	day_night.night_start_seconds = RunLaunchOptions.night_start_seconds(tuning.night_start_seconds)
@@ -571,6 +582,12 @@ func _make_game_light(light_name: String, owner_node: Node3D) -> OmniLight3D:
 	return light
 
 
+func _refresh_tool_hud() -> void:
+	if lamp_field == null:
+		return
+	hud.set_tool_mode(player.terrain_tool_mode, lamp_field.count(), lamp_field.max_count, lamp_field.scrap_cost)
+
+
 func is_night() -> bool:
 	return day_night != null and day_night.phase == DayNightCycle.Phase.NIGHT
 
@@ -602,7 +619,8 @@ func build_run_map() -> Image:
 					buildings.append(Rect2(at.x - size.x * 0.5, at.z - size.z * 0.5, size.x, size.z))
 	var barricades: Dictionary = boss.barricades if is_instance_valid(boss) else {}
 	var boss_position: Variant = boss.global_position if is_instance_valid(boss) else null
-	return RunMap.render(grid, _initial_terrain, barricades, buildings, _start_position, player.global_position, boss_position)
+	var lamps: Array[Vector2i] = lamp_field.cells() if lamp_field != null else []
+	return RunMap.render(grid, _initial_terrain, barricades, buildings, _start_position, player.global_position, boss_position, lamps)
 
 
 func _show_run_map() -> void:

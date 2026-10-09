@@ -182,6 +182,8 @@ func _find_spawn_point() -> Variant:
 
 
 func _move_enemies(delta: float) -> void:
+	if night_active and light_field != null:
+		light_field.refresh()
 	for bucket: Array in _buckets.values():
 		bucket.clear()
 	for enemy in enemies:

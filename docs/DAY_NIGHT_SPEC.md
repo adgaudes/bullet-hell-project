@@ -122,6 +122,8 @@ Resa: luci vere, poche. Sole e ambiente calano; torcia e faro sono `OmniLight3D`
 1. **Notte giocabile:** `DayNightCycle`, `LightField`, torcia e faro, nemici al buio, occhi e bagliori, HUD e audio, due carte upgrade, test, catture, simulatore. Consegnabile e verificabile da sola.
 2. **Lampioni:** `LampField`, terza modalita del tool, Demolitore, mappa, test, bot del simulatore che li compra.
 
+**Stato (9 ottobre 2026):** entrambe le tappe implementate (D-058; come, in `DAY_NIGHT_PLAN.md`). Valori non bilanciati: domande della sezione 14 al playtest.
+
 ## 12. Verifica
 
 - Nuova suite `tests/day_night_tests.gd`: tempi delle fasi e `--night-at`; `night_start_seconds = 0` lascia tutto diurno; `LightField` (dentro, fuori, bordo, sorgente che si muove, rimozione); velocita e danno di un nemico al buio e alla luce, di giorno e di notte; Demolitore invariato; i due upgrade cambiano i raggi.

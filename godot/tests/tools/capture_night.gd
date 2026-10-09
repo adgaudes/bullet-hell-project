@@ -52,6 +52,17 @@ func _initialize() -> void:
 	for i in 20:
 		await physics_frame
 	await _save("night_upgraded")
+	# Quattro lampioni attorno al giocatore (tappa 2).
+	var lamps: LampField = _scene.get_node(^"LampField")
+	companion.add_capacity(12, 12)
+	for offset in [Vector3(7.2, 0.0, 0.0), Vector3(-7.2, 0.0, 0.0), Vector3(0.0, 0.0, 7.2), Vector3(0.0, 0.0, -7.2)]:
+		var world: Vector3 = player.global_position + offset
+		companion.global_position = world + Vector3(0.0, 0.3, 2.0)
+		lamps.place_at(world)
+	companion.global_position = player.global_position + Vector3(6.0, 0.3, 0.0)
+	for i in 20:
+		await physics_frame
+	await _save("night_lamps")
 	quit()
 
 

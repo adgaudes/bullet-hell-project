@@ -15,6 +15,7 @@ signal health_changed(health: int, max_health: int)
 signal died
 ## Lo strumento terreno non ha potuto agire: cella non valida o niente rottami.
 signal terrain_tool_rejected
+signal terrain_mode_changed(mode: TerrainState.ToolMode)
 
 enum AimDevice { GAMEPAD, MOUSE }
 
@@ -34,6 +35,8 @@ const HIT_FLASH_SECONDS := 0.3
 @export var tuning: PlayerTuning
 ## Griglia su cui agisce il tool (SetTerrainGrid in Unreal). Opzionale.
 @export var terrain_grid: TerrainGrid
+## Lampioni (D-058, tappa 2): senza, il tool cicla solo fra scavo e rialzo.
+@export var lamp_field: LampField
 ## Opzionale: nodo col segnale `fired` (la chiodatrice). Se presente ogni colpo da un
 ## rinculo visivo; se ha `last_fire_direction` il rinculo e opposto al colpo.
 @export var recoil_source: Node
@@ -45,6 +48,7 @@ var aim_device := AimDevice.GAMEPAD
 var is_dashing := false
 var is_dash_on_cooldown := false
 var terrain_tool_mode := TerrainState.ToolMode.DIG
+const TOOL_MODE_NAMES: Array[String] = ["Dig", "Raise", "Lamp"]
 ## Punto mondo bersaglio del tool, aggiornato a ogni passo fisico.
 var terrain_target := Vector3.ZERO
 ## Compagno macchina (Companion Slice): se presente, rialzare costa un rottame
@@ -246,6 +250,14 @@ func _use_terrain_tool() -> void:
 	if terrain_grid == null:
 		return
 	_update_terrain_target()
+	if terrain_tool_mode == TerrainState.ToolMode.LAMP:
+		if lamp_field == null or not lamp_field.place_at(terrain_target):
+			terrain_tool_rejected.emit()
+			return
+		if _animator != null:
+			_animator.play_dig()
+		_update_terrain_target()
+		return
 	var raising := terrain_tool_mode == TerrainState.ToolMode.RAISE
 	if raising and companion != null 			and terrain_grid.can_apply_at(terrain_target, terrain_tool_mode, self) 			and not companion.can_supply(terrain_target):
 		print("PROTOTYPE01_TERRAIN_RAISE_NO_SCRAP")
@@ -261,9 +273,17 @@ func _use_terrain_tool() -> void:
 	_update_terrain_target()
 
 
+## DIG -> RAISE -> LAMP -> DIG (LAMP solo se esiste un LampField, D-058).
 func _toggle_terrain_mode() -> void:
-	terrain_tool_mode = TerrainState.ToolMode.RAISE 		if terrain_tool_mode == TerrainState.ToolMode.DIG else TerrainState.ToolMode.DIG
-	print("PROTOTYPE01_TERRAIN_MODE %s" % ("Dig" if terrain_tool_mode == TerrainState.ToolMode.DIG else "Raise"))
+	match terrain_tool_mode:
+		TerrainState.ToolMode.DIG:
+			terrain_tool_mode = TerrainState.ToolMode.RAISE
+		TerrainState.ToolMode.RAISE:
+			terrain_tool_mode = TerrainState.ToolMode.LAMP if lamp_field != null else TerrainState.ToolMode.DIG
+		_:
+			terrain_tool_mode = TerrainState.ToolMode.DIG
+	print("PROTOTYPE01_TERRAIN_MODE %s" % TOOL_MODE_NAMES[terrain_tool_mode])
+	terrain_mode_changed.emit(terrain_tool_mode)
 	_update_terrain_target()
 
 
@@ -277,8 +297,13 @@ func _update_terrain_target() -> void:
 		terrain_grid.hide_preview()
 		return
 	terrain_target = global_position + forward.normalized() * UnrealSpace.length(maxf(tuning.terrain_tool_range_cm, 100.0) + tool_range_bonus_cm)
-	var missing_scrap := terrain_tool_mode == TerrainState.ToolMode.RAISE 		and companion != null and not companion.can_supply(terrain_target)
-	terrain_grid.update_preview(terrain_target, terrain_tool_mode, self, missing_scrap)
+	var blocked := false
+	if terrain_tool_mode == TerrainState.ToolMode.RAISE:
+		blocked = companion != null and not companion.can_supply(terrain_target)
+	elif terrain_tool_mode == TerrainState.ToolMode.LAMP:
+		blocked = lamp_field == null or not lamp_field.can_place(terrain_grid.cell_at(terrain_target)) \
+			or not lamp_field.can_afford(terrain_target)
+	terrain_grid.update_preview(terrain_target, terrain_tool_mode, self, blocked)
 
 
 ## Sostituisce il tuning a caldo (preset di feel). Lo stato del dash in corso resta valido.

@@ -12,6 +12,7 @@ extends SceneTree
 ##   --hz=60                         passi fisici al secondo (il gioco ne usa 120)
 ##   --boss-at=N                     letto da ArenaRun: anticipa il boss
 ##   --night-at=N                    letto da ArenaRun: anticipa il tramonto (0 = niente notte)
+##   Lo scrapper, di notte, piazza un lampione dove sta (3 rottami, max 6): riga `lamps=`.
 ## Con `--fixed-fps 60` e 60 passi fisici al secondo una run e ripetibile: stesso
 ## seme e stesso bot danno la stessa riga. Senza finestra gira gia alla massima
 ## velocita della CPU (una run fino al boss costa 2-5 minuti): per fare prima si
@@ -90,6 +91,7 @@ var _rng := RandomNumberGenerator.new()
 var _decision_left := 0.0
 ## Decisioni del bot prese al buio (notte, fuori dalle luci).
 var _dark_samples := 0
+var _lamps_bought := 0
 var _move := Vector2.ZERO
 var _aim := Vector2.ZERO
 var _dig_cooldown := 0.0
@@ -197,10 +199,13 @@ func _simulate(bot: StringName, run_seed: int) -> Dictionary:
 	_digs = 0
 	_hits = 0
 	_dark_samples = 0
+	_lamps_bought = 0
 	_health_at_boss = -1
 	_level_at_boss = -1
 	_player.health_changed.connect(_on_health_changed.bind([_player.health]))
 	_run.boss_spawned.connect(_on_boss_spawned)
+	if _run.lamp_field != null:
+		_run.lamp_field.lamp_placed.connect(func(_cell: Vector2i) -> void: _lamps_bought += 1)
 
 	var step := 1.0 / Engine.physics_ticks_per_second
 	var timed_out := false
@@ -242,10 +247,10 @@ func _simulate(bot: StringName, run_seed: int) -> Dictionary:
 	}
 	var outcome := "victory_at" if victory else ("timeout_at" if timed_out else "died_at")
 	var night_phase := DayNightCycle.PHASE_NAMES[_run.day_night.phase] if _run.day_night != null else "DAY"
-	print("PROTOTYPE01_SIM seed=%d bot=%s %s=%.1f level=%d kills=%d boss=%s boss_hp=%d hp=%d hits=%d hp_at_boss=%d level_at_boss=%d digs=%d scrap_carried=%d capacity=%d scrap_out=%d upgrades=%s night=%s dark_contacts=%d dark_decisions=%d wall_s=%.1f"
+	print("PROTOTYPE01_SIM seed=%d bot=%s %s=%.1f level=%d kills=%d boss=%s boss_hp=%d hp=%d hits=%d hp_at_boss=%d level_at_boss=%d digs=%d scrap_carried=%d capacity=%d scrap_out=%d upgrades=%s night=%s dark_contacts=%d dark_decisions=%d lamps=%d wall_s=%.1f"
 		% [run_seed, bot, outcome, result.time, result.level, result.kills, boss_state, boss_health, result.health,
 			_hits, _health_at_boss, _level_at_boss, _digs, result.carried, result.capacity, result.scrap_out, ",".join(upgrades),
-			night_phase, _director.dark_contacts, _dark_samples,
+			night_phase, _director.dark_contacts, _dark_samples, _lamps_bought,
 			(Time.get_ticks_msec() - wall_start) / 1000.0])
 
 	paused = false
@@ -282,7 +287,8 @@ func _tick_bot(step: float) -> void:
 			if _escape_left <= 0.0:
 				_move = _choose_direction()
 		if _params.digs:
-			_tick_digging()
+			if not _tick_lamps():
+				_tick_digging()
 	_apply_inputs()
 
 
@@ -381,6 +387,39 @@ func _choose_direction() -> Vector2:
 
 ## Scava un passo quando il cassone ha posto: mira a una cella a portata (meglio
 ## un muro o un deposito, che rende senza lasciare una buca) e preme il tool.
+## Lo scrapper di notte compra un lampione sulla cella davanti a se, quando puo.
+## Vero se ha usato il tool (niente scavo nello stesso passo).
+func _tick_lamps() -> bool:
+	var lamps: LampField = _run.lamp_field
+	if lamps == null:
+		return false
+	var in_lamp_mode := _player.terrain_tool_mode == TerrainState.ToolMode.LAMP
+	var wanted := _run.is_night() and _dig_cooldown <= 0.0 and lamps.count() < lamps.max_count 		and _companion.carried >= lamps.scrap_cost and _nearest_enemy_distance() >= 3.5
+	var spot_ok := false
+	if wanted:
+		var cell := _grid.cell_at(_player.terrain_target)
+		spot_ok = lamps.can_place(cell) and lamps.can_afford(_player.terrain_target)
+		# Nessun lampione a meno di 1,6 raggi da uno gia piazzato: copertura, non ammassi.
+		for other in lamps.cells():
+			if _planar(_grid.to_global(_grid.cell_local_position(other, TerrainState.CellState.NORMAL))).distance_to(_planar(_player.terrain_target)) < lamps.light_radius * 1.6:
+				spot_ok = false
+				break
+	if not (wanted and spot_ok):
+		# Torna a scavare: il tool premuto in modo lampione agirebbe al passo dopo.
+		if in_lamp_mode:
+			while _player.terrain_tool_mode != TerrainState.ToolMode.DIG:
+				_player._toggle_terrain_mode()
+		return false
+	if not in_lamp_mode:
+		# Prima il modo, poi il colpo al passo successivo (l'evento arriva al frame dopo).
+		while _player.terrain_tool_mode != TerrainState.ToolMode.LAMP:
+			_player._toggle_terrain_mode()
+		return true
+	_press_tool()
+	_dig_cooldown = 1.0
+	return true
+
+
 func _tick_digging() -> void:
 	_aim = Vector2.ZERO
 	if _dig_cooldown > 0.0:

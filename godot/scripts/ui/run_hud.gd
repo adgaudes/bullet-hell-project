@@ -19,6 +19,7 @@ var _xp_bar: ProgressBar
 var _level_label: Label
 var _time_label: Label
 var _day_label: Label
+var _tool_label: Label
 var _kills_label: Label
 var _day_phase_shown := -1
 var _day_second_shown := -1
@@ -81,6 +82,17 @@ func _ready() -> void:
 	_health_row.set_anchors_preset(Control.PRESET_TOP_LEFT)
 	_health_row.offset_left = 24
 	_health_row.offset_top = 56
+	# Modalita del tool quando non e la solita (lampione: costo e contatore).
+	_tool_label = Label.new()
+	_tool_label.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	_tool_label.offset_left = 24
+	_tool_label.offset_top = 90
+	_tool_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_tool_label.add_theme_font_size_override(&"font_size", 18)
+	_tool_label.add_theme_color_override(&"font_outline_color", Color.BLACK)
+	_tool_label.add_theme_constant_override(&"outline_size", 5)
+	_tool_label.hide()
+	root.add_child(_tool_label)
 	_health_row.add_theme_constant_override(&"separation", 6)
 	_health_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(_health_row)
@@ -266,6 +278,16 @@ func set_health(health: int, max_health: int) -> void:
 		var color := HEALTH_ON if i < health else HEALTH_OFF
 		if pip.color != color:
 			pip.color = color
+
+
+## Modalita del tool: visibile solo in LAMP, con costo e contatore (specifica, sezione 9).
+func set_tool_mode(mode: int, lamps: int, max_lamps: int, cost: int) -> void:
+	if mode != TerrainState.ToolMode.LAMP:
+		_tool_label.hide()
+		return
+	_tool_label.text = "LAMPIONE  %d rottami  %d/%d" % [cost, lamps, max_lamps]
+	_tool_label.add_theme_color_override(&"font_color", TerrainGrid.LAMP_PREVIEW_COLOR.linear_to_srgb())
+	_tool_label.show()
 
 
 ## Indicatore sole/luna nella riga superiore: tempo al tramonto di giorno, poi la fase.

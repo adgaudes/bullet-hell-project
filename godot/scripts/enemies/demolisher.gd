@@ -87,6 +87,8 @@ var player: PlayerCharacter
 var grid: TerrainGrid
 var path_field: PathField
 var director: EnemyDirector
+## Lampioni del giocatore: abbattuti quando entrano nel raggio di contatto (D-058).
+var lamp_field: LampField
 var companion: Node3D
 var speed := 1.7
 var contact_damage := 2
@@ -205,6 +207,8 @@ func drive(delta: float) -> void:
 	var to_player := _planar(player.global_position - pos)
 	if to_player.length() <= contact_radius:
 		player.take_damage(contact_damage)
+	if lamp_field != null and lamp_field.count() > 0:
+		lamp_field.knock_down_near(pos, contact_radius)
 
 	_tick_crew(delta)
 	_retarget_left -= delta

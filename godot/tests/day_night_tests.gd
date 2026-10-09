@@ -129,6 +129,7 @@ func _test_light_field() -> void:
 	_check(field.is_lit(Vector3(15.0, 3.0, 10.0)) and field.is_lit(Vector3(16.0, 0.0, 10.0)), "dentro a 5 m e sul bordo a 6 m (quota ignorata)")
 	_check(not field.is_lit(Vector3(16.01, 0.0, 10.0)) and not field.is_lit(Vector3(30.0, 0.0, 30.0)), "fuori a 6,01 m e lontano")
 	lamp.global_position = Vector3(30.0, 0.0, 30.0)
+	await _frames(1)
 	_check(field.is_lit(Vector3(33.0, 0.0, 30.0)) and not field.is_lit(Vector3(15.0, 0.0, 10.0)), "la sorgente segue il nodo")
 	field.set_radius(id, 2.0)
 	_check(is_equal_approx(field.radius_of(id), 2.0) and not field.is_lit(Vector3(33.0, 0.0, 30.0)), "set_radius restringe la luce")

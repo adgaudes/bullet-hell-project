@@ -27,6 +27,7 @@ const RAISED_COLOR := Color(0.64, 0.28, 0.08)
 const PROTECTED_COLOR := Color(0.42, 0.12, 0.48)
 const DIG_PREVIEW_COLOR := Color(0.05, 0.75, 1.0)
 const RAISE_PREVIEW_COLOR := Color(1.0, 0.78, 0.05)
+const LAMP_PREVIEW_COLOR := Color(1.0, 0.92, 0.7)
 const INVALID_PREVIEW_COLOR := Color(1.0, 0.03, 0.03)
 ## Anteprima: 72% della cella visibile, 5 cm di spessore, 2 cm sopra la cella.
 const PREVIEW_SIZE_RATIO := 0.72
@@ -228,7 +229,13 @@ func update_preview(world_target: Vector3, mode: TerrainState.ToolMode, instigat
 	_preview.position = Vector3(cell_position.x, UnrealSpace.length(position_cm.z), cell_position.z)
 	var color := INVALID_PREVIEW_COLOR
 	if can_apply:
-		color = DIG_PREVIEW_COLOR if mode == TerrainState.ToolMode.DIG else RAISE_PREVIEW_COLOR
+		match mode:
+			TerrainState.ToolMode.DIG:
+				color = DIG_PREVIEW_COLOR
+			TerrainState.ToolMode.LAMP:
+				color = LAMP_PREVIEW_COLOR
+			_:
+				color = RAISE_PREVIEW_COLOR
 	_preview.set_instance_shader_parameter(&"cell_color", color.linear_to_srgb())
 	_preview.visible = true
 	preview_cell = cell

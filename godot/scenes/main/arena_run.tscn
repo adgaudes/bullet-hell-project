@@ -1,4 +1,4 @@
-[gd_scene load_steps=22 format=3]
+[gd_scene load_steps=23 format=3]
 
 [ext_resource type="Script" path="res://scripts/services/skeleton_probe.gd" id="1_probe"]
 [ext_resource type="Script" path="res://scripts/arena/ruins_district.gd" id="2_arena"]
@@ -15,6 +15,7 @@
 [ext_resource type="Script" path="res://scripts/progression/xp_field.gd" id="13_xp"]
 [ext_resource type="Script" path="res://scripts/run/arena_run.gd" id="14_run"]
 [ext_resource type="Script" path="res://scripts/run/day_night_cycle.gd" id="20_day_night"]
+[ext_resource type="Script" path="res://scripts/terrain/lamp_field.gd" id="21_lamps"]
 [ext_resource type="Script" path="res://scripts/ui/run_hud.gd" id="15_hud"]
 [ext_resource type="Script" path="res://scripts/ui/level_up_menu.gd" id="16_level_up"]
 [ext_resource type="Script" path="res://scripts/ui/game_over_panel.gd" id="17_game_over"]
@@ -38,10 +39,11 @@ tuning = ExtResource("6_terrain_tuning")
 natural_ground = true
 plaza_radius = 30.0
 
-[node name="Player" parent="." node_paths=PackedStringArray("terrain_grid", "recoil_source") instance=ExtResource("4_player")]
+[node name="Player" parent="." node_paths=PackedStringArray("terrain_grid", "recoil_source", "lamp_field") instance=ExtResource("4_player")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.88, 0)
 terrain_grid = NodePath("../TerrainGrid")
 recoil_source = NodePath("../PlayerWeapon")
+lamp_field = NodePath("../LampField")
 
 [node name="CameraRig" type="Node3D" parent="." node_paths=PackedStringArray("target")]
 script = ExtResource("3_camera")
@@ -64,6 +66,11 @@ player = NodePath("../Player")
 grid = NodePath("../TerrainGrid")
 scrap_field = NodePath("../ScrapField")
 path_field = NodePath("../PathField")
+
+[node name="LampField" type="Node3D" parent="." node_paths=PackedStringArray("grid", "companion")]
+script = ExtResource("21_lamps")
+grid = NodePath("../TerrainGrid")
+companion = NodePath("../Companion")
 
 [node name="EnemyDirector" type="Node3D" parent="." node_paths=PackedStringArray("player", "path_field", "grid")]
 script = ExtResource("10_director")
@@ -97,9 +104,10 @@ script = ExtResource("19_workshop")
 script = ExtResource("20_day_night")
 district = NodePath("../District")
 
-[node name="Run" type="Node" parent="." node_paths=PackedStringArray("district", "player", "companion", "grid", "director", "weapon", "xp_field", "hud", "level_up_menu", "game_over", "workshop", "day_night")]
+[node name="Run" type="Node" parent="." node_paths=PackedStringArray("district", "player", "companion", "grid", "director", "weapon", "xp_field", "hud", "level_up_menu", "game_over", "workshop", "day_night", "lamp_field")]
 script = ExtResource("14_run")
 day_night = NodePath("../DayNightCycle")
+lamp_field = NodePath("../LampField")
 tuning = ExtResource("11_run_tuning")
 district = NodePath("../District")
 player = NodePath("../Player")

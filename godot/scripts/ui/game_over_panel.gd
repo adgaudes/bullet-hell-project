@@ -8,7 +8,7 @@ signal workshop_requested
 signal menu_requested
 
 const MAP_SIZE := 340.0
-const MAP_LEGEND := "giallo: terrapieni tuoi   azzurro: fossati tuoi\nrosso: brecce   viola: barricate del boss   grigio: rovine"
+const MAP_LEGEND := "giallo: terrapieni tuoi   azzurro: fossati tuoi   crema: lampioni\nrosso: brecce   viola: barricate del boss   grigio: rovine"
 
 const INPUT_GRACE_SECONDS := 0.8
 

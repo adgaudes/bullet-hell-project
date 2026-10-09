@@ -25,6 +25,12 @@ extends Resource
 @export var torch_radius_per_level := 1.5
 @export var beacon_radius_per_level := 2.0
 
+@export_group("Lamps")
+## Rottami del cassone per un lampione (D-058, tappa 2).
+@export var lamp_scrap_cost := 3
+@export var lamp_max_count := 6
+@export var lamp_light_radius := 5.0
+
 @export_group("Enemies")
 @export var enemy_speed := 2.2
 @export var enemy_health := 2

@@ -180,6 +180,8 @@ func _connect_signals() -> void:
 		run.boss_spawned.connect(_on_boss_spawned)
 		run.level_completed.connect(play.bind(&"victory", 0.0))
 		run.night_phase_changed.connect(_on_night_phase)
+		if run.lamp_field != null:
+			run.lamp_field.lamp_placed.connect(func(_cell: Vector2i) -> void: play(&"terrain_raise"))
 
 
 func _on_health_changed(health: int, _max_health: int) -> void:

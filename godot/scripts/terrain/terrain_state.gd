@@ -7,7 +7,8 @@ extends RefCounted
 ## di playtest della Slice A.
 
 enum CellState { LOWERED, NORMAL, RAISED }
-enum ToolMode { DIG, RAISE }
+## LAMP: terza modalita (D-058): il comando lo esegue LampField, non la griglia.
+enum ToolMode { DIG, RAISE, LAMP }
 
 var width := 0
 var height := 0
@@ -55,6 +56,8 @@ func can_apply(cell: Vector2i, mode: ToolMode, raise_blocked := false) -> bool:
 		return false
 	var state := get_state(cell)
 	if mode == ToolMode.DIG:
+		return state != CellState.LOWERED
+	if mode == ToolMode.LAMP:
 		return state != CellState.LOWERED
 	if state == CellState.RAISED:
 		return false

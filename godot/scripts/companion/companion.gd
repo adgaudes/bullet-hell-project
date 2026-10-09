@@ -101,7 +101,16 @@ func can_supply(world_target: Vector3) -> bool:
 
 
 func spend() -> void:
-	carried = maxi(carried - 1, 0)
+	spend_count(1)
+
+
+## Ha almeno [param amount] rottami ed e abbastanza vicino al punto.
+func can_supply_count(world_target: Vector3, amount: int) -> bool:
+	return carried >= amount and _planar_distance(global_position, world_target) <= tuning.supply_radius
+
+
+func spend_count(amount: int) -> void:
+	carried = maxi(carried - amount, 0)
 	_refresh_cargo()
 	print("PROTOTYPE01_SCRAP_SPENT carried=%d" % carried)
 

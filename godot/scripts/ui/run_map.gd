@@ -23,6 +23,7 @@ const BARRICADE := Color(0.62, 0.3, 0.75)
 const START_MARK := Color(1.0, 1.0, 1.0, 0.55)
 const END_MARK := Color(1.0, 1.0, 1.0)
 const BOSS_MARK := Color(1.0, 0.15, 0.1)
+const LAMP_MARK := Color(1.0, 0.95, 0.6)
 
 
 ## Stato di ogni cella, in ordine di indice (Y * width + X): la fotografia da
@@ -96,7 +97,7 @@ static func view_rect(size: Vector2i, points: Array[Vector2i]) -> Rect2i:
 ## mondo XZ degli edifici; [param start], [param end]: posizioni mondo del giocatore;
 ## [param boss]: posizione mondo del boss, o null.
 static func render(grid: TerrainGrid, initial: PackedByteArray, barricades: Dictionary,
-		buildings: Array[Rect2], start: Vector3, end: Vector3, boss: Variant = null) -> Image:
+		buildings: Array[Rect2], start: Vector3, end: Vector3, boss: Variant = null, lamps: Array[Vector2i] = []) -> Image:
 	var state := grid.state
 	var size := Vector2i(state.width, state.height)
 	# Un pixel per cella, in coordinate mondo: colonna = X mondo, riga = Z mondo.
@@ -123,6 +124,8 @@ static func render(grid: TerrainGrid, initial: PackedByteArray, barricades: Dict
 	var end_pixel := _pixel_at(grid, end, size)
 	points.append(start_pixel)
 	points.append(end_pixel)
+	for lamp in lamps:
+		points.append(_pixel_of(grid, lamp, size))
 	var view := view_rect(size, points)
 	var scale := maxi(TARGET_SIZE / view.size.x, MIN_CELL_PIXELS)
 	var image := full.get_region(view)
@@ -130,6 +133,8 @@ static func render(grid: TerrainGrid, initial: PackedByteArray, barricades: Dict
 	_mark(image, (start_pixel - view.position) * scale, scale, START_MARK, true)
 	if boss != null:
 		_mark(image, (_pixel_at(grid, boss, size) - view.position) * scale, scale, BOSS_MARK, false)
+	for lamp in lamps:
+		_mark(image, (_pixel_of(grid, lamp, size) - view.position) * scale, scale, LAMP_MARK, true)
 	_mark(image, (end_pixel - view.position) * scale, scale, END_MARK, false)
 	return image
 
