@@ -50,6 +50,7 @@ var _step_list: Array[Enemy] = []
 
 
 func _ready() -> void:
+	Enemy.reset_gait_serial()
 	if tuning == null:
 		tuning = RunTuning.new()
 	# Una mesh e un materiale per tutta l'orda: un nemico costa una draw call.

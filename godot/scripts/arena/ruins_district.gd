@@ -536,6 +536,7 @@ func _build_perimeter() -> void:
 	var train_z := _rng.randf_range(-e * 0.6, e * 0.3)
 	_carriage(Vector3(-e - 4.0, 0.0, train_z - 13.5), 2.0, 0.0, Color(0.88, 0.68, 0.14))
 	_carriage(Vector3(-e - 3.4, 0.0, train_z), -7.0, 4.0, Color(0.72, 0.32, 0.12))
-	_carriage(Vector3(-e - 2.0, 0.0, train_z + 13.0), -24.0, 12.0, Color(0.88, 0.68, 0.14))
+	# A -e - 4.5: con l'imbardata di 24 gradi il muso entrava di ~2 m nell'area giocabile (R-30).
+	_carriage(Vector3(-e - 4.5, 0.0, train_z + 13.0), -24.0, 12.0, Color(0.88, 0.68, 0.14))
 	# Sud: solo elementi bassi, la camera guarda da qui.
 	_build_south_edge()

@@ -45,6 +45,8 @@ func _initialize() -> void:
 	await _test_abandons_unreachable_wall()
 	await _test_no_carrier_without_route()
 	await _test_spawn_point_is_walkable()
+	await _test_site_moves_when_occupied()
+	await _test_carrier_waits_without_site()
 	await _test_trench_slows()
 	await _test_contact_damage()
 	await _test_weapon_hits_boss()
@@ -356,6 +358,61 @@ func _test_spawn_point_is_walkable() -> void:
 	block.free()
 	await _frames(2)
 	_path.scan_static_obstacles()
+
+
+## R-03: cantiere occupato dal giocatore con scorta sufficiente: ne sceglie un altro e costruisce.
+func _test_site_moves_when_occupied() -> void:
+	print("site moves when occupied")
+	_place_player(Vector3.ZERO)
+	_place_boss(Vector3(0.0, 0.0, -9.6))
+	_boss.speed = 0.0
+	var radius := _boss.wall_attraction_radius
+	_boss.wall_attraction_radius = 0.0
+	_boss._choose_site()
+	var site := _boss.site_cell()
+	_check(site.x >= 0, "cantiere scelto fra boss e giocatore")
+	var before := _boss.barricades.size()
+	_player.global_position = _cell_world(site) + Vector3(0.0, 0.88, 0.0)
+	_player._invulnerable_left = 600.0
+	_boss._site_scrap = _boss.walls_per_barricade
+	_boss._try_build_at_site()
+	_check(_boss.barricades.size() == before + 1 and not _boss.barricades.has(site),
+		"col giocatore sul cantiere la barricata nasce altrove (%d)" % _boss.barricades.size())
+	for cell: Vector2i in _boss.barricades.keys():
+		if not _grid.state.is_valid(cell):
+			continue
+		_grid.apply_command_at(_cell_world(cell), TerrainState.ToolMode.DIG, _player)
+		_scrap.take_near(_cell_world(cell), _grid.cell_size_m() * 2.0, 2)
+	_player._invulnerable_left = 0.0
+	_boss.speed = _run.tuning.boss_speed
+	_boss.wall_attraction_radius = radius
+	await _frames(2)
+
+
+## R-04: un portatore carico senza cantiere valido aspetta accanto al boss senza far
+## scadere il tempo (niente ciclo "molla, rireclutato" ogni 10 s).
+func _test_carrier_waits_without_site() -> void:
+	print("carrier waits without a site")
+	_place_boss(Vector3(0.0, 0.0, -12.0))
+	# Giocatore addosso al boss: nessuna direzione per il cantiere, nessun cantiere valido.
+	_player.global_position = _boss.global_position + Vector3(0.0, 0.88, 0.0)
+	_player._invulnerable_left = 600.0
+	_boss.speed = 0.0
+	_boss._clear_site(false)
+	var carrier := _director.spawn_at(_boss.global_position + Vector3(3.0, 0.0, 0.0))
+	carrier.set_errand(_boss.global_position)
+	carrier.set_carrying(true)
+	_boss._crew[carrier] = 1.0
+	await _frames(90)
+	_check(_boss._crew.has(carrier) and carrier.carrying_scrap and _boss._crew[carrier] >= 0.99,
+		"senza cantiere il portatore carico aspetta e il tempo non scorre (%.2f)" % _boss._crew.get(carrier, -1.0))
+	carrier.take_damage(carrier.health)
+	await _frames(2)
+	_scrap.take_near(_boss.global_position, 6.0, 3)
+	_player._invulnerable_left = 0.0
+	_boss.speed = _run.tuning.boss_speed
+	_place_player(Vector3.ZERO)
+	await _frames(2)
 
 
 func _test_trench_slows() -> void:

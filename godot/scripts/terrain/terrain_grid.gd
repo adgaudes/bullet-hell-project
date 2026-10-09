@@ -76,13 +76,15 @@ const NATURAL_PROTECTED_TINT := 0.75
 var raised_color_override := Color(0, 0, 0, 0):
 	set(value):
 		raised_color_override = value
-		for i in state.cell_count():
-			var cell := Vector2i(i % state.width, i / state.width)
+		# Solo le celle che hanno una forma (sono o sono state Raised), non tutte le 7225 (R-33).
+		for index in _raised_shapes.keys():
+			var cell := Vector2i(index % state.width, index / state.width)
 			if state.get_state(cell) == TerrainState.CellState.RAISED:
 				_update_cell_presentation(cell)
 
 ## Tinta propria di singole celle Raised (indice -> colore lineare): le barricate del boss.
 var _raised_tints: Dictionary[int, Color] = {}
+var _tint_cell_count := 0
 
 var state := TerrainState.new()
 ## Cella sotto l'anteprima, (-1, -1) se nascosta.
@@ -125,6 +127,10 @@ func rebuild() -> void:
 	var start_usec := Time.get_ticks_usec()
 	_rebuild_pending = false
 	_clamp_from_tuning()
+	# Le tinte sono indicizzate per cella: con una griglia di altra misura non valgono piu (R-34).
+	if state.cell_count() != _tint_cell_count:
+		_raised_tints.clear()
+		_tint_cell_count = state.cell_count()
 	for batch in _batches.values():
 		remove_child(batch)
 		batch.queue_free()

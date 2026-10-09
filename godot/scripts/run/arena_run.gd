@@ -69,6 +69,7 @@ var _pending_level_ups := 0
 ## Punti di interesse ancora da indicare: { center: Vector3, text: String, color: Color, kind: StringName }.
 var _marker_targets: Array[Dictionary] = []
 var _marker_refresh_left := 0.0
+var _marker_step := 0
 ## Profilo permanente (autoload PlayerProfile); null se la scena gira senza.
 var _profile: PlayerProfileService
 var _death_scrap_share := 0.0
@@ -95,6 +96,7 @@ func _ready() -> void:
 	progression.has_companion = companion != null
 	director.rng.seed = run_seed + 1
 	_boss_rng.seed = run_seed + 2
+	_check_scale()
 	boss_call_at = _boss_call_from_command_line(tuning.boss_call_seconds)
 
 	player.invulnerability_seconds = tuning.player_invulnerability
@@ -146,7 +148,10 @@ func _tick_markers(delta: float) -> void:
 	if _marker_refresh_left <= 0.0:
 		_marker_refresh_left = MARKER_REFRESH_SECONDS
 		_refresh_marker_targets()
-	hud.set_markers(current_markers())
+	# Un passo si e uno no (60 Hz): gli indicatori non hanno bisogno dei 120 Hz della fisica (R-22).
+	_marker_step += 1
+	if _marker_step % 2 == 0:
+		hud.set_markers(current_markers())
 
 
 ## Un cortile o un deposito resta indicato finche ha almeno una cella Raised:
@@ -315,6 +320,19 @@ func _walkable_near(origin: Vector3, radius: float) -> Variant:
 	return null
 
 
+## La scala e scritta in quattro posti (R-27): se non coincidono le feature del quartiere
+## finirebbero su celle sbagliate in silenzio. Qui si grida all'avvio.
+func _check_scale() -> void:
+	if district != null and not is_equal_approx(grid.cell_size_m(), RuinsDistrict.CELL):
+		push_error("Scala incoerente: griglia %.2f m per cella, distretto %.2f" % [grid.cell_size_m(), RuinsDistrict.CELL])
+	if director.path_field != null and district != null \
+			and not is_equal_approx(director.path_field.half_extent, district.play_half_extent):
+		push_error("Scala incoerente: campo di percorso %.1f m, distretto %.1f" % [director.path_field.half_extent, district.play_half_extent])
+	var grid_half := grid.cell_size_m() * grid.state.width * 0.5
+	if district != null and absf(grid_half - district.play_half_extent) > grid.cell_size_m():
+		push_error("Scala incoerente: griglia %.1f m di semilato, distretto %.1f" % [grid_half, district.play_half_extent])
+
+
 func _play_half_extent() -> float:
 	if district != null:
 		return district.play_half_extent
@@ -342,23 +360,32 @@ func scrap_out(victory: bool) -> int:
 
 
 func _on_boss_died(_enemy: Enemy) -> void:
+	_end_level(true)
+
+
+## Fine del livello, vittoria o morte (R-14): prima il conto e l'incasso nel profilo,
+## poi log, mappa e pannello, cosi un errore nella parte cosmetica non salta l'incasso.
+func _end_level(victory: bool) -> void:
 	if is_over:
 		return
 	is_over = true
-	boss_phase = BossPhase.DEFEATED
 	director.spawning = false
-	# Prima di congedare l'orda: la mappa di fine run legge barricate e posizione del boss (T-08).
-	_final_map = build_run_map()
-	director.clear_horde()
-	hud.clear_boss()
+	if victory:
+		boss_phase = BossPhase.DEFEATED
+		# Prima di congedare l'orda: la mappa di fine run legge barricate e posizione del boss (T-08).
+		_final_map = build_run_map()
+		director.clear_horde()
+		hud.clear_boss()
 	if level_up_menu.is_open:
 		level_up_menu.close()
-	var scrap := scrap_out(true)
-	print("PROTOTYPE01_LEVEL_COMPLETE time=%.1f level=%d kills=%d scrap=%d seed=%d"
-		% [elapsed, progression.level, director.kills, scrap, run_seed])
-	level_completed.emit()
+	var scrap := scrap_out(victory)
+	var banked := _bank(scrap, victory)
+	print("%s time=%.1f level=%d kills=%d scrap=%d seed=%d"
+		% ["PROTOTYPE01_LEVEL_COMPLETE" if victory else "PROTOTYPE01_PLAYER_DIED", elapsed, progression.level, director.kills, scrap, run_seed])
+	if victory:
+		level_completed.emit()
 	_show_run_map()
-	game_over.open(elapsed, progression.level, director.kills, true, scrap, _bank(scrap, true))
+	game_over.open(elapsed, progression.level, director.kills, victory, scrap, banked)
 
 
 # --- Profilo permanente e Officina (D-049) ------------------------------------------
@@ -675,17 +702,7 @@ func _refresh_xp() -> void:
 
 
 func _on_player_died() -> void:
-	if is_over:
-		return
-	is_over = true
-	director.spawning = false
-	if level_up_menu.is_open:
-		level_up_menu.close()
-	var scrap := scrap_out(false)
-	_show_run_map()
-	print("PROTOTYPE01_PLAYER_DIED time=%.1f level=%d kills=%d scrap=%d seed=%d"
-		% [elapsed, progression.level, director.kills, scrap, run_seed])
-	game_over.open(elapsed, progression.level, director.kills, false, scrap, _bank(scrap, false))
+	_end_level(false)
 
 
 static func _boss_call_from_command_line(default_seconds: float) -> float:

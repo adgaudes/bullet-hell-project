@@ -178,6 +178,8 @@ func is_blocked() -> bool:
 ## Ritraccia le scie dall'anello fissato all'attivazione, senza toccare il tempo.
 func trace() -> void:
 	var start_usec := Time.get_ticks_usec()
+	if _multimesh.instance_count != max_marks:
+		_multimesh.instance_count = max_marks
 	marks.clear()
 	mark_trails.clear()
 	mark_kinds.clear()

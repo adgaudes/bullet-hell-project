@@ -109,7 +109,6 @@ var walls_demolished := 0
 var demolish_cell := Vector2i(-1, -1)
 
 var _demolish_left := 0.0
-var _pending_scrap := 0
 var _wall_target := Vector2i(-1, -1)
 var _retarget_left := 0.0
 ## Distanza minima raggiunta dal muro scelto e secondi senza avvicinarsi.
@@ -303,16 +302,10 @@ func _tick_demolition(delta: float) -> void:
 	DebrisBurst.spawn(get_parent(), _cell_center(cell) + Vector3(0.0, 0.6, 0.0), EARTH_COLOR, 14, 5.0, 0.22)
 	print("PROTOTYPE01_BOSS_WALL_DEMOLISHED X=%d Y=%d total=%d" % [cell.x, cell.y, walls_demolished])
 	wall_demolished.emit(cell)
+	# Il rottame resta a terra: lo prende chi arriva prima, compagno o rottamatori (D-045).
+	# Senza ScrapField (scena senza compagno) non nasce nessuna barricata (R-11).
 	if scrap_field != null:
-		# Il rottame resta a terra: lo prende chi arriva prima, compagno o rottamatori.
 		scrap_field.spawn_on_cell(cell, TerrainState.CellState.NORMAL)
-		return
-	_pending_scrap += 1
-	if _pending_scrap >= walls_per_barricade and barricades.size() < max_barricades:
-		var site := _pick_barricade_cell()
-		if site != NO_CELL:
-			_raise_barricade(site)
-			_pending_scrap -= walls_per_barricade
 
 
 # --- Rottamatori al lavoro (D-045) ---------------------------------------------------
@@ -382,12 +375,17 @@ func _prune_crew() -> void:
 func _tick_crew(delta: float) -> void:
 	_prune_crew()
 	for carrier: Enemy in _crew.keys():
+		var waiting := carrier.carrying_scrap and not _site_is_valid()
+		if waiting:
+			# Senza cantiere valido aspetta accanto al boss, senza far scadere il tempo (R-04):
+			# mollare il rottame e rireclutarlo ogni 10 s era un ciclo inutile.
+			carrier.errand_point = global_position
+			continue
 		_crew[carrier] -= delta
 		if _crew[carrier] <= 0.0:
 			_release(carrier, true)
 		elif carrier.carrying_scrap:
-			# Senza cantiere valido aspetta accanto al boss.
-			carrier.errand_point = _cell_center(_site_cell) if _site_is_valid() else global_position
+			carrier.errand_point = _cell_center(_site_cell)
 
 
 func _on_carrier_arrived(carrier: Enemy) -> void:
@@ -483,6 +481,9 @@ func _try_build_at_site() -> void:
 		return
 	if not _site_is_valid():
 		_choose_site()
+	if _site_cell != NO_CELL and not _cell_is_free(_site_cell):
+		# Occupato (giocatore, compagno, nemici, rottame): un altro cantiere, la scorta resta (R-03).
+		_choose_site()
 	if _site_cell == NO_CELL or not _cell_is_free(_site_cell):
 		return
 	var cell := _site_cell
@@ -538,13 +539,15 @@ func _pick_barricade_cell() -> Vector2i:
 	var forward := to_player.normalized()
 	var side := Vector3(-forward.z, 0.0, forward.x)
 	var step := grid.cell_size_m()
-	for lateral in [0.0, 1.0, -1.0, 2.0, -2.0]:
-		var point: Vector3 = global_position + forward * step * 2.0 + side * step * lateral
-		var cell := grid.cell_at(point)
-		if not grid.state.is_valid(cell) or grid.state.get_state(cell) != TerrainState.CellState.NORMAL:
-			continue
-		if _cell_is_free(cell):
-			return cell
+	# Prima a due celle, poi a tre e a una, su cinque posizioni laterali (R-04).
+	for ahead in [2.0, 3.0, 1.0]:
+		for lateral in [0.0, 1.0, -1.0, 2.0, -2.0]:
+			var point: Vector3 = global_position + forward * step * ahead + side * step * lateral
+			var cell := grid.cell_at(point)
+			if not grid.state.is_valid(cell) or grid.state.get_state(cell) != TerrainState.CellState.NORMAL:
+				continue
+			if _cell_is_free(cell):
+				return cell
 	return NO_CELL
 
 

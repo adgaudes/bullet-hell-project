@@ -45,6 +45,11 @@ const STAGGER_PITCH := 0.28
 ## Contatore per lo sfasamento dell'andatura: deterministico, non consuma l'rng dell'orda.
 static var _gait_serial := 0
 
+
+## Riparte da zero a ogni run (R-08): stesso seme, stesse fasi, catture confrontabili.
+static func reset_gait_serial() -> void:
+	_gait_serial = 0
+
 var health := 2
 var max_health := 2
 var is_dead := false
