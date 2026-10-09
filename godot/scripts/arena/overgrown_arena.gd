@@ -53,6 +53,11 @@ const WORLD_STATIC_LAYER := 1
 	set(value):
 		flowers = value
 		_queue_rebuild()
+## Detriti a terra: sassi e foglie secche (D-069), un MultiMesh.
+@export_range(0, 20000, 100) var litter := 2500:
+	set(value):
+		litter = value
+		_queue_rebuild()
 
 const CONCRETE_TINTS: Array[Color] = [
 	Color(0.70, 0.64, 0.55), Color(0.62, 0.58, 0.52), Color(0.74, 0.60, 0.48),
@@ -65,6 +70,10 @@ const CAR_PAINTS: Array[Color] = [
 const LEAF_TINTS: Array[Color] = [
 	Color(0.22, 0.42, 0.10), Color(0.34, 0.50, 0.12), Color(0.17, 0.34, 0.09),
 	Color(0.44, 0.54, 0.15),
+]
+const LITTER_COLORS: Array[Color] = [
+	Color(0.50, 0.46, 0.40), Color(0.42, 0.40, 0.36), Color(0.58, 0.52, 0.44),
+	Color(0.62, 0.40, 0.14), Color(0.70, 0.50, 0.18), Color(0.48, 0.30, 0.12),
 ]
 const FLOWER_COLORS: Array[Color] = [
 	Color(0.95, 0.45, 0.35), Color(0.45, 0.55, 0.95), Color(0.98, 0.82, 0.25),
@@ -80,6 +89,7 @@ var _rust_material: ShaderMaterial
 var _foliage_material: ShaderMaterial
 var _canopy_material: ShaderMaterial
 var _grass_material: ShaderMaterial
+var _litter_material: StandardMaterial3D
 var _metal_material: StandardMaterial3D
 var _tire_material: StandardMaterial3D
 var _trunk_material: StandardMaterial3D
@@ -247,6 +257,9 @@ func _make_materials() -> void:
 	_grass_material.shader = GRASS_SHADER
 	_grass_material.set_shader_parameter(&"blade_texture", _blade_texture())
 	_grass_material.set_shader_parameter(&"sway", 0.05)
+	_litter_material = StandardMaterial3D.new()
+	_litter_material.vertex_color_use_as_albedo = true
+	_litter_material.roughness = 0.95
 	_metal_material = StandardMaterial3D.new()
 	_metal_material.albedo_color = Color(0.30, 0.22, 0.17)
 	_metal_material.metallic = 0.4
@@ -706,7 +719,7 @@ func _build_ground_cover() -> void:
 	# rigetto su 144k punti; l'ordine e mescolato con un passo primo, cosi se i posti
 	# finiscono prima della fine la copertura resta uniforme. I dati vanno dritti nel
 	# buffer del MultiMesh (16 float per istanza: trasformazione 3x4 e colore).
-	var wanted := grass_tufts + flowers
+	var wanted := grass_tufts + flowers + litter
 	var side := int(ceil(sqrt(float(wanted) * 2.0)))
 	var total := side * side
 	var pitch := limit * 2.0 / maxf(float(side), 1.0)
@@ -716,20 +729,33 @@ func _build_ground_cover() -> void:
 	var tuft_count := 0
 	var flower_buffer := PackedFloat32Array()
 	var flower_count := 0
+	var litter_buffer := PackedFloat32Array()
+	var litter_count := 0
 	tufts.resize(grass_tufts * 16)
 	flower_buffer.resize(flowers * 16)
+	litter_buffer.resize(litter * 16)
 	var flower_share := float(flowers) / float(maxi(wanted, 1))
+	var litter_share := float(litter) / float(maxi(wanted, 1))
 	for k in total:
-		if tuft_count >= grass_tufts and flower_count >= flowers:
+		if tuft_count >= grass_tufts and flower_count >= flowers and litter_count >= litter:
 			break
 		var index := (k * stride) % total
 		var p := Vector2(-limit + (index % side + _rng.randf()) * pitch, -limit_z + (index / side + _rng.randf()) * pitch_z)
 		if _cover_excluded(p):
 			continue
 		var chance := _cover_chance(p)
+		var yaw := _rng.randf_range(0.0, TAU)
+		# I detriti stanno anche sul costruito (chance 0), dove l'erba non cresce.
+		if _rng.randf() < litter_share and litter_count < litter and chance >= 0.0:
+			var leaf := _rng.randf() < 0.45
+			var s := _rng.randf_range(0.6, 1.4)
+			var size := Vector3(0.22 * s, 0.015, 0.16 * s) if leaf else Vector3(0.14 * s, 0.07 * s, 0.11 * s)
+			var color := LITTER_COLORS[_rng.randi_range(3, 5)] if leaf else LITTER_COLORS[_rng.randi_range(0, 2)]
+			_write_instance(litter_buffer, litter_count, yaw, size, Vector3(p.x, height + size.y * 0.5, p.y), color)
+			litter_count += 1
+			continue
 		if chance <= 0.0 or (chance < 1.0 and _rng.randf() > chance):
 			continue
-		var yaw := _rng.randf_range(0.0, TAU)
 		if _rng.randf() < flower_share and flower_count < flowers:
 			var s := _rng.randf_range(0.7, 1.3)
 			_write_instance(flower_buffer, flower_count, yaw, Vector3(s, s, s), Vector3(p.x, height, p.y), _pick(FLOWER_COLORS))
@@ -741,10 +767,13 @@ func _build_ground_cover() -> void:
 			tuft_count += 1
 	tufts.resize(tuft_count * 16)
 	flower_buffer.resize(flower_count * 16)
+	litter_buffer.resize(litter_count * 16)
 	_add_multimesh("GrassTufts", _tuft_mesh(), tufts, tuft_count, _grass_material)
 	_add_multimesh("Flowers", _flower_mesh(), flower_buffer, flower_count)
+	_add_multimesh("Litter", _unit_box_mesh(), litter_buffer, litter_count, _litter_material)
 	stats.tufts = tuft_count
 	stats.flowers = flower_count
+	stats.litter = litter_count
 
 
 ## Scrive un'istanza (rotazione attorno a Y, scala, posizione, colore) nel formato del
@@ -951,6 +980,10 @@ func _add_environment() -> void:
 	environment.glow_enabled = true
 	environment.glow_intensity = 0.4
 	environment.glow_bloom = 0.05
+	# Leggera gradazione: un po' piu di contrasto e di saturazione (D-069).
+	environment.adjustment_enabled = true
+	environment.adjustment_contrast = 1.06
+	environment.adjustment_saturation = 1.12
 
 	var camera_attributes := CameraAttributesPractical.new()
 	camera_attributes.auto_exposure_enabled = false

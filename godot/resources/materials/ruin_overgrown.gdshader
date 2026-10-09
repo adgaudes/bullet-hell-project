@@ -59,9 +59,13 @@ void fragment() {
 	vec2 cell = vec2(uv.x / bay_width, uv.y / floor_height);
 	vec2 f = fract(cell);
 	float hole = step(0.22, f.x) * step(f.x, 0.78) * step(0.28, f.y) * step(f.y, 0.82);
+	float frame = step(0.18, f.x) * step(f.x, 0.82) * step(0.25, f.y) * step(f.y, 0.86) - hole;
 	float present = step(0.18, hash12(floor(cell) + vec2(3.0, 7.0)));
-	float win = hole * present * win_amount * side * step(0.9, world_pos.y);
+	float allowed = win_amount * side * step(0.9, world_pos.y);
+	float win = hole * present * allowed;
 	vec3 window_col = window_dark * (0.8 + 0.6 * hash12(floor(cell)));
+	// Cornice e davanzale: il vano sembra incassato invece che dipinto (D-069).
+	col = mix(col, col * 0.72, frame * present * allowed);
 	col = mix(col, window_col, win);
 
 	// Verde: muschio sopra, rampicanti dall'alto e dal basso sulle pareti.

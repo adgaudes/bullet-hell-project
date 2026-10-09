@@ -15,6 +15,9 @@ uniform bool batched = false;
 uniform float plaza_radius = 20.4; // = OvergrownArena.plaza_radius()
 // Quota mondo della cima di una cella Raised: da li scende la frangia d'erba.
 uniform float raised_top = 1.2;
+// Passo della griglia in metri (le celle sono allineate all'origine): serve per
+// l'orlo di terra sulla cima dei terrapieni (D-069).
+uniform float cell_pitch = 2.4;
 
 varying vec3 world_pos;
 varying vec3 world_normal;
@@ -47,6 +50,18 @@ void fragment() {
 		vec3 turf = mix(RG_GRASS_A, RG_GRASS_B, value_noise(side_uv * vec2(6.0, 1.0)));
 		soil = mix(soil, turf, fringe * step(raised_top * 0.5, world_pos.y));
 		vec3 base = n.y > 0.5 ? ground : soil;
+		if (n.y > 0.5 && world_pos.y > raised_top * 0.5) {
+			// Cima di un terrapieno: terra smossa e crepe verso il bordo, zolla al centro,
+			// un po' piu chiara o scura per cella (D-069).
+			vec2 local = fract(world_pos.xz / cell_pitch + 0.5) - 0.5;
+			float edge_d = (0.5 - max(abs(local.x), abs(local.y))) * cell_pitch;
+			float rim = 1.0 - smoothstep(0.1, 0.45 + 0.15 * value_noise(world_pos.xz * 3.0), edge_d);
+			float top_crack = 1.0 - smoothstep(0.0, 0.02, abs(fbm(world_pos.xz * 0.9 + 2.0) - 0.5));
+			vec3 dry_soil = RG_EARTH * (0.8 + 0.3 * value_noise(world_pos.xz * 4.0));
+			base = mix(base, dry_soil, rim * 0.85);
+			base *= 1.0 - 0.35 * top_crack * rim;
+			base *= 0.92 + 0.16 * hash12(floor(world_pos.xz / cell_pitch + 0.5));
+		}
 		vec3 tinted = mix(base, col, 0.55) * (0.75 + 0.5 * value_noise(world_pos.xz * 1.5));
 		col = mix(base, tinted, tint_amount);
 	}
