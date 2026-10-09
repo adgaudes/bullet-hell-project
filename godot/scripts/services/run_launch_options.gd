@@ -5,7 +5,7 @@ extends RefCounted
 ## aggiunta qui e, se deve saltare il menu, in AUTOSTART_PREFIXES.
 
 ## Opzioni che fanno saltare il menu iniziale e avviano subito il livello.
-const AUTOSTART_PREFIXES: Array[String] = ["--autostart", "--seed=", "--boss-at=", "--night-at=", "--capture="]
+const AUTOSTART_PREFIXES: Array[String] = ["--autostart", "--seed=", "--boss-at=", "--night-at=", "--capture=", "--level="]
 
 
 static func wants_autostart(args: PackedStringArray = OS.get_cmdline_user_args()) -> bool:
@@ -14,6 +14,11 @@ static func wants_autostart(args: PackedStringArray = OS.get_cmdline_user_args()
 			if arg.begins_with(prefix):
 				return true
 	return false
+
+
+## Livello da avviare subito: `--level=<id>` (D-066: `district`, `railway`), altrimenti vuoto.
+static func level_id(args: PackedStringArray = OS.get_cmdline_user_args()) -> StringName:
+	return StringName(_value_of("--level=", args))
 
 
 ## Seme della run: `--seed=N`, altrimenti casuale.

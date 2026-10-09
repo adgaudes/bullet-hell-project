@@ -21,8 +21,10 @@ var scrap := 0
 var levels: Dictionary[StringName, int] = {}
 var runs := 0
 var victories := 0
-## Livelli di campagna sbloccati (per ora ne esiste uno solo).
+## Livelli di campagna sbloccati: i primi N del LevelCatalog (D-066).
 var levels_unlocked := 1
+## Id dei livelli completati almeno una volta.
+var completed_levels: PackedStringArray = []
 ## Esito dell'ultimo salvataggio (R-18): OK, oppure l'errore che i pannelli possono mostrare.
 var last_save_error := OK
 ## Versione letta dal file (0 = file senza versione o assente).
@@ -51,6 +53,7 @@ func reset() -> void:
 	runs = 0
 	victories = 0
 	levels_unlocked = 1
+	completed_levels.clear()
 	_unknown_upgrades.clear()
 
 
@@ -83,13 +86,20 @@ func buy(id: StringName) -> bool:
 	return true
 
 
-## Fine di un livello: incassa i rottami portati fuori.
-func bank_run(scrap_out: int, victory: bool) -> void:
+func has_completed(level_id: StringName) -> bool:
+	return completed_levels.has(String(level_id))
+
+
+## Fine di un livello: incassa i rottami portati fuori. Una vittoria sblocca il livello
+## successivo a [param level_index] (da 0) e segna [param level_id] come completato.
+func bank_run(scrap_out: int, victory: bool, level_index := 0, level_id: StringName = &"") -> void:
 	scrap += maxi(scrap_out, 0)
 	runs += 1
 	if victory:
 		victories += 1
-		levels_unlocked = maxi(levels_unlocked, 2)
+		levels_unlocked = maxi(levels_unlocked, level_index + 2)
+		if not level_id.is_empty() and not completed_levels.has(String(level_id)):
+			completed_levels.append(String(level_id))
 	print("PROTOTYPE01_PROFILE_BANKED scrap_out=%d total=%d runs=%d victories=%d" % [scrap_out, scrap, runs, victories])
 	save_profile()
 	changed.emit()
@@ -113,6 +123,11 @@ func load_profile(path_override: String = "") -> Error:
 	runs = _validated_count(config.get_value("profile", "runs", 0))
 	victories = _validated_count(config.get_value("profile", "victories", 0))
 	levels_unlocked = maxi(_validated_count(config.get_value("profile", "levels_unlocked", 1)), 1)
+	var completed: Variant = config.get_value("profile", "completed_levels", PackedStringArray())
+	if completed is PackedStringArray or completed is Array:
+		for item in completed:
+			if item is String and not completed_levels.has(item):
+				completed_levels.append(item)
 	for entry in PermanentCatalog.all():
 		var id: StringName = entry.id
 		var level := mini(_validated_count(config.get_value("upgrades", String(id), 0)), (entry.costs as Array).size())
@@ -136,6 +151,7 @@ func save_profile(path_override: String = "") -> Error:
 	config.set_value("profile", "runs", runs)
 	config.set_value("profile", "victories", victories)
 	config.set_value("profile", "levels_unlocked", levels_unlocked)
+	config.set_value("profile", "completed_levels", completed_levels)
 	for id: StringName in levels:
 		config.set_value("upgrades", String(id), levels[id])
 	for key in _unknown_upgrades:

@@ -1,13 +1,15 @@
 class_name MainMenu
 extends Control
 ## Menu iniziale (D-051): Gioca, Officina, Impostazioni, Esci. Scena principale
-## del progetto. Con `-- --autostart` (o `--seed=`, `--boss-at=`, `--capture=`)
-## passa subito al livello: smoke test, catture e prove rapide non si fermano qui.
+## del progetto. "Gioca" apre la mappa di campagna (D-066), da cui si sceglie un
+## livello sbloccato. Con `-- --autostart` (o `--seed=`, `--boss-at=`, `--capture=`,
+## `--level=<id>`) passa subito al livello: smoke test, catture e prove rapide non si
+## fermano qui.
 
-const RUN_SCENE := "res://scenes/main/arena_run.tscn"
 const SCRAP_COLOR := Color(0.95, 0.5, 0.15)
 
 @export var workshop: WorkshopPanel
+@export var campaign_map: CampaignMapPanel
 
 var _profile: PlayerProfileService
 var _pause_menu: Node
@@ -30,6 +32,9 @@ func _ready() -> void:
 	_build()
 	if workshop != null:
 		workshop.closed.connect(_on_panel_closed.bind(_workshop_button))
+	if campaign_map != null:
+		campaign_map.closed.connect(_on_panel_closed.bind(_play))
+		campaign_map.level_chosen.connect(start_level)
 	if _pause_menu != null and _pause_menu.has_signal(&"settings_closed"):
 		_pause_menu.connect(&"settings_closed", _on_panel_closed.bind(_settings))
 	if _profile != null:
@@ -40,7 +45,8 @@ func _ready() -> void:
 	SfxLibrary.precache_async()
 	print("PROTOTYPE01_MENU_READY")
 	if wants_autostart(OS.get_cmdline_user_args()):
-		start_run.call_deferred()
+		var requested := RunLaunchOptions.level_id()
+		start_level.call_deferred(requested if LevelCatalog.is_playable(requested) else LevelCatalog.first())
 	else:
 		_play.grab_focus()
 
@@ -55,8 +61,20 @@ static func wants_autostart(args: PackedStringArray) -> bool:
 	return RunLaunchOptions.wants_autostart(args)
 
 
+## "Gioca": la mappa di campagna; senza il pannello, il primo livello.
 func start_run() -> void:
-	get_tree().change_scene_to_file(RUN_SCENE)
+	if campaign_map == null:
+		start_level(LevelCatalog.first())
+		return
+	_set_menu_visible(false)
+	campaign_map.open()
+
+
+func start_level(id: StringName) -> void:
+	var scene := LevelCatalog.scene_of(id)
+	if scene.is_empty():
+		return
+	get_tree().change_scene_to_file(scene)
 
 
 func open_workshop() -> void:

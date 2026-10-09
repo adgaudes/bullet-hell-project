@@ -6,6 +6,8 @@ extends CanvasLayer
 signal restart_requested
 signal workshop_requested
 signal menu_requested
+## Vittoria con un livello successivo giocabile (D-066).
+signal next_level_requested
 
 const MAP_SIZE := 340.0
 const MAP_LEGEND := "giallo: terrapieni tuoi   azzurro: fossati tuoi   crema: lampioni\nrosso: brecce   viola: barricate del boss   grigio: rovine"
@@ -18,6 +20,7 @@ var _overlay: ColorRect
 var _title: Label
 var _summary: Label
 var _workshop: Button
+var _next: Button
 var _restart: Button
 var _menu: Button
 var _quit: Button
@@ -59,6 +62,9 @@ func _ready() -> void:
 	column.add_child(_summary)
 	_workshop = _button(column, "Officina")
 	_workshop.pressed.connect(func() -> void: workshop_requested.emit())
+	_next = _button(column, "Prossimo livello")
+	_next.pressed.connect(func() -> void: next_level_requested.emit())
+	_next.hide()
 	_restart = _button(column, "Ricomincia")
 	_restart.pressed.connect(func() -> void: restart_requested.emit())
 	_menu = _button(column, "Menu")
@@ -141,19 +147,36 @@ func open(seconds: float, level: int, kills: int, victory := false, scrap := 0, 
 		_summary.text += "\nRottami in Officina %d" % banked
 	get_tree().paused = true
 	_overlay.show()
-	for button: Button in [_workshop, _restart, _menu, _quit]:
+	if not victory:
+		_next.hide()
+	for button: Button in [_workshop, _next, _restart, _menu, _quit]:
 		button.disabled = true
 	get_tree().create_timer(INPUT_GRACE_SECONDS, true).timeout.connect(func() -> void:
-		for button: Button in [_workshop, _restart, _menu, _quit]:
+		for button: Button in [_workshop, _next, _restart, _menu, _quit]:
 			button.disabled = false
 		focus_default())
+
+
+## Mostra "Prossimo livello" con il titolo del livello sbloccato; vuoto = nascosto.
+func set_next_level(title: String) -> void:
+	_next.text = "Prossimo livello: %s" % title if not title.is_empty() else ""
+	_next.visible = not title.is_empty()
+
+
+func has_next_level() -> bool:
+	return _next.visible
 
 
 ## Fuoco sul pulsante da cui ripartire: l'Officina se c'e qualcosa da spendere.
 func focus_default(prefer_workshop := true) -> void:
 	if not is_open:
 		return
-	(_workshop if prefer_workshop else _restart).grab_focus()
+	if prefer_workshop:
+		_workshop.grab_focus()
+	elif _next.visible:
+		_next.grab_focus()
+	else:
+		_restart.grab_focus()
 
 
 func _button(parent: Control, text: String) -> Button:

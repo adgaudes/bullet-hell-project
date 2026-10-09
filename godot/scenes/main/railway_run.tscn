@@ -124,6 +124,7 @@ day_night = NodePath("../DayNightCycle")
 lamp_field = NodePath("../LampField")
 train_event = NodePath("../TrainEvent")
 tuning = ExtResource("11_run_tuning")
+level_id = &"railway"
 district = NodePath("../District")
 player = NodePath("../Player")
 companion = NodePath("../Companion")

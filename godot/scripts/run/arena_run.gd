@@ -39,6 +39,8 @@ const BOSS_DIRECTIONS := [
 ]
 
 @export var tuning: RunTuning
+## Quale livello della campagna e questa scena (LevelCatalog, D-066).
+@export var level_id: StringName = &"district"
 ## Arena grande con i punti di interesse del terreno; senza, si costruisce il solo
 ## cortile centrale di `tuning.wall_ring_radius`.
 @export var district: RuinsDistrict
@@ -143,6 +145,7 @@ func _ready() -> void:
 	level_up_menu.chosen.connect(_on_upgrade_chosen)
 	game_over.restart_requested.connect(restart)
 	game_over.menu_requested.connect(return_to_menu)
+	game_over.next_level_requested.connect(start_next_level)
 	if workshop != null:
 		game_over.workshop_requested.connect(workshop.open)
 		# Tornando dall'Officina il passo successivo e ripartire.
@@ -150,7 +153,10 @@ func _ready() -> void:
 	grid.command_applied.connect(_on_terrain_command)
 	hud.set_health(player.health, player.max_health)
 	_refresh_xp()
-	print("PROTOTYPE01_RUN_START seed=%d" % run_seed)
+	var title := LevelCatalog.title_of(level_id)
+	if not title.is_empty():
+		hud.show_night_notice("LIVELLO %d: %s" % [LevelCatalog.index_of(level_id) + 1, title.to_upper()], 4.0)
+	print("PROTOTYPE01_RUN_START seed=%d level=%s" % [run_seed, level_id])
 
 
 func _physics_process(delta: float) -> void:
@@ -460,6 +466,8 @@ func _end_level(victory: bool) -> void:
 	if victory:
 		level_completed.emit()
 	_show_run_map()
+	var next := LevelCatalog.next_of(level_id)
+	game_over.set_next_level(LevelCatalog.title_of(next) if victory and LevelCatalog.is_playable(next) else "")
 	game_over.open(elapsed, progression.level, director.kills, victory, scrap, banked)
 
 
@@ -504,7 +512,7 @@ func _apply_permanent_upgrades() -> void:
 func _bank(scrap: int, victory: bool) -> int:
 	if _profile == null:
 		return -1
-	_profile.bank_run(scrap, victory)
+	_profile.bank_run(scrap, victory, maxi(LevelCatalog.index_of(level_id), 0), level_id)
 	return _profile.scrap
 
 
@@ -557,6 +565,15 @@ func restart() -> void:
 func return_to_menu() -> void:
 	get_tree().paused = false
 	get_tree().change_scene_to_file(MAIN_MENU_SCENE)
+
+
+## Il livello successivo della campagna (dalla schermata di vittoria).
+func start_next_level() -> void:
+	var next := LevelCatalog.next_of(level_id)
+	if not LevelCatalog.is_playable(next):
+		return
+	get_tree().paused = false
+	get_tree().change_scene_to_file(LevelCatalog.scene_of(next))
 
 
 # --- Treno della ferrovia (D-066) ---------------------------------------------------

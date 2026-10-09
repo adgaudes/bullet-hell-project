@@ -1,0 +1,166 @@
+class_name CampaignMapPanel
+extends CanvasLayer
+## Mappa di campagna (D-040, D-066): i livelli in fila, da sinistra a destra, con il
+## loro stato (completato, sbloccato, bloccato, in costruzione). Si apre dal menu
+## iniziale con "Gioca": si sceglie un livello sbloccato, A conferma e B torna.
+## Controller (croce o stick), tastiera e mouse.
+
+signal closed
+signal level_chosen(id: StringName)
+
+const DONE_COLOR := Color(0.25, 0.85, 0.3)
+const OPEN_COLOR := Color(0.95, 0.85, 0.55)
+const LOCKED_COLOR := Color(0.5, 0.5, 0.5)
+
+var is_open := false
+var _profile: PlayerProfileService
+var _overlay: ColorRect
+var _row: HBoxContainer
+var _buttons: Dictionary[StringName, Button] = {}
+var _detail: Label
+var _back: Button
+
+
+func _ready() -> void:
+	layer = 96
+	process_mode = Node.PROCESS_MODE_ALWAYS
+	_profile = get_node_or_null(^"/root/PlayerProfile") as PlayerProfileService
+	_overlay = ColorRect.new()
+	_overlay.color = Color(0.04, 0.05, 0.04, 0.96)
+	_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+	add_child(_overlay)
+	var center := CenterContainer.new()
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_overlay.add_child(center)
+	var column := VBoxContainer.new()
+	column.custom_minimum_size = Vector2(900, 0)
+	column.add_theme_constant_override(&"separation", 18)
+	center.add_child(column)
+	var title := Label.new()
+	title.text = "PRIMA CAMPAGNA"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override(&"font_size", 38)
+	column.add_child(title)
+	_row = HBoxContainer.new()
+	_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	_row.add_theme_constant_override(&"separation", 24)
+	column.add_child(_row)
+	for i in LevelCatalog.count():
+		var entry: Dictionary = LevelCatalog.all()[i]
+		var id: StringName = entry.id
+		var button := Button.new()
+		button.custom_minimum_size = Vector2(260, 120)
+		button.add_theme_font_size_override(&"font_size", 18)
+		button.pressed.connect(func() -> void: _on_pressed(id))
+		button.focus_entered.connect(func() -> void: _show_detail(id))
+		button.mouse_entered.connect(func() -> void: _show_detail(id))
+		_row.add_child(button)
+		_buttons[id] = button
+	_detail = Label.new()
+	_detail.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_detail.custom_minimum_size = Vector2(0, 60)
+	_detail.add_theme_font_size_override(&"font_size", 18)
+	column.add_child(_detail)
+	_back = Button.new()
+	_back.text = "Torna"
+	_back.custom_minimum_size = Vector2(0, 50)
+	_back.add_theme_font_size_override(&"font_size", 20)
+	_back.pressed.connect(close)
+	column.add_child(_back)
+	column.add_child(ButtonPrompts.create([[&"ui_accept", "Parti"], [&"ui_cancel", "Torna"]]))
+	_overlay.hide()
+
+
+func _input(event: InputEvent) -> void:
+	if is_open and event.is_action_pressed(&"ui_cancel"):
+		get_viewport().set_input_as_handled()
+		close()
+
+
+func open() -> void:
+	is_open = true
+	_refresh()
+	_overlay.show()
+	_buttons[default_level()].grab_focus()
+	_show_detail(default_level())
+
+
+func close() -> void:
+	if not is_open:
+		return
+	is_open = false
+	_overlay.hide()
+	closed.emit()
+
+
+## Il livello proposto: l'ultimo sbloccato e giocabile.
+func default_level() -> StringName:
+	var chosen := LevelCatalog.first()
+	for i in LevelCatalog.count():
+		var id: StringName = LevelCatalog.all()[i].id
+		if is_unlocked(id) and LevelCatalog.is_playable(id):
+			chosen = id
+	return chosen
+
+
+func is_unlocked(id: StringName) -> bool:
+	var index := LevelCatalog.index_of(id)
+	var unlocked := _profile.levels_unlocked if _profile != null else 1
+	return index >= 0 and index < unlocked
+
+
+func is_completed(id: StringName) -> bool:
+	return _profile != null and _profile.has_completed(id)
+
+
+func can_play(id: StringName) -> bool:
+	return is_unlocked(id) and LevelCatalog.is_playable(id)
+
+
+## Sceglie come se il pulsante fosse premuto (test e automazione).
+func press(id: StringName) -> void:
+	if is_open and _buttons.has(id):
+		_buttons[id].pressed.emit()
+
+
+func button_text(id: StringName) -> String:
+	return _buttons[id].text if _buttons.has(id) else ""
+
+
+func _on_pressed(id: StringName) -> void:
+	if not is_open or not can_play(id):
+		return
+	is_open = false
+	_overlay.hide()
+	print("PROTOTYPE01_LEVEL_CHOSEN id=%s" % id)
+	level_chosen.emit(id)
+
+
+func _show_detail(id: StringName) -> void:
+	var entry := LevelCatalog.find(id)
+	if entry.is_empty():
+		return
+	var state := "In costruzione" if not LevelCatalog.is_playable(id) else \
+		("Completato" if is_completed(id) else ("Sbloccato" if is_unlocked(id) else "Bloccato: completa il livello precedente"))
+	_detail.text = "%s\n%s  -  Boss: %s" % [entry.text, state, entry.boss]
+
+
+func _refresh() -> void:
+	for i in LevelCatalog.count():
+		var entry: Dictionary = LevelCatalog.all()[i]
+		var id: StringName = entry.id
+		var button: Button = _buttons[id]
+		var mark := "V" if is_completed(id) else ("" if is_unlocked(id) else "X")
+		button.text = "%d  %s\n%s" % [i + 1, (entry.title as String).to_upper(), mark]
+		var color := LOCKED_COLOR
+		if is_completed(id):
+			color = DONE_COLOR
+		elif can_play(id):
+			color = OPEN_COLOR
+		button.add_theme_color_override(&"font_color", color)
+		button.add_theme_color_override(&"font_focus_color", color)
+		button.add_theme_color_override(&"font_hover_color", color)
+		# I livelli bloccati o in costruzione si vedono e si leggono, ma il fuoco li salta.
+		button.focus_mode = Control.FOCUS_ALL if can_play(id) else Control.FOCUS_NONE
+		button.disabled = not can_play(id)
