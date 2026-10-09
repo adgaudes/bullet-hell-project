@@ -33,7 +33,7 @@ func _initialize() -> void:
 	# senza nebbia (a 150 m coprirebbe tutto).
 	var top := Camera3D.new()
 	top.projection = Camera3D.PROJECTION_ORTHOGONAL
-	top.size = district.play_half_extent * 2.0 + 16.0
+	top.size = maxf(district.half_x(), district.half_z()) * 2.0 + 16.0
 	top.far = 400.0
 	root.add_child(top)
 	# look_at verticale e degenere: base esplicita (destra = +X, alto schermo = -Z, guarda -Y).

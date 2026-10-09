@@ -103,7 +103,8 @@ var terrain_features: Array[Dictionary] = []
 ## Mappa di occupazione dell'area giocabile a passo di 1 m: 1 = riservato
 ## (punto di interesse, edificio, oggetto con collisione).
 var _occupancy := PackedByteArray()
-var _occupancy_side := 0
+var _occupancy_columns := 0
+var _occupancy_rows := 0
 var _unit_box: BoxMesh
 
 
@@ -121,11 +122,11 @@ func plaza_radius() -> float:
 
 
 func ground_size() -> float:
-	return play_half_extent * 2.0 + 160.0
+	return maxf(half_x(), half_z()) * 2.0 + 160.0
 
 
 func cover_limit() -> float:
-	return play_half_extent + 20.0
+	return half_x() + 20.0
 
 
 ## I ciuffi stanno sopra le celle Normal (12 cm), che coprono tutta l'arena.
@@ -167,17 +168,18 @@ func _compose() -> void:
 # --- Occupazione -----------------------------------------------------------------------
 
 func _reset_occupancy() -> void:
-	_occupancy_side = int(ceil(play_half_extent * 2.0 / OCCUPANCY_STEP)) + 2
-	_occupancy.resize(_occupancy_side * _occupancy_side)
+	_occupancy_columns = int(ceil(half_x() * 2.0 / OCCUPANCY_STEP)) + 2
+	_occupancy_rows = int(ceil(half_z() * 2.0 / OCCUPANCY_STEP)) + 2
+	_occupancy.resize(_occupancy_columns * _occupancy_rows)
 	_occupancy.fill(0)
 
 
 func _occupancy_index(p: Vector2) -> int:
-	var x := int(floor((p.x + play_half_extent) / OCCUPANCY_STEP)) + 1
-	var y := int(floor((p.y + play_half_extent) / OCCUPANCY_STEP)) + 1
-	if x < 0 or y < 0 or x >= _occupancy_side or y >= _occupancy_side:
+	var x := int(floor((p.x + half_x()) / OCCUPANCY_STEP)) + 1
+	var y := int(floor((p.y + half_z()) / OCCUPANCY_STEP)) + 1
+	if x < 0 or y < 0 or x >= _occupancy_columns or y >= _occupancy_rows:
 		return -1
-	return y * _occupancy_side + x
+	return y * _occupancy_columns + x
 
 
 func _is_reserved(p: Vector2) -> bool:
@@ -187,8 +189,8 @@ func _is_reserved(p: Vector2) -> bool:
 
 ## Il rettangolo (mondo XZ) e libero e tutto dentro l'area giocabile?
 func _is_free(rect: Rect2) -> bool:
-	if rect.position.x < -play_half_extent or rect.position.y < -play_half_extent \
-			or rect.end.x > play_half_extent or rect.end.y > play_half_extent:
+	if rect.position.x < -half_x() or rect.position.y < -half_z() \
+			or rect.end.x > half_x() or rect.end.y > half_z():
 		return false
 	var y := rect.position.y
 	while y <= rect.end.y:
@@ -221,9 +223,10 @@ static func _rect_around(center: Vector2, half: Vector2, margin := 0.0) -> Rect2
 ## Punto casuale entro l'area giocabile, a distanza minima dal centro, con il
 ## rettangolo richiesto libero; null se non lo trova.
 func _find_free_spot(half: Vector2, margin: float, min_center_distance: float, attempts := 40) -> Variant:
-	var limit := play_half_extent - half.length() - margin - 1.0
+	var limit := half_x() - half.length() - margin - 1.0
+	var limit_z := half_z() - half.length() - margin - 1.0
 	for attempt in attempts:
-		var p := Vector2(_rng.randf_range(-limit, limit), _rng.randf_range(-limit, limit))
+		var p := Vector2(_rng.randf_range(-limit, limit), _rng.randf_range(-limit_z, limit_z))
 		if p.length() < min_center_distance:
 			continue
 		if _is_free(_rect_around(p, half, margin)):
@@ -368,10 +371,10 @@ func _plan_trenches() -> void:
 ## Rovine basse sui lotti liberi: formano strade e strettoie.
 func _build_blocks() -> void:
 	var count := 0
-	var x := -play_half_extent + lot_size
-	while x < play_half_extent - lot_size * 0.5:
-		var z := -play_half_extent + lot_size
-		while z < play_half_extent - lot_size * 0.5:
+	var x := -half_x() + lot_size
+	while x < half_x() - lot_size * 0.5:
+		var z := -half_z() + lot_size
+		while z < half_z() - lot_size * 0.5:
 			var center := Vector2(x, z) + Vector2(_rng.randf_range(-4.0, 4.0), _rng.randf_range(-4.0, 4.0))
 			var footprint := Vector2(_rng.randf_range(6.0, 14.0), _rng.randf_range(5.0, 12.0))
 			var roll := _rng.randf()
@@ -508,35 +511,54 @@ func _build_props() -> void:
 # --- Perimetro: la citta attorno al quartiere ---------------------------------------------
 
 func _build_perimeter() -> void:
-	var e := play_half_extent
-	# Nord: torri alte in fila, con una seconda fila di skyline dietro.
-	var x := -e - 6.0
+	_build_north_towers()
+	_build_side_blocks()
+	_build_west_wreck()
+	# Sud: solo elementi bassi, la camera guarda da qui.
+	_build_south_edge()
+
+
+## Nord: torri alte in fila, con una seconda fila di skyline dietro.
+func _build_north_towers() -> void:
+	var ex := half_x()
+	var ez := half_z()
+	var x := -ex - 6.0
 	var index := 0
-	while x < e + 6.0:
+	while x < ex + 6.0:
 		var footprint := Vector2(_rng.randf_range(10.0, 15.0), _rng.randf_range(12.0, 16.0))
-		_tower("NorthTower%d" % index, Vector2(x, -e - 10.0 - _rng.randf_range(0.0, 3.0)), footprint,
+		_tower("NorthTower%d" % index, Vector2(x, -ez - 10.0 - _rng.randf_range(0.0, 3.0)), footprint,
 			_rng.randf_range(18.0, 38.0), _rng.randf_range(0.45, 0.85))
 		x += footprint.x + _rng.randf_range(6.0, 14.0)
 		index += 1
-	for i in 7:
-		var sx := lerpf(-e - 20.0, e + 20.0, (i + 0.5) / 7.0) + _rng.randf_range(-8.0, 8.0)
-		_tower("Skyline%d" % i, Vector2(sx, -e - _rng.randf_range(60.0, 110.0)), Vector2(_rng.randf_range(14.0, 18.0), _rng.randf_range(12.0, 16.0)),
+	var skyline := maxi(7, int(ex / 15.0))
+	for i in skyline:
+		var sx := lerpf(-ex - 20.0, ex + 20.0, (i + 0.5) / skyline) + _rng.randf_range(-8.0, 8.0)
+		_tower("Skyline%d" % i, Vector2(sx, -ez - _rng.randf_range(60.0, 110.0)), Vector2(_rng.randf_range(14.0, 18.0), _rng.randf_range(12.0, 16.0)),
 			_rng.randf_range(40.0, 78.0), _rng.randf_range(0.6, 0.95), false)
-	# Est e ovest: edifici medi; a ovest un treno deragliato lungo il bordo.
+
+
+## Est e ovest: edifici medi lungo i due lati.
+func _build_side_blocks() -> void:
+	var ex := half_x()
+	var ez := half_z()
 	for side in [-1.0, 1.0]:
-		var z := -e + 4.0
-		index = 0
-		while z < e - 10.0:
+		var z := -ez + 4.0
+		var index := 0
+		while z < ez - 10.0:
 			var footprint := Vector2(_rng.randf_range(10.0, 14.0), _rng.randf_range(10.0, 16.0))
 			_tower("%sBlock%d" % ["East" if side > 0.0 else "West", index],
-				Vector2(side * (e + 9.0 + footprint.x * 0.5), z + footprint.y * 0.5), footprint,
+				Vector2(side * (ex + 9.0 + footprint.x * 0.5), z + footprint.y * 0.5), footprint,
 				_rng.randf_range(10.0, 22.0), _rng.randf_range(0.6, 0.9))
 			z += footprint.y + _rng.randf_range(8.0, 18.0)
 			index += 1
-	var train_z := _rng.randf_range(-e * 0.6, e * 0.3)
-	_carriage(Vector3(-e - 4.0, 0.0, train_z - 13.5), 2.0, 0.0, Color(0.88, 0.68, 0.14))
-	_carriage(Vector3(-e - 3.4, 0.0, train_z), -7.0, 4.0, Color(0.72, 0.32, 0.12))
-	# A -e - 4.5: con l'imbardata di 24 gradi il muso entrava di ~2 m nell'area giocabile (R-30).
-	_carriage(Vector3(-e - 4.5, 0.0, train_z + 13.0), -24.0, 12.0, Color(0.88, 0.68, 0.14))
-	# Sud: solo elementi bassi, la camera guarda da qui.
-	_build_south_edge()
+
+
+## A ovest un treno deragliato lungo il bordo.
+func _build_west_wreck() -> void:
+	var ex := half_x()
+	var ez := half_z()
+	var train_z := _rng.randf_range(-ez * 0.6, ez * 0.3)
+	_carriage(Vector3(-ex - 4.0, 0.0, train_z - 13.5), 2.0, 0.0, Color(0.88, 0.68, 0.14))
+	_carriage(Vector3(-ex - 3.4, 0.0, train_z), -7.0, 4.0, Color(0.72, 0.32, 0.12))
+	# A -ex - 4.5: con l'imbardata di 24 gradi il muso entrava di ~2 m nell'area giocabile (R-30).
+	_carriage(Vector3(-ex - 4.5, 0.0, train_z + 13.0), -24.0, 12.0, Color(0.88, 0.68, 0.14))

@@ -348,7 +348,7 @@ func _choose_direction() -> Vector2:
 	if threats.is_empty() and xp_direction.is_zero_approx() and not boss_active:
 		return Vector2.ZERO
 
-	var limit := _run._play_half_extent() - 6.0
+	var limit := _run._play_half_extents() - Vector2(6.0, 6.0)
 	var best := Vector2.ZERO
 	var best_score := -INF
 	for i in DIRECTIONS + 1:
@@ -375,7 +375,7 @@ func _choose_direction() -> Vector2:
 				score -= 1.0
 			if _grid.cell_state_at(_world(middle)) == TerrainState.CellState.LOWERED:
 				score -= 0.3
-			if absf(future.x) > limit or absf(future.y) > limit:
+			if absf(future.x) > limit.x or absf(future.y) > limit.y:
 				score -= 5.0
 			score += 0.1 * direction.dot(_move.normalized()) if not _move.is_zero_approx() else 0.0
 			score += xp_weight * direction.dot(xp_direction)

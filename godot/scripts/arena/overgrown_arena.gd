@@ -28,10 +28,16 @@ const WORLD_STATIC_LAYER := 1
 	set(value):
 		layout_seed = value
 		_queue_rebuild()
-## Mezzo lato dell'area giocabile; oltre c'e un muro invisibile.
+## Mezzo lato dell'area giocabile lungo X; oltre c'e un muro invisibile.
 @export var play_half_extent := 24.0:
 	set(value):
 		play_half_extent = value
+		_queue_rebuild()
+## Mezzo lato lungo Z; 0 = quadrato, uguale a `play_half_extent`. Un'arena
+## rettangolare (la ferrovia, D-066) lo imposta; tutto il resto legge half_x()/half_z().
+@export var play_half_extent_z := 0.0:
+	set(value):
+		play_half_extent_z = value
 		_queue_rebuild()
 ## Mezzo lato del quadrato centrale tenuto libero (griglia 11x11 + corsia hazard).
 @export var clear_half_extent := 16.8:
@@ -84,8 +90,21 @@ func _ready() -> void:
 	rebuild()
 	if not Engine.is_editor_hint():
 		print("PROTOTYPE01_EXPOSURE_READY")
-		print("PROTOTYPE01_ARENA_READY style=overgrown_ruins play=%.0fm blocks=%d props=%d trees=%d"
-			% [play_half_extent * 2.0, stats.blocks, stats.props, stats.trees])
+		print("PROTOTYPE01_ARENA_READY style=overgrown_ruins play=%.0fx%.0fm blocks=%d props=%d trees=%d"
+			% [half_x() * 2.0, half_z() * 2.0, stats.blocks, stats.props, stats.trees])
+
+
+## Mezzi lati dell'area giocabile: X e Z (Z uguale a X se `play_half_extent_z` e 0).
+func half_x() -> float:
+	return play_half_extent
+
+
+func half_z() -> float:
+	return play_half_extent_z if play_half_extent_z > 0.0 else play_half_extent
+
+
+func half_extents() -> Vector2:
+	return Vector2(half_x(), half_z())
 
 
 func _queue_rebuild() -> void:
@@ -139,9 +158,14 @@ func ground_size() -> float:
 	return 220.0
 
 
-## Oltre questa distanza dal centro non cresce vegetazione.
+## Oltre questa distanza dal centro (lungo X) non cresce vegetazione.
 func cover_limit() -> float:
 	return play_half_extent + 14.0
+
+
+## Lo stesso margine, lungo Z: con un'arena rettangolare il verde segue il bordo.
+func cover_limit_z() -> float:
+	return cover_limit() - half_x() + half_z()
 
 
 ## Quota della vegetazione: sulla piazza il suolo e a zero.
@@ -535,13 +559,14 @@ func _build_ground() -> void:
 ## Muri invisibili sul perimetro giocabile.
 func _build_boundary() -> void:
 	var h := 6.0
-	var e := play_half_extent
+	var ex := half_x()
+	var ez := half_z()
 	var t := 1.0
 	var walls := [
-		[Vector3(0.0, h * 0.5, -e - t * 0.5), Vector3(e * 2.0 + t * 2.0, h, t)],
-		[Vector3(0.0, h * 0.5, e + t * 0.5), Vector3(e * 2.0 + t * 2.0, h, t)],
-		[Vector3(-e - t * 0.5, h * 0.5, 0.0), Vector3(t, h, e * 2.0)],
-		[Vector3(e + t * 0.5, h * 0.5, 0.0), Vector3(t, h, e * 2.0)],
+		[Vector3(0.0, h * 0.5, -ez - t * 0.5), Vector3(ex * 2.0 + t * 2.0, h, t)],
+		[Vector3(0.0, h * 0.5, ez + t * 0.5), Vector3(ex * 2.0 + t * 2.0, h, t)],
+		[Vector3(-ex - t * 0.5, h * 0.5, 0.0), Vector3(t, h, ez * 2.0)],
+		[Vector3(ex + t * 0.5, h * 0.5, 0.0), Vector3(t, h, ez * 2.0)],
 	]
 	for i in walls.size():
 		var body := _static_body("Boundary%d" % i, Transform3D(Basis(), walls[i][0]))
@@ -602,9 +627,9 @@ func _build_west_train() -> void:
 
 ## Lato sud: solo elementi bassi (muretti, cespugli), la camera guarda da qui.
 func _build_south_edge() -> void:
-	var z := play_half_extent + 1.6
-	var x := -play_half_extent - 2.0
-	while x < play_half_extent + 2.0:
+	var z := half_z() + 1.6
+	var x := -half_x() - 2.0
+	while x < half_x() + 2.0:
 		var length := _rng.randf_range(2.5, 6.0)
 		var roll := _rng.randf()
 		if roll < 0.25:
@@ -661,6 +686,7 @@ func ground_cover_at(p: Vector2) -> float:
 
 func _build_ground_cover() -> void:
 	var limit := cover_limit()
+	var limit_z := cover_limit_z()
 	var height := cover_height()
 	_reset_cover_lattice()
 	# Campionamento stratificato (T-02): una griglia di candidati con jitter invece del
@@ -671,6 +697,7 @@ func _build_ground_cover() -> void:
 	var side := int(ceil(sqrt(float(wanted) * 2.0)))
 	var total := side * side
 	var pitch := limit * 2.0 / maxf(float(side), 1.0)
+	var pitch_z := limit_z * 2.0 / maxf(float(side), 1.0)
 	var stride := 7919 if total % 7919 != 0 else 7907
 	var tufts := PackedFloat32Array()
 	var tuft_count := 0
@@ -683,7 +710,7 @@ func _build_ground_cover() -> void:
 		if tuft_count >= grass_tufts and flower_count >= flowers:
 			break
 		var index := (k * stride) % total
-		var p := Vector2(-limit + (index % side + _rng.randf()) * pitch, -limit + (index / side + _rng.randf()) * pitch)
+		var p := Vector2(-limit + (index % side + _rng.randf()) * pitch, -limit_z + (index / side + _rng.randf()) * pitch_z)
 		if _cover_excluded(p):
 			continue
 		var chance := _cover_chance(p)

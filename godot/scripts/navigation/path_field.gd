@@ -36,8 +36,10 @@ const NEIGHBORS: Array[Vector2i] = [
 
 @export var target: Node3D
 @export var grid: TerrainGrid
-## Meta lato dell'area giocabile, in metri (play_half_extent dell'arena).
+## Meta lato dell'area giocabile lungo X, in metri (play_half_extent dell'arena).
 @export var half_extent := 24.0
+## Meta lato lungo Z; 0 = quadrato (arena rettangolare: D-066).
+@export var half_extent_z := 0.0
 @export var cell_size := 1.2
 ## Lato della finestra risolta, in celle (64 = 76,8 m). 0 = tutta l'arena.
 @export var window_cells := 64
@@ -48,8 +50,9 @@ const NEIGHBORS: Array[Vector2i] = [
 
 ## Lato della finestra in celle.
 var columns := 0
-## Lato dell'intera arena in celle.
+## Lati dell'intera arena in celle (X e Z).
 var world_columns := 0
+var world_rows := 0
 ## Spigolo della finestra in celle mondo.
 var origin := Vector2i.ZERO
 ## Costo verso il bersaglio; UNREACHABLE per celle bloccate o isolate.
@@ -85,7 +88,8 @@ var _ready_done := false
 
 func _ready() -> void:
 	world_columns = int(round(half_extent * 2.0 / cell_size))
-	columns = world_columns if window_cells <= 0 else mini(window_cells, world_columns)
+	world_rows = int(round(half_z() * 2.0 / cell_size))
+	columns = maxi(world_columns, world_rows) if window_cells <= 0 else mini(window_cells, mini(world_columns, world_rows))
 	var count := columns * columns
 	costs.resize(count)
 	costs.fill(UNREACHABLE)
@@ -104,13 +108,18 @@ func _ready() -> void:
 	await get_tree().physics_frame
 	if not is_inside_tree() or (target != null and not is_instance_valid(target)):
 		return
-	var center := Vector2i(world_columns / 2, world_columns / 2)
+	var center := Vector2i(world_columns / 2, world_rows / 2)
 	origin = _origin_for(_world_cell_of(target.global_position) if target != null else center)
 	_fill_window()
 	_ready_done = true
 	solve()
 	print("PROTOTYPE01_PATH_FIELD_READY cells=%d world_cells=%d static_blocked=%d"
-		% [count, world_columns * world_columns, _count(_static_blocked)])
+		% [count, world_columns * world_rows, _count(_static_blocked)])
+
+
+## Meta lato lungo Z (uguale a X se `half_extent_z` e 0).
+func half_z() -> float:
+	return half_extent_z if half_extent_z > 0.0 else half_extent
 
 
 func _physics_process(delta: float) -> void:
@@ -139,7 +148,7 @@ func cell_of(world: Vector3) -> Vector2i:
 
 func cell_center(cell: Vector2i) -> Vector3:
 	var wc := cell + origin
-	return Vector3(-half_extent + (wc.x + 0.5) * cell_size, 0.0, -half_extent + (wc.y + 0.5) * cell_size)
+	return Vector3(-half_extent + (wc.x + 0.5) * cell_size, 0.0, -half_z() + (wc.y + 0.5) * cell_size)
 
 
 func is_inside(cell: Vector2i) -> bool:
@@ -231,7 +240,7 @@ func _on_grid_rebuilt() -> void:
 
 
 func _needs_recenter(world_cell: Vector2i) -> bool:
-	if columns >= world_columns:
+	if columns >= world_columns and columns >= world_rows:
 		return false
 	var center := origin + Vector2i(columns / 2, columns / 2)
 	var d := world_cell - center
@@ -239,16 +248,17 @@ func _needs_recenter(world_cell: Vector2i) -> bool:
 
 
 func _origin_for(world_cell: Vector2i) -> Vector2i:
-	var limit := world_columns - columns
-	return Vector2i(clampi(world_cell.x - columns / 2, 0, limit), clampi(world_cell.y - columns / 2, 0, limit))
+	var limit := maxi(world_columns - columns, 0)
+	var limit_z := maxi(world_rows - columns, 0)
+	return Vector2i(clampi(world_cell.x - columns / 2, 0, limit), clampi(world_cell.y - columns / 2, 0, limit_z))
 
 
 func _world_cell_of(world: Vector3) -> Vector2i:
-	return Vector2i(floori((world.x + half_extent) / cell_size), floori((world.z + half_extent) / cell_size))
+	return Vector2i(floori((world.x + half_extent) / cell_size), floori((world.z + half_z()) / cell_size))
 
 
 func _world_inside(wc: Vector2i) -> bool:
-	return wc.x >= 0 and wc.y >= 0 and wc.x < world_columns and wc.y < world_columns
+	return wc.x >= 0 and wc.y >= 0 and wc.x < world_columns and wc.y < world_rows
 
 
 func _fill_window() -> void:
@@ -291,7 +301,7 @@ func _scan_terrain_chunk(chunk: Vector2i) -> PackedInt32Array:
 			var wc := chunk * CHUNK + Vector2i(x, y)
 			if not _world_inside(wc):
 				continue
-			var center := Vector3(-half_extent + (wc.x + 0.5) * cell_size, 0.0, -half_extent + (wc.y + 0.5) * cell_size)
+			var center := Vector3(-half_extent + (wc.x + 0.5) * cell_size, 0.0, -half_z() + (wc.y + 0.5) * cell_size)
 			var terrain_cell := grid.cell_at(center)
 			if grid.state.is_valid(terrain_cell):
 				data[y * CHUNK + x] = terrain_cell.y * grid.state.width + terrain_cell.x
@@ -327,7 +337,7 @@ func _scan_chunk(chunk: Vector2i) -> PackedByteArray:
 			if not _world_inside(wc):
 				blocked = 1
 			else:
-				var center := Vector3(-half_extent + (wc.x + 0.5) * cell_size, 0.8, -half_extent + (wc.y + 0.5) * cell_size)
+				var center := Vector3(-half_extent + (wc.x + 0.5) * cell_size, 0.8, -half_z() + (wc.y + 0.5) * cell_size)
 				query.transform = Transform3D(Basis(), center)
 				for hit in space.intersect_shape(query, 8):
 					var collider: Node = hit.collider

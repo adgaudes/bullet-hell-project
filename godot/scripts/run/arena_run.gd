@@ -246,12 +246,12 @@ func call_boss() -> void:
 	if boss_phase != BossPhase.WAITING:
 		return
 	# Solo direzioni in cui c'e spazio per arrivare da lontano (vicino ai bordi no).
-	var limit := _play_half_extent() - 3.0
+	var limit := _play_half_extents() - Vector2(3.0, 3.0)
 	var options: Array = []
 	var path := director.path_field
 	for entry: Array in BOSS_DIRECTIONS:
 		var point: Vector3 = player.global_position + entry[1] * tuning.boss_spawn_distance
-		if absf(point.x) > limit or absf(point.z) > limit:
+		if absf(point.x) > limit.x or absf(point.z) > limit.y:
 			continue
 		# E con un punto d'ingresso percorribile (T-01: non dentro una rovina).
 		if path != null and path.is_ready() and _walkable_near(point, 9.0) == null:
@@ -303,18 +303,16 @@ func _spawn_boss() -> void:
 
 ## Punto di ingresso nella direzione annunciata: dentro l'arena e su terreno libero.
 func _boss_spawn_point() -> Vector3:
-	var limit := _play_half_extent() - 3.0
 	var path := director.path_field
 	var side := Vector3(-boss_direction.z, 0.0, boss_direction.x)
 	for lateral in [0.0, 3.0, -3.0, 6.0, -6.0, 9.0, -9.0]:
 		for back in [0.0, -3.0, 3.0, -6.0]:
 			var point: Vector3 = player.global_position + boss_direction * (tuning.boss_spawn_distance + back) + side * lateral
-			point = Vector3(clampf(point.x, -limit, limit), 0.0, clampf(point.z, -limit, limit))
+			point = _clamp_inside(point)
 			if path == null or (path.is_walkable(point) and path.is_walkable(point + Vector3(1.0, 0.0, 1.0)) \
 					and path.is_walkable(point - Vector3(1.0, 0.0, 1.0))):
 				return point
-	var fallback: Vector3 = player.global_position + boss_direction * tuning.boss_spawn_distance
-	fallback = Vector3(clampf(fallback.x, -limit, limit), 0.0, clampf(fallback.z, -limit, limit))
+	var fallback := _clamp_inside(player.global_position + boss_direction * tuning.boss_spawn_distance)
 	# Ripiego verificato: la cella percorribile piu vicina a spirale (T-01).
 	var near: Variant = _walkable_near(fallback, 24.0)
 	return near if near != null else fallback
@@ -326,7 +324,6 @@ func _walkable_near(origin: Vector3, radius: float) -> Variant:
 	var path := director.path_field
 	if path == null:
 		return origin
-	var limit := _play_half_extent() - 3.0
 	var step := path.cell_size
 	var rings := int(ceil(radius / step))
 	for ring in rings + 1:
@@ -334,7 +331,7 @@ func _walkable_near(origin: Vector3, radius: float) -> Variant:
 			for dx in range(-ring, ring + 1):
 				if maxi(absi(dx), absi(dz)) != ring:
 					continue
-				var point := Vector3(clampf(origin.x + dx * step, -limit, limit), 0.0, clampf(origin.z + dz * step, -limit, limit))
+				var point := _clamp_inside(origin + Vector3(dx * step, 0.0, dz * step))
 				if path.is_walkable(point) and path.is_walkable(point + Vector3(1.0, 0.0, 1.0)) \
 						and path.is_walkable(point - Vector3(1.0, 0.0, 1.0)):
 					return point
@@ -347,17 +344,28 @@ func _check_scale() -> void:
 	if district != null and not is_equal_approx(grid.cell_size_m(), RuinsDistrict.CELL):
 		push_error("Scala incoerente: griglia %.2f m per cella, distretto %.2f" % [grid.cell_size_m(), RuinsDistrict.CELL])
 	if director.path_field != null and district != null \
-			and not is_equal_approx(director.path_field.half_extent, district.play_half_extent):
-		push_error("Scala incoerente: campo di percorso %.1f m, distretto %.1f" % [director.path_field.half_extent, district.play_half_extent])
-	var grid_half := grid.cell_size_m() * grid.state.width * 0.5
-	if district != null and absf(grid_half - district.play_half_extent) > grid.cell_size_m():
-		push_error("Scala incoerente: griglia %.1f m di semilato, distretto %.1f" % [grid_half, district.play_half_extent])
+			and not Vector2(director.path_field.half_extent, director.path_field.half_z()).is_equal_approx(district.half_extents()):
+		push_error("Scala incoerente: campo di percorso %.1f x %.1f m, distretto %s"
+			% [director.path_field.half_extent, director.path_field.half_z(), district.half_extents()])
+	# Assi Unreal della griglia: `width` corre lungo X Unreal (Z Godot), `height` lungo Y Unreal (X Godot).
+	var grid_half := Vector2(grid.state.height, grid.state.width) * grid.cell_size_m() * 0.5
+	if district != null and (grid_half - district.half_extents()).length() > grid.cell_size_m():
+		push_error("Scala incoerente: griglia %s m di semilato, distretto %s" % [grid_half, district.half_extents()])
 
 
-func _play_half_extent() -> float:
+## Mezzi lati dell'area giocabile (X, Z).
+func _play_half_extents() -> Vector2:
 	if district != null:
-		return district.play_half_extent
-	return director.path_field.half_extent if director.path_field != null else 24.0
+		return district.half_extents()
+	if director.path_field != null:
+		return Vector2(director.path_field.half_extent, director.path_field.half_z())
+	return Vector2(24.0, 24.0)
+
+
+## Il punto riportato dentro l'arena, a 3 m dal bordo, a quota zero.
+func _clamp_inside(point: Vector3) -> Vector3:
+	var limit := _play_half_extents() - Vector2(3.0, 3.0)
+	return Vector3(clampf(point.x, -limit.x, limit.x), 0.0, clampf(point.z, -limit.y, limit.y))
 
 
 ## Rottami di recupero: per i livelli guadagnati (`recovery_scrap_levels`) e, se

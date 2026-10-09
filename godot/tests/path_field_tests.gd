@@ -47,6 +47,7 @@ func _initialize() -> void:
 	_test_walkable_outside_window()
 	await _test_full_field_mode_unchanged()
 	await _test_spawn_ring_and_leash()
+	await _test_rectangular_arena()
 	print("PROTOTYPE01_TESTS %s failures=%d" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -270,4 +271,39 @@ func _test_spawn_ring_and_leash() -> void:
 	director.free()
 	_world.remove_child(player)
 	player.free()
+	await _frames(2)
+
+
+## Arena rettangolare (D-066): la ferrovia e lunga in X e stretta in Z.
+func _test_rectangular_arena() -> void:
+	print("rectangular arena")
+	var field := PathField.new()
+	field.target = _target
+	field.half_extent = 60.0
+	field.half_extent_z = 24.0
+	field.window_cells = WINDOW
+	field.recenter_margin_cells = 4
+	field.min_solve_interval = 0.0
+	_world.add_child(field)
+	await _frames(4)
+	_check(field.world_columns == 100 and field.world_rows == 40, "100 x 40 celle mondo (%d x %d)" % [field.world_columns, field.world_rows])
+	_check(field.columns == WINDOW, "finestra quadrata di %d celle" % field.columns)
+	_check(field.is_walkable(Vector3(50.0, 0.0, 0.0)), "lontano lungo X, dentro: percorribile")
+	_check(not field.is_walkable(Vector3(0.0, 0.0, 50.0)), "a 50 m lungo Z: fuori dall'arena")
+	_check(not field.is_walkable(Vector3(0.0, 0.0, -26.0)), "oltre il bordo nord: fuori")
+	_check(field.is_walkable(Vector3(0.0, 0.0, 22.0)), "a 22 m lungo Z: dentro")
+	var corner := field.cell_of(Vector3(-60.0, 0.0, -24.0)) + field.origin
+	_check(corner == Vector2i.ZERO, "angolo nord-ovest e la cella mondo 0,0 (%s)" % corner)
+	var cell := field.cell_of(_target.global_position)
+	_check(field.cell_of(field.cell_center(cell)) == cell, "cell_center e cell_of coerenti")
+	# Al bordo stretto la finestra si ferma sul bordo, lungo X continua a scorrere.
+	_target.global_position = Vector3(40.0, 0.0, 20.0)
+	await _frames(3)
+	_check(field.origin.y == field.world_rows - field.columns, "la finestra si appoggia al bordo sud (origine y=%d)" % field.origin.y)
+	_check(field.is_inside(field.cell_of(_target.global_position)), "il bersaglio resta dentro la finestra")
+	_check(field.cost_at(_target.global_position) == 0.0, "costo zero sul bersaglio")
+	# La finestra non deve sporgere oltre i 40 righe: tutto il bordo e marcato.
+	_check(not field.is_walkable(Vector3(40.0, 0.0, 25.0)), "sotto il bordo sud: fuori")
+	_target.global_position = Vector3.ZERO
+	field.queue_free()
 	await _frames(2)

@@ -166,13 +166,14 @@ func _spawn_batch() -> void:
 ## l'area giocabile; null se dopo alcuni tentativi non ne trova uno.
 func _find_spawn_point() -> Variant:
 	var e := (path_field.half_extent if path_field != null else 24.0) - 1.5
+	var ez := (path_field.half_z() if path_field != null else 24.0) - 1.5
 	var center := player.global_position
 	for attempt in 12:
 		var angle := rng.randf_range(0.0, TAU)
 		var radius := rng.randf_range(tuning.spawn_ring_min, tuning.spawn_ring_max)
 		var point := Vector3(
 			clampf(center.x + cos(angle) * radius, -e, e), 0.0,
-			clampf(center.z + sin(angle) * radius, -e, e))
+			clampf(center.z + sin(angle) * radius, -ez, ez))
 		if _planar(point - center).length() < tuning.spawn_min_player_distance:
 			continue
 		if path_field != null and not path_field.is_walkable(point):
