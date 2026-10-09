@@ -66,6 +66,8 @@ I marker diagnostici gia in uso nel progetto (`PROTOTYPE01_INPUT_READY`, `PROTOT
 
 ### Test automatici
 
+Trappola verificata (9 ottobre 2026): in headless la finestra e 64x64 con stretch `canvas_items`, quindi `InputEventMouseMotion.relative` arriva ai nodi **moltiplicato per 20** circa. Un test che simula il mouse deve dividere per `root.get_final_transform().get_scale()` (vedi `_mouse_motion` in `tests/input_events_tests.gd`).
+
 ```bash
 godot_console --headless --path godot --fixed-fps 60 --script res://tests/player_tests.gd
 godot_console --headless --path godot --fixed-fps 60 --script res://tests/terrain_tests.gd
@@ -287,6 +289,8 @@ Godot rileva le modifiche esterne ai file e ricarica da solo, quindi l'editor pu
 Vincolo nettamente piu leggero del precedente "un solo autore per volta sull'Editor" imposto dal flusso Unreal.
 
 Un agente che sta per modificare una scena lo dichiara, cosi il proprietario sa cosa non toccare in quel momento.
+
+Trappole verificate (9 ottobre 2026) con gli agenti in **worktree Git** separati: (1) un worktree nuovo ha i modelli `.glb` di `godot/assets/models/` come puntatori LFS da 130 byte finche non si fa `git lfs pull --include="godot/assets/models/*.glb"` e poi `godot_console --headless --path godot --editor --quit` per reimportarli; prima di allora `arena_run_tests` fallisce ("altri punti di interesse Raised"); (2) il worktree puo nascere su `main`: controllare `git log -1` e riallinearlo al branch di lavoro prima di cominciare.
 
 ### File generati dall'editor
 
