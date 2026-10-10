@@ -1,7 +1,7 @@
 extends SceneTree
 ## Catture e misure dello spike del terreno a rilievo continuo (non e una suite).
 ## Con finestra reale:
-##   godot_console --path godot --resolution 1280x800 --quit-after 3000 --script res://tests/tools/capture_terrain_spike.gd -- --out=../output/terrain_spike
+##   godot_console --path godot --resolution 1280x800 --quit-after 3000 --script res://tests/tools/capture_terrain_spike.gd -- --out=../output/terrain_spike [--size=204]
 ## Scolpisce da programma un cumulo, una trincea curva, una rampa e una piazzola, lascia
 ## camminare i rottamatori e salva la vista di gioco e due viste radenti. Stampa
 ## `TERRAIN_SPIKE_BENCH` (costo di pennello e campo di percorso, tempi di frame mentre
@@ -14,11 +14,16 @@ var _game_camera: Camera3D
 
 
 func _initialize() -> void:
+	var size_m := 0.0
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--out="):
 			_out = arg.trim_prefix("--out=")
+		elif arg.begins_with("--size="):
+			size_m = arg.trim_prefix("--size=").to_float()
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("res://").path_join(_out))
 	_spike = preload("res://scenes/spikes/terrain_spike.tscn").instantiate()
+	if size_m > 0.0:
+		_spike.terrain_size_m = size_m
 	root.add_child(_spike)
 	for i in 30:
 		await physics_frame
@@ -51,7 +56,7 @@ func _initialize() -> void:
 
 	started = Time.get_ticks_usec()
 	for i in 10:
-		_spike.field.rebuild(terrain, _spike.player.global_position, TerrainSpike.MAX_GRADE)
+		_spike.field.rebuild(terrain, _spike.player.global_position, TerrainSpike.MAX_GRADE, TerrainSpike.FIELD_WINDOW_M)
 	var field_ms := (Time.get_ticks_usec() - started) / 10000.0
 	for i in 500:
 		await physics_frame

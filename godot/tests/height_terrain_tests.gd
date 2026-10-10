@@ -116,6 +116,17 @@ func _test_flow_field() -> void:
 	var straight := field.distance[field.cell_of(start)]
 	_check(straight > 0.0 and absf(straight - 24.0) < 3.0, "in piano va dritto (%.1f m)" % straight)
 	_check(field.direction_at(start).z < -0.9, "e la direzione punta al bersaglio")
+	# Finestra (U-02): a 6 m dal bersaglio il campo si ferma; vicino e uguale al campo intero.
+	var near := Vector3(0.0, 0.0, -9.0)
+	var near_full := field.distance[field.cell_of(near)]
+	field.rebuild(terrain, goal, GRADE, 6.0)
+	_check(field.distance[field.cell_of(start)] < 0.0 and field.direction_at(start) == Vector3.ZERO,
+		"con una finestra di 6 m la casella a 24 m resta senza strada")
+	_check(is_equal_approx(field.distance[field.cell_of(near)], near_full) and field.direction_at(near).z < -0.9,
+		"dentro la finestra il campo e lo stesso (%.1f m)" % near_full)
+	_check(field.cells_apart(field.cell_of(start), field.cell_of(goal)) == 16 and field.cells_apart(field.cell_of(start), -1) > 1000,
+		"distanza in caselle: 16 fra partenza e bersaglio, infinita senza bersaglio")
+	field.rebuild(terrain, goal, GRADE)
 	# Argine alto fra i due, lungo 20 m.
 	for i in 21:
 		terrain.sculpt(Vector3(-10.0 + i, 0.0, 0.0), 2.0, 3.0)

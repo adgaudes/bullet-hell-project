@@ -35,6 +35,10 @@ const ENEMY_SPEED := 2.3
 const ENEMY_RING := 28.0
 ## Secondi minimi fra due ricalcoli del campo di percorso.
 const FIELD_INTERVAL := 0.25
+## Finestra del campo di percorso attorno al giocatore (semilato, m) e di quante caselle
+## deve spostarsi il giocatore prima di ricalcolarlo (U-02).
+const FIELD_WINDOW_M := 48.0
+const FIELD_MOVE_CELLS := 2
 
 var terrain: HeightTerrain
 var player: PlayerCharacter
@@ -58,6 +62,8 @@ var _field_wait := 0.0
 var _goal_cell := -1
 ## Ultimo punto del suolo raggiunto dal giocatore (INF = non ancora posato).
 var _last_player := Vector3.INF
+## Lato del terreno in metri (96 di default; 204 per le misure di scala, U-02).
+@export var terrain_size_m := 96.0
 var _rng := RandomNumberGenerator.new()
 
 
@@ -68,6 +74,7 @@ func _ready() -> void:
 	_build_world()
 	terrain = HeightTerrain.new()
 	terrain.name = "Terrain"
+	terrain.size_m = terrain_size_m
 	add_child(terrain)
 	_shape_landscape()
 	terrain.changed.connect(func() -> void: _field_dirty = true)
@@ -113,7 +120,7 @@ func _physics_process(delta: float) -> void:
 
 	_field_wait -= delta
 	var goal_cell := field.cell_of(player.global_position)
-	if _field_wait <= 0.0 and (_field_dirty or goal_cell != _goal_cell):
+	if _field_wait <= 0.0 and (_field_dirty or field.cells_apart(goal_cell, _goal_cell) >= FIELD_MOVE_CELLS):
 		_refresh_field()
 	if enemies_active:
 		_move_enemies(delta)
@@ -183,7 +190,7 @@ func _ground_player() -> void:
 
 func _refresh_field() -> void:
 	var started := Time.get_ticks_usec()
-	field.rebuild(terrain, player.global_position, MAX_GRADE)
+	field.rebuild(terrain, player.global_position, MAX_GRADE, FIELD_WINDOW_M)
 	field_usec = Time.get_ticks_usec() - started
 	_field_dirty = false
 	_field_wait = FIELD_INTERVAL
@@ -263,6 +270,8 @@ func _build_world() -> void:
 	sun.light_energy = 1.4
 	sun.shadow_enabled = true
 	sun.directional_shadow_max_distance = 90.0
+	# Due split invece di quattro: la mesh unica del terreno viene disegnata in ogni split (U-11).
+	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS
 	add_child(sun)
 	var sky_material := ProceduralSkyMaterial.new()
 	sky_material.sky_top_color = Color(0.30, 0.50, 0.80)

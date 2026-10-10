@@ -32,7 +32,9 @@ var _half := 0.0
 
 
 ## Ricalcola il campo verso [param goal]. [param max_grade]: salita massima (m per m).
-func rebuild(terrain: HeightTerrain, goal: Vector3, max_grade: float) -> void:
+## [param window_m] > 0 limita la visita a un quadrato di quel semilato attorno al
+## bersaglio (U-02): fuori le caselle restano senza strada e chi cammina punta dritto.
+func rebuild(terrain: HeightTerrain, goal: Vector3, max_grade: float, window_m := 0.0) -> void:
 	assert(is_equal_approx(SUBSTEPS * HeightTerrain.CELL, CELL), "CELL deve essere multiplo della maglia del terreno")
 	_half = terrain.half_extent()
 	var res := terrain.resolution
@@ -59,6 +61,16 @@ func rebuild(terrain: HeightTerrain, goal: Vector3, max_grade: float) -> void:
 	for b in bucket_count:
 		buckets[b] = PackedInt32Array()
 	var start := cell_of(goal)
+	var min_x := 0
+	var min_z := 0
+	var max_x := side - 1
+	var max_z := side - 1
+	if window_m > 0.0:
+		var span := int(ceil(window_m / CELL))
+		min_x = maxi(start % side - span, 0)
+		max_x = mini(start % side + span, side - 1)
+		min_z = maxi(start / side - span, 0)
+		max_z = mini(start / side + span, side - 1)
 	dist[start] = 0
 	next[start] = start
 	buckets[0].append(start)
@@ -81,7 +93,7 @@ func rebuild(terrain: HeightTerrain, goal: Vector3, max_grade: float) -> void:
 				var oz := DZ[k]
 				var nx := cx + ox
 				var nz := cz + oz
-				if nx < 0 or nz < 0 or nx >= side or nz >= side:
+				if nx < min_x or nz < min_z or nx > max_x or nz > max_z:
 					continue
 				var neighbor := nz * side + nx
 				var diagonal := ox != 0 and oz != 0
@@ -116,6 +128,14 @@ func cell_of(point: Vector3) -> int:
 	var x := clampi(int(round((point.x + _half) / CELL)), 0, side - 1)
 	var z := clampi(int(round((point.z + _half) / CELL)), 0, side - 1)
 	return z * side + x
+
+
+## Distanza fra due caselle in caselle (scacchiera): quante ne separa il giocatore
+## dall'ultimo bersaglio calcolato.
+func cells_apart(a: int, b: int) -> int:
+	if a < 0 or b < 0 or side <= 0:
+		return 0x7fffffff
+	return maxi(absi(a % side - b % side), absi(a / side - b / side))
 
 
 func center_of(cell: int) -> Vector3:
