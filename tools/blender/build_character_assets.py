@@ -521,13 +521,19 @@ def build_player_engineer_blocky():
 # --- Personaggio rifinito (D-071): costruttore in refined.py ---------------------------
 
 def build_player_engineer_refined():
-    """Ingegnere rifinito (D-071): stesse proporzioni e scheletro della versione a
+    """Ingegnere rifinito (D-071, D-074): stesse proporzioni e scheletro della versione a
     blocchi, ma pezzi smussati, testa, mani e stivali arrotondati, ginocchiere,
-    cinturone con tasche, sciarpa, occhialoni e respiratore, elmetto a cupola con tesa
-    e lampada, zaino con tubi e bombola, attrezzo con serbatoio; colore, usura,
-    occlusione e sporco cotti in una texture 1024."""
+    cinturone con tasche, sciarpa, elmetto a cupola con tesa e lampada, zaino con tubi e
+    bombola, attrezzo con serbatoio; colore, usura, occlusione e sporco cotti in una
+    texture 1024. D-074: volto con occhi, sopracciglia e bocca (occhialoni alzati
+    sull'elmetto, respiratore abbassato sul mento), normal map cotta (trama della tuta,
+    grana e graffi), pesi sfumati a ginocchia, caviglie, gomiti, polsi e busto."""
     s = Skeleton()
-    b = RefinedBuilder(paint_name="suit", front_axis=-1.0)
+    b = RefinedBuilder(paint_name="suit", front_axis=-1.0, bake_normal=True)
+    EYE_WHITE = (0.85, 0.84, 0.8)
+    EYE_DARK = (0.03, 0.025, 0.02)
+    BROW = (0.1, 0.06, 0.03)
+    GOGGLE_GLASS = (0.1, 0.22, 0.26)
     SUIT = shade(0.82)
     SUIT_DARK = shade(0.62)
     STEEL = (0.42, 0.42, 0.44)
@@ -580,21 +586,28 @@ def build_player_engineer_refined():
     for x in (-0.2, 0.2):
         b.box(CHEST, (0.06, 0.1, 0.5), (x, 0.17, pack_z - 0.02), LEATHER, bevel=0.015)
 
-    # Testa arrotondata, occhialoni con lenti, respiratore con filtri, elmetto a cupola con tesa e lampada.
+    # Testa arrotondata con il volto (D-074): occhi, sopracciglia, naso, bocca; respiratore
+    # abbassato sul mento; occhialoni alzati sull'elmetto a cupola con tesa; lampada in alto.
     head_z = s.head(HEAD).z
     b.box(HEAD, (0.4, 0.38, 0.32), (0.0, -0.02, head_z + 0.17), SKIN, bevel=0.12, segments=4)
     b.box(HEAD, (0.06, 0.05, 0.06), (0.0, -0.2, head_z + 0.14), SKIN, subsurf=2)
-    for x in (-0.11, 0.11):
-        b.cyl(HEAD, 0.075, 0.06, (x, -0.2, head_z + 0.22), DARK_METAL, axis="y", sides=14, bevel=0.015)
-        b.cyl(HEAD, 0.055, 0.02, (x, -0.235, head_z + 0.22), CYAN_LIGHT, mat="lamp", axis="y", sides=12, bevel=0.005)
-    b.box(HEAD, (0.24, 0.05, 0.04), (0.0, -0.2, head_z + 0.22), DARK_METAL, bevel=0.01)
-    b.box(HEAD, (0.3, 0.12, 0.13), (0.0, -0.17, head_z + 0.06), shade(0.7), bevel=0.03, segments=3)
+    for x in (-0.085, 0.085):
+        b.sphere(HEAD, 0.048, (x, -0.185, head_z + 0.21), EYE_WHITE, scale=(1.0, 0.8, 1.0))
+        b.sphere(HEAD, 0.022, (x, -0.223, head_z + 0.21), EYE_DARK)
+        b.box(HEAD, (0.09, 0.025, 0.026), (x, -0.212, head_z + 0.262), BROW, bevel=0.006,
+              rot=(0.0, math.copysign(12.0, x), 0.0))
+    b.box(HEAD, (0.09, 0.016, 0.014), (0.0, -0.212, head_z + 0.095), EYE_DARK, bevel=0.004)
+    b.box(HEAD, (0.3, 0.12, 0.1), (0.0, -0.17, head_z + 0.0), shade(0.7), bevel=0.03, segments=3)
     for x in (-0.12, 0.12):
-        b.cyl(HEAD, 0.045, 0.05, (x, -0.22, head_z + 0.05), STEEL, axis="y", sides=10, bevel=0.01)
+        b.cyl(HEAD, 0.045, 0.05, (x, -0.22, head_z - 0.01), STEEL, axis="y", sides=10, bevel=0.01)
     b.cyl(HEAD, 0.35, 0.05, (0.0, -0.04, head_z + 0.32), CREAM, sides=18, bevel=0.015, segments=3)
     b.sphere(HEAD, 0.29, (0.0, -0.01, head_z + 0.31), CREAM, scale=(1.0, 1.0, 0.85), cut_below=0.0)
-    b.cyl(HEAD, 0.07, 0.1, (0.0, -0.27, head_z + 0.43), DARK_METAL, axis="y", sides=12, bevel=0.015)
-    b.cyl(HEAD, 0.06, 0.03, (0.0, -0.33, head_z + 0.43), CYAN_LIGHT, mat="lamp", axis="y", sides=12, bevel=0.005)
+    for x in (-0.11, 0.11):
+        b.cyl(HEAD, 0.075, 0.06, (x, -0.25, head_z + 0.4), DARK_METAL, axis="y", sides=14, bevel=0.015)
+        b.cyl(HEAD, 0.055, 0.02, (x, -0.283, head_z + 0.4), GOGGLE_GLASS, axis="y", sides=12, bevel=0.005)
+    b.box(HEAD, (0.3, 0.05, 0.05), (0.0, -0.25, head_z + 0.4), DARK_METAL, bevel=0.01)
+    b.cyl(HEAD, 0.07, 0.1, (0.0, -0.21, head_z + 0.5), DARK_METAL, axis="y", sides=12, bevel=0.015)
+    b.cyl(HEAD, 0.06, 0.03, (0.0, -0.27, head_z + 0.5), CYAN_LIGHT, mat="lamp", axis="y", sides=12, bevel=0.005)
 
     # Braccia: spallaccio, braccio e avambraccio smussati, polsino, guantone arrotondato con pollice.
     for side, sign in ((".L", 1.0), (".R", -1.0)):
@@ -621,7 +634,15 @@ def build_player_engineer_refined():
     b.cyl("DEF-hand.R", 0.09, 0.08, (grip.x - 0.5, grip.y, grip.z - 0.16), STEEL, axis="x", sides=14, bevel=0.01)
     b.box("DEF-hand.R", (0.1, 0.2, 0.2), (grip.x - 0.58, grip.y, grip.z - 0.16), CYAN_LIGHT, mat="lamp", bevel=0.03,
           segments=3)
-    obj = b.to_object("PlayerEngineerMesh", s)
+    # Pesi sfumati alle articolazioni (D-074): da osso a osso lungo l'arto.
+    blends = [(HIPS, SPINE, (0.0, 0.0, waist_z), (0.0, 0.0, 1.0), 0.05),
+              (SPINE, CHEST, (0.0, 0.0, chest_z), (0.0, 0.0, 1.0), 0.06)]
+    for side, sign in ((".L", 1.0), (".R", -1.0)):
+        blends.append(("DEF-thigh" + side, "DEF-shin" + side, s.head("DEF-shin" + side), (0.0, 0.0, -1.0), 0.07))
+        blends.append(("DEF-shin" + side, "DEF-foot" + side, s.head("DEF-foot" + side), (0.0, 0.0, -1.0), 0.05))
+        blends.append(("DEF-upper_arm" + side, "DEF-forearm" + side, s.head("DEF-forearm" + side), (sign, 0.0, 0.0), 0.06))
+        blends.append(("DEF-forearm" + side, "DEF-hand" + side, s.head("DEF-hand" + side), (sign, 0.0, 0.0), 0.04))
+    obj = b.to_object("PlayerEngineerMesh", s, blends)
     return s, obj, "PlayerEngineer"
 
 

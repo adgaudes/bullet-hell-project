@@ -11,6 +11,11 @@ Principled con la texture; il materiale della lampada e emissivo.
 
 Materiali semantici: uno "vernice" (`suit` o `paint`, tinta dal codice di gioco via
 `albedo_color`, quindi di base chiaro), `gear` (colori fissi), `lamp` (emissivo).
+Con `bake_normal=True` (D-074) cuoce anche una **normal map** in spazio tangente da un
+rilievo procedurale (trama del tessuto sulla vernice, grana e graffi sul resto), che
+l'export glTF porta come `normalTexture`. `to_object(..., blends=[...])` sfuma i pesi
+fra due ossa attorno a un'articolazione, cosi gomiti e ginocchia si piegano invece di
+compenetrare.
 Convenzioni: metri, Z-up in Blender; `front_axis` dice da che parte e il fronte per le
 rastremazioni delle scatole (+1 = +Y, attori; -1 = -Y, personaggi).
 """
@@ -34,12 +39,13 @@ def sock(sockets, identifier):
 
 
 class RefinedBuilder:
-    def __init__(self, paint_name="paint", front_axis=-1.0, bake_size=BAKE_SIZE):
+    def __init__(self, paint_name="paint", front_axis=-1.0, bake_size=BAKE_SIZE, bake_normal=False):
         self.pieces = []
         self.materials = {}
         self.paint_name = paint_name
         self.front_axis = front_axis
         self.bake_size = bake_size
+        self.bake_normal = bake_normal
         for name in (paint_name, "gear", "lamp"):
             mat = bpy.data.materials.get(name) or bpy.data.materials.new(name)
             mat.use_nodes = True
@@ -159,7 +165,10 @@ class RefinedBuilder:
 
     # -- unione, UV, cottura -----------------------------------------------------------
 
-    def to_object(self, name, skeleton=None):
+    def to_object(self, name, skeleton=None, blends=None):
+        """Unisce i pezzi, apre le UV, cuoce. `blends`: lista di
+        (osso_a, osso_b, articolazione, direzione da a verso b, semi-banda in metri):
+        i pesi dei vertici dei due ossi sfumano lungo la direzione attorno all'articolazione."""
         if skeleton is not None:
             for piece in self.pieces:
                 for group in piece.vertex_groups:
@@ -182,9 +191,30 @@ class RefinedBuilder:
         bpy.ops.object.mode_set(mode="OBJECT")
         self._bake(obj, name)
         if skeleton is not None:
+            for blend in blends or ():
+                self._blend_weights(obj, *blend)
             obj.parent = skeleton.obj
             obj.modifiers.new("Armature", "ARMATURE").object = skeleton.obj
         return obj
+
+    @staticmethod
+    def _blend_weights(obj, bone_a, bone_b, joint, direction, band):
+        """Peso sfumato fra due ossa: a 0 oltre `band` dalla parte di a, 1 oltre `band`
+        dalla parte di b, lineare in mezzo. Tocca solo i vertici che appartengono a uno dei due."""
+        group_a = obj.vertex_groups.get(bone_a)
+        group_b = obj.vertex_groups.get(bone_b)
+        if group_a is None or group_b is None:
+            return
+        joint = Vector(joint)
+        direction = Vector(direction).normalized()
+        indexes = {group_a.index, group_b.index}
+        for v in obj.data.vertices:
+            if not any(g.group in indexes for g in v.groups):
+                continue
+            t = (direction.dot(v.co - joint) + band) / (2.0 * band)
+            t = max(0.0, min(1.0, t))
+            group_a.add([v.index], 1.0 - t, "REPLACE")
+            group_b.add([v.index], t, "REPLACE")
 
     def _bake(self, obj, name):
         image = bpy.data.images.new(name + "_albedo", self.bake_size, self.bake_size)
@@ -202,9 +232,21 @@ class RefinedBuilder:
         bpy.context.view_layer.objects.active = obj
         bpy.ops.object.bake(type="EMIT")
         image.pack()
+        normal_image = None
+        if self.bake_normal:
+            normal_image = bpy.data.images.new(name + "_normal", self.bake_size, self.bake_size)
+            normal_image.colorspace_settings.name = "Non-Color"
+            for mat_name, mat in self.materials.items():
+                self._normal_graph(mat, normal_image, self._kind(mat_name))
+            scene.cycles.samples = 4
+            scene.render.bake.normal_space = "TANGENT"
+            bpy.ops.object.bake(type="NORMAL")
+            normal_image.pack()
+            scene.cycles.samples = BAKE_SAMPLES
         for mat_name, mat in self.materials.items():
-            self._final_graph(mat, image, self._kind(mat_name))
-        print("BAKED %s %dx%d samples=%d" % (image.name, self.bake_size, self.bake_size, BAKE_SAMPLES))
+            self._final_graph(mat, image, self._kind(mat_name), normal_image)
+        print("BAKED %s %dx%d samples=%d normal=%s" % (image.name, self.bake_size, self.bake_size, BAKE_SAMPLES,
+                                                      normal_image is not None))
 
     def _kind(self, mat_name):
         return "paint" if mat_name == self.paint_name else mat_name
@@ -297,7 +339,74 @@ class RefinedBuilder:
         nodes.active = target
 
     @staticmethod
-    def _final_graph(mat, image, kind):
+    def _normal_graph(mat, image, kind):
+        """Grafo per la cottura della normal map: rilievo procedurale (Bump) su un BSDF.
+        Vernice: trama di tessuto (due onde incrociate) e cuciture larghe; gear: grana fine
+        e graffi; lamp: piatta."""
+        tree = mat.node_tree
+        tree.nodes.clear()
+        nodes, links = tree.nodes, tree.links
+        out = nodes.new("ShaderNodeOutputMaterial")
+        shader = nodes.new("ShaderNodeBsdfDiffuse")
+        links.new(shader.outputs["BSDF"], out.inputs["Surface"])
+        if kind != "lamp":
+            coords = nodes.new("ShaderNodeTexCoord")
+            bump = nodes.new("ShaderNodeBump")
+            bump.inputs["Distance"].default_value = 0.002
+            if kind == "paint":
+                weave_a = nodes.new("ShaderNodeTexWave")
+                weave_a.wave_type = "BANDS"
+                weave_a.bands_direction = "X"
+                weave_a.inputs["Scale"].default_value = 180.0
+                weave_a.inputs["Distortion"].default_value = 1.5
+                weave_b = nodes.new("ShaderNodeTexWave")
+                weave_b.wave_type = "BANDS"
+                weave_b.bands_direction = "Y"
+                weave_b.inputs["Scale"].default_value = 180.0
+                weave_b.inputs["Distortion"].default_value = 1.5
+                links.new(coords.outputs["Object"], weave_a.inputs["Vector"])
+                links.new(coords.outputs["Object"], weave_b.inputs["Vector"])
+                mix = nodes.new("ShaderNodeMath")
+                mix.operation = "ADD"
+                links.new(weave_a.outputs["Fac"], mix.inputs[0])
+                links.new(weave_b.outputs["Fac"], mix.inputs[1])
+                wrinkles = nodes.new("ShaderNodeTexNoise")
+                wrinkles.inputs["Scale"].default_value = 9.0
+                wrinkles.inputs["Detail"].default_value = 2.0
+                links.new(coords.outputs["Object"], wrinkles.inputs["Vector"])
+                total = nodes.new("ShaderNodeMath")
+                total.operation = "MULTIPLY_ADD"
+                links.new(mix.outputs["Value"], total.inputs[0])
+                total.inputs[1].default_value = 0.12
+                links.new(wrinkles.outputs["Fac"], total.inputs[2])
+                links.new(total.outputs["Value"], bump.inputs["Height"])
+                bump.inputs["Strength"].default_value = 0.35
+            else:
+                grain = nodes.new("ShaderNodeTexNoise")
+                grain.inputs["Scale"].default_value = 70.0
+                grain.inputs["Detail"].default_value = 5.0
+                links.new(coords.outputs["Object"], grain.inputs["Vector"])
+                scratches = nodes.new("ShaderNodeTexWave")
+                scratches.wave_type = "BANDS"
+                scratches.bands_direction = "DIAGONAL"
+                scratches.inputs["Scale"].default_value = 40.0
+                scratches.inputs["Distortion"].default_value = 6.0
+                scratches.inputs["Detail"].default_value = 3.0
+                links.new(coords.outputs["Object"], scratches.inputs["Vector"])
+                total = nodes.new("ShaderNodeMath")
+                total.operation = "MULTIPLY_ADD"
+                links.new(scratches.outputs["Fac"], total.inputs[0])
+                total.inputs[1].default_value = 0.25
+                links.new(grain.outputs["Fac"], total.inputs[2])
+                links.new(total.outputs["Value"], bump.inputs["Height"])
+                bump.inputs["Strength"].default_value = 0.2
+            links.new(bump.outputs["Normal"], shader.inputs["Normal"])
+        target = nodes.new("ShaderNodeTexImage")
+        target.image = image
+        nodes.active = target
+
+    @staticmethod
+    def _final_graph(mat, image, kind, normal_image=None):
         tree = mat.node_tree
         tree.nodes.clear()
         nodes, links = tree.nodes, tree.links
@@ -310,6 +419,13 @@ class RefinedBuilder:
         if kind == "lamp":
             links.new(tex.outputs["Color"], shader.inputs["Emission Color"])
             shader.inputs["Emission Strength"].default_value = 3.0
+        if normal_image is not None and kind != "lamp":
+            normal_tex = nodes.new("ShaderNodeTexImage")
+            normal_tex.image = normal_image
+            normal_map = nodes.new("ShaderNodeNormalMap")
+            normal_map.space = "TANGENT"
+            links.new(normal_tex.outputs["Color"], normal_map.inputs["Color"])
+            links.new(normal_map.outputs["Normal"], shader.inputs["Normal"])
         links.new(shader.outputs["BSDF"], out.inputs["Surface"])
 
 

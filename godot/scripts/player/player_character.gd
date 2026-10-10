@@ -120,6 +120,7 @@ func _ready() -> void:
 	if suit_source != null and suit_source.albedo_texture != null:
 		_body_material.albedo_texture = suit_source.albedo_texture
 		_body_material.roughness = suit_source.roughness
+		ActorModel.copy_normal_map(suit_source, _body_material)
 	else:
 		_body_material.vertex_color_use_as_albedo = true
 		_body_material.roughness = 0.8

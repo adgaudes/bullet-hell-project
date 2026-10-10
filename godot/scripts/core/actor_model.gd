@@ -79,8 +79,17 @@ static func textured_paint(mesh: Mesh, tint_linear := Color.WHITE, emission_ener
 	material.albedo_texture = standard.albedo_texture
 	material.albedo_color = tint_linear.linear_to_srgb()
 	material.roughness = standard.roughness
+	copy_normal_map(standard, material)
 	material.next_pass = outline_material()
 	return material
+
+
+## Porta la normal map cotta (D-074) da un materiale importato a uno costruito dal codice.
+static func copy_normal_map(source: BaseMaterial3D, target: BaseMaterial3D) -> void:
+	if source.normal_enabled and source.normal_texture != null:
+		target.normal_enabled = true
+		target.normal_texture = source.normal_texture
+		target.normal_scale = source.normal_scale
 
 
 ## Veste una mesh con il materiale "vernice": sulla superficie `paint`/`suit` se il

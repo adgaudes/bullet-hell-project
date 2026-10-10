@@ -20,8 +20,9 @@ func _initialize() -> void:
 				sample = "%s .. %s" % [colors[0], colors[colors.size() - 1]]
 			var tex := (mat as BaseMaterial3D).albedo_texture if mat is BaseMaterial3D else null
 			var vc := (mat as BaseMaterial3D).vertex_color_use_as_albedo if mat is BaseMaterial3D else false
-			print("  SURFACE %d name=%s texture=%s vertex_color_albedo=%s colors=%d %s verts=%d" % [
-				s, mat.resource_name if mat else "", tex != null, vc, colors.size(), sample,
+			var normal := (mat as BaseMaterial3D).normal_enabled and (mat as BaseMaterial3D).normal_texture != null if mat is BaseMaterial3D else false
+			print("  SURFACE %d name=%s texture=%s normal=%s vertex_color_albedo=%s colors=%d %s verts=%d" % [
+				s, mat.resource_name if mat else "", tex != null, normal, vc, colors.size(), sample,
 				(arrays[Mesh.ARRAY_VERTEX] as PackedVector3Array).size()])
 	scene.free()
 	quit()
