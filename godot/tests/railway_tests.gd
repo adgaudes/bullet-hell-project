@@ -79,6 +79,11 @@ func _test_scale() -> void:
 	var cell_world := _cell_world(Vector2i(25, 66))
 	_check(Vector2(cell_world.x, cell_world.z).is_zero_approx(), "cella (25,66) all'origine")
 	_check(_district.get_node_or_null(^"Tracks") != null, "binari costruiti")
+	# F-08 (review del 10 ottobre 2026): corone e tondini delle rovine anche nel livello 2.
+	_check(_district.get_node_or_null(^"RuinCrowns") != null and _district.get_node_or_null(^"RuinRebar") != null,
+		"corone e tondini delle rovine costruiti")
+	_check(int(_district.stats.get("crown_pieces", 0)) > 0 and int(_district.stats.get("rebar", 0)) > 0,
+		"corone (%d) e tondini (%d) presenti" % [_district.stats.get("crown_pieces", 0), _district.stats.get("rebar", 0)])
 
 
 ## La fascia dei binari e Normal ovunque, salvo i vagoni; e percorribile e libera da ostacoli.

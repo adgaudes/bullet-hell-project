@@ -276,7 +276,7 @@ func _build_train() -> void:
 	for i in carriages + 1:
 		var paint := LOCOMOTIVE_PAINT if i == 0 else CARRIAGE_PAINTS[(i - 1) % CARRIAGE_PAINTS.size()]
 		var carriage: Node3D = district.spawn_model(CARRIAGE_MODEL, _train, Transform3D.IDENTITY,
-			{&"paint": paint, &"rust": 0.25 if i == 0 else 0.5, &"overgrowth": 0.0})
+			{&"tint": paint, &"rust": 0.25 if i == 0 else 0.5, &"overgrowth": 0.0})
 		carriage.name = "Locomotive" if i == 0 else "Carriage%d" % i
 		if i == 0:
 			var stack := MeshInstance3D.new()

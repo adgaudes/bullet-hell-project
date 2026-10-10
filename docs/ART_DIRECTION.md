@@ -106,7 +106,7 @@ Il test ha successo se una schermata muta comunica insieme mondo post-apocalitti
 
 ## Arena "rovine riconquistate" (4 ottobre 2026, D-036)
 
-Prima applicazione della direzione nel gioco: piazza con strada spaccata, lastre invase dall'erba, torri coperte di muschio e rampicanti, treno e auto arrugginiti, alberi, cespugli, fiori corallo/blu/giallo, foschia in lontananza e sole basso dorato. Reference del proprietario in `Screenshots/World/arena_reference_2026-10-04/` (fuori repo; alcune generate con AI, una firmata: solo ispirazione, mai asset). Edifici, macerie e vegetazione bassa sono ancora primitive; auto, vagoni, alberi e barriere sono modelli Blender scriptati (D-037) con i materiali procedurali dell'arena. Mancano texture, fogliame denso, acqua e modelli degli edifici.
+Prima applicazione della direzione nel gioco: piazza con strada spaccata, lastre invase dall'erba, torri coperte di muschio e rampicanti, treno e auto arrugginiti, alberi, cespugli, fiori corallo/blu/giallo, foschia in lontananza e sole basso dorato. Reference del proprietario in `Screenshots/World/arena_reference_2026-10-04/` (fuori repo; alcune generate con AI, una firmata: solo ispirazione, mai asset). Edifici, macerie e vegetazione bassa sono ancora primitive; auto, vagoni, alberi e barriere sono modelli Blender scriptati (D-037) con i materiali procedurali dell'arena. Mancano texture, fogliame denso, acqua e modelli degli edifici. Dal 9-10 ottobre 2026 attori (D-071, D-072) e prop con modello (D-073: auto, vagoni, alberi, barriere, lampioni) hanno colore, usura, occlusione e sporco cotti in texture da Blender; rovine, torri e terrapieni restano su shader procedurali.
 
 ## Questioni aperte prima dell'Art Lock
 

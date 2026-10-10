@@ -140,8 +140,10 @@ class RefinedBuilder:
         self._finish_piece(obj, 0.0, 1, 0, 60.0)
         return obj
 
-    def profile(self, bone, points_yz, width, center, color, mat="gear", bevel=0.02, segments=2, sharp=40.0):
-        """Solido da un profilo chiuso nel piano YZ, estruso lungo X e centrato in x."""
+    def profile(self, bone, points_yz, width, center, color, mat="gear", bevel=0.02, segments=2, sharp=40.0,
+                rot=(0.0, 0.0, 0.0)):
+        """Solido da un profilo chiuso nel piano YZ, estruso lungo X e centrato in x;
+        `rot` (gradi) lo gira dopo, attorno al proprio centro."""
         bm = bmesh.new()
         left = [bm.verts.new((-width * 0.5, y, z)) for y, z in points_yz]
         right = [bm.verts.new((width * 0.5, y, z)) for y, z in points_yz]
@@ -151,7 +153,7 @@ class RefinedBuilder:
             j = (i + 1) % n
             faces.append(bm.faces.new((left[j], left[i], right[i], right[j])))
         bmesh.ops.recalc_face_normals(bm, faces=faces)
-        obj = self._mesh_object(bm, bone, color, mat, (0.0, 0.0, 0.0), center)
+        obj = self._mesh_object(bm, bone, color, mat, rot, center)
         self._finish_piece(obj, min(bevel, width * 0.4), segments, 0, sharp)
         return obj
 

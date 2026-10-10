@@ -17,11 +17,14 @@ const RUIN_SHADER := preload("res://resources/materials/ruin_overgrown.gdshader"
 const RUST_SHADER := preload("res://resources/materials/rusted_metal.gdshader")
 const FOLIAGE_SHADER := preload("res://resources/materials/foliage.gdshader")
 const GRASS_SHADER := preload("res://resources/materials/grass_blades.gdshader")
-## Modelli generati da tools/blender/build_arena_assets.py (D-037).
+const ENV_BAKED_SHADER := preload("res://resources/materials/env_baked.gdshader")
+## Modelli generati da tools/blender/build_arena_assets.py (D-037), rifiniti con
+## texture cotta (D-073).
 const CAR_MODEL := preload("res://assets/models/wrecked_car.glb")
 const CARRIAGE_MODEL := preload("res://assets/models/train_carriage.glb")
 const TREE_MODEL := preload("res://assets/models/overgrown_tree.glb")
 const BARRIER_MODEL := preload("res://assets/models/concrete_barrier.glb")
+const LAMP_POST_MODEL := preload("res://assets/models/lamp_post.glb")
 
 const WORLD_STATIC_LAYER := 1
 
@@ -102,6 +105,9 @@ var _metal_material: StandardMaterial3D
 var _tire_material: StandardMaterial3D
 var _trunk_material: StandardMaterial3D
 var _dark_material: StandardMaterial3D
+## Materiali con texture cotta dei modelli rifiniti (D-073), uno per materiale
+## importato: la texture e condivisa, la tinta e per istanza.
+var _baked_materials: Dictionary[Material, ShaderMaterial] = {}
 ## Statistiche dell'ultima costruzione, per log e test.
 var stats := {}
 
@@ -403,13 +409,19 @@ func _model(scene: PackedScene, parent: Node3D, local: Transform3D, params: Dict
 	for mi: MeshInstance3D in model.find_children("*", "MeshInstance3D", true, false):
 		for surface in mi.mesh.get_surface_count():
 			var source := mi.mesh.surface_get_material(surface)
-			mi.set_surface_override_material(surface, _material_for(source.resource_name if source else ""))
+			mi.set_surface_override_material(surface, _material_for(source.resource_name if source else "", source))
 		for key: StringName in params:
 			mi.set_instance_shader_parameter(key, params[key])
 	return model
 
 
-func _material_for(semantic: String) -> Material:
+## Materiale di Godot per una superficie importata. Un modello rifinito (D-073) porta la
+## texture cotta nel materiale: la legge `env_baked.gdshader`, con la tinta per istanza
+## sulle superfici `paint`. Il fogliame resta sul suo shader. Un modello a blocchi (D-037)
+## ha solo nomi semantici, rimappati sugli shader procedurali dell'arena.
+func _material_for(semantic: String, source: Material = null) -> Material:
+	if semantic != "leaves" and source is BaseMaterial3D and (source as BaseMaterial3D).albedo_texture != null:
+		return _baked_material(source as BaseMaterial3D, semantic == "paint")
 	match semantic:
 		"paint":
 			return _rust_material
@@ -424,6 +436,20 @@ func _material_for(semantic: String) -> Material:
 		"tire":
 			return _tire_material
 	return _dark_material
+
+
+func _baked_material(source: BaseMaterial3D, tintable: bool) -> ShaderMaterial:
+	var cached: ShaderMaterial = _baked_materials.get(source)
+	if cached != null:
+		return cached
+	var material := ShaderMaterial.new()
+	material.shader = ENV_BAKED_SHADER
+	material.set_shader_parameter(&"albedo_tex", source.albedo_texture)
+	material.set_shader_parameter(&"tintable", 1.0 if tintable else 0.0)
+	material.set_shader_parameter(&"base_roughness", source.roughness)
+	material.set_shader_parameter(&"base_metallic", 0.3 if tintable else 0.1)
+	_baked_materials[source] = material
+	return material
 
 
 func _pick(colors: Array[Color]) -> Color:
@@ -632,7 +658,7 @@ func _car(base: Vector3, yaw_deg: float) -> void:
 	var basis := Basis(Vector3.UP, deg_to_rad(yaw_deg)) * tilt
 	var body := _static_body("WreckedCar", Transform3D(basis, base))
 	_model(CAR_MODEL, body, Transform3D.IDENTITY, {
-		&"paint": _pick(CAR_PAINTS),
+		&"tint": _pick(CAR_PAINTS),
 		&"rust": _rng.randf_range(0.45, 0.8),
 		&"overgrowth": _rng.randf_range(0.3, 0.8),
 	})
@@ -658,22 +684,16 @@ func _rubble(center: Vector3, spread: float) -> void:
 	stats.props += 1
 
 
-## Lampione storto.
+## Lampione storto (modello Blender), spento: non e una fonte di luce.
 func _lamp_post(base: Vector3) -> void:
 	var lean := Basis.from_euler(Vector3(_rng.randf_range(-0.25, 0.25), _rng.randf_range(0.0, TAU),
 		_rng.randf_range(-0.25, 0.25)))
 	var body := _static_body("LampPost", Transform3D(lean, base))
-	var pole := CylinderMesh.new()
-	pole.top_radius = 0.07
-	pole.bottom_radius = 0.11
-	pole.height = 5.5
-	pole.radial_segments = 6
-	var pole_mi := _mesh_child(body, pole, _rust_material, Transform3D(Basis(), Vector3(0.0, 2.75, 0.0)))
-	var arm_mi := _mesh_child(body, _box(Vector3(0.12, 0.12, 1.6)), _rust_material,
-		Transform3D(Basis(), Vector3(0.0, 5.4, 0.7)))
-	for mi: MeshInstance3D in [pole_mi, arm_mi]:
-		mi.set_instance_shader_parameter(&"paint", Color(0.28, 0.34, 0.30))
-		mi.set_instance_shader_parameter(&"rust", 0.6)
+	_model(LAMP_POST_MODEL, body, Transform3D.IDENTITY, {
+		&"tint": Color(0.30, 0.37, 0.32),
+		&"rust": _rng.randf_range(0.1, 0.3),
+		&"overgrowth": 0.3,
+	})
 	var shape := CylinderShape3D.new()
 	shape.radius = 0.15
 	shape.height = 5.5
@@ -689,7 +709,7 @@ func _carriage(base: Vector3, yaw_deg: float, roll_deg: float, paint: Color) -> 
 	var basis := Basis(Vector3.UP, deg_to_rad(yaw_deg)) * Basis(Vector3.BACK, deg_to_rad(roll_deg))
 	var body := _static_body("TrainCarriage", Transform3D(basis, base))
 	_model(CARRIAGE_MODEL, body, Transform3D.IDENTITY, {
-		&"paint": paint,
+		&"tint": paint,
 		&"rust": _rng.randf_range(0.35, 0.65),
 		&"overgrowth": 0.9,
 	})
@@ -705,10 +725,9 @@ func _barrier(base: Vector3, yaw_deg: float) -> void:
 	var basis := Basis(Vector3.UP, deg_to_rad(yaw_deg))
 	var body := _static_body("ConcreteBarrier", Transform3D(basis, base))
 	_model(BARRIER_MODEL, body, Transform3D.IDENTITY, {
-		&"base_tint": _pick(CONCRETE_TINTS),
-		&"top_y": base.y + 0.82,
+		&"tint": _pick(CONCRETE_TINTS) * 1.25,
+		&"rust": 0.0,
 		&"overgrowth": _rng.randf_range(0.4, 0.8),
-		&"windows": 0.0,
 	})
 	_box_shape_child(body, Vector3(0.6, 0.85, 3.0), Transform3D(Basis(), Vector3(0.0, 0.42, 0.0)))
 	stats.props += 1
