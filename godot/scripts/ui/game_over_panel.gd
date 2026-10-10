@@ -13,6 +13,7 @@ const MAP_SIZE := 340.0
 const MAP_LEGEND := "giallo: terrapieni tuoi   azzurro: fossati tuoi   crema: lampioni\nrosso: brecce   viola: barricate del boss   grigio: rovine"
 
 const INPUT_GRACE_SECONDS := 0.8
+const SAVE_FAILED_TEXT := "Attenzione: profilo non salvato su disco"
 
 var is_open := false
 var is_victory := false
@@ -136,7 +137,10 @@ func save_map() -> String:
 
 
 ## [param banked]: rottami in Officina dopo questo livello; negativo = non mostrato.
-func open(seconds: float, level: int, kills: int, victory := false, scrap := 0, banked := -1) -> void:
+## [param save_failed]: il profilo non e stato scritto su disco (F-03): il giocatore lo
+## deve sapere, perche rottami e sblocchi spariranno al riavvio.
+func open(seconds: float, level: int, kills: int, victory := false, scrap := 0, banked := -1,
+		save_failed := false) -> void:
 	is_open = true
 	is_victory = victory
 	_title.text = "LIVELLO COMPLETATO" if victory else "ROTTAMATO"
@@ -145,6 +149,8 @@ func open(seconds: float, level: int, kills: int, victory := false, scrap := 0, 
 		% [RunHud.format_time(seconds), level, kills, scrap]
 	if banked >= 0:
 		_summary.text += "\nRottami in Officina %d" % banked
+	if save_failed:
+		_summary.text += "\n" + SAVE_FAILED_TEXT
 	get_tree().paused = true
 	_overlay.show()
 	if not victory:
@@ -158,6 +164,10 @@ func open(seconds: float, level: int, kills: int, victory := false, scrap := 0, 
 
 
 ## Mostra "Prossimo livello" con il titolo del livello sbloccato; vuoto = nascosto.
+func shows_save_warning() -> bool:
+	return _summary.text.contains(SAVE_FAILED_TEXT)
+
+
 func set_next_level(title: String) -> void:
 	_next.text = "Prossimo livello: %s" % title if not title.is_empty() else ""
 	_next.visible = not title.is_empty()

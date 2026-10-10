@@ -26,7 +26,7 @@ Estende `RuinsDistrict`: stessi mattoni (rovine basse, oggetti, perimetro, corti
   - i **rottamatori** nella fascia vengono travolti: contano come uccisi dal giocatore (esperienza), cosi attirarli sui binari e una tattica;
   - il **giocatore** nella fascia subisce 2 danni e viene spinto fuori; il **compagno** viene spinto fuori senza danni;
   - i **lampioni** nella fascia cadono; i rottami a terra nella fascia spariscono.
-- **Boss**: la Trivella nella fascia subisce 30 danni e viene spinta fuori (il treno e anche un'arma contro il boss: attirarla sui binari e la soluzione piu redditizia e piu rischiosa).
+- **Boss**: la Trivella nella fascia subisce 30 danni (60 se stordita: il moltiplicatore dello stordimento vale per ogni danno, F-05) e viene spinta fuori (il treno e anche un'arma contro il boss: attirarla sui binari e la soluzione piu redditizia e piu rischiosa).
 - Marker: `PROTOTYPE01_TRAIN_WARNING`, `PROTOTYPE01_TRAIN_PASS`, `PROTOTYPE01_TRAIN_HIT`.
 
 ## 4. Nemico nuovo: il saltatore

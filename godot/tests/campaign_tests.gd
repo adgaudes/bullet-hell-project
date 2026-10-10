@@ -172,6 +172,24 @@ func _test_victory_offers_next_level() -> void:
 	run._end_level(true)
 	_check(panel.is_open and panel.has_next_level() and panel._next.text.contains("La ferrovia"), "vincendo si offre la ferrovia: %s" % panel._next.text)
 	_check(profile.levels_unlocked == 2 and profile.has_completed(&"district"), "il profilo sblocca la ferrovia")
+	_check(not panel.shows_save_warning(), "senza errori di scrittura nessun avviso")
+	paused = false
+	root.remove_child(scene)
+	scene.queue_free()
+	await _frames(2)
+	# F-03: profilo non scrivibile (cartella inesistente): lo sblocco resta in memoria, il pannello avvisa.
+	profile.reset()
+	profile.profile_path = "user://no_such_dir_%d/profile.cfg" % Time.get_ticks_usec()
+	scene = RunScene.instantiate()
+	root.add_child(scene)
+	(scene.get_node(^"EnemyDirector") as EnemyDirector).spawning = false
+	await _frames(5)
+	run = scene.get_node(^"Run")
+	panel = scene.get_node(^"GameOverPanel")
+	run._end_level(true)
+	_check(profile.last_save_error != OK and profile.levels_unlocked == 2, "salvataggio fallito (%d), sblocco in memoria" % profile.last_save_error)
+	_check(panel.is_open and panel.shows_save_warning(), "il pannello di fine livello avvisa che il profilo non e salvato")
+	profile.profile_path = ""
 	paused = false
 	root.remove_child(scene)
 	scene.queue_free()

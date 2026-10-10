@@ -92,7 +92,9 @@ func has_completed(level_id: StringName) -> bool:
 
 ## Fine di un livello: incassa i rottami portati fuori. Una vittoria sblocca il livello
 ## successivo a [param level_index] (da 0) e segna [param level_id] come completato.
-func bank_run(scrap_out: int, victory: bool, level_index := 0, level_id: StringName = &"") -> void:
+## Restituisce l'esito del salvataggio (F-03): il chiamante lo mostra, lo stato in memoria
+## resta aggiornato comunque.
+func bank_run(scrap_out: int, victory: bool, level_index := 0, level_id: StringName = &"") -> Error:
 	scrap += maxi(scrap_out, 0)
 	runs += 1
 	if victory:
@@ -101,8 +103,9 @@ func bank_run(scrap_out: int, victory: bool, level_index := 0, level_id: StringN
 		if not level_id.is_empty() and not completed_levels.has(String(level_id)):
 			completed_levels.append(String(level_id))
 	print("PROTOTYPE01_PROFILE_BANKED scrap_out=%d total=%d runs=%d victories=%d" % [scrap_out, scrap, runs, victories])
-	save_profile()
+	var error := save_profile()
 	changed.emit()
+	return error
 
 
 ## Carica un file; valori assenti o non validi diventano quelli di un profilo nuovo.

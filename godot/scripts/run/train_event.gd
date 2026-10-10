@@ -31,6 +31,8 @@ const CARRIAGE_PAINTS: Array[Color] = [
 ]
 ## Chi viene spinto fuori finisce a questa distanza oltre il bordo della fascia.
 const PUSH_MARGIN := 0.8
+## Celle provate, allontanandosi dalla fascia, per far atterrare chi e spinto fuori (F-01).
+const PUSH_LANDING_CELLS := 4
 ## Terra delle celle spianate, per i frammenti.
 const EARTH_COLOR := Color(0.44, 0.33, 0.21)
 const DIRECTION_NAMES: Dictionary[int, String] = {-1: "EST", 1: "OVEST"}
@@ -206,6 +208,8 @@ func _sweep_cells() -> void:
 			at.y = 0.0
 			var was := grid.state.get_state(cell)
 			if was != TerrainState.CellState.NORMAL and grid.force_cell_state(cell, TerrainState.CellState.NORMAL):
+				# Anche la tinta propria (i vagoni): rialzata dopo, la cella e terra come le altre (F-07).
+				grid.clear_raised_tint(cell)
 				cells_flattened += 1
 				if was == TerrainState.CellState.RAISED:
 					DebrisBurst.spawn(get_parent(), at + Vector3(0.0, 0.8, 0.0), EARTH_COLOR, 12, 5.0, 0.2)
@@ -254,11 +258,25 @@ func _covers(at: Vector3, tail_x: float) -> bool:
 	return minf(_head_x, tail_x) - 0.5 <= at.x and at.x <= maxf(_head_x, tail_x) + 0.5
 
 
-## Spinto fuori dalla fascia dal lato dove gia pende (a z = 0 verso sud, dove sta la camera).
+## Spinto fuori dalla fascia dal lato dove gia pende (a z = 0 verso sud, dove sta la camera),
+## sulla prima cella che non e un terrapieno (F-01): prima allontanandosi su quel lato, poi
+## sull'altro; se tutto e murato resta il punto piu vicino.
 func _push_out(body: Node3D) -> void:
 	var at := body.global_position
 	var side := 1.0 if at.z >= 0.0 else -1.0
-	at.z = side * (RailwayDistrict.track_half_width() + PUSH_MARGIN)
+	var nearest := side * (RailwayDistrict.track_half_width() + PUSH_MARGIN)
+	at.z = nearest
+	for candidate: float in [side, -side]:
+		var found := false
+		for step in PUSH_LANDING_CELLS:
+			var z: float = candidate * (RailwayDistrict.track_half_width() + PUSH_MARGIN + step * grid.cell_size_m())
+			var probe := Vector3(at.x, 0.0, z)
+			if grid.state.is_valid(grid.cell_at(probe)) and grid.cell_state_at(probe) != TerrainState.CellState.RAISED:
+				at.z = z
+				found = true
+				break
+		if found:
+			break
 	body.global_position = at
 	if body is CharacterBody3D:
 		(body as CharacterBody3D).velocity = Vector3.ZERO

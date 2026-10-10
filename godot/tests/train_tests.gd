@@ -130,6 +130,10 @@ func _test_pass_flattens_and_hits() -> void:
 	_place(_player, Vector3(30.0, 0.0, _train.track_z), 0.88)
 	_player._invulnerable_left = 0.0
 	var health_before := _player.health
+	# F-01: un terrapieno proprio dove il treno spingerebbe il giocatore (prima cella oltre la fascia).
+	var push_side := 1.0 if _train.track_z >= 0.0 else -1.0
+	var landing := _grid.cell_at(Vector3(30.0, 0.0, push_side * (RailwayDistrict.track_half_width() + TrainEvent.PUSH_MARGIN)))
+	_grid.set_cell_states([landing], RAISED)
 	_place(_companion, Vector3(33.0, 0.0, 0.0), 0.3)
 	# Il treno entra allo scadere del preavviso.
 	for i in 90:
@@ -160,6 +164,9 @@ func _test_pass_flattens_and_hits() -> void:
 	_check(not bystander.is_dead, "rottamatore fuori dalla fascia illeso")
 	_check(_player.health == health_before - _run.tuning.train_player_damage, "giocatore colpito: %d -> %d" % [health_before, _player.health])
 	_check(not RailwayDistrict.is_on_tracks(Vector2(_player.global_position.x, _player.global_position.z)), "giocatore spinto fuori dalla fascia (z=%.1f)" % _player.global_position.z)
+	_check(_grid.state.get_state(landing) == RAISED and _grid.cell_state_at(_player.global_position) != RAISED,
+		"spinto oltre il terrapieno, non dentro (z=%.1f)" % _player.global_position.z)
+	_check(_grid._raised_tints.is_empty(), "tinta dei vagoni tolta con le celle (%d restano)" % _grid._raised_tints.size())
 	_check(not RailwayDistrict.is_on_tracks(Vector2(_companion.global_position.x, _companion.global_position.z)), "compagno spinto fuori (z=%.1f)" % _companion.global_position.z)
 	_check(_train.player_hits == 1 and _train.enemies_hit == 1, "un colpo al giocatore, un rottamatore (%d, %d)" % [_train.player_hits, _train.enemies_hit])
 	_check(_train.next_at > _run.elapsed and _train.next_at - _run.elapsed <= _run.tuning.train_interval_seconds,

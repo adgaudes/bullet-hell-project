@@ -23,11 +23,11 @@
 
 | ID | Stato |
 |---|---|
-| F-01 | da verificare |
-| F-02 | da verificare |
-| F-03 | da verificare |
-| F-04 | da verificare |
-| F-05 | da verificare |
-| F-06 | da verificare |
-| F-07 | da verificare |
+| F-01 | confermata; **corretta il 10 ottobre 2026**: `_push_out` prova fino a 4 celle allontanandosi dal lato scelto, poi dall'altro, e atterra sulla prima che non e Raised; test in `train_tests` (terrapieno sulla prima cella oltre la fascia: il giocatore finisce a z = 6,8) |
+| F-02 | confermata come ipotesi, **non corretta** (bassa): contro una rovina oltre i 9 m la carica finisce `blocked` senza stordimento ne blocco; la striscia promette piu di quanto la carica faccia. Da rivedere con il playtest se il telegraph inganna |
+| F-03 | confermata; **corretta il 10 ottobre 2026**: `bank_run()` restituisce l'esito del salvataggio, `_end_level()` lo passa al pannello di fine livello che mostra "Attenzione: profilo non salvato su disco" (`GameOverPanel.shows_save_warning()`); test in `campaign_tests` con cartella inesistente |
+| F-04 | confermata; **corretta il 10 ottobre 2026**: incasso prima della mappa; la mappa resta prima di `clear_horde()` (T-08) |
+| F-05 | confermata; **scelta, non codice**: il moltiplicatore dello stordimento vale per ogni danno, treno compreso (attirare la Trivella stordita sotto il treno e una combinazione voluta); specifica aggiornata (30 danni, 60 se stordita) |
+| F-06 | confermata, **rimandata**: finche `VERSION` e 1 non esistono profili futuri; da fare con la prima migrazione (preservare sezioni e chiavi sconosciute) |
+| F-07 | confermata; **corretta il 10 ottobre 2026**: il treno toglie la tinta con la cella (`clear_raised_tint`); test in `train_tests` (nessuna tinta residua dopo il passaggio) |
 | F-08 | confermata; **corretta il 10 ottobre 2026**: `RailwayDistrict._compose()` chiama `_reset_ruin_details()` e `_build_ruin_details()`; test in `railway_tests` sui due MultiMesh e sulle statistiche |

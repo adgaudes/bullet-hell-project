@@ -447,30 +447,30 @@ func _on_boss_died(_enemy: Enemy) -> void:
 
 
 ## Fine del livello, vittoria o morte (R-14): prima il conto e l'incasso nel profilo,
-## poi log, mappa e pannello, cosi un errore nella parte cosmetica non salta l'incasso.
+## poi log, mappa e pannello, cosi un errore nella parte cosmetica non salta l'incasso
+## (F-04: la mappa viene dopo l'incasso ma prima di congedare l'orda, che le serve, T-08).
 func _end_level(victory: bool) -> void:
 	if is_over:
 		return
 	is_over = true
 	director.spawning = false
-	if victory:
-		boss_phase = BossPhase.DEFEATED
-		# Prima di congedare l'orda: la mappa di fine run legge barricate e posizione del boss (T-08).
-		_final_map = build_run_map()
-		director.clear_horde()
-		hud.clear_boss()
 	if level_up_menu.is_open:
 		level_up_menu.close()
 	var scrap := scrap_out(victory)
 	var banked := _bank(scrap, victory)
+	var save_failed := _profile != null and _profile.last_save_error != OK
 	print("%s time=%.1f level=%d kills=%d scrap=%d seed=%d"
 		% ["PROTOTYPE01_LEVEL_COMPLETE" if victory else "PROTOTYPE01_PLAYER_DIED", elapsed, progression.level, director.kills, scrap, run_seed])
 	if victory:
+		boss_phase = BossPhase.DEFEATED
+		_final_map = build_run_map()
+		director.clear_horde()
+		hud.clear_boss()
 		level_completed.emit()
 	_show_run_map()
 	var next := LevelCatalog.next_of(level_id)
 	game_over.set_next_level(LevelCatalog.title_of(next) if victory and LevelCatalog.is_playable(next) else "")
-	game_over.open(elapsed, progression.level, director.kills, victory, scrap, banked)
+	game_over.open(elapsed, progression.level, director.kills, victory, scrap, banked, save_failed)
 
 
 # --- Profilo permanente e Officina (D-049) ------------------------------------------
