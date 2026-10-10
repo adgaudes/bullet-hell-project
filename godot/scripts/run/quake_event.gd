@@ -186,7 +186,9 @@ func _shake_cell(cell: Vector2i) -> void:
 		quake_hit.emit(&"player")
 		print("PROTOTYPE01_QUAKE_HIT what=player")
 		return
-	if companion != null and grid.cell_at(companion.global_position) == cell:
+	# Chi e vicino al bordo della cella viene risparmiato: la collisione del terrapieno
+	# arriva un passo dopo e un corpo in movimento ci finirebbe dentro.
+	if _near(player, at) or _near(companion, at):
 		return
 	if boss != null and not boss.is_dead and grid.raise_overlaps(cell, boss):
 		return
@@ -209,6 +211,13 @@ func _shake_cell(cell: Vector2i) -> void:
 				quake_hit.emit(&"cell")
 			if lamp_field != null and lamp_field.knock_down_near(at, grid.cell_size_m() * 0.6) > 0:
 				quake_hit.emit(&"lamp")
+
+
+func _near(body: Node3D, at: Vector3) -> bool:
+	if body == null:
+		return false
+	var p := body.global_position
+	return Vector2(p.x - at.x, p.z - at.z).length() < grid.cell_size_m() * 0.9
 
 
 func _finish() -> void:

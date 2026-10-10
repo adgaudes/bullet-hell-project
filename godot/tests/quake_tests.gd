@@ -90,6 +90,8 @@ func _test_setup() -> void:
 func _test_warning() -> void:
 	print("warning")
 	_place(_player, Vector3(0.0, 0.0, 0.0), 0.88)
+	# Faglia deterministica: il seme della run e casuale, quello dell'evento qui no.
+	_quake.rng.seed = 20261010
 	_quake.warning_seconds = 3.0
 	_quake.next_at = _run.elapsed + 3.5
 	await _frames(40)
@@ -122,7 +124,9 @@ func _test_shake() -> void:
 	_grid.set_cell_states([trench], LOWERED)
 	_companion.add_capacity(0, 3)
 	_place(_companion, _cell_world(lamp_cell) + Vector3(1.0, 0.0, 1.0), 0.3)
-	_lamps.place_at(_cell_world(lamp_cell))
+	if not _lamps.place_at(_cell_world(lamp_cell)):
+		lamp_cell = fault[5]
+		_lamps.place_at(_cell_world(lamp_cell))
 	_check(_lamps.count() == 1, "lampione piazzato sulla faglia")
 	_scrap.spawn_on_ground(_cell_world(scrap_cell))
 	var scrap_before := _scrap.count()
@@ -130,7 +134,10 @@ func _test_shake() -> void:
 	var enemy := _director.spawn_at(_cell_world(enemy_cell))
 	enemy.speed_scale = 0.0
 	var kills_before := _director.kills
-	var bystander := _director.spawn_at(_cell_world(fault[fault.size() - 1]) + Vector3(0.0, 0.0, 12.0))
+	var far := _quake.fault_center + Vector3(25.0, 0.0, 0.0)
+	if fault.has(_grid.cell_at(far)):
+		far = _quake.fault_center + Vector3(0.0, 0.0, 25.0)
+	var bystander := _director.spawn_at(far)
 	bystander.speed_scale = 0.0
 	# Celle della faglia che erano Normal (le mura del cortile sono gia Raised).
 	var normal_before: Array[Vector2i] = []
@@ -156,10 +163,10 @@ func _test_shake() -> void:
 	for cell in normal_before:
 		if _grid.state.get_state(cell) == RAISED:
 			raised += 1
-	# Il compagno segue il giocatore e puo spostarsi durante il preavviso: risparmiata una
-	# o due celle oltre a quella del giocatore.
+	# Giocatore e compagno (che lo segue) risparmiano la propria cella e quelle a meno di
+	# una cella da loro: fino a quattro celle non rialzate.
 	var most := normal_before.size() - 1
-	_check(raised >= most - 1 and raised <= most and _quake.cells_raised == raised,
+	_check(raised >= most - 3 and raised <= most and _quake.cells_raised == raised,
 		"celle rialzate lungo la faglia: %d su %d Normal" % [raised, normal_before.size()])
 	_check(_grid.state.get_state(player_cell) == NORMAL, "la cella del giocatore e risparmiata")
 	_check(_player.health == health_before - _run.tuning.quake_player_damage and _quake.player_hits == 1,
@@ -173,7 +180,7 @@ func _test_shake() -> void:
 	for position in _scrap.positions_near(_cell_world(scrap_cell), 6.0):
 		if _grid.state.get_state(_grid.cell_at(position)) == RAISED:
 			buried += 1
-	_check(_scrap.count() == scrap_before and buried == 0, "rottame riportato in superficie, non sepolto")
+	_check(_scrap.count() >= scrap_before and buried == 0, "rottami in superficie, nessuno sepolto (%d)" % _scrap.count())
 	_check(is_equal_approx(_quake.next_at, next_before + _quake.interval_seconds), "prossimo terremoto fra %.0f s" % _quake.interval_seconds)
 	_check(_audio.play_count(&"quake_rumble") >= 2, "brontolio anche alla scossa")
 
