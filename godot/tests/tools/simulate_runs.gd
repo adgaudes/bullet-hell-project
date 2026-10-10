@@ -180,6 +180,8 @@ func _simulate(bot: StringName, run_seed: int) -> Dictionary:
 	_scene = (load(_scene_path) as PackedScene).instantiate()
 	root.add_child(_scene)
 	_run = _scene.get_node(^"Run")
+	# I bot non sanno tenere la piazzola di estrazione (D-076): vittoria alla morte del boss.
+	_run.extraction_pad = null
 	_player = _scene.get_node(^"Player")
 	_companion = _scene.get_node(^"Companion")
 	_grid = _scene.get_node(^"TerrainGrid")

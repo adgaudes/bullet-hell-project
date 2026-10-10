@@ -495,6 +495,12 @@ func _apply_presentation(cell: Vector2i, deferred: bool) -> void:
 
 
 ## Il rialzo della cella intersecherebbe il volume collidente di chi lo richiede?
+## Vero se un terrapieno su [param cell] intersecherebbe il volume di [param body]
+## (per chi alza celle fuori dal tool: terremoto, D-075).
+func raise_overlaps(cell: Vector2i, body: Node3D) -> bool:
+	return _would_raise_overlap(cell, body)
+
+
 func _would_raise_overlap(cell: Vector2i, instigator: Node3D) -> bool:
 	if instigator == null or not state.is_valid(cell) or not instigator.has_method(&"get_collision_aabb"):
 		return false

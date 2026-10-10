@@ -1,4 +1,4 @@
-[gd_scene load_steps=23 format=3]
+[gd_scene load_steps=25 format=3]
 
 [ext_resource type="Script" path="res://scripts/services/skeleton_probe.gd" id="1_probe"]
 [ext_resource type="Script" path="res://scripts/arena/ruins_district.gd" id="2_arena"]
@@ -22,6 +22,8 @@
 [ext_resource type="Script" path="res://scripts/audio/run_audio.gd" id="18_audio"]
 [ext_resource type="Script" path="res://scripts/ui/workshop_panel.gd" id="19_workshop"]
 [ext_resource type="Script" path="res://scripts/navigation/flow_preview.gd" id="20_flow"]
+[ext_resource type="Script" path="res://scripts/run/quake_event.gd" id="23_quake"]
+[ext_resource type="Script" path="res://scripts/run/extraction_pad.gd" id="24_extraction"]
 
 [node name="ArenaRun" type="Node3D"]
 script = ExtResource("1_probe")
@@ -104,10 +106,28 @@ script = ExtResource("19_workshop")
 script = ExtResource("20_day_night")
 district = NodePath("../District")
 
-[node name="Run" type="Node" parent="." node_paths=PackedStringArray("district", "player", "companion", "grid", "director", "weapon", "xp_field", "hud", "level_up_menu", "game_over", "workshop", "day_night", "lamp_field")]
+[node name="QuakeEvent" type="Node3D" parent="." node_paths=PackedStringArray("grid", "player", "companion", "director", "lamp_field", "hud", "flow_preview")]
+script = ExtResource("23_quake")
+grid = NodePath("../TerrainGrid")
+player = NodePath("../Player")
+companion = NodePath("../Companion")
+director = NodePath("../EnemyDirector")
+lamp_field = NodePath("../LampField")
+hud = NodePath("../RunHud")
+flow_preview = NodePath("../FlowPreview")
+
+[node name="ExtractionPad" type="Node3D" parent="." node_paths=PackedStringArray("grid", "player", "hud")]
+script = ExtResource("24_extraction")
+grid = NodePath("../TerrainGrid")
+player = NodePath("../Player")
+hud = NodePath("../RunHud")
+
+[node name="Run" type="Node" parent="." node_paths=PackedStringArray("district", "player", "companion", "grid", "director", "weapon", "xp_field", "hud", "level_up_menu", "game_over", "workshop", "day_night", "lamp_field", "quake_event", "extraction_pad")]
 script = ExtResource("14_run")
 day_night = NodePath("../DayNightCycle")
 lamp_field = NodePath("../LampField")
+quake_event = NodePath("../QuakeEvent")
+extraction_pad = NodePath("../ExtractionPad")
 tuning = ExtResource("11_run_tuning")
 district = NodePath("../District")
 player = NodePath("../Player")

@@ -275,6 +275,8 @@ func _test_defeat_completes_level() -> void:
 	_run.level_completed.connect(func() -> void: completed[0] = true)
 	_boss.phase = Driller.Phase.REST
 	_boss.phase_left = 60.0
+	# La piazzola di estrazione (D-076) ha la sua suite: qui si prova la vittoria diretta.
+	_run.extraction_pad = null
 	_boss.take_damage(_boss.health)
 	await _frames(3)
 	_check(completed[0] and _run.boss_phase == ArenaRun.BossPhase.DEFEATED and _run.is_over, "alla sua morte il livello e completato")

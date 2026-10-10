@@ -11,6 +11,8 @@ const BOSS_COLOR := Color(0.95, 0.6, 0.08)
 const DAY_COLOR := Color(1.0, 0.9, 0.55)
 const NIGHT_COLOR := Color(0.6, 0.65, 1.0)
 const TRAIN_COLOR := Color(1.0, 0.45, 0.3)
+const QUAKE_COLOR := Color(0.9, 0.62, 0.32)
+const EXTRACTION_COLOR := Color(0.35, 0.9, 0.6)
 const TITLE_COLOR := Color(0.97, 0.93, 0.82)
 ## Distanza della freccia di direzione dal centro dello schermo, in frazione del lato corto.
 const ARROW_RADIUS_RATIO := 0.36
@@ -172,7 +174,7 @@ func boss_name_text() -> String:
 
 ## Annuncio con conto alla rovescia e freccia a bordo schermo verso [param direction]
 ## (nel mondo): boss in arrivo, treno in arrivo (livello 2).
-func set_event_warning(text: String, direction: Vector3, seconds_left: float, color: Color) -> void:
+func set_event_warning(text: String, direction: Vector3, seconds_left: float, color: Color, with_arrow := true) -> void:
 	var seconds := int(ceil(maxf(seconds_left, 0.0)))
 	if seconds != _boss_seconds_shown or text != _boss_direction_shown:
 		_boss_seconds_shown = seconds
@@ -181,6 +183,9 @@ func set_event_warning(text: String, direction: Vector3, seconds_left: float, co
 		_boss_warning.add_theme_color_override(&"font_color", color)
 		_night_notice_left = 0.0
 	_boss_warning.show()
+	if not with_arrow:
+		_boss_arrow.hide()
+		return
 	var size := _root.size
 	var screen_direction := Vector2(direction.x, direction.z).normalized()
 	_boss_arrow.position = size * 0.5 + screen_direction * minf(size.x, size.y) * ARROW_RADIUS_RATIO

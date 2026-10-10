@@ -85,6 +85,25 @@ extends Resource
 @export var train_player_damage := 2
 @export var train_boss_damage := 30
 
+@export_group("Quake")
+## Terremoto del quartiere (D-075), solo dove la scena ha un nodo QuakeEvent: primo
+## terremoto, intervallo, preavviso, lunghezza della faglia in celle, distanza del suo
+## centro dal giocatore, danno a chi sta su una cella della faglia.
+@export var quake_first_seconds := 100.0
+@export var quake_interval_seconds := 140.0
+@export var quake_warning_seconds := 6.0
+@export var quake_length_cells := 18
+@export var quake_distance_min := 7.0
+@export var quake_distance_max := 13.0
+@export var quake_player_damage := 1
+
+@export_group("Extraction")
+## Piazzola di estrazione (D-076): dopo il boss, un 3x3 (raggio 1) di celle Normal attorno
+## al giocatore tenuto integro e occupato per questi secondi; spenta = vittoria subito.
+@export var extraction_enabled := true
+@export var extraction_hold_seconds := 8.0
+@export var extraction_pad_radius := 1
+
 @export_group("Boss")
 ## Quale boss chiude il livello: `demolisher` (D-043) o `driller` (la Trivella, D-066).
 @export var boss_kind: StringName = &"demolisher"

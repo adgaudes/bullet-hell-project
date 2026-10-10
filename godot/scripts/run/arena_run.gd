@@ -11,11 +11,13 @@ extends Node
 
 signal boss_called(direction: Vector3)
 signal boss_spawned(boss: Enemy)
+## Boss battuto e piazzola di estrazione chiamata (D-076).
+signal extraction_called
 signal level_completed
 ## Rilancio di DayNightCycle.phase_changed: HUD e audio non dipendono dal nodo del ciclo.
 signal night_phase_changed(phase: DayNightCycle.Phase)
 
-enum BossPhase { WAITING, WARNING, ACTIVE, DEFEATED }
+enum BossPhase { WAITING, WARNING, ACTIVE, EXTRACTION, DEFEATED }
 
 ## Indicatori a bordo schermo (D-044): oltre questa distanza un punto e fuori vista.
 const MARKER_MIN_DISTANCE := 14.0
@@ -61,6 +63,11 @@ const BOSS_DIRECTIONS := [
 @export var lamp_field: LampField
 ## Treno della ferrovia (D-066, livello 2); senza nodo non passa nessun treno.
 @export var train_event: TrainEvent
+## Terremoto del quartiere (D-075), solo nel livello 1.
+@export var quake_event: QuakeEvent
+## Piazzola di estrazione (D-076): battuto il boss, il livello finisce solo con un 3x3
+## piano tenuto; senza nodo (o con `extraction_enabled` spento) la vittoria e immediata.
+@export var extraction_pad: ExtractionPad
 
 var progression := RunProgression.new()
 var elapsed := 0.0
@@ -120,6 +127,8 @@ func _ready() -> void:
 	_check_scale()
 	_setup_night()
 	_setup_train()
+	_setup_quake()
+	_setup_extraction()
 	# La cella protetta (0,0) e un residuo della parita Unreal (smoke test): nel livello
 	# nessuna cella e intoccabile (R-28).
 	grid.set_protected_cell(Vector2i(-1, -1))
@@ -167,6 +176,10 @@ func _physics_process(delta: float) -> void:
 	_tick_night()
 	if train_event != null:
 		train_event.advance(elapsed, delta)
+	if quake_event != null:
+		quake_event.advance(elapsed, delta)
+	if extraction_pad != null:
+		extraction_pad.advance(delta)
 	_tick_boss(delta)
 	_tick_markers(delta)
 	_open_next_level_up()
@@ -305,6 +318,8 @@ func _spawn_boss() -> void:
 	boss.died.connect(_on_boss_died)
 	if train_event != null:
 		train_event.boss = boss
+	if quake_event != null:
+		quake_event.boss = boss
 	hud.set_boss_health(boss.health, boss.max_health)
 	boss_spawned.emit(boss)
 	print("PROTOTYPE01_BOSS_SPAWNED direction=%s x=%.1f z=%.1f health=%d" % [boss_direction_name, point.x, point.z, boss.health])
@@ -442,7 +457,19 @@ func scrap_out(victory: bool) -> int:
 	return int(floor(carried * _death_scrap_share))
 
 
+## Boss battuto: con la piazzola (D-076) il livello continua finche il giocatore non tiene
+## un 3x3 piano; altrimenti vittoria subito (D-043).
 func _on_boss_died(_enemy: Enemy) -> void:
+	if extraction_pad != null and tuning.extraction_enabled and not is_over:
+		boss_phase = BossPhase.EXTRACTION
+		hud.clear_boss()
+		extraction_pad.begin()
+		extraction_called.emit()
+		return
+	_end_level(true)
+
+
+func _on_extraction_completed() -> void:
 	_end_level(true)
 
 
@@ -592,6 +619,28 @@ func _setup_train() -> void:
 	train_event.player_damage = tuning.train_player_damage
 	train_event.boss_damage = tuning.train_boss_damage
 	train_event.rng.seed = run_seed + 3
+
+
+func _setup_extraction() -> void:
+	if extraction_pad == null:
+		return
+	extraction_pad.hold_seconds = tuning.extraction_hold_seconds
+	extraction_pad.radius_cells = tuning.extraction_pad_radius
+	extraction_pad.extraction_completed.connect(_on_extraction_completed)
+
+
+func _setup_quake() -> void:
+	if quake_event == null:
+		return
+	quake_event.first_seconds = RunLaunchOptions.quake_seconds(tuning.quake_first_seconds)
+	quake_event.next_at = quake_event.first_seconds
+	quake_event.interval_seconds = tuning.quake_interval_seconds
+	quake_event.warning_seconds = tuning.quake_warning_seconds
+	quake_event.length_cells = tuning.quake_length_cells
+	quake_event.distance_min = tuning.quake_distance_min
+	quake_event.distance_max = tuning.quake_distance_max
+	quake_event.player_damage = tuning.quake_player_damage
+	quake_event.rng.seed = run_seed + 4
 
 
 # --- Ciclo giorno/notte (D-058, tappa 1) -----------------------------------------

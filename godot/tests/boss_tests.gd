@@ -499,6 +499,8 @@ func _test_defeat_completes_level() -> void:
 	var completed := [false]
 	_run.level_completed.connect(func() -> void: completed[0] = true)
 	var carried: int = _scene.get_node(^"Companion").carried
+	# La piazzola di estrazione (D-076) ha la sua suite: qui si prova la vittoria diretta.
+	_run.extraction_pad = null
 	_boss.take_damage(_boss.health)
 	await _frames(2)
 	var panel: GameOverPanel = _scene.get_node(^"GameOverPanel")

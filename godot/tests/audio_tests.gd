@@ -12,7 +12,7 @@ const EXPECTED_IDS: Array[StringName] = [
 	&"scrap_pickup", &"scrap_spend", &"level_up", &"upgrade_chosen",
 	&"boss_warning", &"victory",
 	&"boss_spawn", &"boss_demolish", &"boss_barricade", &"carrier_pickup",
-	&"dusk", &"nightfall", &"train_horn", &"driller_charge",
+	&"dusk", &"nightfall", &"train_horn", &"driller_charge", &"quake_rumble",
 ]
 const FREQUENT_IDS: Array[StringName] = [&"nail_shot", &"enemy_death", &"xp_pickup", &"scrap_pickup"]
 
@@ -403,6 +403,8 @@ func _test_boss_and_end_events() -> void:
 		return
 	var victories := _count(&"victory")
 	var deaths := _count(&"player_death")
+	# La piazzola di estrazione (D-076) ha la sua suite: qui la vittoria diretta.
+	_run.extraction_pad = null
 	boss.take_damage(boss.health)
 	await _frames(2)
 	_check(_run.is_over and paused, "livello completato, gioco fermo")

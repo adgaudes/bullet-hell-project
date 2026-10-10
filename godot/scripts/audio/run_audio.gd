@@ -35,10 +35,11 @@ const SOUND_SETTINGS: Dictionary[StringName, Array] = {
 	&"nightfall": [-4.0, 0.0, 1.0],
 	&"train_horn": [-4.0, 0.0, 0.8],
 	&"driller_charge": [-5.0, 0.0, 0.6],
+	&"quake_rumble": [-4.0, 0.0, 1.2],
 }
 ## Suoni che un player occupato non cede mai a un altro (R-36): sono rari e
 ## portano un'informazione che il giocatore deve sentire fino in fondo.
-const PROTECTED_IDS: Array[StringName] = [&"boss_warning", &"victory", &"train_horn"]
+const PROTECTED_IDS: Array[StringName] = [&"boss_warning", &"victory", &"train_horn", &"quake_rumble"]
 
 @export var player: PlayerCharacter
 @export var weapon: AutoWeapon
@@ -189,6 +190,13 @@ func _connect_signals() -> void:
 			run.train_event.train_warned.connect(func(_direction: Vector3, _seconds: float) -> void: play(&"train_horn"))
 			run.train_event.train_passing.connect(func(_direction: Vector3) -> void: play(&"train_horn"))
 			run.train_event.train_hit.connect(func(_what: StringName) -> void: play(&"boss_demolish"))
+		if run.extraction_pad != null:
+			run.extraction_pad.extraction_started.connect(func() -> void: play(&"boss_warning"))
+		if run.quake_event != null:
+			run.quake_event.quake_warned.connect(func(_direction: Vector3, _seconds: float) -> void: play(&"quake_rumble"))
+			run.quake_event.quake_started.connect(func(_center: Vector3) -> void: play(&"quake_rumble"))
+			run.quake_event.quake_hit.connect(func(what: StringName) -> void:
+				play(&"terrain_raise" if what == &"cell" else &"boss_demolish"))
 
 
 func _on_health_changed(health: int, _max_health: int) -> void:

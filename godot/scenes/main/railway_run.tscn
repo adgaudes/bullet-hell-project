@@ -1,4 +1,4 @@
-[gd_scene load_steps=24 format=3]
+[gd_scene load_steps=25 format=3]
 
 [ext_resource type="Script" path="res://scripts/services/skeleton_probe.gd" id="1_probe"]
 [ext_resource type="Script" path="res://scripts/arena/railway_district.gd" id="2_arena"]
@@ -23,6 +23,7 @@
 [ext_resource type="Script" path="res://scripts/ui/workshop_panel.gd" id="19_workshop"]
 [ext_resource type="Script" path="res://scripts/navigation/flow_preview.gd" id="20_flow"]
 [ext_resource type="Script" path="res://scripts/run/train_event.gd" id="22_train"]
+[ext_resource type="Script" path="res://scripts/run/extraction_pad.gd" id="24_extraction"]
 
 [node name="RailwayRun" type="Node3D"]
 script = ExtResource("1_probe")
@@ -118,11 +119,18 @@ lamp_field = NodePath("../LampField")
 scrap_field = NodePath("../ScrapField")
 hud = NodePath("../RunHud")
 
-[node name="Run" type="Node" parent="." node_paths=PackedStringArray("district", "player", "companion", "grid", "director", "weapon", "xp_field", "hud", "level_up_menu", "game_over", "workshop", "day_night", "lamp_field", "train_event")]
+[node name="ExtractionPad" type="Node3D" parent="." node_paths=PackedStringArray("grid", "player", "hud")]
+script = ExtResource("24_extraction")
+grid = NodePath("../TerrainGrid")
+player = NodePath("../Player")
+hud = NodePath("../RunHud")
+
+[node name="Run" type="Node" parent="." node_paths=PackedStringArray("district", "player", "companion", "grid", "director", "weapon", "xp_field", "hud", "level_up_menu", "game_over", "workshop", "day_night", "lamp_field", "train_event", "extraction_pad")]
 script = ExtResource("14_run")
 day_night = NodePath("../DayNightCycle")
 lamp_field = NodePath("../LampField")
 train_event = NodePath("../TrainEvent")
+extraction_pad = NodePath("../ExtractionPad")
 tuning = ExtResource("11_run_tuning")
 level_id = &"railway"
 district = NodePath("../District")

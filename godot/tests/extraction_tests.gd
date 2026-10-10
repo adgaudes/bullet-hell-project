@@ -1,0 +1,153 @@
+extends SceneTree
+## Suite della piazzola di estrazione (D-076): battuto il boss il livello continua, la
+## piazzola 3x3 attorno al giocatore deve essere piana e tenuta per `hold_seconds`;
+## un muro dentro la rompe e azzera il conto; senza il nodo la vittoria e immediata.
+##   godot_console --headless --path godot --script res://tests/extraction_tests.gd
+
+const RunScene := preload("res://scenes/main/arena_run.tscn")
+const NORMAL := TerrainState.CellState.NORMAL
+const RAISED := TerrainState.CellState.RAISED
+
+var _failures := 0
+var _scene: Node3D
+var _run: ArenaRun
+var _pad: ExtractionPad
+var _grid: TerrainGrid
+var _player: PlayerCharacter
+var _director: EnemyDirector
+var _weapon: AutoWeapon
+var _hud: RunHud
+var _audio: RunAudio
+
+
+func _initialize() -> void:
+	Engine.physics_ticks_per_second = 60
+	await _open_scene()
+	_test_setup()
+	await _test_boss_death_calls_extraction()
+	await _test_pad_broken_and_held()
+	await _test_without_pad()
+	await _frames(2)
+	print("PROTOTYPE01_TESTS %s failures=%d" % ["PASS" if _failures == 0 else "FAIL", _failures])
+	quit(1 if _failures > 0 else 0)
+
+
+func _open_scene() -> void:
+	_scene = RunScene.instantiate()
+	root.add_child(_scene)
+	_run = _scene.get_node(^"Run")
+	_pad = _scene.get_node(^"ExtractionPad")
+	_grid = _scene.get_node(^"TerrainGrid")
+	_player = _scene.get_node(^"Player")
+	_director = _scene.get_node(^"EnemyDirector")
+	_weapon = _scene.get_node(^"PlayerWeapon")
+	_hud = _scene.get_node(^"RunHud")
+	_audio = _scene.get_node(^"RunAudio")
+	_director.spawning = false
+	await _frames(5)
+	_weapon.set_physics_process(false)
+
+
+func _close_scene() -> void:
+	paused = false
+	root.remove_child(_scene)
+	_scene.queue_free()
+	await _frames(2)
+
+
+func _check(condition: bool, label: String) -> void:
+	if condition:
+		print("  ok   %s" % label)
+	else:
+		_failures += 1
+		print("  FAIL %s" % label)
+
+
+func _frames(n: int) -> void:
+	for i in n:
+		await physics_frame
+
+
+func _cell_world(cell: Vector2i) -> Vector3:
+	var p := _grid.to_global(_grid.cell_local_position(cell, NORMAL))
+	return Vector3(p.x, 0.0, p.z)
+
+
+func _place_player(at: Vector3) -> void:
+	_player.global_position = Vector3(at.x, 0.88, at.z)
+	_player.velocity = Vector3.ZERO
+	_player.reset_physics_interpolation()
+
+
+## Chiama il boss, lo fa comparire subito e lo abbatte.
+func _kill_boss() -> void:
+	_run.call_boss()
+	_run._boss_warning_left = 0.05
+	for i in 20:
+		await physics_frame
+		if _run.boss != null:
+			break
+	_run.boss.take_damage(_run.boss.health)
+	await _frames(2)
+
+
+func _test_setup() -> void:
+	print("setup")
+	_check(_run.extraction_pad == _pad and not _pad.is_active(), "la piazzola e collegata alla regia e spenta")
+	_check(is_equal_approx(_pad.hold_seconds, _run.tuning.extraction_hold_seconds) and _pad.radius_cells == 1,
+		"tenuta di %.0f s su un 3x3" % _pad.hold_seconds)
+
+
+func _test_boss_death_calls_extraction() -> void:
+	print("boss death")
+	_pad.hold_seconds = 1.0
+	# Il giocatore al centro del cortile di partenza: 3x3 piano attorno.
+	var center := _grid.cell_at(Vector3.ZERO)
+	_place_player(_cell_world(center))
+	_check(_pad.is_flat(center), "il centro del cortile e un 3x3 piano")
+	var plays := _audio.play_count(&"boss_warning")
+	var witness := _director.spawn_at(_cell_world(center) + Vector3(14.0, 0.0, 0.0))
+	witness.speed_scale = 0.0
+	await _kill_boss()
+	_check(not _run.is_over and _run.boss_phase == ArenaRun.BossPhase.EXTRACTION, "boss abbattuto: il livello continua con l'estrazione")
+	_check(_pad.is_active() and _pad.intact, "piazzola attiva e integra sotto il giocatore")
+	_check(_hud.event_warning_text().begins_with("ESTRAZIONE: TIENI"), "annuncio senza freccia: %s" % _hud.event_warning_text())
+	_check(_audio.play_count(&"boss_warning") > plays, "sirena alla chiamata dell'estrazione")
+	_check(is_instance_valid(witness) and not witness.is_dead and _director.enemies.has(witness), "l'orda non si ritira: la pressione continua")
+
+
+func _test_pad_broken_and_held() -> void:
+	print("pad")
+	var center := _grid.cell_at(_player.global_position)
+	await _frames(20)
+	var held_before := _pad.held
+	_check(held_before > 0.2, "il conto sale mentre la piazzola e integra (%.2f s)" % held_before)
+	var wall := center + Vector2i(1, 1)
+	_grid.set_cell_states([wall], RAISED)
+	await _frames(2)
+	_check(not _pad.intact and is_zero_approx(_pad.held), "un muro nel 3x3 rompe la piazzola e azzera il conto")
+	_check(_hud.event_warning_text().begins_with("ESTRAZIONE: SPIANA"), "annuncio: %s" % _hud.event_warning_text())
+	_check(not _run.is_over, "il livello non finisce")
+	_grid.set_cell_states([wall], NORMAL)
+	await _frames(2)
+	_check(_pad.intact, "spianato, la piazzola torna integra")
+	var completed := [false]
+	_run.level_completed.connect(func() -> void: completed[0] = true)
+	for i in 120:
+		await physics_frame
+		if _run.is_over:
+			break
+	var panel: GameOverPanel = _scene.get_node(^"GameOverPanel")
+	_check(completed[0] and _run.is_over and _run.boss_phase == ArenaRun.BossPhase.DEFEATED, "tenuta per %.0f s: livello completato" % _pad.hold_seconds)
+	_check(panel.is_open and panel.is_victory and paused, "schermata di vittoria, gioco fermo")
+	_check(not _pad.is_active() and _hud.event_warning_text().is_empty(), "piazzola spenta e annuncio tolto")
+	await _close_scene()
+
+
+func _test_without_pad() -> void:
+	print("without pad")
+	await _open_scene()
+	_run.extraction_pad = null
+	await _kill_boss()
+	_check(_run.is_over and _run.boss_phase == ArenaRun.BossPhase.DEFEATED, "senza piazzola la vittoria e immediata, come prima")
+	await _close_scene()
