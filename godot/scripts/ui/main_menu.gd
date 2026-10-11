@@ -6,8 +6,6 @@ extends Control
 ## `--level=<id>`) passa subito al livello: smoke test, catture e prove rapide non si
 ## fermano qui.
 
-const SCRAP_COLOR := Color(0.95, 0.5, 0.15)
-
 @export var workshop: WorkshopPanel
 @export var campaign_map: CampaignMapPanel
 
@@ -119,47 +117,73 @@ func _build() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	var background := ColorRect.new()
 	background.name = "Background"
-	background.color = Color(0.07, 0.06, 0.05)
+	background.color = UiPalette.BG
+	var sky := ShaderMaterial.new()
+	sky.shader = load("res://resources/materials/menu_sky.gdshader")
+	background.material = sky
 	background.set_anchors_preset(Control.PRESET_FULL_RECT)
+	background.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(background)
-	var center := CenterContainer.new()
-	center.set_anchors_preset(Control.PRESET_FULL_RECT)
-	add_child(center)
+	var dust := CPUParticles2D.new()
+	dust.name = "Dust"
+	dust.amount = 40
+	dust.lifetime = 9.0
+	dust.preprocess = 9.0
+	dust.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
+	dust.emission_rect_extents = Vector2(700, 60)
+	dust.position = Vector2(640, 860)
+	dust.direction = Vector2(0, -1)
+	dust.spread = 25.0
+	dust.gravity = Vector2.ZERO
+	dust.initial_velocity_min = 25.0
+	dust.initial_velocity_max = 60.0
+	dust.scale_amount_min = 1.5
+	dust.scale_amount_max = 3.5
+	dust.color = Color(1.0, 0.72, 0.4, 0.55)
+	add_child(dust)
+	var logo := GameLogo.new()
+	logo.name = "Logo"
+	logo.letter_size = 44
+	logo.position = Vector2(72, 72)
+	add_child(logo)
 	_column = VBoxContainer.new()
-	_column.custom_minimum_size = Vector2(420, 0)
-	_column.add_theme_constant_override(&"separation", 16)
-	center.add_child(_column)
-	var title := Label.new()
-	# Titolo provvisorio: il gioco non ha ancora un nome.
-	title.text = "PROTOTYPE 01"
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override(&"font_size", 56)
-	_column.add_child(title)
-	var subtitle := Label.new()
-	subtitle.text = "Riscrivi il campo. Sopravvivi all'orda."
-	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	subtitle.add_theme_font_size_override(&"font_size", 20)
-	_column.add_child(subtitle)
-	_scrap_label = Label.new()
-	_scrap_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_scrap_label.add_theme_font_size_override(&"font_size", 17)
-	_scrap_label.add_theme_color_override(&"font_color", SCRAP_COLOR)
-	_column.add_child(_scrap_label)
+	_column.name = "Column"
+	_column.custom_minimum_size = Vector2(360, 0)
+	_column.position = Vector2(80, 330)
+	_column.add_theme_constant_override(&"separation", 14)
+	add_child(_column)
 	_play = _button("Gioca", start_run)
 	_workshop_button = _button("Officina", open_workshop)
 	_settings = _button("Impostazioni", open_settings)
 	_quit = _button("Esci", func() -> void: get_tree().quit())
+	var plate := PanelContainer.new()
+	plate.name = "ProfilePlate"
+	add_child(plate)
+	plate.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT, Control.PRESET_MODE_MINSIZE, 40)
+	plate.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	_scrap_label = Label.new()
+	_scrap_label.theme_type_variation = &"ScrapLabel"
+	plate.add_child(_scrap_label)
+	var version := Label.new()
+	version.name = "Version"
+	version.theme_type_variation = &"MutedLabel"
+	version.text = "v%s   Godot %s" % [ProjectSettings.get_setting("application/config/version", "0"), Engine.get_version_info().string]
+	add_child(version)
+	version.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT, Control.PRESET_MODE_MINSIZE, 24)
+	version.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	_prompts = ButtonPrompts.create([[&"ui_accept", "Conferma"]])
 	add_child(_prompts)
-	_prompts.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM, Control.PRESET_MODE_MINSIZE, 28)
-	_prompts.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_prompts.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT, Control.PRESET_MODE_MINSIZE, 40)
+	_prompts.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	_prompts.grow_vertical = Control.GROW_DIRECTION_BEGIN
 
 
 func _button(text: String, action: Callable) -> Button:
 	var button := Button.new()
 	button.text = text
+	button.theme_type_variation = &"MainButton"
 	button.custom_minimum_size = Vector2(0, 56)
-	button.add_theme_font_size_override(&"font_size", 22)
+	button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	button.pressed.connect(action)
 	_column.add_child(button)
 	return button

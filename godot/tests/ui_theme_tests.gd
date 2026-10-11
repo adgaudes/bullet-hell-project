@@ -99,6 +99,9 @@ func _test_screens_focus() -> void:
 	_check(all_distinct, "ogni pulsante del menu ha un focus distinto")
 	_check(all_big, "nessun pulsante sotto 14 px")
 	_check((menu.get_node_or_null(^"Background") as Control) != null, "menu con sfondo dipinto")
+	_check((menu.get_node_or_null(^"Background") as ColorRect).material is ShaderMaterial, "sfondo con il cielo dipinto")
+	_check(menu.get_node_or_null(^"Logo") is GameLogo, "logo nel menu")
+	_check(menu.get_node_or_null(^"ProfilePlate") is PanelContainer, "targhetta del profilo")
 	menu.queue_free()
 	await _frames(2)
 
