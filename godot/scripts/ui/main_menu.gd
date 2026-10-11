@@ -130,6 +130,10 @@ func _build() -> void:
 	background.set_anchors_preset(Control.PRESET_FULL_RECT)
 	background.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(background)
+	var backdrop := MenuBackdrop.new()
+	backdrop.name = "Backdrop"
+	backdrop.set_anchors_preset(Control.PRESET_FULL_RECT)
+	add_child(backdrop)
 	var dust := CPUParticles2D.new()
 	dust.name = "Dust"
 	dust.amount = 40
@@ -167,9 +171,17 @@ func _build() -> void:
 	add_child(plate)
 	plate.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT, Control.PRESET_MODE_MINSIZE, 40)
 	plate.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	var plate_row := HBoxContainer.new()
+	plate_row.name = "Row"
+	plate_row.add_theme_constant_override(&"separation", 10)
+	plate.add_child(plate_row)
+	var scrap_icon := UiIcon.make(&"scrap", 22.0, UiPalette.SCRAP)
+	scrap_icon.name = "ScrapIcon"
+	scrap_icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	plate_row.add_child(scrap_icon)
 	_scrap_label = Label.new()
 	_scrap_label.theme_type_variation = &"ScrapLabel"
-	plate.add_child(_scrap_label)
+	plate_row.add_child(_scrap_label)
 	var version := Label.new()
 	version.name = "Version"
 	version.theme_type_variation = &"MutedLabel"

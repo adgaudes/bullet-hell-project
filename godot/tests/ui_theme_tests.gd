@@ -194,6 +194,13 @@ func _test_screens_focus() -> void:
 	_check((menu.get_node_or_null(^"Background") as ColorRect).material is ShaderMaterial, "sfondo con il cielo dipinto")
 	_check(menu.get_node_or_null(^"Logo") is GameLogo, "logo nel menu")
 	_check(menu.get_node_or_null(^"ProfilePlate") is PanelContainer, "targhetta del profilo")
+	_check(menu.get_node_or_null(^"ProfilePlate/Row/ScrapIcon") is UiIcon, "targhetta con l'icona dei rottami")
+	var backdrop := menu.get_node_or_null(^"Backdrop") as MenuBackdrop
+	_check(backdrop != null and backdrop.layer_count() == 3, "sfondo a tre strati dietro il menu")
+	var before_x := backdrop.layer_offset(2) if backdrop != null else 0.0
+	await _frames(30)
+	_check(backdrop != null and not is_equal_approx(backdrop.layer_offset(2), before_x), "gli strati scorrono in parallasse")
+	_check(backdrop != null and backdrop.get_index() < menu.get_node(^"Column").get_index() and backdrop.mouse_filter == Control.MOUSE_FILTER_IGNORE, "lo sfondo sta dietro la colonna e non prende il mouse")
 	var dust: CPUParticles2D = menu.get_node(^"Dust")
 	_check(is_equal_approx(dust.position.x, menu.size.x * 0.5) and is_equal_approx(dust.emission_rect_extents.x, menu.size.x * 0.55), "polvere centrata sulla larghezza del menu (%.0f su %.0f)" % [dust.position.x, menu.size.x])
 	menu.queue_free()
