@@ -17,6 +17,7 @@ func _initialize() -> void:
 	await _test_pause_and_settings()
 	await _test_cards_and_panels()
 	await _test_game_over()
+	await _test_hud()
 	await _frames(2)
 	print("PROTOTYPE01_TESTS %s failures=%d" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
@@ -220,6 +221,30 @@ func _test_game_over() -> void:
 	paused = false
 	panel.queue_free()
 	await _frames(2)
+
+
+## HUD: bulloni di vita senza nodi figli, quadrante accanto al testo del giorno, slab.
+func _test_hud() -> void:
+	var hud := RunHud.new()
+	root.add_child(hud)
+	await _frames(2)
+	hud.set_health(3, 5)
+	_check(hud._health_row is HealthBolts and hud._health_row.bolt_count() == 5 and hud._health_row.lit_count() == 3, "cinque bulloni, tre accesi")
+	hud.set_health(2, 7)
+	_check(hud._health_row.bolt_count() == 7 and hud._health_row.get_child_count() == 0, "al cambio di massimo si ridisegna senza figli")
+	hud.set_day_phase(0, 125.0)
+	_check(hud._day_label.visible and hud._day_label.text.contains("02:05"), "testo del giorno conservato: %s" % hud._day_label.text)
+	_check(hud._day_dial is DayDial and hud._day_dial.visible and hud._day_dial.phase() == 0, "quadrante del giorno visibile")
+	hud.set_day_phase(0, INF)
+	_check(not hud._day_dial.visible, "ciclo spento: quadrante nascosto")
+	_check(hud._level_label.get_theme_font(&"font") == UiPalette.title_font(), "numeri dell'HUD in slab")
+	_check(hud._xp_bar.anchor_top == 1.0, "barra esperienza in basso")
+	hud.show_notice("PROVA", 1.0, UiPalette.TEXT)
+	_check(hud._warning_plate.visible and hud._boss_warning.visible, "avviso su targa")
+	hud.clear_event_warning()
+	_check(not hud._warning_plate.visible, "targa nascosta con l'avviso")
+	hud.queue_free()
+	await _frames(1)
 
 
 func _descendants(node: Node) -> Array[Node]:

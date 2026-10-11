@@ -4,16 +4,16 @@ extends CanvasLayer
 ## rottamatori abbattuti; annuncio del boss con freccia di direzione e barra
 ## della sua vita (D-043). Solo lettura: mai focus ne input.
 
-const HEALTH_ON := Color(0.95, 0.25, 0.15)
+const HEALTH_ON := UiPalette.DANGER
 const HEALTH_OFF := Color(0.18, 0.12, 0.12, 0.8)
-const XP_COLOR := Color(0.1, 0.85, 0.65)
+const XP_COLOR := UiPalette.XP
 const BOSS_COLOR := Color(0.95, 0.6, 0.08)
 const DAY_COLOR := Color(1.0, 0.9, 0.55)
 const NIGHT_COLOR := Color(0.6, 0.65, 1.0)
 const TRAIN_COLOR := Color(1.0, 0.45, 0.3)
 const QUAKE_COLOR := Color(0.9, 0.62, 0.32)
 const EXTRACTION_COLOR := Color(0.35, 0.9, 0.6)
-const TITLE_COLOR := Color(0.97, 0.93, 0.82)
+const TITLE_COLOR := UiPalette.TEXT
 ## Distanza della freccia di direzione dal centro dello schermo, in frazione del lato corto.
 const ARROW_RADIUS_RATIO := 0.36
 ## Ingombro di una scritta degli indicatori, per non sovrapporle.
@@ -23,14 +23,17 @@ var _xp_bar: ProgressBar
 var _level_label: Label
 var _time_label: Label
 var _day_label: Label
+var _day_dial: DayDial
+var _dusk_total := -1.0
 var _tool_label: Label
 var _kills_label: Label
 var _day_phase_shown := -1
 var _day_second_shown := -1
 var _night_notice_left := 0.0
 var _night_notice_text := ""
-var _health_row: HBoxContainer
+var _health_row: HealthBolts
 var _boss_warning: Label
+var _warning_plate: PanelContainer
 var _boss_name_label: Label
 var _boss_arrow: Polygon2D
 var _boss_box: VBoxContainer
@@ -57,8 +60,9 @@ func _ready() -> void:
 
 	_xp_bar = ProgressBar.new()
 	_xp_bar.show_percentage = false
-	_xp_bar.set_anchors_preset(Control.PRESET_TOP_WIDE)
-	_xp_bar.offset_bottom = 10
+	_xp_bar.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	_xp_bar.offset_top = -8
+	_xp_bar.offset_bottom = 0
 	_xp_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var fill := StyleBoxFlat.new()
 	fill.bg_color = XP_COLOR
@@ -67,6 +71,18 @@ func _ready() -> void:
 	background.bg_color = Color(0.0, 0.0, 0.0, 0.55)
 	_xp_bar.add_theme_stylebox_override(&"background", background)
 	root.add_child(_xp_bar)
+	for side in [Control.PRESET_BOTTOM_LEFT, Control.PRESET_BOTTOM_RIGHT]:
+		var cap := ColorRect.new()
+		cap.color = UiPalette.BORDER
+		cap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		root.add_child(cap)
+		cap.set_anchors_and_offsets_preset(side)
+		cap.offset_top = -14
+		cap.offset_bottom = 0
+		if side == Control.PRESET_BOTTOM_LEFT:
+			cap.offset_right = 6
+		else:
+			cap.offset_left = -6
 
 	# Riga superiore: livello a sinistra, tempo al centro, abbattuti a destra.
 	var top := HBoxContainer.new()
@@ -77,43 +93,59 @@ func _ready() -> void:
 	top.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(top)
 	_level_label = _label(top, HORIZONTAL_ALIGNMENT_LEFT)
+	_level_label.add_theme_font_size_override(&"font_size", 22)
 	_time_label = _label(top, HORIZONTAL_ALIGNMENT_CENTER)
-	_day_label = _label(top, HORIZONTAL_ALIGNMENT_CENTER)
+	_time_label.add_theme_font_size_override(&"font_size", 28)
+	var day_box := HBoxContainer.new()
+	day_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	day_box.alignment = BoxContainer.ALIGNMENT_CENTER
+	day_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	day_box.add_theme_constant_override(&"separation", 8)
+	top.add_child(day_box)
+	_day_dial = DayDial.new()
+	_day_dial.hide()
+	day_box.add_child(_day_dial)
+	_day_label = _label(day_box, HORIZONTAL_ALIGNMENT_LEFT)
+	_day_label.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_day_label.add_theme_font_size_override(&"font_size", 22)
 	_day_label.add_theme_color_override(&"font_color", DAY_COLOR)
 	_day_label.hide()
 	_kills_label = _label(top, HORIZONTAL_ALIGNMENT_RIGHT)
+	_kills_label.add_theme_font_size_override(&"font_size", 22)
 
-	_health_row = HBoxContainer.new()
+	_health_row = HealthBolts.new()
 	_health_row.set_anchors_preset(Control.PRESET_TOP_LEFT)
 	_health_row.offset_left = 24
-	_health_row.offset_top = 56
+	_health_row.offset_top = 58
 	# Modalita del tool quando non e la solita (lampione: costo e contatore).
 	_tool_label = Label.new()
 	_tool_label.set_anchors_preset(Control.PRESET_TOP_LEFT)
 	_tool_label.offset_left = 24
 	_tool_label.offset_top = 90
 	_tool_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_tool_label.theme_type_variation = &"HudLabel"
 	_tool_label.add_theme_font_size_override(&"font_size", 18)
-	_tool_label.add_theme_color_override(&"font_outline_color", Color.BLACK)
-	_tool_label.add_theme_constant_override(&"outline_size", 5)
 	_tool_label.hide()
 	root.add_child(_tool_label)
-	_health_row.add_theme_constant_override(&"separation", 6)
-	_health_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(_health_row)
 
 	# Annuncio del boss: scritta sotto la riga superiore e freccia verso la direzione di arrivo.
+	_warning_plate = PanelContainer.new()
+	_warning_plate.add_theme_stylebox_override(&"panel", UiPalette.panel_box(true))
+	_warning_plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_warning_plate.hide()
+	root.add_child(_warning_plate)
+	_warning_plate.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP, Control.PRESET_MODE_MINSIZE, 96)
+	_warning_plate.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_warning_plate.rotation_degrees = -1.5
 	_boss_warning = Label.new()
-	_boss_warning.set_anchors_preset(Control.PRESET_TOP_WIDE)
-	_boss_warning.offset_top = 96
+	_boss_warning.theme_type_variation = &"HudLabel"
+	_boss_warning.add_theme_font_size_override(&"font_size", 28)
 	_boss_warning.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_boss_warning.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_boss_warning.add_theme_font_size_override(&"font_size", 30)
 	_boss_warning.add_theme_color_override(&"font_color", BOSS_COLOR)
-	_boss_warning.add_theme_color_override(&"font_outline_color", Color.BLACK)
-	_boss_warning.add_theme_constant_override(&"outline_size", 8)
 	_boss_warning.hide()
-	root.add_child(_boss_warning)
+	_warning_plate.add_child(_boss_warning)
 	_boss_arrow = Polygon2D.new()
 	_boss_arrow.polygon = PackedVector2Array([Vector2(0, -34), Vector2(26, 22), Vector2(0, 8), Vector2(-26, 22)])
 	_boss_arrow.color = BOSS_COLOR
@@ -125,17 +157,18 @@ func _ready() -> void:
 	_boss_box.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
 	_boss_box.offset_left = -260
 	_boss_box.offset_right = 260
-	_boss_box.offset_top = -78
-	_boss_box.offset_bottom = -28
+	_boss_box.offset_top = -96
+	_boss_box.offset_bottom = -46
 	_boss_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_boss_box.hide()
 	root.add_child(_boss_box)
 	_boss_name_label = _label(_boss_box, HORIZONTAL_ALIGNMENT_CENTER)
 	_boss_name_label.text = "IL DEMOLITORE"
 	_boss_name_label.add_theme_font_size_override(&"font_size", 20)
+	_boss_name_label.add_theme_color_override(&"font_color", BOSS_COLOR)
 	_boss_bar = ProgressBar.new()
 	_boss_bar.show_percentage = false
-	_boss_bar.custom_minimum_size = Vector2(520, 16)
+	_boss_bar.custom_minimum_size = Vector2(520, 14)
 	_boss_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var boss_fill := StyleBoxFlat.new()
 	boss_fill.bg_color = BOSS_COLOR
@@ -183,6 +216,8 @@ func set_event_warning(text: String, direction: Vector3, seconds_left: float, co
 		_boss_warning.add_theme_color_override(&"font_color", color)
 		_night_notice_left = 0.0
 	_boss_warning.show()
+	_warning_plate.show()
+	_warning_plate.pivot_offset = _warning_plate.size * 0.5
 	if not with_arrow:
 		_boss_arrow.hide()
 		return
@@ -259,6 +294,7 @@ func clear_boss_warning() -> void:
 
 func clear_event_warning() -> void:
 	_boss_warning.hide()
+	_warning_plate.hide()
 	_boss_arrow.hide()
 	_boss_seconds_shown = -1
 	_boss_direction_shown = ""
@@ -295,24 +331,9 @@ func set_xp(xp: int, needed: int, level: int) -> void:
 	_level_label.text = "LIVELLO %d" % level
 
 
-## Le tacche si riusano: si creano o tolgono solo se cambia la vita massima, a ogni
-## colpo cambia solo il colore (U-07).
+## Bulloni esagonali, ridisegnati solo quando cambiano i valori (U-07).
 func set_health(health: int, max_health: int) -> void:
-	if _health_row.get_child_count() != max_health:
-		for child in _health_row.get_children():
-			# Tolta subito dall'albero: non resta un frame accanto alle nuove.
-			_health_row.remove_child(child)
-			child.queue_free()
-		for i in max_health:
-			var pip := ColorRect.new()
-			pip.custom_minimum_size = Vector2(22, 22)
-			pip.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			_health_row.add_child(pip)
-	for i in _health_row.get_child_count():
-		var pip: ColorRect = _health_row.get_child(i)
-		var color := HEALTH_ON if i < health else HEALTH_OFF
-		if pip.color != color:
-			pip.color = color
+	_health_row.set_health(health, max_health)
 
 
 ## Modalita del tool: visibile solo in LAMP, con costo e contatore (specifica, sezione 9).
@@ -330,7 +351,13 @@ func set_tool_mode(mode: int, lamps: int, max_lamps: int, cost: int) -> void:
 func set_day_phase(phase: int, seconds_to_dusk: float) -> void:
 	if not is_finite(seconds_to_dusk):
 		_day_label.hide()
+		_day_dial.hide()
+		_dusk_total = -1.0
 		return
+	if _dusk_total < 0.0:
+		_dusk_total = maxf(seconds_to_dusk, 1.0)
+	_day_dial.set_phase(phase, 1.0 - clampf(seconds_to_dusk / _dusk_total, 0.0, 1.0) if phase == DayNightCycle.Phase.DAY else 1.0)
+	_day_dial.show()
 	var second := int(ceil(seconds_to_dusk))
 	if phase == _day_phase_shown and (phase != DayNightCycle.Phase.DAY or second == _day_second_shown):
 		return
@@ -365,6 +392,8 @@ func show_notice(text: String, seconds: float, color: Color) -> void:
 	_boss_warning.text = text
 	_boss_warning.add_theme_color_override(&"font_color", color)
 	_boss_warning.show()
+	_warning_plate.show()
+	_warning_plate.pivot_offset = _warning_plate.size * 0.5
 
 
 func is_night_notice_visible() -> bool:
@@ -377,6 +406,7 @@ func _process(delta: float) -> void:
 	_night_notice_left -= delta
 	if _night_notice_left <= 0.0 and _boss_warning.text == _night_notice_text:
 		_boss_warning.hide()
+		_warning_plate.hide()
 		_boss_warning.add_theme_color_override(&"font_color", BOSS_COLOR)
 
 
@@ -402,8 +432,6 @@ func _label(parent: Control, align: HorizontalAlignment) -> Label:
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	label.horizontal_alignment = align
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	label.add_theme_font_size_override(&"font_size", 24)
-	label.add_theme_color_override(&"font_outline_color", Color.BLACK)
-	label.add_theme_constant_override(&"outline_size", 6)
+	label.theme_type_variation = &"HudLabel"
 	parent.add_child(label)
 	return label
