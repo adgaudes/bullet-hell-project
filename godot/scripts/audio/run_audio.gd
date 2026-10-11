@@ -36,6 +36,11 @@ const SOUND_SETTINGS: Dictionary[StringName, Array] = {
 	&"train_horn": [-4.0, 0.0, 0.8],
 	&"driller_charge": [-5.0, 0.0, 0.6],
 	&"quake_rumble": [-4.0, 0.0, 1.2],
+	# Interfaccia (D-081): li suona UiFx, qui restano solo per il catalogo.
+	&"ui_move": [-14.0, 0.03, 0.03],
+	&"ui_confirm": [-10.0, 0.0, 0.05],
+	&"ui_back": [-10.0, 0.0, 0.05],
+	&"ui_open": [-9.0, 0.0, 0.1],
 }
 ## Suoni che un player occupato non cede mai a un altro (R-36): sono rari e
 ## portano un'informazione che il giocatore deve sentire fino in fondo.

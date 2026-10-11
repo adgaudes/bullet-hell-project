@@ -13,6 +13,7 @@ func _initialize() -> void:
 	_test_palette()
 	_test_textures()
 	_test_theme_on_root()
+	await _test_icons_and_sounds()
 	await _test_logo()
 	await _test_screens_focus()
 	await _test_pause_and_settings()
@@ -94,6 +95,29 @@ func _test_textures() -> void:
 	var focus := theme.get_stylebox(&"focus", &"Button") as StyleBoxTexture
 	_check(focus != null and focus.expand_margin_left > 0.0, "il focus sborda con l'alone")
 	_check(theme.get_icon(&"grabber", &"HSlider").resource_path.ends_with("knob.png"), "pomello dello slider a rivetto")
+
+
+## Pittogrammi a poligoni (UiIcon) e suoni di interfaccia sintetizzati.
+func _test_icons_and_sounds() -> void:
+	var holder := Control.new()
+	root.add_child(holder)
+	for kind in UiIcon.KINDS:
+		var icon := UiIcon.make(kind, 32.0)
+		holder.add_child(icon)
+	await _frames(2)
+	_check(holder.get_child_count() == UiIcon.KINDS.size() and UiIcon.KINDS.size() >= 12, "%d icone disegnate senza errori" % holder.get_child_count())
+	_check(UiIcon.for_category(&"weapon") == &"nail" and UiIcon.for_category(&"terrain") == &"shovel" and UiIcon.for_category(&"character") == &"boot" and UiIcon.for_category(&"companion") == &"wrench", "icona per categoria di upgrade")
+	_check(UiIcon.for_permanent(&"base_health") == &"bolt" and UiIcon.for_permanent(&"fixed_turret") == &"nail", "icona per upgrade permanente")
+	holder.queue_free()
+	var all_short := true
+	for id: StringName in [&"ui_move", &"ui_confirm", &"ui_back", &"ui_open"]:
+		var stream := SfxLibrary.build(id)
+		if stream == null or SfxLibrary.duration_of(stream) > 0.25:
+			all_short = false
+		if not SfxLibrary.IDS.has(id):
+			all_short = false
+	_check(all_short, "quattro suoni di interfaccia brevi, negli IDS")
+	await _frames(1)
 
 
 func _test_theme_on_root() -> void:

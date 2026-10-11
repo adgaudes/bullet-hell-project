@@ -13,6 +13,7 @@ const EXPECTED_IDS: Array[StringName] = [
 	&"boss_warning", &"victory",
 	&"boss_spawn", &"boss_demolish", &"boss_barricade", &"carrier_pickup",
 	&"dusk", &"nightfall", &"train_horn", &"driller_charge", &"quake_rumble",
+	&"ui_move", &"ui_confirm", &"ui_back", &"ui_open",
 ]
 const FREQUENT_IDS: Array[StringName] = [&"nail_shot", &"enemy_death", &"xp_pickup", &"scrap_pickup"]
 

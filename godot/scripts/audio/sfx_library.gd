@@ -21,6 +21,7 @@ const IDS: Array[StringName] = [
 	&"boss_warning", &"victory",
 	&"boss_spawn", &"boss_demolish", &"boss_barricade", &"carrier_pickup",
 	&"dusk", &"nightfall", &"train_horn", &"driller_charge", &"quake_rumble",
+	&"ui_move", &"ui_confirm", &"ui_back", &"ui_open",
 ]
 
 static var _cache: Dictionary[StringName, AudioStreamWAV] = {}
@@ -94,6 +95,26 @@ static func _synthesize(id: StringName) -> PackedFloat32Array:
 	rng.seed = NOISE_SEED + hash(id)
 	var b := PackedFloat32Array()
 	match id:
+		&"ui_move":
+			# Tic di metallo: il cursore a chiodo si sposta (D-081).
+			b = _buffer(0.05)
+			_layer(b, rng, Wave.SINE, 0.0, 0.045, 1900.0, 1500.0, 0.5, 0.001, 3.0)
+			_layer(b, rng, Wave.NOISE, 0.0, 0.02, 4000.0, 2500.0, 0.25, 0.001, 3.0)
+		&"ui_confirm":
+			# Clink di rame: due parziali che salgono.
+			b = _buffer(0.16)
+			_clink(b, rng, 0.0, 0.12, 1320.0, 0.5)
+			_clink(b, rng, 0.05, 0.11, 1760.0, 0.4)
+		&"ui_back":
+			# Tock piu basso e sordo.
+			b = _buffer(0.1)
+			_layer(b, rng, Wave.SINE, 0.0, 0.09, 520.0, 360.0, 0.6, 0.001, 2.5)
+			_layer(b, rng, Wave.NOISE, 0.0, 0.03, 1500.0, 800.0, 0.2, 0.001, 3.0)
+		&"ui_open":
+			# Lamiera che scorre: soffio di rumore filtrato con un leggero clink finale.
+			b = _buffer(0.22)
+			_layer(b, rng, Wave.NOISE, 0.0, 0.18, 900.0, 2600.0, 0.35, 0.03, 1.6)
+			_clink(b, rng, 0.14, 0.08, 1100.0, 0.25)
 		&"nail_shot":
 			# Colpo secco di chiodatrice pneumatica: sbuffo d'aria e scatto.
 			b = _buffer(0.075)
