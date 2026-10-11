@@ -19,6 +19,7 @@ func _initialize() -> void:
 	Engine.physics_ticks_per_second = 60
 	_test_surface_tiles()
 	await _test_terrain_textures()
+	await _test_ruin_textures()
 	await _frames(2)
 	print("PROTOTYPE01_TESTS %s failures=%d" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
@@ -59,6 +60,25 @@ func _test_terrain_textures() -> void:
 	var ground_material := ground_mesh.material_override as ShaderMaterial if ground_mesh != null else null
 	_check(ground_material != null and ground_material.get_shader_parameter(&"ground_albedo") is TextureLayered, "il suolo usa l'array ground_albedo")
 	_check(ground_material != null and ground_material.get_shader_parameter(&"ground_orm") is TextureLayered, "il suolo usa l'array ground_orm")
+	await _close_scene()
+
+
+func _test_ruin_textures() -> void:
+	print("ruin textures")
+	await _open_scene()
+	var district: Node3D = _scene.get_node(^"District")
+	var block := district.find_child("Block0", true, false)
+	_check(block != null, "esiste il guscio Block0")
+	var pieces: Array[Node] = block.find_children("*", "MeshInstance3D", true, false) if block != null else []
+	var piece: MeshInstance3D = pieces[0] as MeshInstance3D if pieces.size() > 0 else null
+	var material := piece.material_override as ShaderMaterial if piece != null else null
+	for map in ["albedo", "normal", "orm"]:
+		_check(material != null and material.get_shader_parameter("walls_%s" % map) is TextureLayered, "i muri delle rovine usano l'array walls_%s" % map)
+	_check(piece != null and piece.get_instance_shader_parameter(&"base_tint") != null, "base_tint per istanza ancora impostata sui pezzi")
+	var crowns: MultiMeshInstance3D = district.find_child("RuinCrowns", true, false)
+	var crown_material := crowns.material_override as ShaderMaterial if crowns != null else null
+	_check(crown_material != null and crown_material.get_shader_parameter(&"batched") == true, "le corone restano batched")
+	_check(crown_material != null and crown_material.get_shader_parameter(&"walls_albedo") is TextureLayered, "le corone usano l'array walls_albedo")
 	await _close_scene()
 
 

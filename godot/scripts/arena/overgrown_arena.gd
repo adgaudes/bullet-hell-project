@@ -18,6 +18,10 @@ const RUST_SHADER := preload("res://resources/materials/rusted_metal.gdshader")
 const FOLIAGE_SHADER := preload("res://resources/materials/foliage.gdshader")
 const GRASS_SHADER := preload("res://resources/materials/grass_blades.gdshader")
 const ENV_BAKED_SHADER := preload("res://resources/materials/env_baked.gdshader")
+## Tile dipinte dei muri (restyling 2026-10-11): 0 intonaco e mattoni, 1 muschio, 2 corteccia.
+const WALLS_ALBEDO := preload("res://assets/textures/surfaces/walls_albedo.png")
+const WALLS_NORMAL := preload("res://assets/textures/surfaces/walls_normal.png")
+const WALLS_ORM := preload("res://assets/textures/surfaces/walls_orm.png")
 ## Modelli generati da tools/blender/build_arena_assets.py (D-037), rifiniti con
 ## texture cotta (D-073).
 const CAR_MODEL := preload("res://assets/models/wrecked_car.glb")
@@ -261,6 +265,7 @@ func _cover_node(i: int) -> float:
 func _make_materials() -> void:
 	_ruin_material = ShaderMaterial.new()
 	_ruin_material.shader = RUIN_SHADER
+	apply_wall_tiles(_ruin_material)
 	_rust_material = ShaderMaterial.new()
 	_rust_material.shader = RUST_SHADER
 	_foliage_material = ShaderMaterial.new()
@@ -553,6 +558,13 @@ func _fallen_slab(node_name: String, center: Vector2, footprint: Vector2, height
 	mi.set_instance_shader_parameter(&"vine_reach", 0.3)
 
 
+## Passa le tile dipinte dei muri a un materiale con ruin_overgrown.gdshader.
+static func apply_wall_tiles(material: ShaderMaterial) -> void:
+	material.set_shader_parameter(&"walls_albedo", WALLS_ALBEDO)
+	material.set_shader_parameter(&"walls_normal", WALLS_NORMAL)
+	material.set_shader_parameter(&"walls_orm", WALLS_ORM)
+
+
 func _reset_ruin_details() -> void:
 	_crown_buffer.clear()
 	_crown_count = 0
@@ -590,6 +602,7 @@ func _build_ruin_details() -> void:
 		_crown_material = ShaderMaterial.new()
 		_crown_material.shader = RUIN_SHADER
 		_crown_material.set_shader_parameter(&"batched", true)
+		apply_wall_tiles(_crown_material)
 	_add_multimesh("RuinCrowns", _unit_box_mesh(), _crown_buffer, _crown_count, _crown_material)
 	_add_multimesh("RuinRebar", _unit_box_mesh(), _rebar_buffer, _rebar_count, _dark_material)
 	stats.crown_pieces = _crown_count
