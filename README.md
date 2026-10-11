@@ -1,6 +1,6 @@
-# Bullet Hell Project
+# Dwarmageddon: Dig or Die
 
-Progetto indipendente in fase di ideazione, destinato alla pubblicazione su Steam. Il concept di lavoro e un survivor-like 3D isometrico ambientato in un mondo fantasy post-apocalittico caldo e colorato, in rotazione perpetua. Un ingegnere improvvisatore costruisce una carovana di macchine modulari capaci di agganciarsi, separarsi, trasformare il campo e fondersi. La direzione resta modificabile fino alla validazione tramite micro-prototipi.
+Nome scelto l'11 ottobre 2026 (D-079); le cartelle di build e i nomi degli eseguibili restano `Prototype01` finche non si decide di rinominarli. Progetto indipendente in fase di ideazione, destinato alla pubblicazione su Steam. Il concept di lavoro e un survivor-like 3D isometrico ambientato in un mondo fantasy post-apocalittico caldo e colorato, in rotazione perpetua. Un ingegnere improvvisatore costruisce una carovana di macchine modulari capaci di agganciarsi, separarsi, trasformare il campo e fondersi. La direzione resta modificabile fino alla validazione tramite micro-prototipi.
 
 ## Stato
 

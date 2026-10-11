@@ -22,6 +22,7 @@ var _prompts: ButtonPrompts
 
 func _ready() -> void:
 	get_tree().paused = false
+	DisplayServer.window_set_title(BootIntro.WINDOW_TITLE)
 	_profile = get_node_or_null(^"/root/PlayerProfile") as PlayerProfileService
 	_pause_menu = get_node_or_null(^"/root/PauseMenu")
 	if _pause_menu != null:

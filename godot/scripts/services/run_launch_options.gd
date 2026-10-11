@@ -16,6 +16,11 @@ static func wants_autostart(args: PackedStringArray = OS.get_cmdline_user_args()
 	return false
 
 
+## `--intro-test`: l'intro all'avvio (BootIntro) gira anche in headless (suite intro_tests).
+static func wants_intro_test(args: PackedStringArray = OS.get_cmdline_user_args()) -> bool:
+	return args.has("--intro-test")
+
+
 ## Livello da avviare subito: `--level=<id>` (D-066: `district`, `railway`), altrimenti vuoto.
 static func level_id(args: PackedStringArray = OS.get_cmdline_user_args()) -> StringName:
 	return StringName(_value_of("--level=", args))
