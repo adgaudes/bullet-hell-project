@@ -124,6 +124,7 @@ func _ready() -> void:
 	else:
 		_body_material.vertex_color_use_as_albedo = true
 		_body_material.roughness = 0.8
+	ActorModel.enable_rim(_body_material)
 	_body_material.next_pass = ActorModel.outline_material()
 	var overrides: Dictionary[String, Material] = {"suit": _body_material}
 	if ActorModel.surface_material(_body, "detail") != null:

@@ -88,7 +88,13 @@ const FLOWER_COLORS: Array[Color] = [
 	Color(0.95, 0.45, 0.35), Color(0.45, 0.55, 0.95), Color(0.98, 0.82, 0.25),
 	Color(0.95, 0.92, 0.85), Color(0.75, 0.40, 0.85),
 ]
-const SUN_COLOR := Color(1.0, 0.86, 0.66)
+const SUN_COLOR := Color(1.0, 0.84, 0.62)
+## Cielo dipinto di giorno e ambiente freddo (restyling 2026-10-11).
+const SKY_SHADER := preload("res://resources/materials/sky_painted.gdshader")
+const SKY_DAY_TOP := Color(0.26, 0.46, 0.82)
+const SKY_DAY_HORIZON := Color(0.96, 0.80, 0.62)
+const SKY_DAY_GROUND := Color(0.42, 0.38, 0.28)
+const AMBIENT_COLOR := Color(0.46, 0.50, 0.72)
 
 var _generated: Array[Node] = []
 var _rebuild_pending := false
@@ -1082,58 +1088,69 @@ static func _fbm(p: Vector2) -> float:
 func _add_sun() -> void:
 	var sun := DirectionalLight3D.new()
 	sun.name = "SunLight"
-	# Luce bassa e dorata da ovest-sud-ovest: ombre lunghe verso est, leggibili dall'alto.
-	var direction := Vector3(0.78, -0.52, -0.35).normalized()
+	# Luce bassa e dorata da ovest-sud-ovest (circa 27 gradi sull'orizzonte): ombre lunghe
+	# verso est, leggibili dall'alto; il diametro angolare le ammorbidisce ai bordi.
+	var direction := Vector3(0.78, -0.50, -0.35).normalized()
 	sun.basis = Basis.looking_at(direction, Vector3.UP)
 	sun.light_color = SUN_COLOR
-	sun.light_energy = 1.4
+	sun.light_energy = 1.6
+	sun.light_angular_distance = 1.5
 	sun.shadow_enabled = true
-	sun.shadow_blur = 1.6
+	sun.shadow_blur = 1.2
 	sun.directional_shadow_max_distance = 90.0
 	_add_generated(sun)
 
 
 func _add_environment() -> void:
-	var sky_material := ProceduralSkyMaterial.new()
-	sky_material.sky_top_color = Color(0.30, 0.50, 0.80)
-	sky_material.sky_horizon_color = Color(0.76, 0.80, 0.80)
-	sky_material.ground_horizon_color = Color(0.70, 0.66, 0.54)
-	sky_material.ground_bottom_color = Color(0.30, 0.32, 0.22)
+	# Cielo a gradiente dipinto (restyling 2026-10-11, D-077); DayNightCycle ne interpola
+	# i colori verso la notte.
+	var sky_material := ShaderMaterial.new()
+	sky_material.shader = SKY_SHADER
+	sky_material.set_shader_parameter(&"top_color", SKY_DAY_TOP)
+	sky_material.set_shader_parameter(&"horizon_color", SKY_DAY_HORIZON)
+	sky_material.set_shader_parameter(&"ground_color", SKY_DAY_GROUND)
 	var sky := Sky.new()
 	sky.sky_material = sky_material
+	sky.radiance_size = Sky.RADIANCE_SIZE_128
 
 	var environment := Environment.new()
 	environment.background_mode = Environment.BG_SKY
 	environment.sky = sky
-	environment.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
-	environment.ambient_light_energy = 0.5
-	# Ombre calde: il cielo da solo le renderebbe azzurre.
-	environment.ambient_light_color = Color(0.62, 0.58, 0.46)
-	environment.ambient_light_sky_contribution = 0.45
-	environment.tonemap_mode = Environment.TONE_MAPPER_FILMIC
-	environment.tonemap_white = 6.0
-	# Foschia calda solo in lontananza: il campo di gioco resta nitido.
+	# Ambiente freddo a colore fisso: le ombre del sole caldo diventano blu-viola.
+	environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	environment.ambient_light_color = AMBIENT_COLOR
+	environment.ambient_light_energy = 0.55
+	environment.reflected_light_source = Environment.REFLECTION_SOURCE_SKY
+	environment.tonemap_mode = Environment.TONE_MAPPER_ACES
+	environment.tonemap_white = 4.0
+	# Foschia del colore dell'orizzonte solo in lontananza: il campo di gioco resta nitido.
 	environment.fog_enabled = true
 	environment.fog_mode = Environment.FOG_MODE_DEPTH
-	environment.fog_light_color = Color(0.74, 0.79, 0.76)
-	environment.fog_density = 0.55
+	environment.fog_light_color = SKY_DAY_HORIZON
+	environment.fog_density = 0.5
 	environment.fog_depth_begin = 45.0
 	environment.fog_depth_end = 160.0
 	environment.fog_depth_curve = 1.6
-	environment.fog_sun_scatter = 0.15
+	environment.fog_sun_scatter = 0.25
 	# La skyline lontana prende il colore del cielo (D-068).
-	environment.fog_aerial_perspective = 0.35
+	environment.fog_aerial_perspective = 0.45
 	environment.ssao_enabled = true
-	environment.ssao_radius = 2.0
-	environment.ssao_intensity = 2.2
-	environment.ssao_light_affect = 0.2
+	environment.ssao_radius = 3.0
+	environment.ssao_intensity = 1.6
+	environment.ssao_light_affect = 0.15
+	# Bagliore a piu livelli, in soft light, solo su emissive e alte luci calde.
 	environment.glow_enabled = true
-	environment.glow_intensity = 0.4
-	environment.glow_bloom = 0.05
-	# Leggera gradazione: un po' piu di contrasto e di saturazione (D-069).
+	environment.glow_intensity = 0.55
+	environment.glow_bloom = 0.08
+	environment.glow_hdr_threshold = 1.1
+	environment.glow_blend_mode = Environment.GLOW_BLEND_MODE_SOFTLIGHT
+	environment.set_glow_level(1, 0.6)
+	environment.set_glow_level(3, 0.8)
+	environment.set_glow_level(5, 0.4)
+	# Gradazione decisa: contrasto e saturazione alla Hades II.
 	environment.adjustment_enabled = true
-	environment.adjustment_contrast = 1.06
-	environment.adjustment_saturation = 1.12
+	environment.adjustment_contrast = 1.12
+	environment.adjustment_saturation = 1.22
 
 	var camera_attributes := CameraAttributesPractical.new()
 	camera_attributes.auto_exposure_enabled = false
@@ -1143,3 +1160,5 @@ func _add_environment() -> void:
 	world_environment.environment = environment
 	world_environment.camera_attributes = camera_attributes
 	_add_generated(world_environment)
+
+

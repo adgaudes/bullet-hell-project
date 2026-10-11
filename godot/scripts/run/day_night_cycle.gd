@@ -18,9 +18,10 @@ const NIGHT_SUN_ENERGY := 0.12
 const NIGHT_SUN_COLOR := Color(0.55, 0.62, 0.85)
 const NIGHT_AMBIENT_ENERGY := 0.16
 const NIGHT_AMBIENT_COLOR := Color(0.32, 0.36, 0.5)
-const NIGHT_SKY_TOP := Color(0.03, 0.04, 0.09)
-const NIGHT_SKY_HORIZON := Color(0.10, 0.11, 0.18)
-const NIGHT_FOG_COLOR := Color(0.08, 0.09, 0.14)
+## Notte blu-violacea (direzione artistica: mai monocromo freddo).
+const NIGHT_SKY_TOP := Color(0.04, 0.03, 0.10)
+const NIGHT_SKY_HORIZON := Color(0.16, 0.10, 0.22)
+const NIGHT_FOG_COLOR := Color(0.10, 0.08, 0.16)
 
 ## Il distretto (OvergrownArena / RuinsDistrict) che possiede `SunLight` e `WorldEnvironment`.
 @export var district: Node3D
@@ -87,10 +88,14 @@ func _apply_rendering() -> void:
 	_environment.ambient_light_energy = lerpf(_day_ambient_energy, NIGHT_AMBIENT_ENERGY, t)
 	_environment.ambient_light_color = _day_ambient_color.lerp(NIGHT_AMBIENT_COLOR, t)
 	_environment.fog_light_color = _day_fog_color.lerp(NIGHT_FOG_COLOR, t)
-	var sky := _environment.sky.sky_material as ProceduralSkyMaterial if _environment.sky != null else null
-	if sky != null:
-		sky.sky_top_color = _day_sky_top.lerp(NIGHT_SKY_TOP, t)
-		sky.sky_horizon_color = _day_sky_horizon.lerp(NIGHT_SKY_HORIZON, t)
+	var sky_material := _environment.sky.sky_material if _environment.sky != null else null
+	if sky_material is ProceduralSkyMaterial:
+		sky_material.sky_top_color = _day_sky_top.lerp(NIGHT_SKY_TOP, t)
+		sky_material.sky_horizon_color = _day_sky_horizon.lerp(NIGHT_SKY_HORIZON, t)
+	elif sky_material is ShaderMaterial:
+		# Cielo dipinto (restyling 2026-10-11): stessi due colori come uniform.
+		sky_material.set_shader_parameter(&"top_color", _day_sky_top.lerp(NIGHT_SKY_TOP, t))
+		sky_material.set_shader_parameter(&"horizon_color", _day_sky_horizon.lerp(NIGHT_SKY_HORIZON, t))
 
 
 # Cerca sole e ambiente nel distretto e legge da loro il profilo di giorno.
@@ -105,10 +110,13 @@ func _find_rendering_nodes() -> bool:
 	_day_ambient_energy = _environment.ambient_light_energy
 	_day_ambient_color = _environment.ambient_light_color
 	_day_fog_color = _environment.fog_light_color
-	var sky := _environment.sky.sky_material as ProceduralSkyMaterial if _environment.sky != null else null
-	if sky != null:
-		_day_sky_top = sky.sky_top_color
-		_day_sky_horizon = sky.sky_horizon_color
+	var sky_material := _environment.sky.sky_material if _environment.sky != null else null
+	if sky_material is ProceduralSkyMaterial:
+		_day_sky_top = sky_material.sky_top_color
+		_day_sky_horizon = sky_material.sky_horizon_color
+	elif sky_material is ShaderMaterial:
+		_day_sky_top = sky_material.get_shader_parameter(&"top_color")
+		_day_sky_horizon = sky_material.get_shader_parameter(&"horizon_color")
 	return true
 
 

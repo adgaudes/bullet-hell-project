@@ -23,6 +23,7 @@ func _initialize() -> void:
 	await _test_terrain_textures()
 	await _test_ruin_textures()
 	await _test_vegetation_and_props()
+	await _test_sky_and_post()
 	await _frames(2)
 	print("PROTOTYPE01_TESTS %s failures=%d" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
@@ -120,6 +121,35 @@ func _test_vegetation_and_props() -> void:
 			if mat != null and mat.get_shader_parameter(&"textured") == true:
 				leaves_textured = true
 	_check(leaves_textured, "la chioma dell'albero usa le cartelle di foglie dipinte")
+	await _close_scene()
+
+
+func _test_sky_and_post() -> void:
+	print("sky and post")
+	await _open_scene()
+	var env: Environment = (_scene.get_node(^"District/WorldEnvironment") as WorldEnvironment).environment
+	var sky_material := env.sky.sky_material if env.sky != null else null
+	_check(sky_material is ShaderMaterial, "il cielo e dipinto (ShaderMaterial)")
+	_check(env.tonemap_mode == Environment.TONE_MAPPER_ACES, "tonemap ACES")
+	_check(env.adjustment_enabled and env.adjustment_saturation >= 1.2, "saturazione alzata")
+	_check(env.ambient_light_source == Environment.AMBIENT_SOURCE_COLOR and env.ambient_light_color.b > env.ambient_light_color.r, "ambiente freddo: ombre blu-viola")
+	var sun: DirectionalLight3D = _scene.get_node(^"District/SunLight")
+	_check(sun.light_angular_distance > 0.0, "il sole ha un diametro angolare (ombre morbide)")
+	var day_night: DayNightCycle = _scene.get_node(^"Run").day_night
+	var day_top: Color = (sky_material as ShaderMaterial).get_shader_parameter(&"top_color") if sky_material is ShaderMaterial else Color.WHITE
+	day_night.night_start_seconds = 1.0  # 0 spegnerebbe il ciclo
+	day_night.dusk_seconds = 1.0
+	day_night.advance(5.0)
+	var night_top: Color = (sky_material as ShaderMaterial).get_shader_parameter(&"top_color") if sky_material is ShaderMaterial else Color.WHITE
+	_check(night_top.v < day_top.v, "di notte il cielo dipinto si scurisce")
+	var player := _scene.get_node(^"Player")
+	var suit_rim := false
+	for mi: MeshInstance3D in player.find_children("*", "MeshInstance3D", true, false):
+		for surface in mi.mesh.get_surface_count():
+			var mat := mi.get_surface_override_material(surface) as StandardMaterial3D
+			if mat != null and mat.rim_enabled:
+				suit_rim = true
+	_check(suit_rim, "l'ingegnere ha la rim light nel materiale della tuta")
 	await _close_scene()
 
 

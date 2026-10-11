@@ -80,8 +80,16 @@ static func textured_paint(mesh: Mesh, tint_linear := Color.WHITE, emission_ener
 	material.albedo_color = tint_linear.linear_to_srgb()
 	material.roughness = standard.roughness
 	copy_normal_map(standard, material)
+	enable_rim(material)
 	material.next_pass = outline_material()
 	return material
+
+
+## Rim light leggera (restyling 2026-10-11): stacca gli attori dal suolo come in Hades II.
+static func enable_rim(material: BaseMaterial3D) -> void:
+	material.rim_enabled = true
+	material.rim = 0.35
+	material.rim_tint = 0.5
 
 
 ## Porta la normal map cotta (D-074) da un materiale importato a uno costruito dal codice.
