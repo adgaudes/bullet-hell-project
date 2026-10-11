@@ -12,6 +12,7 @@ func _initialize() -> void:
 	await _frames(1)
 	_test_palette()
 	_test_theme_on_root()
+	await _test_logo()
 	await _test_screens_focus()
 	await _frames(2)
 	print("PROTOTYPE01_TESTS %s failures=%d" % ["PASS" if _failures == 0 else "FAIL", _failures])
@@ -59,6 +60,25 @@ func _test_palette() -> void:
 
 func _test_theme_on_root() -> void:
 	_check(root.theme != null and root.theme.default_font == UiPalette.text_font(), "l'autoload UiTheme applica il tema alla radice")
+
+
+func _test_logo() -> void:
+	for layout in ["wide", "stacked"]:
+		var logo := GameLogo.new()
+		logo.layout = layout
+		root.add_child(logo)
+		await _frames(1)
+		_check(logo.letter_count() == GameLogo.TITLE.length(), "%s: una Label per lettera" % layout)
+		_check(logo.custom_minimum_size.x > 300 and logo.custom_minimum_size.y > 80, "%s: dimensione calcolata" % layout)
+		for p in [0.0, 0.5, 1.0]:
+			logo.set_letter_progress(p)
+			logo.set_nail_progress(p)
+			logo.set_subtitle_progress(p)
+			logo.set_grass_progress(p)
+		logo.set_all(1.0)
+		_check(logo.is_complete(), "%s: set_all(1) completa il logo" % layout)
+		logo.queue_free()
+	await _frames(1)
 
 
 ## Ogni pulsante delle schermate eredita dal tema un focus diverso dal normale.
