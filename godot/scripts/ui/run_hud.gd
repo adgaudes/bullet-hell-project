@@ -58,29 +58,12 @@ func _ready() -> void:
 
 	_xp_bar = ProgressBar.new()
 	_xp_bar.show_percentage = false
-	_xp_bar.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
-	_xp_bar.offset_top = -8
-	_xp_bar.offset_bottom = 0
 	_xp_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var fill := StyleBoxFlat.new()
-	fill.bg_color = XP_COLOR
-	_xp_bar.add_theme_stylebox_override(&"fill", fill)
-	var background := StyleBoxFlat.new()
-	background.bg_color = Color(0.0, 0.0, 0.0, 0.55)
-	_xp_bar.add_theme_stylebox_override(&"background", background)
+	_xp_bar.custom_minimum_size = Vector2(520, 14)
 	root.add_child(_xp_bar)
-	for side in [Control.PRESET_BOTTOM_LEFT, Control.PRESET_BOTTOM_RIGHT]:
-		var cap := ColorRect.new()
-		cap.color = UiPalette.BORDER
-		cap.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		root.add_child(cap)
-		cap.set_anchors_and_offsets_preset(side)
-		cap.offset_top = -14
-		cap.offset_bottom = 0
-		if side == Control.PRESET_BOTTOM_LEFT:
-			cap.offset_right = 6
-		else:
-			cap.offset_left = -6
+	_xp_bar.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM, Control.PRESET_MODE_MINSIZE, 12)
+	_xp_bar.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_xp_bar.grow_vertical = Control.GROW_DIRECTION_BEGIN
 
 	# Riga superiore: livello a sinistra, tempo al centro, abbattuti a destra.
 	var top := HBoxContainer.new()
@@ -90,46 +73,46 @@ func _ready() -> void:
 	top.offset_top = 16
 	top.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(top)
-	_level_label = _label(top, HORIZONTAL_ALIGNMENT_LEFT)
-	_level_label.add_theme_font_size_override(&"font_size", 22)
-	_time_label = _label(top, HORIZONTAL_ALIGNMENT_CENTER)
-	_time_label.add_theme_font_size_override(&"font_size", 28)
-	var day_box := HBoxContainer.new()
-	day_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	day_box.alignment = BoxContainer.ALIGNMENT_CENTER
-	day_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	day_box.add_theme_constant_override(&"separation", 8)
-	top.add_child(day_box)
+	# Sinistra: vita e livello su una striscia; centro: tempo e giorno; destra: abbattuti.
+	var left := _strip(top, &"bolt", UiPalette.DANGER)
+	_health_row = HealthBolts.new()
+	_health_row.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	left.add_child(_health_row)
+	_level_label = _label(left, HORIZONTAL_ALIGNMENT_LEFT)
+	_level_label.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	_level_label.add_theme_font_size_override(&"font_size", 20)
+	_spacer(top)
+	var center := _strip(top, &"clock", UiPalette.TEXT_MUTED)
+	_time_label = _label(center, HORIZONTAL_ALIGNMENT_CENTER)
+	_time_label.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_time_label.add_theme_font_size_override(&"font_size", 26)
 	_day_dial = DayDial.new()
 	_day_dial.hide()
-	day_box.add_child(_day_dial)
-	_day_label = _label(day_box, HORIZONTAL_ALIGNMENT_LEFT)
+	center.add_child(_day_dial)
+	_day_label = _label(center, HORIZONTAL_ALIGNMENT_LEFT)
 	_day_label.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	_day_label.add_theme_font_size_override(&"font_size", 22)
+	_day_label.add_theme_font_size_override(&"font_size", 20)
 	_day_label.add_theme_color_override(&"font_color", DAY_COLOR)
 	_day_label.hide()
-	_kills_label = _label(top, HORIZONTAL_ALIGNMENT_RIGHT)
-	_kills_label.add_theme_font_size_override(&"font_size", 22)
+	_spacer(top)
+	var right := _strip(top, &"skull", UiPalette.TEXT_MUTED)
+	_kills_label = _label(right, HORIZONTAL_ALIGNMENT_RIGHT)
+	_kills_label.size_flags_horizontal = Control.SIZE_SHRINK_END
+	_kills_label.add_theme_font_size_override(&"font_size", 20)
 
-	_health_row = HealthBolts.new()
-	_health_row.set_anchors_preset(Control.PRESET_TOP_LEFT)
-	_health_row.offset_left = 24
-	_health_row.offset_top = 58
 	# Modalita del tool quando non e la solita (lampione: costo e contatore).
 	_tool_label = Label.new()
 	_tool_label.set_anchors_preset(Control.PRESET_TOP_LEFT)
 	_tool_label.offset_left = 24
-	_tool_label.offset_top = 90
+	_tool_label.offset_top = 70
 	_tool_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_tool_label.theme_type_variation = &"HudLabel"
 	_tool_label.add_theme_font_size_override(&"font_size", 18)
 	_tool_label.hide()
 	root.add_child(_tool_label)
-	root.add_child(_health_row)
 
 	# Annuncio del boss: scritta sotto la riga superiore e freccia verso la direzione di arrivo.
 	_warning_plate = PanelContainer.new()
-	_warning_plate.add_theme_stylebox_override(&"panel", UiPalette.panel_box(true))
 	_warning_plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_warning_plate.hide()
 	root.add_child(_warning_plate)
@@ -157,8 +140,8 @@ func _ready() -> void:
 	_boss_box.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
 	_boss_box.offset_left = -260
 	_boss_box.offset_right = 260
-	_boss_box.offset_top = -96
-	_boss_box.offset_bottom = -46
+	_boss_box.offset_top = -92
+	_boss_box.offset_bottom = -36
 	_boss_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_boss_box.hide()
 	root.add_child(_boss_box)
@@ -172,10 +155,7 @@ func _ready() -> void:
 	_boss_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var boss_fill := StyleBoxFlat.new()
 	boss_fill.bg_color = BOSS_COLOR
-	_boss_bar.add_theme_stylebox_override(&"fill", boss_fill)
-	var boss_background := StyleBoxFlat.new()
-	boss_background.bg_color = Color(0.0, 0.0, 0.0, 0.6)
-	_boss_bar.add_theme_stylebox_override(&"background", boss_background)
+	_boss_bar.add_theme_stylebox_override(&"fill", UiPalette.plate("gauge_fill", boss_fill, 11.0, 0.0, Vector4(3, 3, 3, 3), BOSS_COLOR))
 	_boss_box.add_child(_boss_bar)
 
 	# Comandi di gioco, in basso a sinistra.
@@ -423,6 +403,48 @@ func set_kills(kills: int) -> void:
 static func format_time(seconds: float) -> String:
 	var total := int(seconds)
 	return "%02d:%02d" % [total / 60, total % 60]
+
+
+## Striscia di lamiera (strip.png) con un'icona a sinistra; il contenuto va nell'HBox restituito.
+func _strip(parent: Control, icon_kind: StringName, icon_tint: Color) -> HBoxContainer:
+	var plate := PanelContainer.new()
+	plate.add_theme_stylebox_override(&"panel", UiPalette.plate("strip", UiPalette.panel_box(true), 18.0, 0.0, Vector4(16, 4, 16, 4)))
+	plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	parent.add_child(plate)
+	var row := HBoxContainer.new()
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_theme_constant_override(&"separation", 10)
+	plate.add_child(row)
+	var icon := UiIcon.make(icon_kind, 24.0, icon_tint)
+	icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(icon)
+	return row
+
+
+func _spacer(parent: Control) -> void:
+	var spacer := Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	parent.add_child(spacer)
+
+
+## La striscia (PanelContainer) che contiene [param control], o null.
+func strip_of(control: Control) -> PanelContainer:
+	var node := control.get_parent()
+	while node != null and not (node is PanelContainer):
+		node = node.get_parent()
+	return node as PanelContainer
+
+
+## L'icona (UiIcon) che precede [param control] nella sua riga, o null.
+func icon_before(control: Control) -> UiIcon:
+	var row := control.get_parent()
+	if row == null:
+		return null
+	for child in row.get_children():
+		if child is UiIcon:
+			return child
+	return null
 
 
 func _label(parent: Control, align: HorizontalAlignment) -> Label:

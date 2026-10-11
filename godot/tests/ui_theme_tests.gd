@@ -351,6 +351,15 @@ func _test_hud() -> void:
 	_check(not hud._day_dial.visible, "ciclo spento: quadrante nascosto")
 	_check(hud._level_label.get_theme_font(&"font") == UiPalette.title_font(), "numeri dell'HUD in slab")
 	_check(hud._xp_bar.anchor_top == 1.0, "barra esperienza in basso")
+	var xp_fill := hud._xp_bar.get_theme_stylebox(&"fill") as StyleBoxTexture
+	_check(xp_fill != null and xp_fill.texture.resource_path.ends_with("gauge_fill.png"), "barra esperienza come tubo (gauge_fill)")
+	_check(hud.strip_of(hud._health_row) != null and (hud.strip_of(hud._health_row).get_theme_stylebox(&"panel") as StyleBoxTexture).texture.resource_path.ends_with("strip.png"), "vita su una striscia di lamiera")
+	_check(hud.icon_before(hud._kills_label) != null and hud.icon_before(hud._kills_label).kind == &"skull", "teschio prima dei rottamati")
+	_check(hud.icon_before(hud._time_label) != null and hud.icon_before(hud._time_label).kind == &"clock", "orologio prima del tempo")
+	_check(hud.icon_before(hud._health_row) != null and hud.icon_before(hud._health_row).kind == &"bolt", "bullone prima della vita")
+	_check(not hud._warning_plate.has_theme_stylebox_override(&"panel"), "targa degli avvisi dal tema (cuoio e rivetti)")
+	var boss_fill := hud._boss_bar.get_theme_stylebox(&"fill") as StyleBoxTexture
+	_check(boss_fill != null and boss_fill.modulate_color.is_equal_approx(RunHud.BOSS_COLOR), "barra del boss come tubo arancione")
 	hud.show_notice("PROVA DI UN AVVISO MOLTO PIU LUNGO DEL PRECEDENTE", 1.0, UiPalette.TEXT)
 	_check(hud._warning_plate.visible and hud._boss_warning.visible, "avviso su targa")
 	await _frames(2)
