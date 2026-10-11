@@ -149,8 +149,12 @@ func press(id: StringName) -> void:
 		_buttons[id].pressed.emit()
 
 
+## Testo della carta piu il segno di stato ("V" completato, "X" bloccato), per test e automazione.
 func button_text(id: StringName) -> String:
-	return _buttons[id].text if _buttons.has(id) else ""
+	if not _buttons.has(id):
+		return ""
+	var mark := "V" if is_completed(id) else ("" if is_unlocked(id) else "X")
+	return "%s\n%s" % [_buttons[id].text, mark]
 
 
 ## Icona sulla carta: `check` completato, `lock` bloccato o in costruzione, vuoto se giocabile.
@@ -183,8 +187,7 @@ func _refresh() -> void:
 		var entry: Dictionary = LevelCatalog.all()[i]
 		var id: StringName = entry.id
 		var button: Button = _buttons[id]
-		var mark := "V" if is_completed(id) else ("" if is_unlocked(id) else "X")
-		button.text = "%d  %s\n%s" % [i + 1, (entry.title as String).to_upper(), mark]
+		button.text = "%d  %s" % [i + 1, (entry.title as String).to_upper()]
 		var color := INK_LOCKED
 		if is_completed(id):
 			color = INK_GREEN

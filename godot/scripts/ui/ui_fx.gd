@@ -24,28 +24,54 @@ var _streams: Dictionary[StringName, AudioStreamWAV] = {}
 var _play_counts: Dictionary[StringName, int] = {}
 var _scene_changes := 0
 var _time := 0.0
+var _last_sound_frame := -1
 
 
 func _ready() -> void:
 	layer = 110
 	process_mode = Node.PROCESS_MODE_ALWAYS
-	_veil = ColorRect.new()
-	_veil.name = "Veil"
-	_veil.color = Color(UiPalette.BG, 0.0)
-	_veil.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_veil.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_veil.visible = false
-	add_child(_veil)
 	_cursor = UiIcon.make(&"arrow_right", CURSOR_SIZE, UiPalette.BORDER_LIGHT)
 	_cursor.name = "Cursor"
 	_cursor.size = Vector2(CURSOR_SIZE, CURSOR_SIZE)
 	_cursor.visible = false
 	add_child(_cursor)
+	# Il velo sta sopra il cursore e, durante la transizione, ferma l'input.
+	_veil = ColorRect.new()
+	_veil.name = "Veil"
+	_veil.color = Color(UiPalette.BG, 0.0)
+	_veil.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_veil.mouse_filter = Control.MOUSE_FILTER_STOP
+	_veil.visible = false
+	add_child(_veil)
 	_audio = AudioStreamPlayer.new()
 	_audio.bus = &"SFX" if AudioServer.get_bus_index(&"SFX") >= 0 else &"Master"
+	_audio.max_polyphony = 4
 	add_child(_audio)
 	get_tree().node_added.connect(_on_node_added)
 	get_viewport().gui_focus_changed.connect(_on_focus_changed)
+	# I pulsanti gia nell'albero (autoload caricati prima, come PauseMenu).
+	_hook_existing(get_tree().root)
+
+
+func _hook_existing(node: Node) -> void:
+	_on_node_added(node)
+	for child in node.get_children():
+		_hook_existing(child)
+
+
+## Vero se [param button] ha il feedback di UiFx collegato.
+func is_hooked(button: BaseButton) -> bool:
+	return button.pressed.is_connected(_on_button_pressed.bind(button))
+
+
+func polyphony() -> int:
+	return _audio.max_polyphony
+
+
+## Durante una transizione tutto l'input si ferma: niente pausa sopra la scena nuova.
+func _input(event: InputEvent) -> void:
+	if is_transitioning and not event is InputEventMouseMotion:
+		get_viewport().set_input_as_handled()
 
 
 func cursor_target() -> Control:
@@ -74,6 +100,12 @@ func play_count(id: StringName) -> int:
 
 ## Suono di interfaccia; sintetizzato alla prima richiesta e tenuto in cache.
 func play(id: StringName, volume_db := -8.0) -> void:
+	# Il tic del cursore cede il passo: se nello stesso frame suona gia un'altra cosa
+	# (conferma, pannello che si apre) non si sente un tic sopra.
+	var frame := Engine.get_process_frames()
+	if id == &"ui_move" and _last_sound_frame == frame:
+		return
+	_last_sound_frame = frame
 	_play_counts[id] = play_count(id) + 1
 	if not _streams.has(id):
 		var stream := SfxLibrary.build(id)
@@ -95,7 +127,10 @@ func pop_in(control: Control) -> void:
 	var tween := control.create_tween()
 	tween.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
 	tween.set_parallel(true)
-	tween.tween_property(control, "scale", Vector2.ONE, POP_SECONDS).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	# Il pivot si ricalcola a ogni passo: al primo frame il layout puo non esserci ancora.
+	tween.tween_method(func(value: float) -> void:
+		control.pivot_offset = control.size * 0.5
+		control.scale = Vector2(value, value), 0.96, 1.0, POP_SECONDS).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tween.tween_property(control, "modulate:a", 1.0, POP_SECONDS)
 	play(&"ui_open", -10.0)
 
@@ -135,7 +170,8 @@ func _transition(change: Callable) -> void:
 func _on_node_added(node: Node) -> void:
 	if node is BaseButton:
 		var button := node as BaseButton
-		button.pressed.connect(_on_button_pressed.bind(button))
+		if not is_hooked(button):
+			button.pressed.connect(_on_button_pressed.bind(button))
 
 
 func _on_button_pressed(button: BaseButton) -> void:
@@ -154,7 +190,7 @@ func _on_button_pressed(button: BaseButton) -> void:
 
 func _on_focus_changed(control: Control) -> void:
 	_target = control
-	if not cursor_enabled or control == null:
+	if not cursor_enabled or control == null or is_transitioning:
 		_hide_cursor()
 		return
 	play(&"ui_move", -12.0)
@@ -175,12 +211,13 @@ func _hide_cursor() -> void:
 
 func _process(delta: float) -> void:
 	_time += delta
-	if not _cursor.visible:
-		return
 	var target := cursor_target()
-	if target == null or not target.is_visible_in_tree() or not target.has_focus():
+	if target == null or not target.is_visible_in_tree() or not target.has_focus() or is_transitioning or not cursor_enabled:
 		_hide_cursor()
 		return
+	if not _cursor.visible:
+		_cursor.visible = true
+		_cursor.position = _cursor_rest(target)
 	# Insegue il bersaglio ogni frame (anche se si sposta per layout, scroll o pop-in)
 	# con un ritardo esponenziale di CURSOR_SECONDS, e oscilla piano.
 	var rest := _cursor_rest(target) + Vector2(sin(_time * 6.0) * 2.0, 0.0)

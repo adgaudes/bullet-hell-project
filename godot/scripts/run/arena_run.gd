@@ -590,19 +590,21 @@ func _build_courtyard_walls() -> void:
 	grid.set_cell_states(cells, TerrainState.CellState.RAISED)
 
 
+## Con il velo il gioco resta fermo finche la scena nuova non e caricata (lo sblocca
+## UiFx al cambio); senza velo si riparte subito.
 func restart() -> void:
-	get_tree().paused = false
 	var fx := get_node_or_null(^"/root/UiFx") as UiFxService
 	if fx == null:
+		get_tree().paused = false
 		get_tree().reload_current_scene()
 	else:
 		fx.fade_reload()
 
 
 func return_to_menu() -> void:
-	get_tree().paused = false
 	var fx := get_node_or_null(^"/root/UiFx") as UiFxService
 	if fx == null:
+		get_tree().paused = false
 		get_tree().change_scene_to_file(MAIN_MENU_SCENE)
 	else:
 		fx.fade_to_scene(MAIN_MENU_SCENE)
@@ -613,9 +615,9 @@ func start_next_level() -> void:
 	var next := LevelCatalog.next_of(level_id)
 	if not LevelCatalog.is_playable(next):
 		return
-	get_tree().paused = false
 	var fx := get_node_or_null(^"/root/UiFx") as UiFxService
 	if fx == null:
+		get_tree().paused = false
 		get_tree().change_scene_to_file(LevelCatalog.scene_of(next))
 	else:
 		fx.fade_to_scene(LevelCatalog.scene_of(next))

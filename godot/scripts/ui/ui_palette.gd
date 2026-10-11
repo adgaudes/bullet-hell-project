@@ -229,10 +229,11 @@ static func build_theme() -> Theme:
 	var slider_fill := StyleBoxFlat.new()
 	slider_fill.bg_color = BORDER
 	slider_fill.set_corner_radius_all(3)
-	var gauge_content := Vector4(6, 4, 6, 4)
-	theme.set_stylebox(&"slider", &"HSlider", plate("gauge", slider_track, 11.0, 0.0, gauge_content))
-	theme.set_stylebox(&"grabber_area", &"HSlider", plate("gauge_fill", slider_fill, 11.0, 0.0, gauge_content, BORDER_LIGHT))
-	theme.set_stylebox(&"grabber_area_highlight", &"HSlider", plate("gauge_fill", slider_fill, 11.0, 0.0, gauge_content, BORDER_LIGHT))
+	# Tubo alto 24: margini 6 (si scala senza tagli anche a 14-16 px) e slider alto almeno 24.
+	var gauge_content := Vector4(8, 12, 8, 12)
+	theme.set_stylebox(&"slider", &"HSlider", plate("gauge", slider_track, 6.0, 0.0, gauge_content))
+	theme.set_stylebox(&"grabber_area", &"HSlider", plate("gauge_fill", slider_fill, 6.0, 0.0, gauge_content, BORDER_LIGHT))
+	theme.set_stylebox(&"grabber_area_highlight", &"HSlider", plate("gauge_fill", slider_fill, 6.0, 0.0, gauge_content, BORDER_LIGHT))
 	var knob := load(TEXTURE_DIR + "knob.png") as Texture2D if has_textures() else null
 	if knob != null:
 		theme.set_icon(&"grabber", &"HSlider", knob)
@@ -244,6 +245,6 @@ static func build_theme() -> Theme:
 	bar_bg.set_border_width_all(1)
 	var bar_fill := StyleBoxFlat.new()
 	bar_fill.bg_color = XP
-	theme.set_stylebox(&"background", &"ProgressBar", plate("gauge", bar_bg, 11.0, 0.0, Vector4(3, 3, 3, 3)))
-	theme.set_stylebox(&"fill", &"ProgressBar", plate("gauge_fill", bar_fill, 11.0, 0.0, Vector4(3, 3, 3, 3), XP))
+	theme.set_stylebox(&"background", &"ProgressBar", plate("gauge", bar_bg, 6.0, 0.0, Vector4(3, 3, 3, 3)))
+	theme.set_stylebox(&"fill", &"ProgressBar", plate("gauge_fill", bar_fill, 6.0, 0.0, Vector4(3, 3, 3, 3), XP))
 	return theme

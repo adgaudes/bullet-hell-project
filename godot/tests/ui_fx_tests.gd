@@ -11,6 +11,9 @@ func _initialize() -> void:
 	await _test_cursor_follows_focus()
 	await _test_pop_in()
 	await _test_fade_once()
+	await _test_existing_buttons_and_reparent()
+	await _test_polyphony()
+	await _test_transition_blocks_pause_and_cursor()
 	await _frames(2)
 	print("PROTOTYPE01_TESTS %s failures=%d" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
@@ -104,3 +107,74 @@ func _test_fade_once() -> void:
 	await _frames(60)
 	_check(fx.scene_changes() == changes + 1, "una sola scena caricata (%d)" % (fx.scene_changes() - changes))
 	_check(not fx.is_transitioning and fx.veil_alpha() < 0.01, "velo riaperto alla fine")
+
+
+## I pulsanti gia nell'albero prima di UiFx (autoload PauseMenu) sono agganciati, e un
+## pulsante che rientra nell'albero non viene collegato due volte.
+func _test_existing_buttons_and_reparent() -> void:
+	var fx := _fx()
+	var resume: Button = root.get_node("PauseMenu/%ResumeButton")
+	_check(fx.is_hooked(resume), "Riprendi della pausa e agganciato a UiFx")
+	var holder := Control.new()
+	root.add_child(holder)
+	var button := Button.new()
+	holder.add_child(button)
+	await _frames(1)
+	holder.remove_child(button)
+	holder.add_child(button)
+	await _frames(1)
+	var links := 0
+	for connection in button.pressed.get_connections():
+		if connection.callable.get_object() == fx:
+			links += 1
+	_check(links == 1, "un pulsante che rientra nell'albero resta collegato una volta (%d)" % links)
+	button.queue_free()
+	holder.queue_free()
+	await _frames(1)
+
+
+## Piu suoni nello stesso frame non si cancellano, e il tic del cursore cede il passo.
+func _test_polyphony() -> void:
+	var fx := _fx()
+	_check(fx.polyphony() >= 4, "almeno quattro voci per i suoni di interfaccia (%d)" % fx.polyphony())
+	var button := Button.new()
+	root.add_child(button)
+	await _frames(1)
+	var moves := fx.play_count(&"ui_move")
+	fx.play(&"ui_confirm")
+	button.grab_focus()
+	_check(fx.play_count(&"ui_move") == moves, "ui_move saltato se nello stesso frame suona gia un altro suono")
+	await _frames(2)
+	var other := Button.new()
+	root.add_child(other)
+	await _frames(1)
+	other.grab_focus()
+	_check(fx.play_count(&"ui_move") == moves + 1, "ui_move suona quando e solo")
+	button.queue_free()
+	other.queue_free()
+	await _frames(1)
+
+
+## Durante il velo l'azione `pause` non apre la pausa e il cursore non compare.
+func _test_transition_blocks_pause_and_cursor() -> void:
+	var fx := _fx()
+	var pause := root.get_node("PauseMenu")
+	pause.set(&"enabled", true)
+	var button := Button.new()
+	root.add_child(button)
+	await _frames(1)
+	fx.fade_to_scene("res://scenes/main/main_menu.tscn")
+	await _frames(3)
+	var event := InputEventAction.new()
+	event.action = &"pause"
+	event.pressed = true
+	Input.parse_input_event(event)
+	await _frames(2)
+	button.grab_focus()
+	await _frames(2)
+	_check(not fx.cursor_visible(), "niente cursore sopra il velo")
+	await _frames(60)
+	_check(not pause.call(&"is_open"), "la pausa premuta durante il velo non resta aperta")
+	if is_instance_valid(button):
+		button.queue_free()
+	await _frames(1)

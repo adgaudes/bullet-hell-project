@@ -59,7 +59,7 @@ func _ready() -> void:
 	_xp_bar = ProgressBar.new()
 	_xp_bar.show_percentage = false
 	_xp_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_xp_bar.custom_minimum_size = Vector2(520, 14)
+	_xp_bar.custom_minimum_size = Vector2(520, 16)
 	root.add_child(_xp_bar)
 	_xp_bar.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM, Control.PRESET_MODE_MINSIZE, 12)
 	_xp_bar.grow_horizontal = Control.GROW_DIRECTION_BOTH
@@ -151,11 +151,11 @@ func _ready() -> void:
 	_boss_name_label.add_theme_color_override(&"font_color", BOSS_COLOR)
 	_boss_bar = ProgressBar.new()
 	_boss_bar.show_percentage = false
-	_boss_bar.custom_minimum_size = Vector2(520, 14)
+	_boss_bar.custom_minimum_size = Vector2(520, 16)
 	_boss_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var boss_fill := StyleBoxFlat.new()
 	boss_fill.bg_color = BOSS_COLOR
-	_boss_bar.add_theme_stylebox_override(&"fill", UiPalette.plate("gauge_fill", boss_fill, 11.0, 0.0, Vector4(3, 3, 3, 3), BOSS_COLOR))
+	_boss_bar.add_theme_stylebox_override(&"fill", UiPalette.plate("gauge_fill", boss_fill, 6.0, 0.0, Vector4(3, 3, 3, 3), BOSS_COLOR))
 	_boss_box.add_child(_boss_bar)
 
 	# Comandi di gioco, in basso a sinistra.

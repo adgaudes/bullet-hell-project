@@ -95,6 +95,8 @@ func _test_textures() -> void:
 	var focus := theme.get_stylebox(&"focus", &"Button") as StyleBoxTexture
 	_check(focus != null and focus.expand_margin_left > 0.0, "il focus sborda con l'alone")
 	_check(theme.get_icon(&"grabber", &"HSlider").resource_path.ends_with("knob.png"), "pomello dello slider a rivetto")
+	var slider := theme.get_stylebox(&"slider", &"HSlider") as StyleBoxTexture
+	_check(slider != null and slider.content_margin_top + slider.content_margin_bottom >= slider.texture_margin_top * 2.0, "lo slider e alto quanto il tubo")
 
 
 ## Pittogrammi a poligoni (UiIcon) e suoni di interfaccia sintetizzati.
@@ -218,7 +220,7 @@ func _test_pause_and_settings() -> void:
 	var settings: Control = pause.get_node("%SettingsPanel")
 	var header: Label = settings.get_node("%Content/GraphicsHeader")
 	_check(header.theme_type_variation == &"SectionLabel", "intestazione Grafica in SectionLabel")
-	_check(settings.get_node_or_null("%Content/GraphicsRule") is ColorRect, "riga rame sotto Grafica")
+	_check(settings.get_node_or_null("%Content/GraphicsRule") is TextureRect and (settings.get_node("%Content/GraphicsRule") as TextureRect).texture.resource_path.ends_with("rule.png"), "linea di rame disegnata (rule.png) sotto Grafica")
 	var hand_sized := 0
 	for node in _descendants(pause):
 		if node is Control and (node as Control).has_theme_font_size_override(&"font_size"):
@@ -300,6 +302,10 @@ func _test_cards_and_panels() -> void:
 		if mark != expected_mark:
 			marks_ok = false
 	_check(marks_ok, "icona check/lock sulle carte della campagna")
+	var first: StringName = LevelCatalog.all()[0].id
+	_check(not campaign._buttons[first].text.contains("
+") and campaign.button_text(first).contains("
+"), "sulle carte niente riga con la lettera V/X (resta solo in button_text)")
 	_check_focus_distinct(campaign, "campagna", 2)
 	campaign.close()
 	campaign.queue_free()
@@ -363,6 +369,7 @@ func _test_hud() -> void:
 	_check(hud._xp_bar.anchor_top == 1.0, "barra esperienza in basso")
 	var xp_fill := hud._xp_bar.get_theme_stylebox(&"fill") as StyleBoxTexture
 	_check(xp_fill != null and xp_fill.texture.resource_path.ends_with("gauge_fill.png"), "barra esperienza come tubo (gauge_fill)")
+	_check(xp_fill != null and xp_fill.texture_margin_top * 2.0 <= hud._xp_bar.custom_minimum_size.y, "il tubo non viene tagliato in altezza (margini %.0f su %.0f)" % [xp_fill.texture_margin_top, hud._xp_bar.custom_minimum_size.y])
 	_check(hud.strip_of(hud._health_row) != null and (hud.strip_of(hud._health_row).get_theme_stylebox(&"panel") as StyleBoxTexture).texture.resource_path.ends_with("strip.png"), "vita su una striscia di lamiera")
 	_check(hud.icon_before(hud._kills_label) != null and hud.icon_before(hud._kills_label).kind == &"skull", "teschio prima dei rottamati")
 	_check(hud.icon_before(hud._time_label) != null and hud.icon_before(hud._time_label).kind == &"clock", "orologio prima del tempo")

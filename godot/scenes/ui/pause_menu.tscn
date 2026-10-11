@@ -1,7 +1,8 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://scripts/ui/pause_menu.gd" id="1_pause"]
 [ext_resource type="Script" path="res://scripts/ui/settings_menu.gd" id="2_settings"]
+[ext_resource type="Texture2D" path="res://assets/textures/ui/rule.png" id="3_rule"]
 
 [node name="PauseMenu" type="CanvasLayer"]
 layer = 100
@@ -106,10 +107,12 @@ theme_type_variation = &"SectionLabel"
 layout_mode = 2
 text = "Grafica"
 
-[node name="GraphicsRule" type="ColorRect" parent="Overlay/Center/SettingsPanel/Margin/Scroll/Content"]
-custom_minimum_size = Vector2(0, 2)
+[node name="GraphicsRule" type="TextureRect" parent="Overlay/Center/SettingsPanel/Margin/Scroll/Content"]
+custom_minimum_size = Vector2(0, 12)
 layout_mode = 2
-color = Color(0.71, 0.396, 0.176, 1)
+texture = ExtResource("3_rule")
+expand_mode = 1
+stretch_mode = 1
 
 [node name="PresetRow" type="HBoxContainer" parent="Overlay/Center/SettingsPanel/Margin/Scroll/Content"]
 layout_mode = 2
@@ -310,10 +313,12 @@ theme_type_variation = &"SectionLabel"
 layout_mode = 2
 text = "Audio"
 
-[node name="AudioRule" type="ColorRect" parent="Overlay/Center/SettingsPanel/Margin/Scroll/Content"]
-custom_minimum_size = Vector2(0, 2)
+[node name="AudioRule" type="TextureRect" parent="Overlay/Center/SettingsPanel/Margin/Scroll/Content"]
+custom_minimum_size = Vector2(0, 12)
 layout_mode = 2
-color = Color(0.71, 0.396, 0.176, 1)
+texture = ExtResource("3_rule")
+expand_mode = 1
+stretch_mode = 1
 
 [node name="MasterVolumeRow" type="HBoxContainer" parent="Overlay/Center/SettingsPanel/Margin/Scroll/Content"]
 layout_mode = 2
@@ -372,10 +377,12 @@ theme_type_variation = &"SectionLabel"
 layout_mode = 2
 text = "Controller"
 
-[node name="ControlsRule" type="ColorRect" parent="Overlay/Center/SettingsPanel/Margin/Scroll/Content"]
-custom_minimum_size = Vector2(0, 2)
+[node name="ControlsRule" type="TextureRect" parent="Overlay/Center/SettingsPanel/Margin/Scroll/Content"]
+custom_minimum_size = Vector2(0, 12)
 layout_mode = 2
-color = Color(0.71, 0.396, 0.176, 1)
+texture = ExtResource("3_rule")
+expand_mode = 1
+stretch_mode = 1
 
 [node name="CameraRow" type="HBoxContainer" parent="Overlay/Center/SettingsPanel/Margin/Scroll/Content"]
 layout_mode = 2

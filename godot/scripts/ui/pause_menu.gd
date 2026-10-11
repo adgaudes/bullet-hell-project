@@ -49,6 +49,8 @@ func _fx() -> UiFxService:
 func _input(event: InputEvent) -> void:
 	if event.is_echo():
 		return
+	if _fx() != null and _fx().is_transitioning:
+		return
 	# Esc e insieme `pause` e `ui_cancel`: a pannello aperto vale "Indietro", come B sul
 	# controller (chiude le Impostazioni anche nel menu iniziale, dove la pausa e spenta).
 	if _overlay.visible and event.is_action_pressed(&"ui_cancel"):
@@ -115,8 +117,11 @@ func return_to_menu() -> void:
 	var run := scene.find_child("Run", false, false) if scene != null else null
 	if run != null and run.has_method(&"abandon_run"):
 		run.call(&"abandon_run")
-	get_tree().paused = false
-	get_tree().change_scene_to_file(MAIN_MENU_SCENE)
+	if _fx() != null:
+		_fx().fade_to_scene(MAIN_MENU_SCENE)
+	else:
+		get_tree().paused = false
+		get_tree().change_scene_to_file(MAIN_MENU_SCENE)
 
 
 func is_open() -> bool:
