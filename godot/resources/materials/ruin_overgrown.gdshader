@@ -8,7 +8,6 @@ shader_type spatial;
 #include "res://resources/materials/noise.gdshaderinc"
 
 uniform sampler2DArray walls_albedo : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
-uniform sampler2DArray walls_normal : hint_normal, filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2DArray walls_orm : hint_default_white, filter_linear_mipmap_anisotropic, repeat_enable;
 // Ripetizioni della tile per metro sui muri.
 uniform float wall_tile_scale = 0.35;

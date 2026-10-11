@@ -21,6 +21,9 @@ enum BossPhase { WAITING, WARNING, ACTIVE, EXTRACTION, DEFEATED }
 
 ## Indicatori a bordo schermo (D-044): oltre questa distanza un punto e fuori vista.
 const MARKER_MIN_DISTANCE := 14.0
+## Scala degli indicatori con la distanza della camera (D-078): la soglia "fuori vista"
+## segue la finestra visibile come l'anello di comparsa.
+var marker_scale := 1.0
 const MARKER_MAX_DISTANCE := 130.0
 ## Quanti cortili e quanti depositi indicare, i piu vicini.
 const MARKERS_PER_KIND := 2
@@ -235,7 +238,7 @@ func current_markers() -> Array[Dictionary]:
 	for target in _marker_targets:
 		var offset: Vector3 = target.center - origin
 		var distance := Vector2(offset.x, offset.z).length()
-		if distance < MARKER_MIN_DISTANCE or distance > MARKER_MAX_DISTANCE:
+		if distance < marker_min_distance() or distance > MARKER_MAX_DISTANCE:
 			continue
 		by_kind[target.kind].append({
 			direction = Vector2(offset.x, offset.z), distance = distance, color = target.color, text = target.text,
@@ -249,7 +252,7 @@ func current_markers() -> Array[Dictionary]:
 	if boss_phase == BossPhase.ACTIVE and is_instance_valid(boss):
 		var offset := boss.global_position - origin
 		var distance := Vector2(offset.x, offset.z).length()
-		if distance >= MARKER_MIN_DISTANCE:
+		if distance >= marker_min_distance():
 			markers.append({direction = Vector2(offset.x, offset.z), distance = distance, color = MARKER_BOSS_COLOR, text = "BOSS"})
 	return markers
 
@@ -991,6 +994,11 @@ static func _seed_from_command_line() -> int:
 
 # --- Distanza della camera (D-078) ------------------------------------------------
 
+## Oltre questa distanza un punto e fuori vista con la distanza di camera corrente.
+func marker_min_distance() -> float:
+	return MARKER_MIN_DISTANCE * marker_scale
+
+
 ## Il rig della camera e fratello di questo nodo nelle scene dei livelli.
 func _camera_rig() -> IsometricCameraRig:
 	var parent := get_parent()
@@ -1012,6 +1020,7 @@ func _setup_camera_distance() -> void:
 ## L'anello di comparsa segue la finestra visibile: a 20 m di braccio si allarga di 4/3.
 func _on_camera_distance_changed(index: int, arm_m: float) -> void:
 	director.ring_scale = arm_m / 15.0
+	marker_scale = arm_m / 15.0
 	var settings := get_node_or_null(^"/root/GameSettings") as GameSettingsService
 	if settings != null and settings.camera_distance != index:
 		settings.set_camera_distance(index)

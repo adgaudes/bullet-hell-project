@@ -79,7 +79,7 @@ func _test_ruin_textures() -> void:
 	var pieces: Array[Node] = block.find_children("*", "MeshInstance3D", true, false) if block != null else []
 	var piece: MeshInstance3D = pieces[0] as MeshInstance3D if pieces.size() > 0 else null
 	var material := piece.material_override as ShaderMaterial if piece != null else null
-	for map in ["albedo", "normal", "orm"]:
+	for map in ["albedo", "orm"]:
 		_check(material != null and material.get_shader_parameter("walls_%s" % map) is TextureLayered, "i muri delle rovine usano l'array walls_%s" % map)
 	_check(piece != null and piece.get_instance_shader_parameter(&"base_tint") != null, "base_tint per istanza ancora impostata sui pezzi")
 	var crowns: MultiMeshInstance3D = district.find_child("RuinCrowns", true, false)
@@ -192,6 +192,10 @@ func _test_camera_distance() -> void:
 	Input.parse_input_event(release)
 	await _frames(2)
 	_check(rig.distance_index == 2, "Y passa al preset lontano")
+	var settings: GameSettingsService = root.get_node("GameSettings")
+	_check(settings.camera_distance == 2, "la distanza lontana si salva subito nelle impostazioni")
+	var run: ArenaRun = _scene.get_node(^"Run")
+	_check(run.marker_min_distance() > 18.0, "gli indicatori a bordo schermo seguono la camera lontana (%.1f m)" % run.marker_min_distance())
 	await _frames(45)
 	_check(absf(rig.current_arm_m() - 20.0) < 0.2, "il braccio arriva a 20 m in meno di 0,75 s (%.2f)" % rig.current_arm_m())
 	_check(director.ring_scale > 1.3 and director.ring_scale * director.tuning.spawn_ring_min >= 22.0, "l'anello di comparsa si allarga con la camera lontana (%.2f)" % director.ring_scale)
@@ -203,8 +207,8 @@ func _test_camera_distance() -> void:
 	Input.parse_input_event(wheel)
 	await _frames(2)
 	_check(rig.distance_index == 1, "la rotellina in su avvicina di un preset")
-	var settings: GameSettingsService = root.get_node("GameSettings")
-	_check(settings.camera_distance == 1, "la distanza si salva nelle impostazioni")
+	_check(settings.camera_distance == 1, "la distanza normale si salva nelle impostazioni")
+	_check(absf(run.marker_min_distance() - 14.0) < 0.01 or run.marker_min_distance() < 18.0, "gli indicatori tornano alla soglia normale")
 	settings.set_camera_distance(0)
 	await _frames(2)
 	_check(rig.distance_index == 0, "cambiare la distanza dalle impostazioni muove la camera")

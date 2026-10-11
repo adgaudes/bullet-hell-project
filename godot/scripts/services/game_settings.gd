@@ -91,11 +91,21 @@ var _unknown: Dictionary = {}
 
 
 func _ready() -> void:
-	# Sotto i test (SceneTree con script) si parte dai default: le impostazioni
-	# reali del giocatore non devono cambiare l'esito dei test.
+	# Sotto i test e gli strumenti (SceneTree con script) si parte dai default e si scrive
+	# su un file temporaneo per processo: le impostazioni reali del giocatore non devono
+	# cambiare l'esito dei test, ne essere riscritte da una suite (review dell'11 ottobre 2026).
 	if Engine.get_main_loop().get_script() == null:
 		load_settings()
+	else:
+		settings_path = "user://settings_test_%d.cfg" % OS.get_process_id()
 	apply_settings()
+
+
+func _exit_tree() -> void:
+	# Uscita dal gioco con una scrittura ancora in attesa: non si perde.
+	_flush_save()
+	if settings_path.begins_with("user://settings_test_"):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(settings_path))
 
 
 ## Ripristina i valori iniziali (preset Alto) senza salvare automaticamente.
@@ -128,9 +138,7 @@ func load_settings(path_override: String = "") -> Error:
 	var config := ConfigFile.new()
 	var error := config.load(settings_path)
 	if error == ERR_FILE_NOT_FOUND:
-		if is_steam_deck():
-			_apply_preset_values(Preset.STEAM_DECK)
-			preset = Preset.STEAM_DECK
+		_apply_deck_if_unchosen()
 		return OK
 	if error != OK:
 		return error
@@ -154,7 +162,17 @@ func load_settings(path_override: String = "") -> Error:
 	master_volume = _validated_volume(config.get_value("audio", "master_volume", master_volume), DEFAULT_MASTER_VOLUME)
 	sfx_volume = _validated_volume(config.get_value("audio", "sfx_volume", sfx_volume), DEFAULT_SFX_VOLUME)
 	_collect_unknown(config)
+	_apply_deck_if_unchosen()
 	return OK
+
+
+## Sul Deck il preset Steam Deck vale finche il giocatore non ne sceglie uno (anche con un
+## file vecchio, senza le chiavi dei preset).
+func _apply_deck_if_unchosen() -> void:
+	if preset_chosen or not is_steam_deck():
+		return
+	_apply_preset_values(Preset.STEAM_DECK)
+	preset = Preset.STEAM_DECK
 
 
 ## Salva tutti i valori correnti nel percorso configurato, piu le voci sconosciute.
@@ -382,11 +400,6 @@ func _flush_save() -> void:
 	var error := save_settings()
 	if error != OK:
 		push_error("Impossibile salvare le impostazioni: %s" % error_string(error))
-
-
-func _exit_tree() -> void:
-	# Uscita dal gioco con una scrittura ancora in attesa: non si perde.
-	_flush_save()
 
 
 func _apply_window_mode() -> void:

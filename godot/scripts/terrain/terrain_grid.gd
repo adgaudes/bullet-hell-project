@@ -20,9 +20,11 @@ signal rebuilt
 
 const CELL_SHADER := preload("res://resources/materials/terrain_cell.gdshader")
 ## Tile dipinte del suolo (restyling 2026-10-11), condivise con il piano dell'arena.
-const GROUND_ALBEDO := preload("res://assets/textures/surfaces/ground_albedo.png")
-const GROUND_NORMAL := preload("res://assets/textures/surfaces/ground_normal.png")
-const GROUND_ORM := preload("res://assets/textures/surfaces/ground_orm.png")
+## Caricate a runtime, non con preload: in un worktree nuovo sono puntatori LFS e un
+## preload fallito impedirebbe di compilare questo script e tutto cio che lo tipizza.
+const GROUND_ALBEDO_PATH := "res://assets/textures/surfaces/ground_albedo.png"
+const GROUND_NORMAL_PATH := "res://assets/textures/surfaces/ground_normal.png"
+const GROUND_ORM_PATH := "res://assets/textures/surfaces/ground_orm.png"
 ## Ripetizioni della tile per metro: una tile ogni 4 m.
 const TILE_SCALE := 0.25
 
@@ -245,9 +247,10 @@ func _make_material(batched: bool) -> ShaderMaterial:
 ## Passa le tile dipinte del suolo a un materiale che include surface_tiles.gdshaderinc
 ## (celle del terreno e piano dell'arena usano le stesse texture e la stessa scala).
 static func apply_ground_tiles(material: ShaderMaterial) -> void:
-	material.set_shader_parameter(&"ground_albedo", GROUND_ALBEDO)
-	material.set_shader_parameter(&"ground_normal", GROUND_NORMAL)
-	material.set_shader_parameter(&"ground_orm", GROUND_ORM)
+	for pair in [[&"ground_albedo", GROUND_ALBEDO_PATH], [&"ground_normal", GROUND_NORMAL_PATH], [&"ground_orm", GROUND_ORM_PATH]]:
+		var texture := load(pair[1]) if ResourceLoader.exists(pair[1]) else null
+		if texture != null:
+			material.set_shader_parameter(pair[0], texture)
 	material.set_shader_parameter(&"tile_scale", TILE_SCALE)
 
 

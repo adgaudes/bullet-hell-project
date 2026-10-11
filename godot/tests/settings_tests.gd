@@ -18,6 +18,7 @@ func _initialize() -> void:
 	await _test_volume_sliders()
 	await _test_aim_inversion()
 	_test_graphics_presets()
+	_test_isolation_and_deck()
 	print("PROTOTYPE01_TESTS %s failures=%d" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -396,3 +397,34 @@ func _check_settings_menu_rows(pause_menu: Node) -> void:
 	_check(volumetric.button_pressed == settings.volumetric_fog, "la spunta della volumetrica segue il servizio")
 	_check(menu.get_node("%Content").get_parent() is ScrollContainer, "il contenuto scorre")
 	settings.set_preset(before)
+
+
+## Review finale del restyling: le suite non devono toccare il file reale; il Deck si
+## applica anche con un file vecchio finche il giocatore non sceglie un preset; i livelli
+## bassi di SSAO e bagliore costano meno.
+func _test_isolation_and_deck() -> void:
+	print("isolation and deck")
+	var live: GameSettingsService = _settings()
+	_check(live.settings_path != "user://settings.cfg", "sotto test l'autoload non usa il file reale (%s)" % live.settings_path)
+	var s: GameSettingsService = GameSettingsScript.new()
+	s.settings_path = "user://settings_test_%d.cfg" % Time.get_ticks_usec()
+	var old := ConfigFile.new()
+	old.set_value("graphics", "fps_cap", 120)
+	old.save(s.settings_path)
+	OS.set_environment("SteamDeck", "1")
+	_check(s.load_settings() == OK and s.preset == GameSettingsService.Preset.STEAM_DECK and is_equal_approx(s.render_scale, 0.85) and s.fps_cap == 120,
+		"file vecchio sul Deck: preset Deck finche nessuno ha scelto, fps conservato")
+	s.preset_chosen = true
+	s.preset = GameSettingsService.Preset.HIGH
+	s.save_settings()
+	_check(s.load_settings() == OK and s.preset == GameSettingsService.Preset.HIGH, "preset scelto dal giocatore: il Deck non lo sovrascrive")
+	OS.set_environment("SteamDeck", "")
+	var env := Environment.new()
+	s.set_glow_quality(1)
+	s.apply_to_world(env, null)
+	_check(env.get_glow_level(2) > 0.0 and env.get_glow_level(1) == 0.0 and env.get_glow_level(3) == 0.0 and env.get_glow_level(5) == 0.0, "bagliore basso: un solo livello")
+	s.set_glow_quality(2)
+	s.apply_to_world(env, null)
+	_check(env.get_glow_level(5) > 0.0, "bagliore alto: piu livelli")
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(s.settings_path))
+	s.free()

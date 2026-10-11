@@ -19,11 +19,12 @@ const FOLIAGE_SHADER := preload("res://resources/materials/foliage.gdshader")
 const GRASS_SHADER := preload("res://resources/materials/grass_blades.gdshader")
 const ENV_BAKED_SHADER := preload("res://resources/materials/env_baked.gdshader")
 ## Tile dipinte dei muri (restyling 2026-10-11): 0 intonaco e mattoni, 1 muschio, 2 corteccia.
-const WALLS_ALBEDO := preload("res://assets/textures/surfaces/walls_albedo.png")
-const WALLS_NORMAL := preload("res://assets/textures/surfaces/walls_normal.png")
-const WALLS_ORM := preload("res://assets/textures/surfaces/walls_orm.png")
+## Caricate a runtime (`_surface_texture`), non con preload: in un worktree nuovo sono
+## puntatori LFS e un preload fallito bloccherebbe la compilazione.
+const WALLS_ALBEDO_PATH := "res://assets/textures/surfaces/walls_albedo.png"
+const WALLS_ORM_PATH := "res://assets/textures/surfaces/walls_orm.png"
 ## Tile dipinte delle piante: 0 ciuffi d'erba (tre colonne), 1 cartelle di foglie.
-const PLANTS_ALBEDO := preload("res://assets/textures/surfaces/plants_albedo.png")
+const PLANTS_ALBEDO_PATH := "res://assets/textures/surfaces/plants_albedo.png"
 ## Modelli generati da tools/blender/build_arena_assets.py (D-037), rifiniti con
 ## texture cotta (D-073).
 const CAR_MODEL := preload("res://assets/models/wrecked_car.glb")
@@ -283,16 +284,16 @@ func _make_materials() -> void:
 	_bush_material = ShaderMaterial.new()
 	_bush_material.shader = FOLIAGE_SHADER
 	_bush_material.set_shader_parameter(&"textured", true)
-	_bush_material.set_shader_parameter(&"plants_albedo", PLANTS_ALBEDO)
+	_set_surface_texture(_bush_material, &"plants_albedo", PLANTS_ALBEDO_PATH)
 	# Le chiome alte oscillano poco: lo spostamento cresce con la quota locale.
 	_canopy_material = ShaderMaterial.new()
 	_canopy_material.shader = FOLIAGE_SHADER
 	_canopy_material.set_shader_parameter(&"sway", 0.012)
 	_canopy_material.set_shader_parameter(&"textured", true)
-	_canopy_material.set_shader_parameter(&"plants_albedo", PLANTS_ALBEDO)
+	_set_surface_texture(_canopy_material, &"plants_albedo", PLANTS_ALBEDO_PATH)
 	_grass_material = ShaderMaterial.new()
 	_grass_material.shader = GRASS_SHADER
-	_grass_material.set_shader_parameter(&"plants_albedo", PLANTS_ALBEDO)
+	_set_surface_texture(_grass_material, &"plants_albedo", PLANTS_ALBEDO_PATH)
 	_grass_material.set_shader_parameter(&"sway", 0.05)
 	_litter_material = StandardMaterial3D.new()
 	_litter_material.vertex_color_use_as_albedo = true
@@ -575,9 +576,13 @@ func _fallen_slab(node_name: String, center: Vector2, footprint: Vector2, height
 
 ## Passa le tile dipinte dei muri a un materiale con ruin_overgrown.gdshader.
 static func apply_wall_tiles(material: ShaderMaterial) -> void:
-	material.set_shader_parameter(&"walls_albedo", WALLS_ALBEDO)
-	material.set_shader_parameter(&"walls_normal", WALLS_NORMAL)
-	material.set_shader_parameter(&"walls_orm", WALLS_ORM)
+	_set_surface_texture(material, &"walls_albedo", WALLS_ALBEDO_PATH)
+	_set_surface_texture(material, &"walls_orm", WALLS_ORM_PATH)
+
+
+static func _set_surface_texture(material: ShaderMaterial, uniform: StringName, path: String) -> void:
+	if ResourceLoader.exists(path):
+		material.set_shader_parameter(uniform, load(path))
 
 
 func _reset_ruin_details() -> void:
@@ -671,7 +676,7 @@ func _bush(base: Vector3, size: float, count_as_prop := true) -> void:
 	var tint := _pick(LEAF_TINTS)
 	for i in _rng.randi_range(2, 4):
 		var r := size * _rng.randf_range(0.35, 0.6)
-		var offset := Vector3(_rng.randf_range(-0.5, 0.5) * size, r * 0.35, _rng.randf_range(-0.5, 0.5) * size)
+		var offset := Vector3(_rng.randf_range(-0.5, 0.5) * size, -0.05, _rng.randf_range(-0.5, 0.5) * size)
 		# Ciuffo unitario scalato e girato: raggio r, altezza circa 1,3 r.
 		var basis := Basis(Vector3.UP, _rng.randf_range(0.0, TAU)).scaled(Vector3(r, r * 0.65, r))
 		var mi := _mesh_child(root, _bush_card_mesh(), _bush_material, Transform3D(basis, offset))

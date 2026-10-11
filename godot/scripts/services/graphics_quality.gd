@@ -50,6 +50,11 @@ static func apply(s: GameSettingsService, environment: Environment, sun: Directi
 		return
 	environment.ssao_enabled = s.ssao_quality > 0
 	environment.ssao_intensity = 1.0 if s.ssao_quality == 1 else 1.6
+	# La qualita dell'SSAO e globale del renderer: bassa = pochi campioni a meta risoluzione.
+	if s.ssao_quality == 1:
+		RenderingServer.environment_set_ssao_quality(RenderingServer.ENV_SSAO_QUALITY_VERY_LOW, true, 0.5, 2, 50.0, 300.0)
+	elif s.ssao_quality == 2:
+		RenderingServer.environment_set_ssao_quality(RenderingServer.ENV_SSAO_QUALITY_MEDIUM, true, 0.5, 2, 50.0, 300.0)
 	environment.ssil_enabled = s.gi_mode == 1
 	environment.sdfgi_enabled = s.gi_mode == 2
 	if s.gi_mode == 2:
@@ -58,6 +63,15 @@ static func apply(s: GameSettingsService, environment: Environment, sun: Directi
 		environment.sdfgi_use_occlusion = true
 	environment.glow_enabled = s.glow_quality > 0
 	environment.glow_intensity = 0.3 if s.glow_quality == 1 else 0.55
+	# Basso: un solo livello (meno passate di sfocatura); alto: tre livelli come l'arena.
+	for level in 7:
+		environment.set_glow_level(level, 0.0)
+	if s.glow_quality == 1:
+		environment.set_glow_level(2, 0.8)
+	elif s.glow_quality == 2:
+		environment.set_glow_level(1, 0.6)
+		environment.set_glow_level(3, 0.8)
+		environment.set_glow_level(5, 0.4)
 	environment.volumetric_fog_enabled = s.volumetric_fog
 	if s.volumetric_fog:
 		environment.volumetric_fog_density = 0.012
