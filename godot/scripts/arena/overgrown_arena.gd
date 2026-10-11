@@ -913,7 +913,13 @@ func _build_ground_cover() -> void:
 	# rigetto su 144k punti; l'ordine e mescolato con un passo primo, cosi se i posti
 	# finiscono prima della fine la copertura resta uniforme. I dati vanno dritti nel
 	# buffer del MultiMesh (16 float per istanza: trasformazione 3x4 e colore).
-	var wanted := grass_tufts + flowers + litter
+	# Densita della vegetazione dalle impostazioni grafiche (restyling 2026-10-11):
+	# vale alla prossima costruzione dell'arena, non a caldo.
+	var density := _vegetation_multiplier()
+	var tuft_target := int(grass_tufts * density)
+	var flower_target := int(flowers * density)
+	var litter_target := int(litter * density)
+	var wanted := tuft_target + flower_target + litter_target
 	var side := int(ceil(sqrt(float(wanted) * 2.0)))
 	var total := side * side
 	var pitch := limit * 2.0 / maxf(float(side), 1.0)
@@ -928,10 +934,10 @@ func _build_ground_cover() -> void:
 	tufts.resize(grass_tufts * 16)
 	flower_buffer.resize(flowers * 16)
 	litter_buffer.resize(litter * 16)
-	var flower_share := float(flowers) / float(maxi(wanted, 1))
-	var litter_share := float(litter) / float(maxi(wanted, 1))
+	var flower_share := float(flower_target) / float(maxi(wanted, 1))
+	var litter_share := float(litter_target) / float(maxi(wanted, 1))
 	for k in total:
-		if tuft_count >= grass_tufts and flower_count >= flowers and litter_count >= litter:
+		if tuft_count >= tuft_target and flower_count >= flower_target and litter_count >= litter_target:
 			break
 		var index := (k * stride) % total
 		var p := Vector2(-limit + (index % side + _rng.randf()) * pitch, -limit_z + (index / side + _rng.randf()) * pitch_z)
@@ -940,7 +946,7 @@ func _build_ground_cover() -> void:
 		var chance := _cover_chance(p)
 		var yaw := _rng.randf_range(0.0, TAU)
 		# I detriti stanno anche sul costruito (chance 0), dove l'erba non cresce.
-		if _rng.randf() < litter_share and litter_count < litter and chance >= 0.0:
+		if _rng.randf() < litter_share and litter_count < litter_target and chance >= 0.0:
 			var leaf := _rng.randf() < 0.45
 			var s := _rng.randf_range(0.6, 1.4)
 			var size := Vector3(0.22 * s, 0.015, 0.16 * s) if leaf else Vector3(0.14 * s, 0.07 * s, 0.11 * s)
@@ -950,11 +956,11 @@ func _build_ground_cover() -> void:
 			continue
 		if chance <= 0.0 or (chance < 1.0 and _rng.randf() > chance):
 			continue
-		if _rng.randf() < flower_share and flower_count < flowers:
+		if _rng.randf() < flower_share and flower_count < flower_target:
 			var s := _rng.randf_range(0.7, 1.3)
 			_write_instance(flower_buffer, flower_count, yaw, Vector3(s, s, s), Vector3(p.x, height, p.y), _pick(FLOWER_COLORS))
 			flower_count += 1
-		elif tuft_count < grass_tufts:
+		elif tuft_count < tuft_target:
 			var s := _rng.randf_range(0.7, 1.5)
 			_write_instance(tufts, tuft_count, yaw, Vector3(s, s * _rng.randf_range(0.8, 1.4), s), Vector3(p.x, height, p.y),
 				_pick(LEAF_TINTS) * _rng.randf_range(1.05, 1.45))
@@ -1160,5 +1166,28 @@ func _add_environment() -> void:
 	world_environment.environment = environment
 	world_environment.camera_attributes = camera_attributes
 	_add_generated(world_environment)
+	# Preset grafico (ombre, SSAO, GI, bagliore, volumetrica) dalle impostazioni, anche a caldo.
+	var settings := _game_settings()
+	if settings != null:
+		settings.apply_to_world(environment, get_node_or_null(^"SunLight") as DirectionalLight3D)
+		if not settings.changed.is_connected(_on_settings_changed):
+			settings.changed.connect(_on_settings_changed)
+
+
+## L'autoload non esiste in --check-only ne in alcune scene di test: si tollera l'assenza.
+func _game_settings() -> GameSettingsService:
+	return get_node_or_null(^"/root/GameSettings") as GameSettingsService if is_inside_tree() else null
+
+
+func _vegetation_multiplier() -> float:
+	var settings := _game_settings()
+	return settings.vegetation_multiplier() if settings != null else 1.0
+
+
+func _on_settings_changed() -> void:
+	var settings := _game_settings()
+	var world_environment := get_node_or_null(^"WorldEnvironment") as WorldEnvironment
+	if settings != null and world_environment != null and world_environment.environment != null:
+		settings.apply_to_world(world_environment.environment, get_node_or_null(^"SunLight") as DirectionalLight3D)
 
 

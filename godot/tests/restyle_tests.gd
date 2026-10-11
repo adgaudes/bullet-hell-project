@@ -24,6 +24,7 @@ func _initialize() -> void:
 	await _test_ruin_textures()
 	await _test_vegetation_and_props()
 	await _test_sky_and_post()
+	await _test_world_applies_preset()
 	await _frames(2)
 	print("PROTOTYPE01_TESTS %s failures=%d" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
@@ -150,6 +151,28 @@ func _test_sky_and_post() -> void:
 			if mat != null and mat.rim_enabled:
 				suit_rim = true
 	_check(suit_rim, "l'ingegnere ha la rim light nel materiale della tuta")
+	await _close_scene()
+
+
+func _test_world_applies_preset() -> void:
+	print("world applies preset")
+	var settings: GameSettingsService = root.get_node("GameSettings")
+	settings.set_preset(GameSettingsService.Preset.MAX)
+	await _open_scene()
+	var env: Environment = (_scene.get_node(^"District/WorldEnvironment") as WorldEnvironment).environment
+	_check(env.sdfgi_enabled and env.volumetric_fog_enabled, "l'arena nasce con il preset Massimo applicato")
+	settings.set_preset(GameSettingsService.Preset.STEAM_DECK)
+	await _frames(1)
+	_check(not env.sdfgi_enabled and not env.volumetric_fog_enabled and env.ssao_enabled, "cambiare preset a scena aperta aggiorna l'ambiente")
+	var district := _scene.get_node(^"District")
+	var tufts: MultiMeshInstance3D = district.find_child("GrassTufts", true, false)
+	var full_count := tufts.multimesh.instance_count
+	await _close_scene()
+	await _open_scene()
+	district = _scene.get_node(^"District")
+	tufts = district.find_child("GrassTufts", true, false)
+	_check(tufts.multimesh.instance_count < full_count, "con densita media l'erba ha meno istanze (%d < %d)" % [tufts.multimesh.instance_count, full_count])
+	settings.set_preset(GameSettingsService.Preset.HIGH)
 	await _close_scene()
 
 
