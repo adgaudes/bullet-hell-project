@@ -12,6 +12,22 @@ const vec3 RG_EARTH = vec3(0.44, 0.33, 0.21);
 const float RG_SLAB = 3.0;
 const float RG_ROAD_HALF = 4.5;
 
+// Maschere del suolo (restyling 2026-10-11): `road` (strada est-ovest), `dirt` (terra al
+// posto delle lastre) e `green` (copertura d'erba, stessa formula della copertura
+// vegetale). Le leggono ruins_ground.gdshader e terrain_cell.gdshader per scegliere la
+// tile dipinta, cosi piano e celle coincidono.
+void ruins_ground_layers(vec2 p, float plaza_radius, out float road, out float dirt, out float green) {
+	float road_d = abs(p.y);
+	road = 1.0 - smoothstep(RG_ROAD_HALF - 0.25, RG_ROAD_HALF + 0.25, road_d);
+	float crack = 1.0 - smoothstep(0.0, 0.018, abs(fbm(p * 0.35) - 0.5));
+	float edge = smoothstep(plaza_radius * 0.55, plaza_radius * 1.25, length(p));
+	float cover = fbm(p * 0.09 + vec2(3.7, 1.3)) + edge * 0.45 - 0.08
+		+ (value_noise(p * 2.7) - 0.5) * 0.08;
+	green = smoothstep(0.50, 0.56, cover);
+	green = max(green, crack * smoothstep(0.32, 0.5, cover));
+	dirt = smoothstep(0.42, 0.48, cover) * (1.0 - road);
+}
+
 vec3 ruins_ground_albedo(vec2 p, float plaza_radius, out float green) {
 	vec2 slab_id = floor(p / RG_SLAB);
 	vec2 slab_f = fract(p / RG_SLAB);

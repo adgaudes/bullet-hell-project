@@ -741,6 +741,7 @@ func _build_ground() -> void:
 	var material := ShaderMaterial.new()
 	material.shader = GROUND_SHADER
 	material.set_shader_parameter(&"plaza_radius", plaza_radius())
+	TerrainGrid.apply_ground_tiles(material)
 	var plane := PlaneMesh.new()
 	plane.size = Vector2(size.x, size.z)
 	_mesh_child(body, plane, material, Transform3D(Basis(), Vector3(0.0, 0.2, 0.0)))

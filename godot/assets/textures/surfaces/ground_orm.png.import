@@ -2,7 +2,7 @@
 
 importer="2d_array_texture"
 type="CompressedTexture2DArray"
-uid="uid://2cj8j0edmvq6"
+uid="uid://dk4ryysy75q7d"
 path.s3tc="res://.godot/imported/ground_orm.png-923ad2cd0532053d650c15806642e482.s3tc.ctexarray"
 metadata={
 "imported_formats": ["s3tc_bptc"],
@@ -26,4 +26,4 @@ compress/channel_pack=0
 mipmaps/generate=true
 mipmaps/limit=-1
 slices/horizontal=1
-slices/vertical=5
+slices/vertical=6

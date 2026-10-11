@@ -9,7 +9,7 @@ verticali (gli strati impilati, lo strato 0 in alto) in `godot/assets/textures/s
 `Texture2DArray` (gli `.import` sono scritti da questo script).
 
 Strati, nell'ordine usato dagli shader:
-  ground: 0 dirt, 1 slabs, 2 asphalt, 3 dug_soil, 4 mud
+  ground: 0 dirt, 1 slabs, 2 asphalt, 3 dug_soil, 4 mud, 5 grass
   walls:  0 plaster_brick, 1 moss, 2 bark
   plants: 0 grass_tufts (tre colonne di ciuffi, alpha), 1 leaf_cards (foglie, alpha)
 """
@@ -37,6 +37,7 @@ TILES = {
         ("asphalt", (0.26, 0.25, 0.24), (0.16, 0.15, 0.15), 2.0, 24.0, 0.8),
         ("dug_soil", (0.52, 0.36, 0.20), (0.30, 0.20, 0.12), 4.0, 20.0, 0.95),
         ("mud", (0.22, 0.17, 0.12), (0.12, 0.10, 0.08), 2.5, 12.0, 0.35),
+        ("grass", (0.30, 0.46, 0.12), (0.52, 0.60, 0.16), 2.0, 26.0, 0.9),
     ],
     "walls": [
         ("plaster_brick", (0.78, 0.72, 0.60), (0.60, 0.32, 0.22), 1.0, 10.0, 0.85),
@@ -115,22 +116,40 @@ def tile_albedo_graph(mat, image, spec):
     name, col_a, col_b, macro, micro, _rough = spec
     nodes, links, emit = painter._begin_emit_graph(mat)
     coords, w = painter.seamless_coords(nodes, links)
-    base = ramp(nodes, links, noise(nodes, links, coords, macro, 2.0, 0.5, w), [(0.3, col_b), (0.7, col_a)])
+    base = ramp(nodes, links, noise(nodes, links, coords, macro, 2.0, 0.5, w), [(0.38, col_b), (0.62, col_a)])
     strokes = painter.brush(nodes, links, coords, painter.STYLES["tile"], w)
     color = mix(nodes, links, base, strokes, 1.0, "MULTIPLY")
     speck = ramp(nodes, links, noise(nodes, links, coords, micro, 4.0, 0.6, w),
-                 [(0.35, (0.85, 0.85, 0.85)), (0.7, (1.08, 1.08, 1.08))])
+                 [(0.35, (0.74, 0.74, 0.74)), (0.7, (1.14, 1.14, 1.14))])
     color = mix(nodes, links, color, speck, 1.0, "MULTIPLY")
+    # Chiazze scure a media frequenza: danno corpo "dipinto" a ogni tile.
+    blotch = ramp(nodes, links, noise(nodes, links, coords, macro * 2.5, 3.0, 0.5, w),
+                  [(0.45, (0.80, 0.78, 0.76)), (0.6, (1.0, 1.0, 1.0))])
+    color = mix(nodes, links, color, blotch, 1.0, "MULTIPLY")
     if name == "slabs":
         color = mix(nodes, links, color, (0.30, 0.28, 0.24), joints(nodes, links, 3.0, 0.03))
+        cracks = step(nodes, links, noise(nodes, links, coords, 3.0, 5.0, 0.85, w), 0.60, 0.63)
+        color = mix(nodes, links, color, (0.26, 0.24, 0.20), cracks)
     elif name == "plaster_brick":
         color = mix(nodes, links, color, (0.58, 0.30, 0.20), bricks(nodes, links, coords, w))
     elif name == "asphalt":
         cracks = step(nodes, links, noise(nodes, links, coords, 4.0, 5.0, 0.8, w), 0.62, 0.66)
         color = mix(nodes, links, color, (0.08, 0.08, 0.08), cracks)
     elif name == "dirt":
-        stones = step(nodes, links, noise(nodes, links, coords, 30.0, 1.0, 0.5, w), 0.70, 0.74)
-        color = mix(nodes, links, color, (0.56, 0.52, 0.46), stones)
+        stones = step(nodes, links, noise(nodes, links, coords, 22.0, 1.0, 0.5, w), 0.66, 0.70)
+        color = mix(nodes, links, color, (0.58, 0.54, 0.47), stones)
+    elif name == "dug_soil":
+        clods = step(nodes, links, noise(nodes, links, coords, 9.0, 2.0, 0.6, w), 0.50, 0.56)
+        color = mix(nodes, links, color, (0.34, 0.22, 0.12), clods)
+        pebbles = step(nodes, links, noise(nodes, links, coords, 28.0, 1.0, 0.5, w), 0.70, 0.73)
+        color = mix(nodes, links, color, (0.62, 0.56, 0.48), pebbles)
+    elif name == "grass":
+        # Fili e ciuffi: rumore fitto piu chiazze gialle d'erba secca.
+        blades = ramp(nodes, links, noise(nodes, links, coords, 60.0, 2.0, 0.6, w),
+                      [(0.4, (0.72, 0.78, 0.60)), (0.6, (1.12, 1.10, 0.90))])
+        color = mix(nodes, links, color, blades, 1.0, "MULTIPLY")
+        dry = step(nodes, links, noise(nodes, links, coords, 3.0, 2.0, 0.5, w), 0.56, 0.62)
+        color = mix(nodes, links, color, (0.62, 0.58, 0.22), math_node(nodes, links, "MULTIPLY", dry, 0.6))
     elif name == "mud":
         puddles = step(nodes, links, noise(nodes, links, coords, 2.0, 2.0, 0.5, w), 0.52, 0.56)
         color = mix(nodes, links, color, (0.09, 0.08, 0.07), puddles)

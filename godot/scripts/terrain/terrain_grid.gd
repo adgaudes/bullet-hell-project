@@ -19,6 +19,12 @@ signal command_applied(cell: Vector2i, mode: TerrainState.ToolMode, state: Terra
 signal rebuilt
 
 const CELL_SHADER := preload("res://resources/materials/terrain_cell.gdshader")
+## Tile dipinte del suolo (restyling 2026-10-11), condivise con il piano dell'arena.
+const GROUND_ALBEDO := preload("res://assets/textures/surfaces/ground_albedo.png")
+const GROUND_NORMAL := preload("res://assets/textures/surfaces/ground_normal.png")
+const GROUND_ORM := preload("res://assets/textures/surfaces/ground_orm.png")
+## Ripetizioni della tile per metro: una tile ogni 4 m.
+const TILE_SCALE := 0.25
 
 ## Colori lineari Unreal.
 const NORMAL_COLOR := Color(0.34, 0.48, 0.20)
@@ -230,9 +236,19 @@ func _make_material(batched: bool) -> ShaderMaterial:
 	material.set_shader_parameter(&"batched", batched)
 	material.set_shader_parameter(&"plaza_radius", plaza_radius)
 	material.set_shader_parameter(&"cell_pitch", UnrealSpace.length(_cell_size_cm))
+	apply_ground_tiles(material)
 	if is_inside_tree():
 		material.set_shader_parameter(&"raised_top", raised_top_y())
 	return material
+
+
+## Passa le tile dipinte del suolo a un materiale che include surface_tiles.gdshaderinc
+## (celle del terreno e piano dell'arena usano le stesse texture e la stessa scala).
+static func apply_ground_tiles(material: ShaderMaterial) -> void:
+	material.set_shader_parameter(&"ground_albedo", GROUND_ALBEDO)
+	material.set_shader_parameter(&"ground_normal", GROUND_NORMAL)
+	material.set_shader_parameter(&"ground_orm", GROUND_ORM)
+	material.set_shader_parameter(&"tile_scale", TILE_SCALE)
 
 
 ## Mostra l'anteprima sulla cella che contiene [param world_target].
