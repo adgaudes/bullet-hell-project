@@ -49,6 +49,7 @@ Legenda stato: **vivo** = aggiornato e autorevole; **riferimento** = stabile, si
 | `docs/CREATIVE_PRINCIPLES.md` | Principi di originalita e uso responsabile dell'AI | prima di proporre contenuti creativi o asset | riferimento |
 | `docs/WORLD_PREMISE.md` | Premessa del mondo: invasione, macchine terraformanti, rotazione, meteo | per lore, ambientazione, nemici | riferimento |
 | `docs/ART_DIRECTION.md` | Direzione artistica provvisoria (realismo stilizzato caldo), reference | per grafica, materiali, personaggi | riferimento |
+| `docs/superpowers/specs/2026-10-11-visual-restyle-design.md` | Specifica del restyling grafico (stilizzato ricco alla Hades II, pipeline Blender propria, roster fisso di 4 personaggi, preset grafici, camera a tre distanze, fetta visiva e budget) | prima di toccare pipeline Blender, shader, luce, Impostazioni grafiche o personaggi | vivo |
 | `docs/BRAINSTORMING_CONCEPTS.md` | Prime concept card, nessuna approvata | solo per ripescare idee scartate o alternative | storico |
 
 ## Produzione e strategia
