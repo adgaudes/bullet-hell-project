@@ -42,6 +42,10 @@ func _ready() -> void:
 	_prompts.grow_horizontal = Control.GROW_DIRECTION_BOTH
 
 
+func _fx() -> UiFxService:
+	return get_node_or_null(^"/root/UiFx") as UiFxService
+
+
 func _input(event: InputEvent) -> void:
 	if event.is_echo():
 		return
@@ -49,6 +53,8 @@ func _input(event: InputEvent) -> void:
 	# controller (chiude le Impostazioni anche nel menu iniziale, dove la pausa e spenta).
 	if _overlay.visible and event.is_action_pressed(&"ui_cancel"):
 		get_viewport().set_input_as_handled()
+		if _fx() != null:
+			_fx().play(&"ui_back")
 		if _settings_panel.visible:
 			_show_pause_panel()
 		elif not _settings_only:
@@ -71,6 +77,8 @@ func pause_game() -> void:
 	get_tree().paused = true
 	_overlay.show()
 	_show_pause_panel()
+	if _fx() != null:
+		_fx().pop_in(_pause_panel)
 
 
 ## Nasconde la UI prima di riattivare il gameplay.
@@ -86,6 +94,8 @@ func open_settings() -> void:
 	# in basso si sovrapporrebbero, e il pannello ha gia il pulsante Indietro (U-09).
 	_prompts.hide()
 	_settings_panel.open()
+	if _fx() != null:
+		_fx().pop_in(_settings_panel)
 
 
 ## Solo le Impostazioni, senza mettere in pausa: usato dal menu iniziale.

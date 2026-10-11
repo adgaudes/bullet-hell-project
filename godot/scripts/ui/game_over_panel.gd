@@ -165,6 +165,9 @@ func open(seconds: float, level: int, kills: int, victory := false, scrap := 0, 
 		_summary.text += "\n" + SAVE_FAILED_TEXT
 	get_tree().paused = true
 	_overlay.show()
+	var fx := get_node_or_null(^"/root/UiFx") as UiFxService
+	if fx != null:
+		fx.pop_in(_overlay.get_child(0))
 	if not victory:
 		_next.hide()
 	for button: Button in [_workshop, _next, _restart, _menu, _quit]:

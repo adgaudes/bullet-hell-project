@@ -73,7 +73,12 @@ func start_level(id: StringName) -> void:
 	var scene := LevelCatalog.scene_of(id)
 	if scene.is_empty():
 		return
-	get_tree().change_scene_to_file(scene)
+	var fx := get_node_or_null(^"/root/UiFx") as UiFxService
+	# Gate, smoke test e catture (--autostart) non aspettano il velo.
+	if fx == null or RunLaunchOptions.wants_autostart():
+		get_tree().change_scene_to_file(scene)
+	else:
+		fx.fade_to_scene(scene)
 
 
 func open_workshop() -> void:

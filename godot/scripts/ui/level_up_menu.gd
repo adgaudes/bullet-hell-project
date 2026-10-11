@@ -72,6 +72,9 @@ func open(offer: Array[Dictionary], levels: Dictionary, player_level: int) -> vo
 	is_open = true
 	get_tree().paused = true
 	_overlay.show()
+	var fx := get_node_or_null(^"/root/UiFx") as UiFxService
+	if fx != null:
+		fx.pop_in(_cards)
 	_set_enabled(false)
 	get_tree().create_timer(INPUT_GRACE_SECONDS, true).timeout.connect(_enable_after_grace)
 	opened.emit()

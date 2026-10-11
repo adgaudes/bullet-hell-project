@@ -91,6 +91,9 @@ func open() -> void:
 	is_open = true
 	_refresh()
 	_overlay.show()
+	var fx := get_node_or_null(^"/root/UiFx") as UiFxService
+	if fx != null:
+		fx.pop_in(_overlay.get_child(0))
 	_buttons[default_level()].grab_focus()
 	_show_detail(default_level())
 
@@ -100,6 +103,9 @@ func close() -> void:
 		return
 	is_open = false
 	_overlay.hide()
+	var fx := get_node_or_null(^"/root/UiFx") as UiFxService
+	if fx != null:
+		fx.play(&"ui_back")
 	closed.emit()
 
 

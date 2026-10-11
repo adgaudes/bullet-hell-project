@@ -592,12 +592,20 @@ func _build_courtyard_walls() -> void:
 
 func restart() -> void:
 	get_tree().paused = false
-	get_tree().reload_current_scene()
+	var fx := get_node_or_null(^"/root/UiFx") as UiFxService
+	if fx == null:
+		get_tree().reload_current_scene()
+	else:
+		fx.fade_reload()
 
 
 func return_to_menu() -> void:
 	get_tree().paused = false
-	get_tree().change_scene_to_file(MAIN_MENU_SCENE)
+	var fx := get_node_or_null(^"/root/UiFx") as UiFxService
+	if fx == null:
+		get_tree().change_scene_to_file(MAIN_MENU_SCENE)
+	else:
+		fx.fade_to_scene(MAIN_MENU_SCENE)
 
 
 ## Il livello successivo della campagna (dalla schermata di vittoria).
@@ -606,7 +614,11 @@ func start_next_level() -> void:
 	if not LevelCatalog.is_playable(next):
 		return
 	get_tree().paused = false
-	get_tree().change_scene_to_file(LevelCatalog.scene_of(next))
+	var fx := get_node_or_null(^"/root/UiFx") as UiFxService
+	if fx == null:
+		get_tree().change_scene_to_file(LevelCatalog.scene_of(next))
+	else:
+		fx.fade_to_scene(LevelCatalog.scene_of(next))
 
 
 # --- Treno della ferrovia (D-066) ---------------------------------------------------
