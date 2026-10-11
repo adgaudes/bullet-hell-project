@@ -113,7 +113,7 @@ Oggi le Impostazioni hanno limite di fps, VSync, MSAA, risoluzione/finestra, sca
 | Densità vegetazione | Bassa, Media, Alta | Istanze dell'erba e dei detriti |
 | Antialiasing | Off, MSAA 2x, 4x, 8x, + FXAA/TAA | MSAA esistente, si aggiunge il filtro schermo |
 | Scala di rendering | 0,5-1,0 e upscaling FSR 2 opzionale | Scala esistente |
-| Limite fps | 30, 60, 90, 120, 144, **165, 240**, nessuno | Esistente, esteso a 240 (la fisica resta a 120 Hz con interpolazione: sopra i 120 fps migliora solo la fluidità della camera); default **60** |
+| Limite fps | 30, 60, 90, 120, 144, 165, 240, **Illimitato** | Esistente; si aggiungono 165 e 240 e il valore in cima resta **Illimitato** (scelta del proprietario, 11 ottobre 2026). La fisica resta a 120 Hz con interpolazione: sopra i 120 fps migliora solo la fluidità della camera. Default **60** |
 
 Preset Steam Deck: MSAA off + FXAA, ombre Bassa, SSAO Bassa, GI off, glow Basso, volumetrica off, texture Alta, vegetazione Media, scala 0,85 con FSR, fps 60. Selezionato automaticamente al primo avvio se Godot riconosce il Deck (`OS.has_feature("steamdeck")` o nome del dispositivo), altrimenti parte Alto; Massimo è una scelta esplicita. Il menu resta navigabile a controller con A/B e glifi dei tasti, come il resto.
 
