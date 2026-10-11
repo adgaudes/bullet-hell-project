@@ -44,7 +44,7 @@ const KNOWN_KEYS: Dictionary = {
 	"graphics": ["version", "fps_cap", "vsync_mode", "msaa_3d", "render_scale", "window_mode", "preset",
 		"preset_chosen", "screen_aa", "shadow_quality", "ssao_quality", "gi_mode", "glow_quality",
 		"volumetric_fog", "texture_quality", "vegetation_density", "fsr_upscaling"],
-	"controls": ["invert_aim_x", "invert_aim_y"],
+	"controls": ["invert_aim_x", "invert_aim_y", "camera_distance"],
 	"audio": ["master_volume", "sfx_volume"],
 }
 
@@ -77,6 +77,8 @@ var vegetation_density := 2
 var fsr_upscaling := false
 var invert_aim_x := false
 var invert_aim_y := false
+## Preset di distanza della camera (D-078): 0 vicina, 1 normale, 2 lontana.
+var camera_distance := 1
 ## Volumi lineari 0.0-1.0; 0 silenzia il bus.
 var master_volume := DEFAULT_MASTER_VOLUME
 var sfx_volume := DEFAULT_SFX_VOLUME
@@ -103,6 +105,7 @@ func reset_to_defaults() -> void:
 	window_mode = DEFAULT_WINDOW_MODE
 	invert_aim_x = false
 	invert_aim_y = false
+	camera_distance = 1
 	master_volume = DEFAULT_MASTER_VOLUME
 	sfx_volume = DEFAULT_SFX_VOLUME
 	_unknown = {}
@@ -147,6 +150,7 @@ func load_settings(path_override: String = "") -> Error:
 	fsr_upscaling = _validated_bool(config.get_value("graphics", "fsr_upscaling", fsr_upscaling), fsr_upscaling)
 	invert_aim_x = _validated_bool(config.get_value("controls", "invert_aim_x", invert_aim_x), false)
 	invert_aim_y = _validated_bool(config.get_value("controls", "invert_aim_y", invert_aim_y), false)
+	camera_distance = _validated_int(config.get_value("controls", "camera_distance", camera_distance), [0, 1, 2], 1)
 	master_volume = _validated_volume(config.get_value("audio", "master_volume", master_volume), DEFAULT_MASTER_VOLUME)
 	sfx_volume = _validated_volume(config.get_value("audio", "sfx_volume", sfx_volume), DEFAULT_SFX_VOLUME)
 	_collect_unknown(config)
@@ -175,6 +179,7 @@ func save_settings(path_override: String = "") -> Error:
 	config.set_value("graphics", "fsr_upscaling", fsr_upscaling)
 	config.set_value("controls", "invert_aim_x", invert_aim_x)
 	config.set_value("controls", "invert_aim_y", invert_aim_y)
+	config.set_value("controls", "camera_distance", camera_distance)
 	config.set_value("audio", "master_volume", master_volume)
 	config.set_value("audio", "sfx_volume", sfx_volume)
 	save_count += 1
@@ -304,6 +309,14 @@ func set_invert_aim_x(value: bool) -> void:
 
 func set_invert_aim_y(value: bool) -> void:
 	invert_aim_y = value
+	_save_and_emit()
+
+
+func set_camera_distance(value: int) -> void:
+	var clamped := clampi(value, 0, 2)
+	if clamped == camera_distance:
+		return
+	camera_distance = clamped
 	_save_and_emit()
 
 

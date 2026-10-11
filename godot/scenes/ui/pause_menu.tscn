@@ -392,6 +392,22 @@ layout_mode = 2
 theme_override_font_sizes/font_size = 20
 text = "Controller"
 
+[node name="CameraRow" type="HBoxContainer" parent="Overlay/Center/SettingsPanel/Margin/Scroll/Content"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Overlay/Center/SettingsPanel/Margin/Scroll/Content/CameraRow"]
+custom_minimum_size = Vector2(280, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Distanza camera"
+
+[node name="CameraOption" type="OptionButton" parent="Overlay/Center/SettingsPanel/Margin/Scroll/Content/CameraRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(300, 40)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+
 [node name="InvertX" type="CheckButton" parent="Overlay/Center/SettingsPanel/Margin/Scroll/Content"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 40)

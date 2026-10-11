@@ -25,6 +25,7 @@ func _initialize() -> void:
 	await _test_vegetation_and_props()
 	await _test_sky_and_post()
 	await _test_world_applies_preset()
+	await _test_camera_distance()
 	await _frames(2)
 	print("PROTOTYPE01_TESTS %s failures=%d" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
@@ -173,6 +174,41 @@ func _test_world_applies_preset() -> void:
 	tufts = district.find_child("GrassTufts", true, false)
 	_check(tufts.multimesh.instance_count < full_count, "con densita media l'erba ha meno istanze (%d < %d)" % [tufts.multimesh.instance_count, full_count])
 	settings.set_preset(GameSettingsService.Preset.HIGH)
+	await _close_scene()
+
+
+func _test_camera_distance() -> void:
+	print("camera distance")
+	await _open_scene()
+	var director: EnemyDirector = _scene.get_node(^"EnemyDirector")
+	var rig: IsometricCameraRig = _scene.get_node(^"CameraRig")
+	_check(is_equal_approx(rig.current_arm_m(), 15.0), "parte a 15 m")
+	var press := InputEventJoypadButton.new()
+	press.button_index = JOY_BUTTON_Y
+	press.pressed = true
+	Input.parse_input_event(press)
+	var release := press.duplicate() as InputEventJoypadButton
+	release.pressed = false
+	Input.parse_input_event(release)
+	await _frames(2)
+	_check(rig.distance_index == 2, "Y passa al preset lontano")
+	await _frames(45)
+	_check(absf(rig.current_arm_m() - 20.0) < 0.2, "il braccio arriva a 20 m in meno di 0,75 s (%.2f)" % rig.current_arm_m())
+	_check(director.ring_scale > 1.3 and director.ring_scale * director.tuning.spawn_ring_min >= 22.0, "l'anello di comparsa si allarga con la camera lontana (%.2f)" % director.ring_scale)
+	var wheel := InputEventMouseButton.new()
+	wheel.button_index = MOUSE_BUTTON_WHEEL_UP
+	wheel.pressed = true
+	wheel.position = Vector2(640, 400)
+	wheel.global_position = wheel.position
+	Input.parse_input_event(wheel)
+	await _frames(2)
+	_check(rig.distance_index == 1, "la rotellina in su avvicina di un preset")
+	var settings: GameSettingsService = root.get_node("GameSettings")
+	_check(settings.camera_distance == 1, "la distanza si salva nelle impostazioni")
+	settings.set_camera_distance(0)
+	await _frames(2)
+	_check(rig.distance_index == 0, "cambiare la distanza dalle impostazioni muove la camera")
+	settings.set_camera_distance(1)
 	await _close_scene()
 
 

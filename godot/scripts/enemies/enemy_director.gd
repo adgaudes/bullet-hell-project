@@ -29,6 +29,9 @@ const ERRAND_REACH := 0.9
 @export var path_field: PathField
 @export var grid: TerrainGrid
 @export var spawning := true
+## Scala dell'anello di comparsa e della distanza minima (D-078): segue la distanza della
+## camera (braccio / 15 m), cosi con la camera lontana i nemici non appaiono in vista.
+var ring_scale := 1.0
 
 var enemies: Array[Enemy] = []
 var kills := 0
@@ -202,11 +205,11 @@ func _find_spawn_point() -> Variant:
 	var center := player.global_position
 	for attempt in 12:
 		var angle := rng.randf_range(0.0, TAU)
-		var radius := rng.randf_range(tuning.spawn_ring_min, tuning.spawn_ring_max)
+		var radius := rng.randf_range(tuning.spawn_ring_min, tuning.spawn_ring_max) * ring_scale
 		var point := Vector3(
 			clampf(center.x + cos(angle) * radius, -e, e), 0.0,
 			clampf(center.z + sin(angle) * radius, -ez, ez))
-		if _planar(point - center).length() < tuning.spawn_min_player_distance:
+		if _planar(point - center).length() < tuning.spawn_min_player_distance * ring_scale:
 			continue
 		if path_field != null and not path_field.is_walkable(point):
 			continue
@@ -252,7 +255,7 @@ func _move_enemies(delta: float) -> void:
 			# Fuori guinzaglio, o fuori dalla finestra del campo (dove andrebbe dritto e
 			# resterebbe nelle rovine, E-01): torna sull'anello.
 			var lost := to_player.length() > tuning.enemy_leash_distance
-			if not lost and path_field != null and path_field.is_ready() and to_player.length() > tuning.spawn_ring_max + 1.0 					and not path_field.is_inside(path_field.cell_of(pos)):
+			if not lost and path_field != null and path_field.is_ready() and to_player.length() > tuning.spawn_ring_max * ring_scale + 1.0 					and not path_field.is_inside(path_field.cell_of(pos)):
 				lost = true
 			if lost and _leash(enemy):
 				continue

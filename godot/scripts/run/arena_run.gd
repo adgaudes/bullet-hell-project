@@ -129,6 +129,7 @@ func _ready() -> void:
 	_setup_train()
 	_setup_quake()
 	_setup_extraction()
+	_setup_camera_distance()
 	# La cella protetta (0,0) e un residuo della parita Unreal (smoke test): nel livello
 	# nessuna cella e intoccabile (R-28).
 	grid.set_protected_cell(Vector2i(-1, -1))
@@ -986,3 +987,38 @@ static func _boss_call_from_command_line(default_seconds: float) -> float:
 
 static func _seed_from_command_line() -> int:
 	return RunLaunchOptions.run_seed()
+
+
+# --- Distanza della camera (D-078) ------------------------------------------------
+
+## Il rig della camera e fratello di questo nodo nelle scene dei livelli.
+func _camera_rig() -> IsometricCameraRig:
+	var parent := get_parent()
+	return parent.get_node_or_null(^"CameraRig") as IsometricCameraRig if parent != null else null
+
+
+func _setup_camera_distance() -> void:
+	var rig := _camera_rig()
+	if rig == null:
+		return
+	rig.distance_changed.connect(_on_camera_distance_changed)
+	var settings := get_node_or_null(^"/root/GameSettings") as GameSettingsService
+	rig.set_distance_index(settings.camera_distance if settings != null else IsometricCameraRig.DEFAULT_DISTANCE_INDEX, true)
+	_on_camera_distance_changed(rig.distance_index, rig.target_arm_m())
+	if settings != null and not settings.changed.is_connected(_on_settings_changed_camera):
+		settings.changed.connect(_on_settings_changed_camera)
+
+
+## L'anello di comparsa segue la finestra visibile: a 20 m di braccio si allarga di 4/3.
+func _on_camera_distance_changed(index: int, arm_m: float) -> void:
+	director.ring_scale = arm_m / 15.0
+	var settings := get_node_or_null(^"/root/GameSettings") as GameSettingsService
+	if settings != null and settings.camera_distance != index:
+		settings.set_camera_distance(index)
+
+
+func _on_settings_changed_camera() -> void:
+	var settings := get_node_or_null(^"/root/GameSettings") as GameSettingsService
+	var rig := _camera_rig()
+	if settings != null and rig != null and rig.distance_index != settings.camera_distance:
+		rig.set_distance_index(settings.camera_distance)

@@ -147,7 +147,7 @@ func _ready() -> void:
 
 	# Comandi di gioco, in basso a sinistra.
 	_controls = ButtonPrompts.create([[&"dash", "Scatto"], [&"terrain_tool", "Scava o rialza"],
-		[&"terrain_mode", "Cambia modo"], [&"pause", "Pausa"]], true)
+		[&"terrain_mode", "Cambia modo"], [&"camera_zoom_cycle", "Distanza camera"], [&"pause", "Pausa"]], true)
 	_controls.modulate.a = 0.85
 	root.add_child(_controls)
 	_controls.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT, Control.PRESET_MODE_MINSIZE, 24)

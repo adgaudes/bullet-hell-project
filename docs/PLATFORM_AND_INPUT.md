@@ -56,6 +56,7 @@ Non e ancora approvato e verra verificato nel prototipo.
 | Movimento | stick sinistro | WASD |
 | Mira o orientamento costruzione | stick destro | mouse |
 | Dash/evasione | pulsante frontale | Spazio |
+| Distanza camera, tre preset: 11, 15, 20 m (D-078) | Y cicla | C cicla; rotellina avvicina/allontana |
 | Interazione | pulsante frontale | E |
 | Modalita costruzione | dorsale o grilletto | tasto dedicato |
 | Posizionamento/conferma | grilletto o pulsante frontale | clic sinistro |

@@ -26,6 +26,7 @@ signal back_requested
 @onready var _master_value: Label = %MasterVolumeValue
 @onready var _sfx_volume: HSlider = %SfxVolume
 @onready var _sfx_value: Label = %SfxVolumeValue
+@onready var _camera_option: OptionButton = %CameraOption
 @onready var _invert_x: CheckButton = %InvertX
 @onready var _invert_y: CheckButton = %InvertY
 @onready var _back_button: Button = %BackButton
@@ -54,6 +55,7 @@ func _ready() -> void:
 	_fsr_check.toggled.connect(_on_quality_toggled.bind(_settings.set_fsr_upscaling))
 	_master_volume.value_changed.connect(_on_master_volume_changed)
 	_sfx_volume.value_changed.connect(_on_sfx_volume_changed)
+	_camera_option.item_selected.connect(_on_camera_selected)
 	_invert_x.toggled.connect(_settings.set_invert_aim_x)
 	_invert_y.toggled.connect(_settings.set_invert_aim_y)
 	_back_button.pressed.connect(func(): back_requested.emit())
@@ -84,6 +86,7 @@ func _fill_options() -> void:
 	_add_items(_texture_option, ["Bassa", "Alta"])
 	_add_items(_vegetation_option, ["Bassa", "Media", "Alta"])
 	_add_items(_screen_aa_option, ["Off", "FXAA", "TAA"])
+	_add_items(_camera_option, ["Vicina", "Normale (predefinita)", "Lontana"])
 
 
 func _add_items(option: OptionButton, labels: Array[String]) -> void:
@@ -110,6 +113,7 @@ func _sync_from_settings() -> void:
 	_master_volume.set_value_no_signal(_settings.master_volume)
 	_sfx_volume.set_value_no_signal(_settings.sfx_volume)
 	_refresh_volume_labels()
+	_camera_option.select(_settings.camera_distance)
 	_invert_x.set_pressed_no_signal(_settings.invert_aim_x)
 	_invert_y.set_pressed_no_signal(_settings.invert_aim_y)
 
@@ -160,6 +164,11 @@ func _on_quality_selected(index: int, setter: Callable) -> void:
 func _on_quality_toggled(pressed: bool, setter: Callable) -> void:
 	setter.call(pressed)
 	_preset_option.select(_settings.preset)
+
+
+func _on_camera_selected(index: int) -> void:
+	if index != _settings.camera_distance:
+		_settings.set_camera_distance(index)
 
 
 func _on_master_volume_changed(value: float) -> void:
