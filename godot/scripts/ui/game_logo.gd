@@ -12,12 +12,15 @@ const ARC_PIXELS := 0.09
 const DROP_PIXELS := 1.6
 const SUBTITLE_TILT := -2.0
 const GLYPH_SPACING := 0.96
+const SHADOW_OFFSET := Vector2(0.06, 0.07)
+const SHADOW_COLOR := Color(0.05, 0.03, 0.02, 0.55)
 
 @export_enum("wide", "stacked") var layout := "wide"
 @export var show_subtitle := true
 @export var letter_size := 96
 
 var _letters: Array[Label] = []
+var _shadows: Array[Label] = []
 var _rest_positions: Array[Vector2] = []
 var _letter_progress := 1.0
 var _nail_progress := 1.0
@@ -45,6 +48,7 @@ func _ready() -> void:
 	_material.shader = load("res://resources/materials/logo_letters.gdshader")
 	_material.set_shader_parameter(&"top_y", float(letter_size) * 0.15)
 	_material.set_shader_parameter(&"bottom_y", float(letter_size) * 1.1)
+	_material.set_shader_parameter(&"bevel_px", maxf(letter_size / 40.0, 1.5))
 	_build_letters()
 	_overlay = Control.new()
 	_overlay.name = "Decor"
@@ -58,6 +62,14 @@ func _ready() -> void:
 
 func letter_count() -> int:
 	return _letters.size()
+
+
+func shadow_count() -> int:
+	return _shadows.size()
+
+
+func letter_material() -> ShaderMaterial:
+	return _material
 
 
 func is_complete() -> bool:
@@ -81,6 +93,9 @@ func set_letter_progress(p: float) -> void:
 		var drop := DROP_PIXELS * letter_size * (1.0 - eased)
 		_letters[i].position = _rest_positions[i] + Vector2(0, -drop)
 		_letters[i].modulate.a = minf(local * 3.0, 1.0)
+		# L'ombra resta a terra e si scurisce quando la lettera atterra.
+		_shadows[i].position = _rest_positions[i] + SHADOW_OFFSET * letter_size
+		_shadows[i].modulate.a = eased
 
 
 func set_nail_progress(p: float) -> void:
@@ -131,6 +146,22 @@ func _build_letters() -> void:
 		var x := (custom_minimum_size.x - row_widths[r]) * 0.5
 		var count := row.length()
 		for c in count:
+			var glyph_w := _glyph_width(font, row[c])
+			var t := float(c) / maxf(count - 1, 1)
+			var arc := -ARC_PIXELS * letter_size * sin(PI * t)
+			var rest := Vector2(x, y + arc)
+			# Ombra portata: stessa lettera, scura, dietro e spostata in basso a destra.
+			var shadow := Label.new()
+			shadow.text = row[c]
+			shadow.add_theme_font_override(&"font", font)
+			shadow.add_theme_font_size_override(&"font_size", letter_size)
+			shadow.add_theme_color_override(&"font_color", SHADOW_COLOR)
+			shadow.add_theme_color_override(&"font_outline_color", SHADOW_COLOR)
+			shadow.add_theme_constant_override(&"outline_size", maxi(letter_size / 12, 4))
+			shadow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			shadow.position = rest + SHADOW_OFFSET * letter_size
+			add_child(shadow)
+			_shadows.append(shadow)
 			var label := Label.new()
 			label.text = row[c]
 			label.theme_type_variation = &"TitleLabel"
@@ -142,10 +173,6 @@ func _build_letters() -> void:
 			label.material = _material
 			label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			add_child(label)
-			var glyph_w := _glyph_width(font, row[c])
-			var t := float(c) / maxf(count - 1, 1)
-			var arc := -ARC_PIXELS * letter_size * sin(PI * t)
-			var rest := Vector2(x, y + arc)
 			_rest_positions.append(rest)
 			label.position = rest
 			_letters.append(label)
@@ -155,6 +182,8 @@ func _build_letters() -> void:
 			index += 1
 		y += row_height
 	_ground_rect = Rect2(letter_size * 0.1, y + letter_size * 0.02, custom_minimum_size.x - letter_size * 0.2, ground_height)
+	for label in _letters:
+		move_child(label, get_child_count() - 1)
 
 
 func _build_subtitle() -> void:
@@ -213,6 +242,17 @@ func _draw_ground() -> void:
 	polygon.append(Vector2(r.position.x + r.size.x * 0.03, r.end.y))
 	draw_colored_polygon(polygon, Color("3b2718"))
 	draw_polyline(top, Color("7a4a2a"), maxf(letter_size / 40.0, 2.0))
+	# Sassi incastrati nella terra e radici che scendono.
+	for k in 5:
+		var t := 0.08 + 0.21 * k
+		var center := Vector2(r.position.x + r.size.x * t, r.position.y + r.size.y * (0.45 + 0.25 * (k % 2)))
+		var radius := letter_size * (0.045 + 0.015 * (k % 3))
+		draw_circle(center, radius, Color("5a4030"))
+		draw_circle(center + Vector2(-radius * 0.25, -radius * 0.3), radius * 0.55, Color("7a5a44"))
+	for k in 3:
+		var sx := r.position.x + r.size.x * (0.3 + 0.2 * k)
+		var points := PackedVector2Array([Vector2(sx, r.position.y + r.size.y * 0.5), Vector2(sx - letter_size * 0.05, r.end.y - r.size.y * 0.2), Vector2(sx + letter_size * 0.03, r.end.y)])
+		draw_polyline(points, Color("2a1a10"), maxf(letter_size / 48.0, 1.5))
 
 
 ## Tre ciuffi d'erba che crescono con il progresso.
@@ -223,10 +263,11 @@ func _draw_grass() -> void:
 	for k in 3:
 		var base := Vector2(r.position.x + r.size.x * (0.18 + 0.32 * k), r.position.y + r.size.y * 0.05)
 		var h := letter_size * 0.3 * _grass_progress
-		for blade in 3:
-			var dx := (blade - 1) * letter_size * 0.06
-			var tip := base + Vector2(dx * 1.6, -h * (1.0 - 0.2 * absf(blade - 1)))
-			_overlay.draw_colored_polygon(PackedVector2Array([base + Vector2(dx - 3, 0), tip, base + Vector2(dx + 3, 0)]), UiPalette.SUCCESS)
+		var tones: Array[Color] = [Color("5e9a3a"), UiPalette.SUCCESS, Color("a6d65a")]
+		for blade in 5:
+			var dx := (blade - 2) * letter_size * 0.04
+			var tip := base + Vector2(dx * 1.7, -h * (1.0 - 0.18 * absf(blade - 2)))
+			_overlay.draw_colored_polygon(PackedVector2Array([base + Vector2(dx - 2.5, 0), tip, base + Vector2(dx + 2.5, 0)]), tones[blade % 3])
 
 
 ## Chiodo piantato di sbieco nella prima "O": entra con il progresso, poi la crepa.

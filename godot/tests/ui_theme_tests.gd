@@ -180,6 +180,9 @@ func _test_logo() -> void:
 			logo.set_grass_progress(p)
 		logo.set_all(1.0)
 		_check(logo.is_complete(), "%s: set_all(1) completa il logo" % layout)
+		_check(logo.shadow_count() == logo.letter_count(), "%s: ogni lettera ha la sua ombra portata" % layout)
+		var material := logo.letter_material()
+		_check(material != null and material.get_shader_parameter(&"bevel_px") != null and float(material.get_shader_parameter(&"bevel_px")) > 0.0, "%s: bisello nello shader delle lettere" % layout)
 		logo.queue_free()
 	await _frames(1)
 
