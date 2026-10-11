@@ -233,6 +233,11 @@ static func build_theme() -> Theme:
 	theme.set_stylebox(&"slider", &"HSlider", plate("gauge", slider_track, 11.0, 0.0, gauge_content))
 	theme.set_stylebox(&"grabber_area", &"HSlider", plate("gauge_fill", slider_fill, 11.0, 0.0, gauge_content, BORDER_LIGHT))
 	theme.set_stylebox(&"grabber_area_highlight", &"HSlider", plate("gauge_fill", slider_fill, 11.0, 0.0, gauge_content, BORDER_LIGHT))
+	var knob := load(TEXTURE_DIR + "knob.png") as Texture2D if has_textures() else null
+	if knob != null:
+		theme.set_icon(&"grabber", &"HSlider", knob)
+		theme.set_icon(&"grabber_highlight", &"HSlider", knob)
+		theme.set_icon(&"grabber_disabled", &"HSlider", knob)
 	var bar_bg := StyleBoxFlat.new()
 	bar_bg.bg_color = Color(0, 0, 0, 0.55)
 	bar_bg.border_color = BORDER

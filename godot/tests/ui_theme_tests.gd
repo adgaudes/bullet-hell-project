@@ -70,7 +70,7 @@ func _test_textures() -> void:
 		"plate_panel": Vector2i(96, 96), "plate_button": Vector2i(96, 96), "plate_button_hover": Vector2i(96, 96),
 		"plate_button_pressed": Vector2i(96, 96), "plate_button_focus": Vector2i(96, 96), "plate_card": Vector2i(96, 96),
 		"plate_card_focus": Vector2i(96, 96), "ribbon": Vector2i(96, 32), "rule": Vector2i(256, 12),
-		"gauge": Vector2i(64, 24), "gauge_fill": Vector2i(64, 24), "strip": Vector2i(96, 48),
+		"gauge": Vector2i(64, 24), "gauge_fill": Vector2i(64, 24), "strip": Vector2i(96, 48), "knob": Vector2i(24, 24),
 	}
 	var all_present := true
 	for name in expected:
@@ -78,7 +78,7 @@ func _test_textures() -> void:
 		if texture == null or texture.get_size() != Vector2(expected[name]):
 			all_present = false
 			print("    manca o misura sbagliata: %s" % name)
-	_check(all_present, "dodici texture dell'interfaccia presenti con le misure attese")
+	_check(all_present, "tredici texture dell'interfaccia presenti con le misure attese")
 	_check(UiPalette.has_textures(), "UiPalette trova le texture")
 	var theme := UiPalette.build_theme()
 	var checks := [
@@ -93,6 +93,7 @@ func _test_textures() -> void:
 		_check(box != null and box.texture != null and box.texture.resource_path.ends_with(entry[2]), "%s/%s su %s" % [entry[1], entry[0], entry[2]])
 	var focus := theme.get_stylebox(&"focus", &"Button") as StyleBoxTexture
 	_check(focus != null and focus.expand_margin_left > 0.0, "il focus sborda con l'alone")
+	_check(theme.get_icon(&"grabber", &"HSlider").resource_path.ends_with("knob.png"), "pomello dello slider a rivetto")
 
 
 func _test_theme_on_root() -> void:

@@ -44,6 +44,7 @@ func _initialize() -> void:
 	_save("gauge", _gauge(false))
 	_save("gauge_fill", _gauge(true))
 	_save("strip", _strip())
+	_save("knob", _knob())
 	quit()
 
 
@@ -295,6 +296,19 @@ func _gauge(fill: bool) -> Image:
 				else:
 					color = METAL_DARK.darkened(0.3).lightened(clampf(0.2 - vertical, 0.0, 0.2) * 0.4)
 			image.set_pixel(x, y, Color(color, clampf(inside, 0.0, 1.0)))
+	return image
+
+
+## Pomello dello slider: un rivetto grande con bordo di rame.
+func _knob() -> Image:
+	var image := Image.create(24, 24, false, Image.FORMAT_RGBA8)
+	image.fill(Color(0, 0, 0, 0))
+	for y in 24:
+		for x in 24:
+			var d := Vector2(x + 0.5 - 12.0, y + 0.5 - 12.0).length()
+			if d <= 11.0:
+				image.set_pixel(x, y, Color(COPPER if d > 9.0 else OUTLINE, clampf(11.0 - d, 0.0, 1.0)))
+	_rivet(image, 12.0, 12.0, 8.0)
 	return image
 
 
