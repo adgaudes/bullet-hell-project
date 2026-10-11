@@ -11,6 +11,7 @@ func _initialize() -> void:
 	Engine.physics_ticks_per_second = 60
 	await _frames(1)
 	_test_palette()
+	_test_textures()
 	_test_theme_on_root()
 	await _test_logo()
 	await _test_screens_focus()
@@ -53,17 +54,47 @@ func _test_palette() -> void:
 		for size_name in theme.get_font_size_list(type_name):
 			smallest = mini(smallest, theme.get_font_size(size_name, type_name))
 	_check(smallest >= 14, "nessuna dimensione sotto 14 px (minima %d)" % smallest)
-	var normal := theme.get_stylebox(&"normal", &"Button") as StyleBoxFlat
-	var focus := theme.get_stylebox(&"focus", &"Button") as StyleBoxFlat
-	var hover := theme.get_stylebox(&"hover", &"Button") as StyleBoxFlat
-	_check(normal != null and focus != null and hover != null, "pulsante con stylebox piatti")
-	_check(focus.border_color == UiPalette.FOCUS and focus.border_color != hover.border_color, "focus turchese, diverso dall'hover")
-	_check(focus.shadow_size > 0 and normal.shadow_size == 0, "bagliore solo sul focus")
+	var normal := UiPalette.button_box(&"normal")
+	var focus := UiPalette.button_box(&"focus")
+	var hover := UiPalette.button_box(&"hover")
+	_check(focus.border_color == UiPalette.FOCUS and focus.border_color != hover.border_color, "stile di riserva: focus turchese, diverso dall'hover")
+	_check(focus.shadow_size > 0 and normal.shadow_size == 0, "stile di riserva: bagliore solo sul focus")
 
 
 ## Il tema di progetto (`gui/theme/custom`, generato da build_theme.gd) deve essere
 ## identico a `UiPalette.build_theme()`: i CanvasLayer lo ricevono solo da li. Confronto
 ## campo per campo di colori, costanti, dimensioni, varianti e StyleBoxFlat.
+## Texture generate da build_ui_textures.gd e montate nel tema come StyleBoxTexture.
+func _test_textures() -> void:
+	var expected := {
+		"plate_panel": Vector2i(96, 96), "plate_button": Vector2i(96, 96), "plate_button_hover": Vector2i(96, 96),
+		"plate_button_pressed": Vector2i(96, 96), "plate_button_focus": Vector2i(96, 96), "plate_card": Vector2i(96, 96),
+		"plate_card_focus": Vector2i(96, 96), "ribbon": Vector2i(96, 32), "rule": Vector2i(256, 12),
+		"gauge": Vector2i(64, 24), "gauge_fill": Vector2i(64, 24), "strip": Vector2i(96, 48),
+	}
+	var all_present := true
+	for name in expected:
+		var texture := load(UiPalette.TEXTURE_DIR + name + ".png") as Texture2D
+		if texture == null or texture.get_size() != Vector2(expected[name]):
+			all_present = false
+			print("    manca o misura sbagliata: %s" % name)
+	_check(all_present, "dodici texture dell'interfaccia presenti con le misure attese")
+	_check(UiPalette.has_textures(), "UiPalette trova le texture")
+	var theme := UiPalette.build_theme()
+	var checks := [
+		[&"normal", &"Button", "plate_button.png"], [&"hover", &"Button", "plate_button_hover.png"],
+		[&"pressed", &"Button", "plate_button_pressed.png"], [&"focus", &"Button", "plate_button_focus.png"],
+		[&"panel", &"PanelContainer", "plate_panel.png"], [&"normal", &"CardButton", "plate_card.png"],
+		[&"focus", &"CardButton", "plate_card_focus.png"], [&"fill", &"ProgressBar", "gauge_fill.png"],
+		[&"slider", &"HSlider", "gauge.png"],
+	]
+	for entry in checks:
+		var box := theme.get_stylebox(entry[0], entry[1]) as StyleBoxTexture
+		_check(box != null and box.texture != null and box.texture.resource_path.ends_with(entry[2]), "%s/%s su %s" % [entry[1], entry[0], entry[2]])
+	var focus := theme.get_stylebox(&"focus", &"Button") as StyleBoxTexture
+	_check(focus != null and focus.expand_margin_left > 0.0, "il focus sborda con l'alone")
+
+
 func _test_theme_on_root() -> void:
 	var project := ThemeDB.get_project_theme()
 	_check(project != null, "tema di progetto registrato")
@@ -91,6 +122,12 @@ func _theme_differences(expected: Theme, actual: Theme) -> PackedStringArray:
 			if expected.get_font_size(name, type_name) != actual.get_font_size(name, type_name):
 				out.append("%s/%s" % [type_name, name])
 		for name in expected.get_stylebox_list(type_name):
+			var ta := expected.get_stylebox(name, type_name) as StyleBoxTexture
+			var tb := actual.get_stylebox(name, type_name) as StyleBoxTexture
+			if ta != null or tb != null:
+				if ta == null or tb == null or ta.texture == null or tb.texture == null 						or ta.texture.resource_path != tb.texture.resource_path 						or ta.texture_margin_left != tb.texture_margin_left or ta.expand_margin_left != tb.expand_margin_left 						or not ta.modulate_color.is_equal_approx(tb.modulate_color):
+					out.append("%s/%s" % [type_name, name])
+				continue
 			var a := expected.get_stylebox(name, type_name) as StyleBoxFlat
 			var b := actual.get_stylebox(name, type_name) as StyleBoxFlat
 			if a == null or b == null:

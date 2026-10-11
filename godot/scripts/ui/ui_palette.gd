@@ -19,6 +19,9 @@ const SCRAP := Color("f28a2e")
 const XP := Color("1ad9a6")
 const OUTLINE := Color("130d0a")
 
+## Texture generate da `tests/tools/build_ui_textures.gd` (D-081); se mancano (checkout
+## senza LFS) il tema ripiega sugli StyleBoxFlat di `panel_box`/`button_box`.
+const TEXTURE_DIR := "res://assets/textures/ui/"
 const TITLE_FONT_PATH := "res://assets/fonts/AlfaSlabOne-Regular.ttf"
 const TEXT_FONT_PATH := "res://assets/fonts/Rubik[wght].ttf"
 
@@ -29,6 +32,8 @@ const SIZE_TEXT := 18
 const SIZE_SMALL := 16
 
 static var _title_font: Font
+static var _textures_checked := false
+static var _textures_present := false
 static var _text_fonts: Dictionary = {}
 
 
@@ -54,6 +59,42 @@ static func text_font(weight := 400) -> Font:
 			variation.variation_opentype = {TextServerManager.get_primary_interface().name_to_tag("weight"): float(weight)}
 			_text_fonts[weight] = variation
 	return _text_fonts[weight]
+
+
+static func has_textures() -> bool:
+	if not _textures_checked:
+		_textures_checked = true
+		var probe := load(TEXTURE_DIR + "plate_panel.png") as Texture2D
+		_textures_present = probe != null and probe.get_width() == 96
+		if not _textures_present:
+			push_warning("UiPalette: texture dell'interfaccia mancanti, stili piatti di riserva")
+	return _textures_present
+
+
+## Piastra 9-slice da `TEXTURE_DIR`; [param fallback] se il PNG manca. [param content]:
+## margini del contenuto (sinistra, alto, destra, basso); [param expand]: quanto sborda.
+static func plate(name: String, fallback: StyleBox, margin := 28.0, expand := 0.0, content := Vector4(16, 12, 16, 12), modulate := Color.WHITE) -> StyleBox:
+	if not has_textures():
+		return fallback
+	var texture := load(TEXTURE_DIR + name + ".png") as Texture2D
+	if texture == null:
+		return fallback
+	var box := StyleBoxTexture.new()
+	box.texture = texture
+	box.texture_margin_left = margin
+	box.texture_margin_right = margin
+	box.texture_margin_top = minf(margin, texture.get_height() * 0.5 - 1.0)
+	box.texture_margin_bottom = box.texture_margin_top
+	box.expand_margin_left = expand
+	box.expand_margin_right = expand
+	box.expand_margin_top = expand
+	box.expand_margin_bottom = expand
+	box.content_margin_left = content.x
+	box.content_margin_top = content.y
+	box.content_margin_right = content.z
+	box.content_margin_bottom = content.w
+	box.modulate_color = modulate
+	return box
 
 
 static func panel_box(raised := false) -> StyleBoxFlat:
@@ -140,17 +181,34 @@ static func build_theme() -> Theme:
 	theme.set_color(&"font_hover_pressed_color", &"Button", TEXT_MUTED)
 	theme.set_color(&"font_pressed_color", &"Button", TEXT_MUTED)
 	theme.set_color(&"font_disabled_color", &"Button", Color(TEXT, 0.45))
-	for state: StringName in [&"normal", &"hover", &"pressed", &"focus", &"disabled"]:
-		theme.set_stylebox(state, &"Button", button_box(state))
-		theme.set_stylebox(state, &"OptionButton", button_box(state))
-		theme.set_stylebox(state, &"CheckButton", button_box(state))
+	var button_content := Vector4(18, 10, 18, 10)
+	var plates := {
+		&"normal": "plate_button", &"hover": "plate_button_hover", &"pressed": "plate_button_pressed",
+		&"focus": "plate_button_focus", &"disabled": "plate_button",
+	}
+	for state: StringName in plates:
+		var expand := 6.0 if state == &"focus" else 0.0
+		var tint := Color(1, 1, 1, 0.55) if state == &"disabled" else Color.WHITE
+		for type_name: StringName in [&"Button", &"OptionButton", &"CheckButton"]:
+			theme.set_stylebox(state, type_name, plate(plates[state], button_box(state), 28.0, expand, button_content, tint))
 	theme.set_type_variation(&"MainButton", &"Button")
 	theme.set_font(&"font", &"MainButton", text_font(700))
 	theme.set_font_size(&"font_size", &"MainButton", SIZE_BUTTON)
 	theme.set_type_variation(&"CardButton", &"Button")
 	theme.set_font_size(&"font_size", &"CardButton", 17)
+	theme.set_color(&"font_color", &"CardButton", OUTLINE)
+	theme.set_color(&"font_hover_color", &"CardButton", OUTLINE)
+	theme.set_color(&"font_focus_color", &"CardButton", OUTLINE)
+	theme.set_color(&"font_pressed_color", &"CardButton", Color(OUTLINE, 0.7))
+	theme.set_color(&"font_disabled_color", &"CardButton", Color(OUTLINE, 0.45))
+	var card_content := Vector4(14, 10, 14, 10)
+	theme.set_stylebox(&"normal", &"CardButton", plate("plate_card", button_box(&"normal"), 28.0, 0.0, card_content))
+	theme.set_stylebox(&"hover", &"CardButton", plate("plate_card", button_box(&"hover"), 28.0, 0.0, card_content, Color(1.05, 1.03, 1.0)))
+	theme.set_stylebox(&"pressed", &"CardButton", plate("plate_card", button_box(&"pressed"), 28.0, 0.0, card_content, Color(0.85, 0.82, 0.78)))
+	theme.set_stylebox(&"focus", &"CardButton", plate("plate_card_focus", button_box(&"focus"), 28.0, 6.0, card_content))
+	theme.set_stylebox(&"disabled", &"CardButton", plate("plate_card", button_box(&"disabled"), 28.0, 0.0, card_content, Color(0.7, 0.68, 0.65, 0.8)))
 	# Pannelli, scorrimento, barre.
-	theme.set_stylebox(&"panel", &"PanelContainer", panel_box())
+	theme.set_stylebox(&"panel", &"PanelContainer", plate("plate_panel", panel_box(), 28.0, 0.0, Vector4(20, 18, 20, 18)))
 	theme.set_stylebox(&"panel", &"PopupMenu", panel_box(true))
 	theme.set_color(&"font_color", &"PopupMenu", TEXT)
 	theme.set_color(&"font_hover_color", &"PopupMenu", BORDER_LIGHT)
@@ -168,18 +226,19 @@ static func build_theme() -> Theme:
 	slider_track.border_color = BORDER
 	slider_track.set_border_width_all(1)
 	slider_track.set_corner_radius_all(3)
-	theme.set_stylebox(&"slider", &"HSlider", slider_track)
 	var slider_fill := StyleBoxFlat.new()
 	slider_fill.bg_color = BORDER
 	slider_fill.set_corner_radius_all(3)
-	theme.set_stylebox(&"grabber_area", &"HSlider", slider_fill)
-	theme.set_stylebox(&"grabber_area_highlight", &"HSlider", slider_fill)
+	var gauge_content := Vector4(6, 4, 6, 4)
+	theme.set_stylebox(&"slider", &"HSlider", plate("gauge", slider_track, 11.0, 0.0, gauge_content))
+	theme.set_stylebox(&"grabber_area", &"HSlider", plate("gauge_fill", slider_fill, 11.0, 0.0, gauge_content, BORDER_LIGHT))
+	theme.set_stylebox(&"grabber_area_highlight", &"HSlider", plate("gauge_fill", slider_fill, 11.0, 0.0, gauge_content, BORDER_LIGHT))
 	var bar_bg := StyleBoxFlat.new()
 	bar_bg.bg_color = Color(0, 0, 0, 0.55)
 	bar_bg.border_color = BORDER
 	bar_bg.set_border_width_all(1)
-	theme.set_stylebox(&"background", &"ProgressBar", bar_bg)
 	var bar_fill := StyleBoxFlat.new()
 	bar_fill.bg_color = XP
-	theme.set_stylebox(&"fill", &"ProgressBar", bar_fill)
+	theme.set_stylebox(&"background", &"ProgressBar", plate("gauge", bar_bg, 11.0, 0.0, Vector4(3, 3, 3, 3)))
+	theme.set_stylebox(&"fill", &"ProgressBar", plate("gauge_fill", bar_fill, 11.0, 0.0, Vector4(3, 3, 3, 3), XP))
 	return theme
