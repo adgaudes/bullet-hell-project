@@ -13,6 +13,7 @@ const INPUT_GRACE_SECONDS := 0.4
 var is_open := false
 var _overlay: ColorRect
 var _title: Label
+var _subtitle: Label
 var _cards: HBoxContainer
 var _buttons: Array[Button] = []
 
@@ -21,7 +22,7 @@ func _ready() -> void:
 	layer = 90
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_overlay = ColorRect.new()
-	_overlay.color = Color(0.02, 0.025, 0.035, 0.78)
+	_overlay.color = Color(UiPalette.BG, 0.82)
 	_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(_overlay)
 	var center := CenterContainer.new()
@@ -31,9 +32,14 @@ func _ready() -> void:
 	column.add_theme_constant_override(&"separation", 24)
 	center.add_child(column)
 	_title = Label.new()
+	_title.theme_type_variation = &"TitleLabel"
 	_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_title.add_theme_font_size_override(&"font_size", 34)
 	column.add_child(_title)
+	_subtitle = Label.new()
+	_subtitle.text = "scegli un pezzo"
+	_subtitle.theme_type_variation = &"MutedLabel"
+	_subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	column.add_child(_subtitle)
 	_cards = HBoxContainer.new()
 	_cards.add_theme_constant_override(&"separation", 20)
 	column.add_child(_cards)
@@ -48,7 +54,7 @@ func open(offer: Array[Dictionary], levels: Dictionary, player_level: int) -> vo
 		_cards.remove_child(button)
 		button.queue_free()
 	_buttons.clear()
-	_title.text = "LIVELLO %d  -  scegli un pezzo" % player_level
+	_title.text = "LIVELLO %d" % player_level
 	for upgrade in offer:
 		_buttons.append(_make_card(upgrade, int(levels.get(upgrade.id, 0))))
 	for i in _buttons.size():
@@ -56,6 +62,13 @@ func open(offer: Array[Dictionary], levels: Dictionary, player_level: int) -> vo
 		var right := _buttons[(i + 1) % _buttons.size()]
 		_buttons[i].focus_neighbor_left = _buttons[i].get_path_to(left)
 		_buttons[i].focus_neighbor_right = _buttons[i].get_path_to(right)
+	# Le carte entrano sfalsate di 60 ms: il tween gira anche a gioco fermo.
+	for i in _buttons.size():
+		_buttons[i].modulate.a = 0.0
+		var tween := create_tween()
+		tween.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+		tween.tween_interval(0.06 * i)
+		tween.tween_property(_buttons[i], "modulate:a", 1.0, 0.18)
 	is_open = true
 	get_tree().paused = true
 	_overlay.show()
@@ -73,6 +86,31 @@ func close() -> void:
 
 func card_count() -> int:
 	return _buttons.size()
+
+
+func card(index: int) -> Button:
+	return _buttons[index]
+
+
+## Testo della carta (rarita, nome, tipo, descrizione) su righe, per test e automazione.
+func card_text(index: int) -> String:
+	var parts: PackedStringArray = []
+	for label in _labels_of(_buttons[index]):
+		parts.append(label.text)
+	return "\n".join(parts)
+
+
+func title_text() -> String:
+	return _title.text
+
+
+func _labels_of(node: Node) -> Array[Label]:
+	var out: Array[Label] = []
+	if node is Label:
+		out.append(node)
+	for child in node.get_children():
+		out.append_array(_labels_of(child))
+	return out
 
 
 ## Sceglie la carta [param index] come se fosse premuta (test e automazione).
@@ -97,24 +135,75 @@ func _set_enabled(enabled: bool) -> void:
 func _make_card(upgrade: Dictionary, current_level: int) -> Button:
 	var color: Color = UpgradeCatalog.RARITY_COLORS[upgrade.rarity].linear_to_srgb()
 	var button := Button.new()
-	button.custom_minimum_size = Vector2(300, 260)
+	button.theme_type_variation = &"CardButton"
+	button.custom_minimum_size = Vector2(300, 300)
 	button.focus_mode = Control.FOCUS_ALL
-	button.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	button.alignment = HORIZONTAL_ALIGNMENT_CENTER
-	button.add_theme_font_size_override(&"font_size", 19)
-	var level_text := "NUOVO" if current_level == 0 else "Liv. %d > %d" % [current_level, current_level + 1]
-	button.text = "%s\n\n%s\n%s - %s\n\n%s" % [
-		UpgradeCatalog.RARITY_NAMES[upgrade.rarity], upgrade.name,
-		UpgradeCatalog.CATEGORY_NAMES.get(upgrade.category, ""), level_text, UpgradeCatalog.describe(upgrade)]
-	for state in [&"normal", &"hover", &"pressed", &"focus", &"disabled"]:
-		var box := StyleBoxFlat.new()
-		box.bg_color = Color(0.09, 0.1, 0.12) if state != &"focus" else Color(0.16, 0.17, 0.2)
-		box.border_color = color if state != &"disabled" else color.darkened(0.5)
-		var width := 6 if state == &"focus" or state == &"hover" else 3
-		box.set_border_width_all(width)
+	for state: StringName in [&"normal", &"hover", &"pressed", &"focus", &"disabled"]:
+		var box := UiPalette.button_box(state, color)
 		box.set_corner_radius_all(8)
-		box.set_content_margin_all(16)
+		box.set_content_margin_all(0)
+		if state == &"focus":
+			box.border_color = color
+			box.shadow_color = Color(UiPalette.FOCUS, 0.45)
+			box.shadow_size = 10
 		button.add_theme_stylebox_override(state, box)
+	var column := VBoxContainer.new()
+	column.set_anchors_preset(Control.PRESET_FULL_RECT)
+	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	column.add_theme_constant_override(&"separation", 8)
+	button.add_child(column)
+	var rarity := Label.new()
+	rarity.text = UpgradeCatalog.RARITY_NAMES[upgrade.rarity]
+	rarity.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	rarity.theme_type_variation = &"SectionLabel"
+	rarity.add_theme_font_size_override(&"font_size", 16)
+	rarity.add_theme_color_override(&"font_color", UiPalette.OUTLINE)
+	var band := StyleBoxFlat.new()
+	band.bg_color = color
+	band.set_content_margin_all(6)
+	band.corner_radius_top_left = 6
+	band.corner_radius_top_right = 6
+	rarity.add_theme_stylebox_override(&"normal", band)
+	column.add_child(rarity)
+	var body := MarginContainer.new()
+	body.add_theme_constant_override(&"margin_left", 14)
+	body.add_theme_constant_override(&"margin_right", 14)
+	body.add_theme_constant_override(&"margin_bottom", 14)
+	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	body.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	column.add_child(body)
+	var text := VBoxContainer.new()
+	text.add_theme_constant_override(&"separation", 6)
+	text.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	body.add_child(text)
+	var name_label := Label.new()
+	name_label.text = upgrade.name
+	name_label.theme_type_variation = &"SectionLabel"
+	name_label.add_theme_color_override(&"font_color", UiPalette.TEXT)
+	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	text.add_child(name_label)
+	var level_text := "NUOVO" if current_level == 0 else "Liv. %d > %d" % [current_level, current_level + 1]
+	var kind := Label.new()
+	kind.text = "%s  -  %s" % [UpgradeCatalog.CATEGORY_NAMES.get(upgrade.category, ""), level_text]
+	kind.theme_type_variation = &"MutedLabel"
+	kind.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	text.add_child(kind)
+	var description := Label.new()
+	description.text = UpgradeCatalog.describe(upgrade)
+	description.add_theme_font_size_override(&"font_size", 17)
+	description.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	description.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	description.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	text.add_child(description)
+	for label: Label in [rarity, name_label, kind, description]:
+		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# La carta con il focus si alza: scala 1,04 attorno al centro, 120 ms, anche in pausa.
+	button.pivot_offset = button.custom_minimum_size * 0.5
+	button.focus_entered.connect(func() -> void:
+		create_tween().set_pause_mode(Tween.TWEEN_PAUSE_PROCESS).tween_property(button, "scale", Vector2(1.04, 1.04), 0.12))
+	button.focus_exited.connect(func() -> void:
+		create_tween().set_pause_mode(Tween.TWEEN_PAUSE_PROCESS).tween_property(button, "scale", Vector2.ONE, 0.12))
 	var id: StringName = upgrade.id
 	button.pressed.connect(func() -> void: _on_pressed(id))
 	_cards.add_child(button)

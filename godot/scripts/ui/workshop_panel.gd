@@ -9,10 +9,6 @@ signal purchased(id: StringName)
 ## Acquisto impossibile: rottami insufficienti o upgrade al massimo.
 signal rejected(id: StringName)
 
-const SCRAP_COLOR := Color(0.95, 0.5, 0.15)
-const OWNED_COLOR := Color(0.25, 0.85, 0.3)
-const UNAFFORDABLE_COLOR := Color(0.6, 0.6, 0.6)
-
 var is_open := false
 var _profile: PlayerProfileService
 var _overlay: ColorRect
@@ -27,7 +23,7 @@ func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_profile = get_node_or_null(^"/root/PlayerProfile") as PlayerProfileService
 	_overlay = ColorRect.new()
-	_overlay.color = Color(0.03, 0.03, 0.04, 0.96)
+	_overlay.color = Color(UiPalette.BG, 0.94)
 	_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(_overlay)
 	var center := CenterContainer.new()
@@ -39,13 +35,13 @@ func _ready() -> void:
 	center.add_child(column)
 	var title := Label.new()
 	title.text = "OFFICINA"
+	title.theme_type_variation = &"TitleLabel"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override(&"font_size", 38)
 	column.add_child(title)
 	_scrap_label = Label.new()
-	_scrap_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_scrap_label.theme_type_variation = &"ScrapLabel"
 	_scrap_label.add_theme_font_size_override(&"font_size", 22)
-	_scrap_label.add_theme_color_override(&"font_color", SCRAP_COLOR)
+	_scrap_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	column.add_child(_scrap_label)
 	# Le voci scorrono (R-21): il catalogo puo crescere oltre lo schermo del Deck e il
 	# fuoco del controller resta sempre visibile.
@@ -64,16 +60,16 @@ func _ready() -> void:
 	for entry in PermanentCatalog.all():
 		var id: StringName = entry.id
 		var button := Button.new()
+		button.theme_type_variation = &"CardButton"
 		button.custom_minimum_size = Vector2(0, 58)
 		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		button.add_theme_font_size_override(&"font_size", 17)
 		button.pressed.connect(func() -> void: _on_pressed(id))
 		_rows.add_child(button)
 		_buttons[id] = button
 	_back = Button.new()
 	_back.text = "Torna"
+	_back.theme_type_variation = &"MainButton"
 	_back.custom_minimum_size = Vector2(0, 50)
-	_back.add_theme_font_size_override(&"font_size", 20)
 	_back.pressed.connect(close)
 	column.add_child(_back)
 	column.add_child(ButtonPrompts.create([[&"ui_accept", "Compra"], [&"ui_cancel", "Torna"]]))
@@ -130,13 +126,13 @@ func _refresh() -> void:
 		var level := _profile.level_of(id)
 		var cost := _profile.cost_of(id)
 		var price := "AL MASSIMO"
-		var color := OWNED_COLOR
+		var color := UiPalette.SUCCESS
 		if cost >= 0 and _profile.scrap >= cost:
 			price = "%d rottami" % cost
-			color = Color.WHITE
+			color = UiPalette.TEXT
 		elif cost >= 0:
 			price = "%d rottami (ne mancano %d)" % [cost, cost - _profile.scrap]
-			color = UNAFFORDABLE_COLOR
+			color = UiPalette.DANGER
 		var button := _buttons[id]
 		button.text = "  %s  %d/%d  -  %s\n  %s" % [entry.name, level, (entry.costs as Array).size(), price, entry.text]
 		for state: StringName in [&"font_color", &"font_focus_color", &"font_hover_color", &"font_pressed_color"]:

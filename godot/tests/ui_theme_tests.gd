@@ -15,6 +15,7 @@ func _initialize() -> void:
 	await _test_logo()
 	await _test_screens_focus()
 	await _test_pause_and_settings()
+	await _test_cards_and_panels()
 	await _frames(2)
 	print("PROTOTYPE01_TESTS %s failures=%d" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
@@ -139,6 +140,58 @@ func _test_pause_and_settings() -> void:
 			main_buttons += 1
 	_check(main_buttons >= 5, "Riprendi, Impostazioni, Torna al menu, Esci e Indietro in MainButton (%d)" % main_buttons)
 	_check(settings.custom_minimum_size.x == 760.0, "pannello Impostazioni largo 760")
+
+
+## Level-up a carte con fascia di rarita, Officina e campagna con le varianti del tema.
+func _test_cards_and_panels() -> void:
+	var level_up := LevelUpMenu.new()
+	root.add_child(level_up)
+	await _frames(1)
+	var offer: Array[Dictionary] = UpgradeCatalog.all().slice(0, 3)
+	level_up.open(offer, {}, 2)
+	await _frames(2)
+	_check(level_up.card_count() == 3, "tre carte")
+	var text := level_up.card_text(0)
+	_check(text.contains(UpgradeCatalog.RARITY_NAMES[offer[0].rarity]) and text.contains(offer[0].name), "la carta mostra rarita e nome: %s" % text.replace("
+", " | "))
+	_check(level_up.title_text() == "LIVELLO 2", "titolo del level-up: %s" % level_up.title_text())
+	var card := level_up.card(0)
+	_check(card.theme_type_variation == &"CardButton" and card.custom_minimum_size == Vector2(300, 300), "carta CardButton 300x300")
+	var focus_box := card.get_theme_stylebox(&"focus") as StyleBoxFlat
+	_check(focus_box != null and focus_box.shadow_size > 0, "carta con bagliore sul focus")
+	level_up.close()
+	level_up.queue_free()
+	var workshop := WorkshopPanel.new()
+	root.add_child(workshop)
+	await _frames(1)
+	workshop.open()
+	await _frames(1)
+	var rows: Array[Button] = []
+	_collect_buttons(workshop, rows)
+	var card_rows := 0
+	for row in rows:
+		if row.theme_type_variation == &"CardButton":
+			card_rows += 1
+	_check(card_rows == PermanentCatalog.all().size(), "righe dell'Officina in CardButton (%d)" % card_rows)
+	_check(workshop._scrap_label.theme_type_variation == &"ScrapLabel", "contatore rottami in ScrapLabel")
+	workshop.close()
+	workshop.queue_free()
+	var campaign := CampaignMapPanel.new()
+	root.add_child(campaign)
+	await _frames(1)
+	campaign.open()
+	await _frames(1)
+	var level_cards: Array[Button] = []
+	_collect_buttons(campaign._row, level_cards)
+	_check(level_cards.size() == LevelCatalog.count() and level_cards[0].theme_type_variation == &"CardButton", "livelli della campagna come carte")
+	var links := 0
+	for child in campaign._row.get_children():
+		if child is ColorRect:
+			links += 1
+	_check(links == LevelCatalog.count() - 1, "una linea rame fra una carta e l'altra (%d)" % links)
+	campaign.close()
+	campaign.queue_free()
+	await _frames(2)
 
 
 func _descendants(node: Node) -> Array[Node]:

@@ -8,9 +8,9 @@ extends CanvasLayer
 signal closed
 signal level_chosen(id: StringName)
 
-const DONE_COLOR := Color(0.25, 0.85, 0.3)
-const OPEN_COLOR := Color(0.95, 0.85, 0.55)
-const LOCKED_COLOR := Color(0.5, 0.5, 0.5)
+const DONE_COLOR := UiPalette.SUCCESS
+const OPEN_COLOR := UiPalette.BORDER_LIGHT
+const LOCKED_COLOR := Color(UiPalette.TEXT_MUTED, 0.5)
 
 var is_open := false
 var _profile: PlayerProfileService
@@ -26,7 +26,7 @@ func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_profile = get_node_or_null(^"/root/PlayerProfile") as PlayerProfileService
 	_overlay = ColorRect.new()
-	_overlay.color = Color(0.04, 0.05, 0.04, 0.96)
+	_overlay.color = Color(UiPalette.BG, 0.94)
 	_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(_overlay)
 	var center := CenterContainer.new()
@@ -38,8 +38,8 @@ func _ready() -> void:
 	center.add_child(column)
 	var title := Label.new()
 	title.text = "PRIMA CAMPAGNA"
+	title.theme_type_variation = &"TitleLabel"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override(&"font_size", 38)
 	column.add_child(title)
 	_row = HBoxContainer.new()
 	_row.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -48,8 +48,16 @@ func _ready() -> void:
 	for i in LevelCatalog.count():
 		var entry: Dictionary = LevelCatalog.all()[i]
 		var id: StringName = entry.id
+		if i > 0:
+			# Linea rame che collega le carte, centrata in verticale.
+			var link := ColorRect.new()
+			link.color = UiPalette.BORDER
+			link.custom_minimum_size = Vector2(40, 3)
+			link.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+			_row.add_child(link)
 		var button := Button.new()
-		button.custom_minimum_size = Vector2(260, 120)
+		button.theme_type_variation = &"CardButton"
+		button.custom_minimum_size = Vector2(220, 140)
 		button.add_theme_font_size_override(&"font_size", 18)
 		button.pressed.connect(func() -> void: _on_pressed(id))
 		button.focus_entered.connect(func() -> void: _show_detail(id))
@@ -60,12 +68,13 @@ func _ready() -> void:
 	_detail.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_detail.custom_minimum_size = Vector2(0, 60)
+	_detail.theme_type_variation = &"MutedLabel"
 	_detail.add_theme_font_size_override(&"font_size", 18)
 	column.add_child(_detail)
 	_back = Button.new()
 	_back.text = "Torna"
+	_back.theme_type_variation = &"MainButton"
 	_back.custom_minimum_size = Vector2(0, 50)
-	_back.add_theme_font_size_override(&"font_size", 20)
 	_back.pressed.connect(close)
 	column.add_child(_back)
 	column.add_child(ButtonPrompts.create([[&"ui_accept", "Parti"], [&"ui_cancel", "Torna"]]))
