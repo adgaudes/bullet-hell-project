@@ -10,7 +10,7 @@ Principio guida:
 
 > Prima dimostriamo che e divertente. Poi dimostriamo che e producibile. Solo dopo costruiamo tutto il resto.
 
-## Stato operativo al 10 ottobre 2026
+## Stato operativo all'11 ottobre 2026
 
 > **Engine: Godot 4.7.2** (D-019). Le fasi di prodotto qui descritte restano valide: cambia la tecnologia, non la sequenza ne i gate. I riferimenti a Unreal, Visual Studio e MCP Epic nelle sezioni successive sono storici; il codice Unreal e nel tag `unreal-prototype-final`. Dettaglio della migrazione: `docs/MIGRATION_STATUS.md`; parita: `docs/GODOT_PARITY_CHECKLIST.md`.
 
@@ -56,6 +56,8 @@ Principio guida:
 - **Fasi 4-14:** non iniziate formalmente. Esperimenti tecnici anticipati non equivalgono al superamento dei relativi gate.
 
 **Prossimo passo (in ordine):**
+
+0b. **Restyling grafico (D-077, D-078), fetta visiva dell'ambiente fatta l'11 ottobre 2026: giudizio del proprietario sulle catture** `output/restyle/district/` (`start`, `overview`, `visit_0`, `visit_1`, `combat`, `ruin_close`, `grass_close`, `tree_close`, `start_close`), `output/restyle/night/`, `output/restyle/ui/` (Impostazioni), con il "prima" in `output/restyle/before/`. Esito atteso: Continua / Modifica / Scarta. Se Continua: **piano 2, l'Ingegnere** (scheda in `ART_DIRECTION.md`), poi compagno, rottamatori, boss, ferrovia, torri. Da provare in gioco: preset grafici e opzioni singole nelle Impostazioni (Massimo = SDFGI e volumetrica), camera a tre distanze (Y / C / rotellina). **Misura su Steam Deck** con la build riesportata e il Debug Menu (F3): sul PC Alto 4,1 ms, Deck 3,7 ms.
 
 0a. **Passate artistiche (D-068 → D-074), giudizio del proprietario sulle catture:** arena (erba, rovine, terrapieni, torri, detriti, colore), contorno degli attori, ingegnere e tutti gli attori rifiniti con texture cotta, **prop dell'ambiente rifiniti** (D-073). Catture: `output/district/`, `output/actors/` (prima in `output/actors_before/`), `output/character/` (prima in `output/character_before/`), `output/night/`, `output/env/` e `output/env_railway/` (prop), `output/character/` e `output/motion/` (ingegnere D-074, prima in `output/character_d071/`). Esito atteso: Continua / Modifica / Scarta per ciascun passo. Poi, in ordine: **audio CC0** dopo il si sui pacchetti Kenney; build riesportate (fatto il 10 ottobre 2026 a fine tranche 2). **Il playtest ora comprende terremoto ed estrazione**: `--quake-at=20` e, dopo il boss, la piazzola. Misura su Steam Deck prima di chiudere: le primitive sono quasi raddoppiate.
 0. **Terreno libero (D-063), prova del proprietario:** lo spike e completo (9 ottobre 2026: campo di percorso corretto, suite nel gate, catture e misure rifatte). Tocca al proprietario provare `scenes/spikes/terrain_spike.tscn`; solo dopo il suo si scrivere il piano di migrazione del livello vero al rilievo continuo. Dettaglio in `docs/MIGRATION_STATUS.md`.

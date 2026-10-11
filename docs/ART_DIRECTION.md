@@ -108,6 +108,34 @@ Il test ha successo se una schermata muta comunica insieme mondo post-apocalitti
 
 Prima applicazione della direzione nel gioco: piazza con strada spaccata, lastre invase dall'erba, torri coperte di muschio e rampicanti, treno e auto arrugginiti, alberi, cespugli, fiori corallo/blu/giallo, foschia in lontananza e sole basso dorato. Reference del proprietario in `Screenshots/World/arena_reference_2026-10-04/` (fuori repo; alcune generate con AI, una firmata: solo ispirazione, mai asset). Edifici, macerie e vegetazione bassa sono ancora primitive; auto, vagoni, alberi e barriere sono modelli Blender scriptati (D-037) con i materiali procedurali dell'arena. Mancano texture, fogliame denso, acqua e modelli degli edifici. Dal 9-10 ottobre 2026 attori (D-071, D-072) e prop con modello (D-073: auto, vagoni, alberi, barriere, lampioni) hanno colore, usura, occlusione e sporco cotti in texture da Blender; rovine, torri e terrapieni restano su shader procedurali.
 
+## Direzione dall'11 ottobre 2026 (D-077): stilizzato ricco alla Hades II
+
+Il proprietario ha scelto una resa "attuale": texture dipinte in alta risoluzione (2048 per modelli grandi e tile, 1024 per prop piccoli), forme morbide e dense, colori saturi con contrasti caldo/freddo, rim light e glow marcati, dettaglio decorativo dove conta. **Hades II** e il riferimento di resa tradotto in 3D (texture dipinte, mai foto; niente PBR fotografico). Tutto viene dalla pipeline Blender nostra (`tools/blender/painter.py`, `build_surface_tiles.py`): nessun pacchetto esterno, nessuna AI. La specifica e in `docs/superpowers/specs/2026-10-11-visual-restyle-design.md`; la fetta visiva dell'ambiente e fatta (catture prima/dopo in `output/restyle/`), il resto segue il giudizio del proprietario.
+
+### Personaggi: regole comuni
+
+- testa circa 1,4x e mani circa 1,5x rispetto al realistico, torso ampio, arti corti, baricentro basso;
+- un "secondo profilo" sulla schiena (zaino, botte, cariche, chiave) leggibile da dietro e dai tre quarti alti;
+- attrezzi recuperati dalle infrastrutture del mondo (binari, segnali, tubi, carrozzeria, manometri), **mai ingranaggi d'ottone decorativi**; il linguaggio delle reference (tozzi, morbidi, usurati) si, l'archetipo "nano steampunk" no;
+- un vizio visibile per ciascuno; materiali cuoio/tela/gomma/metallo sporco con usura dipinta; facce vissute (guance e naso arrossati, sopracciglia folte, rughe e cicatrici dipinte), mai lisce;
+- un colore d'accento forte per personaggio, su elementi visibili da dietro;
+- **roster fisso, un personaggio per classe, nessuna scelta di sesso, corporatura o eta**; il carattere (rozzi, scalmanati, ubriaconi, sboccati, simpatici) si legge dall'aspetto e dalla postura.
+
+### Roster (schede visive)
+
+| # | Classe (asse di gioco) | Chi e | Come si vede che e rozzo e simpatico | Accento |
+|---|---|---|---|---|
+| 1 | **Ingegnere** (equilibrato, personaggio attuale) | Donna sulla cinquantina, tozza, spalle larghe, naso rotto, capelli grigi legati con un cavo elettrico | Tuta slacciata fino alla vita con canottiera macchiata, sigaro spento in bocca, fiaschetta all'anca, chiave da treno enorme a tracolla, postura a mento alto e pancia in fuori | Arancio |
+| 2 | **Guastatore** (scavo esplosivo, terreno) | Ragazzo magro e sdentato, iperattivo, sopracciglia bruciate | Occhiali da saldatore storti, giubbotto gonfio di cariche fatte in casa, pantaloni strappati, orecchie fasciate, bocca sempre aperta a ridere; corre a scatti | Rosso |
+| 3 | **Meccanico** (compagno potenziato) | Vecchio enorme, calvo, pancia da birra, braccia da gorilla | Grembiule di gomma, un occhio sostituito da una lente recuperata, mani nere di grasso, bottiglia nella tasca posteriore; passo lento e pesante | Turchese |
+| 4 | **Erbacciaia** (terreno che cresce, vegetazione come difesa) | Vecchia minuta e cattiva, gobba, pipa accesa | Cappello di paglia bruciacchiato, botte di distillato in spalla con il tubo che le arriva alla bocca, falce arrugginita, gatto-robot sulla botte; sputa per terra | Magenta |
+
+Le classi come meccanica non esistono ancora: si costruisce prima l'Ingegnere (piano 2), le classi entrano nel gioco dopo il playtest. Identificatori: `engineer`, `sapper`, `mechanic`, `weeder`.
+
+### Ambiente: ricetta della fetta visiva
+
+Tile dipinte e ripetibili per suolo (terra, lastre, asfalto, terra scavata, fango, erba), muri (intonaco scrostato con mattoni, muschio, corteccia) e piante (ciuffi, cartelle di foglie); maschera mondo condivisa fra piano e celle del terreno; rovine generate per impronta e dipinte in triplanare; erba e cespugli a cartelle; prop con albedo, normal e ORM cotte; cielo a gradiente dipinto, sole caldo basso con ambiente freddo (ombre blu-viola), ACES, glow in soft light, contrasto 1,12 e saturazione 1,22; rim light su attori e prop; notte blu-violacea.
+
 ## Questioni aperte prima dell'Art Lock
 
 - grado esatto di caricatura delle proporzioni;
