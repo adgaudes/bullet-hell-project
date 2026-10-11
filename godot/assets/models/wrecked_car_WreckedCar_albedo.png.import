@@ -3,22 +3,23 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://buclwplvth2ru"
-path="res://.godot/imported/wrecked_car_WreckedCar_albedo.png-07c37d84ab5f2e55f1a92863ed4539d4.ctex"
+path.s3tc="res://.godot/imported/wrecked_car_WreckedCar_albedo.png-07c37d84ab5f2e55f1a92863ed4539d4.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
-"md5": "8864908865533b42873f0c3ea4c1c080"
+"md5": "72f90707e604b633525fbf6d2e265f39"
 }
 
 [deps]
 
 source_file="res://assets/models/wrecked_car_WreckedCar_albedo.png"
-dest_files=["res://.godot/imported/wrecked_car_WreckedCar_albedo.png-07c37d84ab5f2e55f1a92863ed4539d4.ctex"]
+dest_files=["res://.godot/imported/wrecked_car_WreckedCar_albedo.png-07c37d84ab5f2e55f1a92863ed4539d4.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
@@ -40,4 +41,4 @@ process/normal_map_invert_y=false
 process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
 process/size_limit=0
-detect_3d/compress_to=1
+detect_3d/compress_to=0

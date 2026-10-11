@@ -11,7 +11,8 @@ ORM (occlusione, roughness, metallo), tutte a 2048 per default. Dopo la cottura 
 materiali diventano Principled con le tre texture; il materiale della lampada e emissivo.
 
 Materiali semantici: uno "vernice" (`suit` o `paint`, tinta dal codice di gioco via
-`albedo_color`, quindi di base chiaro), `gear` (colori fissi), `lamp` (emissivo).
+`albedo_color`, quindi di base chiaro), `gear` (colori fissi, un po' metallico), `lamp`
+(emissivo), `matte` (opaco, mai metallico: corteccia, legno, gomma, pietra).
 Con `bake_normal=True` (D-074) cuoce anche una **normal map** in spazio tangente da un
 rilievo procedurale (trama del tessuto sulla vernice, grana e graffi sul resto), che
 l'export glTF porta come `normalTexture`. `to_object(..., blends=[...])` sfuma i pesi
@@ -42,7 +43,7 @@ class RefinedBuilder:
         self.bake_size = bake_size
         self.bake_normal = bake_normal
         self.bake_orm = bake_orm
-        for name in (paint_name, "gear", "lamp"):
+        for name in (paint_name, "gear", "lamp", "matte"):
             mat = bpy.data.materials.get(name) or bpy.data.materials.new(name)
             mat.use_nodes = True
             self.materials[name] = mat

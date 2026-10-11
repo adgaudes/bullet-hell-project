@@ -3,22 +3,23 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://caj7visbkv75x"
-path="res://.godot/imported/lamp_post_LampPost_albedo.png-2534015f552f01a82e06f3502d643645.ctex"
+path.s3tc="res://.godot/imported/lamp_post_LampPost_albedo.png-2534015f552f01a82e06f3502d643645.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
-"md5": "d83b76f61a609719bcd0e927125f6ad1"
+"md5": "ad550e1e3572429d09349c023a542999"
 }
 
 [deps]
 
 source_file="res://assets/models/lamp_post_LampPost_albedo.png"
-dest_files=["res://.godot/imported/lamp_post_LampPost_albedo.png-2534015f552f01a82e06f3502d643645.ctex"]
+dest_files=["res://.godot/imported/lamp_post_LampPost_albedo.png-2534015f552f01a82e06f3502d643645.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
@@ -40,4 +41,4 @@ process/normal_map_invert_y=false
 process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
 process/size_limit=0
-detect_3d/compress_to=1
+detect_3d/compress_to=0

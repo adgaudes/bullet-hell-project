@@ -27,6 +27,8 @@ from painter import math_node, mix, noise, ramp  # noqa: E402
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 OUT_DIR = os.path.join(ROOT, "godot", "assets", "textures", "surfaces")
 SIZE = 2048
+# Risoluzione per gruppo: il suolo copre lo schermo, muri e piante no (VRAM).
+SIZES = {"ground": 2048, "walls": 1024, "plants": 1024}
 SAMPLES = 32
 
 # (nome, colore_a, colore_b, scala_macro, scala_micro, roughness)
@@ -45,8 +47,8 @@ TILES = {
         ("bark", (0.40, 0.30, 0.20), (0.24, 0.18, 0.12), 2.0, 22.0, 0.9),
     ],
     "plants": [
-        ("grass_tufts", (0.24, 0.42, 0.10), (0.58, 0.66, 0.20), 1.0, 8.0, 0.9),
-        ("leaf_cards", (0.18, 0.36, 0.10), (0.50, 0.60, 0.18), 1.0, 6.0, 0.9),
+        ("grass_tufts", (0.30, 0.52, 0.14), (0.70, 0.78, 0.28), 1.0, 8.0, 0.9),
+        ("leaf_cards", (0.26, 0.48, 0.14), (0.62, 0.72, 0.24), 1.0, 6.0, 0.9),
     ],
 }
 
@@ -168,7 +170,7 @@ def plant_graph(mat, image, spec):
     coords, w = painter.seamless_coords(nodes, links)
     if name == "grass_tufts":
         column_u = math_node(nodes, links, "FRACT", math_node(nodes, links, "MULTIPLY", u, 3.0))
-        wobble = math_node(nodes, links, "MULTIPLY_ADD", noise(nodes, links, coords, 6.0, 1.0, 0.5, w), 0.2, -0.1)
+        wobble = math_node(nodes, links, "MULTIPLY_ADD", noise(nodes, links, coords, 4.0, 1.0, 0.5, w), 0.08, -0.04)
         phase = math_node(nodes, links, "FRACT",
                           math_node(nodes, links, "MULTIPLY", math_node(nodes, links, "ADD", column_u, wobble), 5.0))
         # Lama larga alla base e appuntita: semi-larghezza = 0.45 * (1 - v)^1.6.
@@ -212,8 +214,9 @@ def tile_normal_graph(mat, image, spec):
 # -- cottura ----------------------------------------------------------------------------
 
 
-def bake_layer(name, graph, spec, colorspace, bake_type, samples):
-    """Cuoce una tile su un piano nuovo e restituisce (immagine, presa alpha o None)."""
+def bake_layer(name, graph, spec, colorspace, bake_type, samples, size):
+    """Cuoce una tile di lato `size` su un piano nuovo e restituisce i pixel (RGBA float)."""
+    SIZE = size  # noqa: N806 (lato della tile corrente)
     bpy.ops.mesh.primitive_plane_add(size=2.0)
     plane = bpy.context.active_object
     mat = bpy.data.materials.new(name)
@@ -256,7 +259,8 @@ def bake_layer(name, graph, spec, colorspace, bake_type, samples):
     return pixels
 
 
-def save_sheet(group, map_name, colorspace, layers_pixels):
+def save_sheet(group, map_name, colorspace, layers_pixels, size):
+    SIZE = size  # noqa: N806
     layers = len(layers_pixels)
     sheet = bpy.data.images.new("%s_%s" % (group, map_name), SIZE, SIZE * layers, alpha=True)
     sheet.colorspace_settings.name = colorspace
@@ -297,9 +301,10 @@ def build_group(group):
             graph = tile_normal_graph
         else:
             graph = tile_orm_graph
-        layers = [bake_layer("%s_%s_%s" % (group, map_name, spec[0]), graph, spec, colorspace, bake_type, samples)
+        size = SIZES[group]
+        layers = [bake_layer("%s_%s_%s" % (group, map_name, spec[0]), graph, spec, colorspace, bake_type, samples, size)
                   for spec in specs]
-        save_sheet(group, map_name, colorspace, layers)
+        save_sheet(group, map_name, colorspace, layers, size)
 
 
 def main():

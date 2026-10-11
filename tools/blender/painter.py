@@ -29,6 +29,9 @@ STYLES = {
                  rough_base=0.55, rough_wear=0.30, metal=0.35, gradient_top=1.08, gradient_bottom=0.82),
     "lamp": dict(brush_scale=0.0, brush_dir=(1.0, 0.0), edge_color=(1.0, 1.0, 1.0),
                  rough_base=0.4, rough_wear=0.4, metal=0.0, gradient_top=1.0, gradient_bottom=1.0),
+    # Opaco e mai metallico: corteccia, legno, gomma, pietra.
+    "matte": dict(brush_scale=18.0, brush_dir=(0.0, 1.0), edge_color=(0.80, 0.74, 0.66),
+                  rough_base=0.9, rough_wear=0.75, metal=0.0, gradient_top=1.08, gradient_bottom=0.80),
     "tile": dict(brush_scale=10.0, brush_dir=(1.0, 0.0), edge_color=(0.9, 0.86, 0.8),
                  rough_base=0.85, rough_wear=0.6, metal=0.0, gradient_top=1.0, gradient_bottom=1.0),
 }
@@ -139,9 +142,11 @@ def brush(nodes, links, coords, style, w=None):
 
 
 def edge_wear(nodes, links):
-    """Maschera 0..1 degli spigoli convessi (pointiness), con bordo netto."""
+    """Maschera 0..1 degli spigoli convessi (pointiness), con bordo netto. La soglia e
+    alta: un cilindro liscio a pochi lati ha pointiness 0,55-0,62 su tutta la superficie
+    e non deve risultare consumato ovunque (il tronco dell'albero usciva beige)."""
     geometry = nodes.new("ShaderNodeNewGeometry")
-    return ramp(nodes, links, geometry.outputs["Pointiness"], [(0.52, (0.0, 0.0, 0.0)), (0.66, (1.0, 1.0, 1.0))])
+    return ramp(nodes, links, geometry.outputs["Pointiness"], [(0.64, (0.0, 0.0, 0.0)), (0.74, (1.0, 1.0, 1.0))])
 
 
 def ambient_occlusion(nodes, links, distance=0.22):
@@ -210,7 +215,8 @@ def paint_albedo_graph(mat, image, kind, style=None, coords_fn=None):
         color = mix(nodes, links, color, stains, 1.0, "MULTIPLY")
         if not tiled:
             # Usura sugli spigoli con il colore proprio del materiale (bordo netto, non grana).
-            color = mix(nodes, links, color, style["edge_color"], edge_wear(nodes, links))
+            wear = math_node(nodes, links, "MULTIPLY", edge_wear(nodes, links), 0.8)
+            color = mix(nodes, links, color, style["edge_color"], wear)
             # Sporco verso terra: fattore 0 (fango) vicino a Z = 0, 1 oltre 0,6 m.
             mud = nodes.new("ShaderNodeMapRange")
             mud.inputs["From Min"].default_value = 0.05

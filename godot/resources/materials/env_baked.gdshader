@@ -4,14 +4,21 @@ shader_type spatial;
 // Blender; per istanza restano la tinta sulle superfici "vernice", la ruggine a macchie
 // (solo sulla vernice: e dove la vernice e saltata) e il muschio sulle facce rivolte in
 // alto, in coordinate mondo come in rusted_metal.gdshader.
+// Dal restyling 2026-10-11 legge anche normal map e ORM cotte (`has_maps`) e aggiunge
+// una rim light leggera, come gli attori.
 
 #include "res://resources/materials/noise.gdshaderinc"
 
 uniform sampler2D albedo_tex : source_color, filter_linear_mipmap_anisotropic;
+uniform sampler2D normal_tex : hint_normal, filter_linear_mipmap_anisotropic;
+// R occlusione, G roughness, B metallo.
+uniform sampler2D orm_tex : hint_default_white, filter_linear_mipmap_anisotropic;
+uniform bool has_maps = false;
 // 1 = superficie "vernice": moltiplicata per `tint` e soggetta alla ruggine.
 uniform float tintable = 0.0;
 uniform float base_roughness = 0.7;
 uniform float base_metallic = 0.0;
+uniform float rim_strength = 0.08;
 
 // Si chiama `tint` come nel fogliame: un albero ha tronco cotto e chioma sullo stesso
 // nodo, e le uniform per istanza di materiali diversi condividono gli indici.
@@ -47,7 +54,20 @@ void fragment() {
 	float moss = smoothstep(0.45, 0.8, n.y) * smoothstep(0.4, 0.5, fbm(world_pos.xz * 0.7) + overgrowth * 0.35);
 	vec3 moss_col = mix(moss_a, moss_b, value_noise(world_pos.xz * 1.5));
 
+	float rough = base_roughness;
+	float metal = base_metallic;
+	if (has_maps) {
+		NORMAL_MAP = texture(normal_tex, UV).rgb;
+		NORMAL_MAP_DEPTH = 1.0;
+		vec3 orm = texture(orm_tex, UV).rgb;
+		rough = orm.g;
+		metal = orm.b;
+		AO = orm.r;
+		AO_LIGHT_AFFECT = 0.3;
+	}
 	ALBEDO = mix(col, moss_col, moss);
-	ROUGHNESS = mix(base_roughness, 0.9, max(r, moss));
-	METALLIC = base_metallic * (1.0 - r) * (1.0 - moss);
+	ROUGHNESS = mix(rough, 0.9, max(r, moss));
+	METALLIC = metal * (1.0 - r) * (1.0 - moss);
+	RIM = rim_strength;
+	RIM_TINT = 0.8;
 }

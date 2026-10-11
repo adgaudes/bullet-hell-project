@@ -137,6 +137,27 @@ def lumpy_sphere(name, radius, location, mat_name, rng, squash=0.85, roughness=0
     return assign(obj, mat_name)
 
 
+def leaf_cards(name, center, radius, count, rng, mat_name="leaves"):
+    """Cartelle di fogliame attorno a `center`: piani 1,6 x 1,2 m orientati a caso dentro
+    una sfera di raggio `radius`, con la normale che guarda fuori dal centro."""
+    cards = []
+    for _ in range(count):
+        direction = Vector((rng.uniform(-1.0, 1.0), rng.uniform(-1.0, 1.0), rng.uniform(-0.4, 1.0)))
+        if direction.length < 1e-3:
+            direction = Vector((0.0, 0.0, 1.0))
+        direction.normalize()
+        location = Vector(center) + direction * radius * rng.uniform(0.25, 0.7)
+        rotation = direction.to_track_quat("Z", "Y").to_euler()
+        rotation.z += rng.uniform(0.0, math.tau)
+        bpy.ops.mesh.primitive_plane_add(size=1.0, location=location, rotation=rotation)
+        obj = bpy.context.active_object
+        obj.name = name
+        obj.scale = (radius * 1.1, radius * 0.85, 1.0)
+        bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
+        cards.append(assign(obj, mat_name))
+    return cards
+
+
 def shade_flat(obj):
     for poly in obj.data.polygons:
         poly.use_smooth = False
@@ -410,28 +431,28 @@ def build_overgrown_tree():
     vertice scuro in basso). Alto circa 6,5 m."""
     rng = random.Random(11)
     b = StaticBuilder()
-    trunk = b.cyl(0.32, 3.4, (0.0, 0.0, 1.7), BARK, sides=9, radius_top=0.18, bevel=0.0, sharp=70.0)
+    trunk = b.cyl(0.32, 3.4, (0.0, 0.0, 1.7), BARK, mat="matte", sides=9, radius_top=0.18, bevel=0.0, sharp=70.0)
     for v in trunk.data.vertices:
         t = v.co.z / 3.4
         v.co.x += 0.35 * t * t
     for i in range(4):
         a = i * 0.5 * math.pi + 0.3
-        b.cyl(0.13, 0.7, (math.cos(a) * 0.32, math.sin(a) * 0.32, 0.12), BARK_LIGHT, sides=6,
+        b.cyl(0.13, 0.7, (math.cos(a) * 0.32, math.sin(a) * 0.32, 0.12), BARK_LIGHT, mat="matte", sides=6,
               radius_top=0.05, bevel=0.0, rot=(0.0, 65.0, math.degrees(a)), sharp=70.0)
     for i in range(3):
         a = i * 2.0 * math.pi / 3.0 + 0.4
-        b.cyl(0.12, 1.6, (0.3 + math.cos(a) * 0.45, math.sin(a) * 0.45, 3.0), BARK_LIGHT, sides=6,
+        b.cyl(0.12, 1.6, (0.3 + math.cos(a) * 0.45, math.sin(a) * 0.45, 3.0), BARK_LIGHT, mat="matte", sides=6,
               radius_top=0.05, bevel=0.0, rot=(50.0, 0.0, math.degrees(a)), sharp=70.0)
     obj = b.to_object("OvergrownTree")
     clusters = [((0.35, 0.0, 4.6), 1.7), ((1.3, 0.6, 4.0), 1.2), ((-0.6, 0.8, 4.1), 1.25),
                 ((0.4, -1.0, 4.2), 1.3), ((0.5, 0.3, 5.5), 1.15), ((-0.5, -0.5, 4.9), 1.0)]
     canopies = []
     for loc, r in clusters:
-        canopy = lumpy_sphere("Canopy", r, loc, "leaves", rng)
-        shade_flat(canopy)
-        bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
-        bottom_darkening(canopy, 2.8, 6.2)
-        canopies.append(canopy)
+        # Chioma a cartelle (restyling 2026-10-11): piani con UV 0..1 che il fogliame
+        # ritaglia con le foglie dipinte; piu scuri verso il basso come prima.
+        for card in leaf_cards("Canopy", loc, r, 7, rng):
+            bottom_darkening(card, 2.8, 6.2)
+            canopies.append(card)
     bpy.ops.object.select_all(action="DESELECT")
     for canopy in canopies:
         canopy.select_set(True)
@@ -445,11 +466,11 @@ def build_overgrown_tree():
     return obj
 
 
-def build_concrete_barrier():
+def build_concrete_barrier():  # texture 1024: prop piccolo
     """Barriera New Jersey rifinita: profilo smussato, spigolo scheggiato con due tondini,
     fori di sollevamento. 3 m lungo Y."""
     rng = random.Random(3)
-    b = StaticBuilder()
+    b = StaticBuilder(bake_size=1024)
     profile = [(-0.3, 0.0), (0.3, 0.0), (0.3, 0.08), (0.18, 0.33), (0.1, 0.82), (-0.1, 0.82),
                (-0.18, 0.33), (-0.3, 0.08)]
     shell = b.profile(profile, 3.0, (0.0, 0.0, 0.0), LIGHT_CONCRETE, paint=True, bevel=0.025, segments=2,
@@ -470,7 +491,7 @@ def build_concrete_barrier():
 def build_lamp_post():
     """Lampione stradale rifinito, 5,5 m: base, palo rastremato con collare, braccio
     verso +Y con tirante, testa a lanterna con vetro spento (non e una fonte di luce)."""
-    b = StaticBuilder()
+    b = StaticBuilder(bake_size=1024)
     b.cyl(0.17, 0.22, (0.0, 0.0, 0.11), DARK_METAL, sides=10, bevel=0.025, segments=3)
     b.cyl(0.095, 5.2, (0.0, 0.0, 2.82), WHITE, paint=True, sides=10, radius_top=0.06, bevel=0.0, sharp=70.0)
     b.cyl(0.11, 0.1, (0.0, 0.0, 0.6), DARK_METAL, sides=10, bevel=0.012)

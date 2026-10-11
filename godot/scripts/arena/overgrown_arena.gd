@@ -22,6 +22,8 @@ const ENV_BAKED_SHADER := preload("res://resources/materials/env_baked.gdshader"
 const WALLS_ALBEDO := preload("res://assets/textures/surfaces/walls_albedo.png")
 const WALLS_NORMAL := preload("res://assets/textures/surfaces/walls_normal.png")
 const WALLS_ORM := preload("res://assets/textures/surfaces/walls_orm.png")
+## Tile dipinte delle piante: 0 ciuffi d'erba (tre colonne), 1 cartelle di foglie.
+const PLANTS_ALBEDO := preload("res://assets/textures/surfaces/plants_albedo.png")
 ## Modelli generati da tools/blender/build_arena_assets.py (D-037), rifiniti con
 ## texture cotta (D-073).
 const CAR_MODEL := preload("res://assets/models/wrecked_car.glb")
@@ -94,6 +96,7 @@ var _rng := RandomNumberGenerator.new()
 var _ruin_material: ShaderMaterial
 var _rust_material: ShaderMaterial
 var _foliage_material: ShaderMaterial
+var _bush_material: ShaderMaterial
 var _canopy_material: ShaderMaterial
 var _grass_material: ShaderMaterial
 var _litter_material: StandardMaterial3D
@@ -270,13 +273,20 @@ func _make_materials() -> void:
 	_rust_material.shader = RUST_SHADER
 	_foliage_material = ShaderMaterial.new()
 	_foliage_material.shader = FOLIAGE_SHADER
+	# Cespugli: cartelle di foglie dipinte (restyling 2026-10-11).
+	_bush_material = ShaderMaterial.new()
+	_bush_material.shader = FOLIAGE_SHADER
+	_bush_material.set_shader_parameter(&"textured", true)
+	_bush_material.set_shader_parameter(&"plants_albedo", PLANTS_ALBEDO)
 	# Le chiome alte oscillano poco: lo spostamento cresce con la quota locale.
 	_canopy_material = ShaderMaterial.new()
 	_canopy_material.shader = FOLIAGE_SHADER
 	_canopy_material.set_shader_parameter(&"sway", 0.012)
+	_canopy_material.set_shader_parameter(&"textured", true)
+	_canopy_material.set_shader_parameter(&"plants_albedo", PLANTS_ALBEDO)
 	_grass_material = ShaderMaterial.new()
 	_grass_material.shader = GRASS_SHADER
-	_grass_material.set_shader_parameter(&"blade_texture", _blade_texture())
+	_grass_material.set_shader_parameter(&"plants_albedo", PLANTS_ALBEDO)
 	_grass_material.set_shader_parameter(&"sway", 0.05)
 	_litter_material = StandardMaterial3D.new()
 	_litter_material.vertex_color_use_as_albedo = true
@@ -351,39 +361,29 @@ func _unit_box_mesh() -> BoxMesh:
 
 ## Ciuffo di cespuglio: sfera a pochi segmenti, vertici spostati a caso lungo il
 ## raggio, facce piatte (una mesh condivisa per tutti i cespugli).
-func _bush_mesh() -> ArrayMesh:
+## Cespuglio a cartelle (restyling 2026-10-11): sei quad unitari, tre verticali
+## incrociati a 60 gradi e tre inclinati, con UV 0..1 per le foglie dipinte e normali
+## ammorbidite verso l'alto, cosi la luce li legge come una massa.
+func _bush_card_mesh() -> ArrayMesh:
 	if _shared_bush != null:
 		return _shared_bush
-	var sphere := SphereMesh.new()
-	sphere.radius = 1.0
-	sphere.height = 2.0
-	sphere.radial_segments = 8
-	sphere.rings = 5
-	var arrays := sphere.get_mesh_arrays()
-	var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
-	var indices: PackedInt32Array = arrays[Mesh.ARRAY_INDEX]
-	var moved := PackedVector3Array()
-	moved.resize(vertices.size())
-	for i in vertices.size():
-		var v := vertices[i]
-		# I vertici condivisi (stessa posizione) devono muoversi insieme: rumore sulla posizione.
-		var k := _hash12(Vector2(v.x * 3.1 + v.y * 1.7, v.z * 2.3 - v.y * 0.9))
-		moved[i] = v * (0.82 + 0.36 * k) if v.y > -0.95 else v * 0.9
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var t := 0
-	while t + 2 < indices.size():
-		var a := moved[indices[t]]
-		var b := moved[indices[t + 1]]
-		var c := moved[indices[t + 2]]
-		var normal := (b - a).cross(c - a)
-		if normal.length_squared() > 0.0:
-			normal = normal.normalized()
-			for p in [a, b, c]:
-				st.set_normal(normal)
-				st.set_color(Color.WHITE)
-				st.add_vertex(p)
-		t += 3
+	var uvs: Array[Vector2] = [Vector2(0.0, 1.0), Vector2(1.0, 1.0), Vector2(1.0, 0.0), Vector2(0.0, 0.0)]
+	for k in 6:
+		var yaw := TAU * float(k % 3) / 3.0 * 0.5 + (0.3 if k >= 3 else 0.0)
+		var tilt := 0.0 if k < 3 else deg_to_rad(35.0) * (1.0 if k % 2 == 0 else -1.0)
+		var basis := Basis(Vector3.UP, yaw) * Basis(Vector3.RIGHT, tilt)
+		var corners: Array[Vector3] = [Vector3(-1.0, 0.0, 0.0), Vector3(1.0, 0.0, 0.0),
+			Vector3(1.0, 2.0, 0.0), Vector3(-1.0, 2.0, 0.0)]
+		var face_normal := basis * Vector3.BACK
+		var normal := (Vector3.UP * 1.2 + face_normal).normalized()
+		for index in [0, 1, 2, 0, 2, 3]:
+			st.set_normal(normal)
+			st.set_color(Color.WHITE)
+			st.set_uv(uvs[index])
+			st.add_vertex(basis * corners[index])
+	st.generate_tangents()
 	_shared_bush = st.commit()
 	return _shared_bush
 
@@ -453,6 +453,15 @@ func _baked_material(source: BaseMaterial3D, tintable: bool) -> ShaderMaterial:
 	material.set_shader_parameter(&"tintable", 1.0 if tintable else 0.0)
 	material.set_shader_parameter(&"base_roughness", source.roughness)
 	material.set_shader_parameter(&"base_metallic", 0.3 if tintable else 0.1)
+	# Normal e ORM cotte (restyling 2026-10-11): l'import glTF mette roughness/metallo in
+	# roughness_texture (stessa immagine di metallic_texture) e l'occlusione in ao_texture.
+	var normal := source.normal_texture if source.normal_enabled else null
+	var orm := source.roughness_texture if source.roughness_texture != null else source.ao_texture
+	material.set_shader_parameter(&"has_maps", normal != null and orm != null)
+	if normal != null:
+		material.set_shader_parameter(&"normal_tex", normal)
+	if orm != null:
+		material.set_shader_parameter(&"orm_tex", orm)
 	_baked_materials[source] = material
 	return material
 
@@ -659,7 +668,7 @@ func _bush(base: Vector3, size: float, count_as_prop := true) -> void:
 		var offset := Vector3(_rng.randf_range(-0.5, 0.5) * size, r * 0.35, _rng.randf_range(-0.5, 0.5) * size)
 		# Ciuffo unitario scalato e girato: raggio r, altezza circa 1,3 r.
 		var basis := Basis(Vector3.UP, _rng.randf_range(0.0, TAU)).scaled(Vector3(r, r * 0.65, r))
-		var mi := _mesh_child(root, _bush_mesh(), _foliage_material, Transform3D(basis, offset))
+		var mi := _mesh_child(root, _bush_card_mesh(), _bush_material, Transform3D(basis, offset))
 		mi.set_instance_shader_parameter(&"tint", tint * _rng.randf_range(0.8, 1.1))
 	if count_as_prop:
 		stats.props += 1
@@ -1019,44 +1028,6 @@ func _tuft_mesh() -> ArrayMesh:
 			st.set_uv(uvs[index])
 			st.add_vertex(corners[index])
 	return st.commit()
-
-
-static var _shared_blade_texture: ImageTexture
-
-
-## Texture delle lame generata da codice (RGBA 64x96): quattro lame affusolate e un
-## po' curve, alpha 1 dentro, con mipmap. Condivisa fra tutte le arene.
-static func _blade_texture() -> ImageTexture:
-	if _shared_blade_texture != null:
-		return _shared_blade_texture
-	var w := 64
-	var h := 96
-	var image := Image.create(w, h, true, Image.FORMAT_RGBA8)
-	image.fill(Color(1.0, 1.0, 1.0, 0.0))
-	# Ogni lama: piede (x, larghezza), punta spostata di `drift`, un po' piu corta delle altre.
-	var blades: Array[Vector4] = [Vector4(0.18, 0.13, -0.08, 0.98), Vector4(0.42, 0.16, 0.05, 1.0),
-		Vector4(0.64, 0.12, 0.10, 0.9), Vector4(0.84, 0.11, -0.04, 0.82)]
-	for y in h:
-		var v := float(y) / float(h - 1)  # 0 in punta, 1 al piede
-		for x in w:
-			var u := (float(x) + 0.5) / float(w)
-			var inside := false
-			for blade in blades:
-				var length: float = blade.w
-				var t := 1.0 - v  # 0 al piede, 1 in cima alla texture
-				if t > length:
-					continue
-				var k := t / length  # 0 al piede, 1 in punta della lama
-				var center: float = blade.x + blade.z * k * k
-				var half: float = blade.y * 0.5 * (1.0 - k * k) + 0.004
-				if absf(u - center) <= half:
-					inside = true
-					break
-			if inside:
-				image.set_pixel(x, y, Color(1.0, 1.0, 1.0, 1.0))
-	image.generate_mipmaps()
-	_shared_blade_texture = ImageTexture.create_from_image(image)
-	return _shared_blade_texture
 
 
 ## Fiore: piccolo bocciolo su uno stelo.

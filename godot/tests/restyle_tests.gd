@@ -6,6 +6,8 @@ extends SceneTree
 const SURFACE_DIR := "res://assets/textures/surfaces"
 ## Gruppo -> numero di strati, nell'ordine fissato dal piano (Task 2).
 const SURFACE_LAYERS := {"ground": 6, "walls": 3, "plants": 2}
+## Lato per gruppo: il suolo copre lo schermo, muri e piante no (VRAM).
+const SURFACE_SIZES := {"ground": 2048, "walls": 1024, "plants": 1024}
 const COMPRESSED_FORMATS: Array[int] = [Image.FORMAT_DXT1, Image.FORMAT_DXT5, Image.FORMAT_BPTC_RGBA,
 	Image.FORMAT_RGTC_RG, Image.FORMAT_DXT5_RA_AS_RG, Image.FORMAT_BPTC_RGBF, Image.FORMAT_ETC2_RGBA8]
 
@@ -20,6 +22,7 @@ func _initialize() -> void:
 	_test_surface_tiles()
 	await _test_terrain_textures()
 	await _test_ruin_textures()
+	await _test_vegetation_and_props()
 	await _frames(2)
 	print("PROTOTYPE01_TESTS %s failures=%d" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
@@ -39,7 +42,8 @@ func _test_surface_tiles() -> void:
 				continue
 			var array := texture as TextureLayered
 			_check(array.get_layers() == SURFACE_LAYERS[group], "%s ha %d strati" % [path, SURFACE_LAYERS[group]])
-			_check(array.get_width() == 2048 and array.get_height() == 2048, "%s e 2048x2048 per strato" % path)
+			var side: int = SURFACE_SIZES[group]
+			_check(array.get_width() == side and array.get_height() == side, "%s e %dx%d per strato" % [path, side, side])
 			_check(array.get_format() in COMPRESSED_FORMATS, "%s e compressa in VRAM (formato %d)" % [path, array.get_format()])
 
 
@@ -79,6 +83,43 @@ func _test_ruin_textures() -> void:
 	var crown_material := crowns.material_override as ShaderMaterial if crowns != null else null
 	_check(crown_material != null and crown_material.get_shader_parameter(&"batched") == true, "le corone restano batched")
 	_check(crown_material != null and crown_material.get_shader_parameter(&"walls_albedo") is TextureLayered, "le corone usano l'array walls_albedo")
+	await _close_scene()
+
+
+func _test_vegetation_and_props() -> void:
+	print("vegetation and props")
+	await _open_scene()
+	var district: Node3D = _scene.get_node(^"District")
+	var tufts: MultiMeshInstance3D = district.find_child("GrassTufts", true, false)
+	var grass_material := tufts.material_override as ShaderMaterial if tufts != null else null
+	_check(grass_material != null and grass_material.get_shader_parameter(&"plants_albedo") is TextureLayered, "l'erba usa l'array plants_albedo")
+	var bush := district.find_child("Bush", true, false)
+	var cards: Array[Node] = bush.find_children("*", "MeshInstance3D", true, false) if bush != null else []
+	var card: MeshInstance3D = cards[0] as MeshInstance3D if cards.size() > 0 else null
+	var card_uv: Variant = card.mesh.surface_get_arrays(0)[Mesh.ARRAY_TEX_UV] if card != null else null
+	_check(card != null and card_uv != null and (card_uv as PackedVector2Array).size() > 0, "i cespugli sono cartelle con UV")
+	var bush_material := card.material_override as ShaderMaterial if card != null else null
+	_check(bush_material != null and bush_material.get_shader_parameter(&"textured") == true and bush_material.get_shader_parameter(&"plants_albedo") is TextureLayered, "i cespugli usano le cartelle di foglie dipinte")
+	var car := district.find_child("WreckedCar", true, false)
+	var meshes: Array[Node] = car.find_children("*", "MeshInstance3D", true, false) if car != null else []
+	var found_maps := false
+	for node in meshes:
+		var mi := node as MeshInstance3D
+		for surface in mi.mesh.get_surface_count():
+			var mat := mi.get_surface_override_material(surface) as ShaderMaterial
+			if mat != null and mat.get_shader_parameter(&"has_maps") == true 					and mat.get_shader_parameter(&"normal_tex") != null and mat.get_shader_parameter(&"orm_tex") != null:
+				found_maps = true
+	_check(found_maps, "i prop cotti hanno normal e ORM nel materiale env_baked")
+	var tree := district.find_child("Tree", true, false)
+	var tree_meshes: Array[Node] = tree.find_children("*", "MeshInstance3D", true, false) if tree != null else []
+	var leaves_textured := false
+	for node in tree_meshes:
+		var mi := node as MeshInstance3D
+		for surface in mi.mesh.get_surface_count():
+			var mat := mi.get_surface_override_material(surface) as ShaderMaterial
+			if mat != null and mat.get_shader_parameter(&"textured") == true:
+				leaves_textured = true
+	_check(leaves_textured, "la chioma dell'albero usa le cartelle di foglie dipinte")
 	await _close_scene()
 
 
