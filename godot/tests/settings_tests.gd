@@ -247,7 +247,8 @@ func _test_pause_and_focus() -> void:
 	pause_menu.open_settings()
 	await process_frame
 	focused = pause_menu.focused_control()
-	_check(focused != null and focused.name == &"FpsOption", "focus sulla prima impostazione")
+	_check(focused != null and focused.name == &"PresetOption", "focus sulla prima impostazione (il preset)")
+	_check_settings_menu_rows(pause_menu)
 	# R-13: Esc dalle Impostazioni torna al pannello di pausa, come B; non riprende il gioco.
 	_send_pause_key()
 	await process_frame
@@ -372,3 +373,26 @@ func _test_graphics_presets() -> void:
 	root.remove_child(s)
 	s.free()
 	sun.free()
+
+
+## Righe del menu dopo il restyling (2026-10-11): preset, opzioni singole, fps esteso, scorrimento.
+func _check_settings_menu_rows(pause_menu: Node) -> void:
+	var settings: GameSettingsService = _settings()
+	var menu: Control = pause_menu.get_node("%SettingsPanel")
+	var preset_option: OptionButton = menu.get_node("%PresetOption")
+	_check(preset_option.item_count == 6, "sei voci di preset")
+	var before := settings.preset
+	preset_option.select(GameSettingsService.Preset.MAX)
+	preset_option.item_selected.emit(GameSettingsService.Preset.MAX)
+	_check(settings.preset == GameSettingsService.Preset.MAX, "scegliere Massimo dal menu imposta il preset")
+	var gi: OptionButton = menu.get_node("%GiOption")
+	_check(gi.selected == 2, "la riga GI mostra SDFGI dopo il preset Massimo")
+	gi.select(1)
+	gi.item_selected.emit(1)
+	_check(settings.preset == GameSettingsService.Preset.CUSTOM and preset_option.selected == GameSettingsService.Preset.CUSTOM, "toccare GI mostra Personalizzato")
+	var fps: OptionButton = menu.get_node("%FpsOption")
+	_check(fps.item_count == 8 and fps.get_item_text(7) == "Illimitato", "limite fps con otto voci, l'ultima Illimitato")
+	var volumetric: CheckButton = menu.get_node("%VolumetricCheck")
+	_check(volumetric.button_pressed == settings.volumetric_fog, "la spunta della volumetrica segue il servizio")
+	_check(menu.get_node("%Content").get_parent() is ScrollContainer, "il contenuto scorre")
+	settings.set_preset(before)

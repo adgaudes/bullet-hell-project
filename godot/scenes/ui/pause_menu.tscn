@@ -83,116 +83,266 @@ theme_override_constants/margin_top = 24
 theme_override_constants/margin_right = 32
 theme_override_constants/margin_bottom = 24
 
-[node name="Content" type="VBoxContainer" parent="Overlay/Center/SettingsPanel/Margin"]
+[node name="Scroll" type="ScrollContainer" parent="Overlay/Center/SettingsPanel/Margin"]
+custom_minimum_size = Vector2(0, 620)
 layout_mode = 2
+horizontal_scroll_mode = 0
+follow_focus = true
+
+[node name="Content" type="VBoxContainer" parent="Overlay/Center/SettingsPanel/Margin/Scroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
 theme_override_constants/separation = 10
 
-[node name="Title" type="Label" parent="Overlay/Center/SettingsPanel/Margin/Content"]
+[node name="Title" type="Label" parent="Overlay/Center/SettingsPanel/Margin/Scroll/Content"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 28
 text = "IMPOSTAZIONI"
 horizontal_alignment = 1
 
-[node name="GraphicsHeader" type="Label" parent="Overlay/Center/SettingsPanel/Margin/Content"]
+[node name="GraphicsHeader" type="Label" parent="Overlay/Center/SettingsPanel/Margin/Scroll/Content"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 20
 text = "Grafica"
 
-[node name="FpsRow" type="HBoxContainer" parent="Overlay/Center/SettingsPanel/Margin/Content"]
+[node name="PresetRow" type="HBoxContainer" parent="Overlay/Center/SettingsPanel/Margin/Scroll/Content"]
 layout_mode = 2
 
-[node name="Label" type="Label" parent="Overlay/Center/SettingsPanel/Margin/Content/FpsRow"]
+[node name="Label" type="Label" parent="Overlay/Center/SettingsPanel/Margin/Scroll/Content/PresetRow"]
+custom_minimum_size = Vector2(280, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Preset grafico"
+
+[node name="PresetOption" type="OptionButton" parent="Overlay/Center/SettingsPanel/Margin/Scroll/Content/PresetRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(300, 40)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+
+[node name="FpsRow" type="HBoxContainer" parent="Overlay/Center/SettingsPanel/Margin/Scroll/Content"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Overlay/Center/SettingsPanel/Margin/Scroll/Content/FpsRow"]
 custom_minimum_size = Vector2(280, 0)
 layout_mode = 2
 theme_override_font_sizes/font_size = 16
 text = "Limite FPS"
 
-[node name="FpsOption" type="OptionButton" parent="Overlay/Center/SettingsPanel/Margin/Content/FpsRow"]
+[node name="FpsOption" type="OptionButton" parent="Overlay/Center/SettingsPanel/Margin/Scroll/Content/FpsRow"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(300, 40)
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 16
 
-[node name="VsyncRow" type="HBoxContainer" parent="Overlay/Center/SettingsPanel/Margin/Content"]
+[node name="VsyncRow" type="HBoxContainer" parent="Overlay/Center/SettingsPanel/Margin/Scroll/Content"]
 layout_mode = 2
 
-[node name="Label" type="Label" parent="Overlay/Center/SettingsPanel/Margin/Content/VsyncRow"]
+[node name="Label" type="Label" parent="Overlay/Center/SettingsPanel/Margin/Scroll/Content/VsyncRow"]
 custom_minimum_size = Vector2(280, 0)
 layout_mode = 2
 theme_override_font_sizes/font_size = 16
 text = "Sincronizzazione verticale"
 
-[node name="VsyncOption" type="OptionButton" parent="Overlay/Center/SettingsPanel/Margin/Content/VsyncRow"]
+[node name="VsyncOption" type="OptionButton" parent="Overlay/Center/SettingsPanel/Margin/Scroll/Content/VsyncRow"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(300, 40)
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 16
 
-[node name="MsaaRow" type="HBoxContainer" parent="Overlay/Center/SettingsPanel/Margin/Content"]
+[node name="MsaaRow" type="HBoxContainer" parent="Overlay/Center/SettingsPanel/Margin/Scroll/Content"]
 layout_mode = 2
 
-[node name="Label" type="Label" parent="Overlay/Center/SettingsPanel/Margin/Content/MsaaRow"]
+[node name="Label" type="Label" parent="Overlay/Center/SettingsPanel/Margin/Scroll/Content/MsaaRow"]
 custom_minimum_size = Vector2(280, 0)
 layout_mode = 2
 theme_override_font_sizes/font_size = 16
 text = "Anti-aliasing MSAA 3D"
 
-[node name="MsaaOption" type="OptionButton" parent="Overlay/Center/SettingsPanel/Margin/Content/MsaaRow"]
+[node name="MsaaOption" type="OptionButton" parent="Overlay/Center/SettingsPanel/Margin/Scroll/Content/MsaaRow"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(300, 40)
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 16
 
-[node name="WindowRow" type="HBoxContainer" parent="Overlay/Center/SettingsPanel/Margin/Content"]
+[node name="WindowRow" type="HBoxContainer" parent="Overlay/Center/SettingsPanel/Margin/Scroll/Content"]
 layout_mode = 2
 
-[node name="Label" type="Label" parent="Overlay/Center/SettingsPanel/Margin/Content/WindowRow"]
+[node name="Label" type="Label" parent="Overlay/Center/SettingsPanel/Margin/Scroll/Content/WindowRow"]
 custom_minimum_size = Vector2(280, 0)
 layout_mode = 2
 theme_override_font_sizes/font_size = 16
 text = "Modalita finestra"
 
-[node name="WindowOption" type="OptionButton" parent="Overlay/Center/SettingsPanel/Margin/Content/WindowRow"]
+[node name="WindowOption" type="OptionButton" parent="Overlay/Center/SettingsPanel/Margin/Scroll/Content/WindowRow"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(300, 40)
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 16
 
-[node name="ScaleRow" type="HBoxContainer" parent="Overlay/Center/SettingsPanel/Margin/Content"]
+[node name="ScaleRow" type="HBoxContainer" parent="Overlay/Center/SettingsPanel/Margin/Scroll/Content"]
 layout_mode = 2
 
-[node name="Label" type="Label" parent="Overlay/Center/SettingsPanel/Margin/Content/ScaleRow"]
+[node name="Label" type="Label" parent="Overlay/Center/SettingsPanel/Margin/Scroll/Content/ScaleRow"]
 custom_minimum_size = Vector2(280, 0)
 layout_mode = 2
 theme_override_font_sizes/font_size = 16
 text = "Scala rendering 3D"
 
-[node name="ScaleOption" type="OptionButton" parent="Overlay/Center/SettingsPanel/Margin/Content/ScaleRow"]
+[node name="ScaleOption" type="OptionButton" parent="Overlay/Center/SettingsPanel/Margin/Scroll/Content/ScaleRow"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(300, 40)
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 16
 
-[node name="AudioHeader" type="Label" parent="Overlay/Center/SettingsPanel/Margin/Content"]
+[node name="ShadowRow" type="HBoxContainer" parent="Overlay/Center/SettingsPanel/Margin/Scroll/Content"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Overlay/Center/SettingsPanel/Margin/Scroll/Content/ShadowRow"]
+custom_minimum_size = Vector2(280, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Qualita ombre"
+
+[node name="ShadowOption" type="OptionButton" parent="Overlay/Center/SettingsPanel/Margin/Scroll/Content/ShadowRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(300, 40)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+
+[node name="SsaoRow" type="HBoxContainer" parent="Overlay/Center/SettingsPanel/Margin/Scroll/Content"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Overlay/Center/SettingsPanel/Margin/Scroll/Content/SsaoRow"]
+custom_minimum_size = Vector2(280, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Occlusione ambientale"
+
+[node name="SsaoOption" type="OptionButton" parent="Overlay/Center/SettingsPanel/Margin/Scroll/Content/SsaoRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(300, 40)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+
+[node name="GiRow" type="HBoxContainer" parent="Overlay/Center/SettingsPanel/Margin/Scroll/Content"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Overlay/Center/SettingsPanel/Margin/Scroll/Content/GiRow"]
+custom_minimum_size = Vector2(280, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Illuminazione globale"
+
+[node name="GiOption" type="OptionButton" parent="Overlay/Center/SettingsPanel/Margin/Scroll/Content/GiRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(300, 40)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+
+[node name="GlowRow" type="HBoxContainer" parent="Overlay/Center/SettingsPanel/Margin/Scroll/Content"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Overlay/Center/SettingsPanel/Margin/Scroll/Content/GlowRow"]
+custom_minimum_size = Vector2(280, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Bagliore"
+
+[node name="GlowOption" type="OptionButton" parent="Overlay/Center/SettingsPanel/Margin/Scroll/Content/GlowRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(300, 40)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+
+[node name="VolumetricCheck" type="CheckButton" parent="Overlay/Center/SettingsPanel/Margin/Scroll/Content"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Nebbia volumetrica (solo Massimo)"
+
+[node name="TextureRow" type="HBoxContainer" parent="Overlay/Center/SettingsPanel/Margin/Scroll/Content"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Overlay/Center/SettingsPanel/Margin/Scroll/Content/TextureRow"]
+custom_minimum_size = Vector2(280, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Qualita texture"
+
+[node name="TextureOption" type="OptionButton" parent="Overlay/Center/SettingsPanel/Margin/Scroll/Content/TextureRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(300, 40)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+
+[node name="VegetationRow" type="HBoxContainer" parent="Overlay/Center/SettingsPanel/Margin/Scroll/Content"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Overlay/Center/SettingsPanel/Margin/Scroll/Content/VegetationRow"]
+custom_minimum_size = Vector2(280, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Densita vegetazione (al prossimo livello)"
+
+[node name="VegetationOption" type="OptionButton" parent="Overlay/Center/SettingsPanel/Margin/Scroll/Content/VegetationRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(300, 40)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+
+[node name="ScreenAaRow" type="HBoxContainer" parent="Overlay/Center/SettingsPanel/Margin/Scroll/Content"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Overlay/Center/SettingsPanel/Margin/Scroll/Content/ScreenAaRow"]
+custom_minimum_size = Vector2(280, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Antialiasing a schermo"
+
+[node name="ScreenAaOption" type="OptionButton" parent="Overlay/Center/SettingsPanel/Margin/Scroll/Content/ScreenAaRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(300, 40)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+
+[node name="FsrCheck" type="CheckButton" parent="Overlay/Center/SettingsPanel/Margin/Scroll/Content"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Upscaling FSR 2 (con scala sotto 100%)"
+
+[node name="AudioHeader" type="Label" parent="Overlay/Center/SettingsPanel/Margin/Scroll/Content"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 20
 text = "Audio"
 
-[node name="MasterVolumeRow" type="HBoxContainer" parent="Overlay/Center/SettingsPanel/Margin/Content"]
+[node name="MasterVolumeRow" type="HBoxContainer" parent="Overlay/Center/SettingsPanel/Margin/Scroll/Content"]
 layout_mode = 2
 
-[node name="Label" type="Label" parent="Overlay/Center/SettingsPanel/Margin/Content/MasterVolumeRow"]
+[node name="Label" type="Label" parent="Overlay/Center/SettingsPanel/Margin/Scroll/Content/MasterVolumeRow"]
 custom_minimum_size = Vector2(280, 0)
 layout_mode = 2
 theme_override_font_sizes/font_size = 16
 text = "Volume generale"
 
-[node name="MasterVolume" type="HSlider" parent="Overlay/Center/SettingsPanel/Margin/Content/MasterVolumeRow"]
+[node name="MasterVolume" type="HSlider" parent="Overlay/Center/SettingsPanel/Margin/Scroll/Content/MasterVolumeRow"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(240, 40)
 layout_mode = 2
@@ -202,7 +352,7 @@ max_value = 1.0
 step = 0.05
 value = 1.0
 
-[node name="MasterVolumeValue" type="Label" parent="Overlay/Center/SettingsPanel/Margin/Content/MasterVolumeRow"]
+[node name="MasterVolumeValue" type="Label" parent="Overlay/Center/SettingsPanel/Margin/Scroll/Content/MasterVolumeRow"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(56, 0)
 layout_mode = 2
@@ -210,16 +360,16 @@ theme_override_font_sizes/font_size = 16
 text = "100%"
 horizontal_alignment = 2
 
-[node name="SfxVolumeRow" type="HBoxContainer" parent="Overlay/Center/SettingsPanel/Margin/Content"]
+[node name="SfxVolumeRow" type="HBoxContainer" parent="Overlay/Center/SettingsPanel/Margin/Scroll/Content"]
 layout_mode = 2
 
-[node name="Label" type="Label" parent="Overlay/Center/SettingsPanel/Margin/Content/SfxVolumeRow"]
+[node name="Label" type="Label" parent="Overlay/Center/SettingsPanel/Margin/Scroll/Content/SfxVolumeRow"]
 custom_minimum_size = Vector2(280, 0)
 layout_mode = 2
 theme_override_font_sizes/font_size = 16
 text = "Volume effetti"
 
-[node name="SfxVolume" type="HSlider" parent="Overlay/Center/SettingsPanel/Margin/Content/SfxVolumeRow"]
+[node name="SfxVolume" type="HSlider" parent="Overlay/Center/SettingsPanel/Margin/Scroll/Content/SfxVolumeRow"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(240, 40)
 layout_mode = 2
@@ -229,7 +379,7 @@ max_value = 1.0
 step = 0.05
 value = 1.0
 
-[node name="SfxVolumeValue" type="Label" parent="Overlay/Center/SettingsPanel/Margin/Content/SfxVolumeRow"]
+[node name="SfxVolumeValue" type="Label" parent="Overlay/Center/SettingsPanel/Margin/Scroll/Content/SfxVolumeRow"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(56, 0)
 layout_mode = 2
@@ -237,26 +387,26 @@ theme_override_font_sizes/font_size = 16
 text = "100%"
 horizontal_alignment = 2
 
-[node name="ControlsHeader" type="Label" parent="Overlay/Center/SettingsPanel/Margin/Content"]
+[node name="ControlsHeader" type="Label" parent="Overlay/Center/SettingsPanel/Margin/Scroll/Content"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 20
 text = "Controller"
 
-[node name="InvertX" type="CheckButton" parent="Overlay/Center/SettingsPanel/Margin/Content"]
+[node name="InvertX" type="CheckButton" parent="Overlay/Center/SettingsPanel/Margin/Scroll/Content"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 40)
 layout_mode = 2
 theme_override_font_sizes/font_size = 16
 text = "Inverti asse X della mira con stick destro"
 
-[node name="InvertY" type="CheckButton" parent="Overlay/Center/SettingsPanel/Margin/Content"]
+[node name="InvertY" type="CheckButton" parent="Overlay/Center/SettingsPanel/Margin/Scroll/Content"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 40)
 layout_mode = 2
 theme_override_font_sizes/font_size = 16
 text = "Inverti asse Y della mira con stick destro"
 
-[node name="BackButton" type="Button" parent="Overlay/Center/SettingsPanel/Margin/Content"]
+[node name="BackButton" type="Button" parent="Overlay/Center/SettingsPanel/Margin/Scroll/Content"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 48)
 layout_mode = 2
