@@ -169,3 +169,8 @@ Tile dipinte e ripetibili per suolo (terra, lastre, asfalto, terra scavata, fang
 Le rarita del level-up restano i colori di `UpgradeCatalog.RARITY_COLORS`. Il tema vale per tutte le schermate attraverso `resources/ui/theme.tres` (vedi `GODOT_WORKFLOW.md`); i nodi usano le varianti di tipo e non si colorano da soli.
 
 **Intro all'avvio**: 4 secondi, il terreno sale con la polvere, le lettere cadono con una scossa, il chiodo si pianta, la targa si stampa, l'erba spunta; saltabile. Il punto d'aggancio per una vignetta con i personaggi nuovi (dopo il piano 2 del restyling) e `BootIntro.vignette`.
+
+
+### Materia e feedback (D-081)
+
+L'interfaccia e fatta di tre materiali generati dalla pipeline nostra (`tests/tools/build_ui_textures.gd`): **cuoio** scuro con cornice di rame battuto e rivetti per i pannelli, **lamiera** di rame in rilievo per i pulsanti (incassata quando premuti, bordo turchese con alone quando a fuoco), **pergamena** con bordi bruciacchiati per carte e righe, con testo scuro (`INK` `#3b2718`). Le icone sono pittogrammi a poligoni (`UiIcon`), in rame o crema con outline scuro. Il focus ha un cursore fisico, un chiodo di rame che insegue il controllo attivo; ogni azione ha un suono breve di metallo e un rimbalzo; i pannelli entrano con un pop-in e le scene cambiano con un velo. Il menu ha uno sfondo a strati in parallasse (torri in rovina, viadotto spezzato, colline, terrapieno) sotto il cielo dipinto.
