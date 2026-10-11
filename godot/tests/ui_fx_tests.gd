@@ -14,6 +14,7 @@ func _initialize() -> void:
 	await _test_existing_buttons_and_reparent()
 	await _test_polyphony()
 	await _test_transition_blocks_pause_and_cursor()
+	await _test_pulse()
 	await _frames(2)
 	print("PROTOTYPE01_TESTS %s failures=%d" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
@@ -177,4 +178,27 @@ func _test_transition_blocks_pause_and_cursor() -> void:
 	_check(not pause.call(&"is_open"), "la pausa premuta durante il velo non resta aperta")
 	if is_instance_valid(button):
 		button.queue_free()
+	await _frames(1)
+
+
+## Il controllo con il focus respira (self_modulate che oscilla) e torna bianco quando lo perde.
+func _test_pulse() -> void:
+	var fx := _fx()
+	var a := Button.new()
+	var b := Button.new()
+	root.add_child(a)
+	root.add_child(b)
+	await _frames(1)
+	a.grab_focus()
+	var seen_bright := false
+	for i in 40:
+		await process_frame
+		if a.self_modulate.r > 1.02:
+			seen_bright = true
+	_check(seen_bright, "il pulsante a fuoco respira (self_modulate sopra 1)")
+	b.grab_focus()
+	await _frames(3)
+	_check(a.self_modulate.is_equal_approx(Color.WHITE), "perso il focus torna bianco")
+	a.queue_free()
+	b.queue_free()
 	await _frames(1)

@@ -200,6 +200,8 @@ func _test_screens_focus() -> void:
 	_check(menu.get_node_or_null(^"Logo") is GameLogo, "logo nel menu")
 	_check(menu.get_node_or_null(^"ProfilePlate") is PanelContainer, "targhetta del profilo")
 	_check(menu.get_node_or_null(^"ProfilePlate/Row/ScrapIcon") is UiIcon, "targhetta con l'icona dei rottami")
+	_check(menu.get_node_or_null(^"ProfilePlate/Row/RunsIcon") is UiIcon and menu.get_node_or_null(^"ProfilePlate/Row/LevelsIcon") is UiIcon, "targhetta con le icone di run e livelli")
+	_check(menu._runs_label.text.begins_with("Run giocate: ") and menu._levels_label.text.begins_with("Livelli completati: "), "run e livelli su etichette proprie")
 	var backdrop := menu.get_node_or_null(^"Backdrop") as MenuBackdrop
 	_check(backdrop != null and backdrop.layer_count() == 3, "sfondo a tre strati dietro il menu")
 	var before_x := backdrop.layer_offset(2) if backdrop != null else 0.0
@@ -278,6 +280,9 @@ func _test_cards_and_panels() -> void:
 		if row.theme_type_variation == &"CardButton" and row.get_node_or_null(^"Icon") is UiIcon:
 			rows_with_icon += 1
 	_check(rows_with_icon == PermanentCatalog.all().size(), "ogni riga dell'Officina ha la sua icona (%d)" % rows_with_icon)
+	var dots := workshop.row_dots(&"base_health")
+	_check(dots != null and dots.total == 3 and dots.filled == 0, "pallini del livello sulla riga (%s)" % ("%d/%d" % [dots.filled, dots.total] if dots != null else "nessuno"))
+	_check(workshop._scrap_label.get_parent().get_node_or_null(^"ScrapIcon") is UiIcon, "icona dei rottami accanto al totale dell'Officina")
 	_check_focus_distinct(workshop, "Officina", 2)
 	workshop.close()
 	workshop.queue_free()
@@ -302,6 +307,9 @@ func _test_cards_and_panels() -> void:
 		if mark != expected_mark:
 			marks_ok = false
 	_check(marks_ok, "icona check/lock sulle carte della campagna")
+	var first_id: StringName = LevelCatalog.all()[0].id
+	var badge := campaign.card_badge(first_id)
+	_check(badge != null and badge.text == "1" and badge.get_theme_stylebox(&"normal") is StyleBoxFlat and (badge.get_theme_stylebox(&"normal") as StyleBoxFlat).corner_radius_top_left >= 12, "numero del livello in un cerchio di rame")
 	var first: StringName = LevelCatalog.all()[0].id
 	_check(not campaign._buttons[first].text.contains("
 ") and campaign.button_text(first).contains("
@@ -374,6 +382,10 @@ func _test_hud() -> void:
 	_check(hud.icon_before(hud._kills_label) != null and hud.icon_before(hud._kills_label).kind == &"skull", "teschio prima dei rottamati")
 	_check(hud.icon_before(hud._time_label) != null and hud.icon_before(hud._time_label).kind == &"clock", "orologio prima del tempo")
 	_check(hud.icon_before(hud._health_row) != null and hud.icon_before(hud._health_row).kind == &"bolt", "bullone prima della vita")
+	hud.set_tool_mode(TerrainState.ToolMode.LAMP, 1, 4, 3)
+	_check(hud._tool_label.visible and hud.icon_before(hud._tool_label) != null and hud.icon_before(hud._tool_label).kind == &"lamp" and hud.icon_before(hud._tool_label).visible, "modo lampione con l'icona")
+	hud.set_tool_mode(TerrainState.ToolMode.DIG, 0, 4, 3)
+	_check(not hud._tool_label.visible and not hud.icon_before(hud._tool_label).visible, "fuori dal modo lampione icona e testo spariscono")
 	_check(not hud._warning_plate.has_theme_stylebox_override(&"panel"), "targa degli avvisi dal tema (cuoio e rivetti)")
 	var boss_fill := hud._boss_bar.get_theme_stylebox(&"fill") as StyleBoxTexture
 	_check(boss_fill != null and boss_fill.modulate_color.is_equal_approx(RunHud.BOSS_COLOR), "barra del boss come tubo arancione")

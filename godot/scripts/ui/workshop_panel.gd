@@ -20,6 +20,7 @@ const INK := Color("3b2718")
 const INK_GREEN := Color("3f7a2a")
 const INK_RED := Color("a8321e")
 var _back: Button
+var _dots: Dictionary[StringName, LevelDots] = {}
 
 
 func _ready() -> void:
@@ -42,11 +43,19 @@ func _ready() -> void:
 	title.theme_type_variation = &"TitleLabel"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	column.add_child(title)
+	var total_row := HBoxContainer.new()
+	total_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	total_row.add_theme_constant_override(&"separation", 8)
+	column.add_child(total_row)
+	var scrap_icon := UiIcon.make(&"scrap", 24.0, UiPalette.SCRAP)
+	scrap_icon.name = "ScrapIcon"
+	scrap_icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	total_row.add_child(scrap_icon)
 	_scrap_label = Label.new()
 	_scrap_label.theme_type_variation = &"ScrapLabel"
 	_scrap_label.add_theme_font_size_override(&"font_size", 22)
 	_scrap_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	column.add_child(_scrap_label)
+	total_row.add_child(_scrap_label)
 	# Le voci scorrono (R-21): il catalogo puo crescere oltre lo schermo del Deck e il
 	# fuoco del controller resta sempre visibile.
 	var scroll := ScrollContainer.new()
@@ -77,6 +86,15 @@ func _ready() -> void:
 		button.add_child(icon)
 		icon.set_anchors_and_offsets_preset(Control.PRESET_CENTER_LEFT, Control.PRESET_MODE_MINSIZE, 14)
 		icon.grow_vertical = Control.GROW_DIRECTION_BOTH
+		# Pallini del livello a destra: pieni quelli comprati.
+		var dots := LevelDots.new()
+		dots.name = "Dots"
+		dots.total = (entry.costs as Array).size()
+		button.add_child(dots)
+		dots.set_anchors_and_offsets_preset(Control.PRESET_CENTER_RIGHT, Control.PRESET_MODE_MINSIZE, 16)
+		dots.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+		dots.grow_vertical = Control.GROW_DIRECTION_BOTH
+		_dots[id] = dots
 	_back = Button.new()
 	_back.text = "Torna"
 	_back.theme_type_variation = &"MainButton"
@@ -126,6 +144,10 @@ func row_text(id: StringName) -> String:
 	return _buttons[id].text if _buttons.has(id) else ""
 
 
+func row_dots(id: StringName) -> LevelDots:
+	return _dots.get(id)
+
+
 func _on_pressed(id: StringName) -> void:
 	if not is_open:
 		return
@@ -152,5 +174,30 @@ func _refresh() -> void:
 			color = INK_RED
 		var button := _buttons[id]
 		button.text = "          %s  %d/%d  -  %s\n          %s" % [entry.name, level, (entry.costs as Array).size(), price, entry.text]
+		_dots[id].filled = level
 		for state: StringName in [&"font_color", &"font_focus_color", &"font_hover_color", &"font_pressed_color"]:
 			button.add_theme_color_override(state, color)
+
+
+## Pallini del livello di un upgrade permanente: pieni di rame quelli comprati.
+class LevelDots extends Control:
+	const RADIUS := 5.0
+	const GAP := 6.0
+	var total := 1:
+		set(value):
+			total = value
+			custom_minimum_size = Vector2(total * (RADIUS * 2.0 + GAP), RADIUS * 2.0)
+			queue_redraw()
+	var filled := 0:
+		set(value):
+			filled = value
+			queue_redraw()
+
+	func _ready() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	func _draw() -> void:
+		for i in total:
+			var center := Vector2(i * (RADIUS * 2.0 + GAP) + RADIUS, size.y * 0.5)
+			draw_circle(center, RADIUS, UiPalette.BORDER if i < filled else Color(UiPalette.BORDER, 0.25))
+			draw_arc(center, RADIUS, 0.0, TAU, 16, Color("3b2718"), 1.5)

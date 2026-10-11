@@ -13,6 +13,8 @@ var _profile: PlayerProfileService
 var _pause_menu: Node
 var _column: VBoxContainer
 var _scrap_label: Label
+var _runs_label: Label
+var _levels_label: Label
 var _play: Button
 var _workshop_button: Button
 var _settings: Button
@@ -114,9 +116,12 @@ func _set_menu_visible(shown: bool) -> void:
 func _refresh() -> void:
 	if _profile == null:
 		_scrap_label.text = ""
+		_runs_label.text = ""
+		_levels_label.text = ""
 		return
-	_scrap_label.text = "Rottami in Officina: %d     Run giocate: %d     Livelli completati: %d" \
-		% [_profile.scrap, _profile.runs, _profile.victories]
+	_scrap_label.text = "Rottami in Officina: %d" % _profile.scrap
+	_runs_label.text = "Run giocate: %d" % _profile.runs
+	_levels_label.text = "Livelli completati: %d" % _profile.victories
 
 
 func _build() -> void:
@@ -182,6 +187,8 @@ func _build() -> void:
 	_scrap_label = Label.new()
 	_scrap_label.theme_type_variation = &"ScrapLabel"
 	plate_row.add_child(_scrap_label)
+	_runs_label = _plate_entry(plate_row, "RunsIcon", &"clock", UiPalette.TEXT_MUTED)
+	_levels_label = _plate_entry(plate_row, "LevelsIcon", &"check", UiPalette.SUCCESS)
 	var version := Label.new()
 	version.name = "Version"
 	version.theme_type_variation = &"MutedLabel"
@@ -203,6 +210,22 @@ func _layout_dust() -> void:
 		return
 	dust.position = Vector2(size.x * 0.5, size.y + 60.0)
 	dust.emission_rect_extents = Vector2(size.x * 0.55, 60.0)
+
+
+## Voce della targhetta: spazio, icona e testo.
+func _plate_entry(row: HBoxContainer, icon_name: String, kind: StringName, tint: Color) -> Label:
+	var gap := Control.new()
+	gap.custom_minimum_size = Vector2(14, 0)
+	row.add_child(gap)
+	var icon := UiIcon.make(kind, 22.0, tint)
+	icon.name = icon_name
+	icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(icon)
+	var label := Label.new()
+	label.theme_type_variation = &"ScrapLabel"
+	label.add_theme_color_override(&"font_color", UiPalette.TEXT)
+	row.add_child(label)
+	return label
 
 
 func _button(text: String, action: Callable) -> Button:

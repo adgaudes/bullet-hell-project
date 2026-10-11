@@ -24,6 +24,7 @@ var _day_label: Label
 var _day_dial: DayDial
 var _dusk_total := -1.0
 var _tool_label: Label
+var _tool_icon: UiIcon
 var _kills_label: Label
 var _day_phase_shown := -1
 var _day_second_shown := -1
@@ -100,16 +101,24 @@ func _ready() -> void:
 	_kills_label.size_flags_horizontal = Control.SIZE_SHRINK_END
 	_kills_label.add_theme_font_size_override(&"font_size", 20)
 
-	# Modalita del tool quando non e la solita (lampione: costo e contatore).
+	# Modalita del tool quando non e la solita (lampione: icona, costo e contatore).
+	var tool_row := HBoxContainer.new()
+	tool_row.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	tool_row.offset_left = 24
+	tool_row.offset_top = 70
+	tool_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tool_row.add_theme_constant_override(&"separation", 8)
+	root.add_child(tool_row)
+	_tool_icon = UiIcon.make(&"lamp", 22.0, Color("ffd45a"))
+	_tool_icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_tool_icon.hide()
+	tool_row.add_child(_tool_icon)
 	_tool_label = Label.new()
-	_tool_label.set_anchors_preset(Control.PRESET_TOP_LEFT)
-	_tool_label.offset_left = 24
-	_tool_label.offset_top = 70
 	_tool_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_tool_label.theme_type_variation = &"HudLabel"
 	_tool_label.add_theme_font_size_override(&"font_size", 18)
 	_tool_label.hide()
-	root.add_child(_tool_label)
+	tool_row.add_child(_tool_label)
 
 	# Annuncio del boss: scritta sotto la riga superiore e freccia verso la direzione di arrivo.
 	_warning_plate = PanelContainer.new()
@@ -319,10 +328,12 @@ func set_health(health: int, max_health: int) -> void:
 func set_tool_mode(mode: int, lamps: int, max_lamps: int, cost: int) -> void:
 	if mode != TerrainState.ToolMode.LAMP:
 		_tool_label.hide()
+		_tool_icon.hide()
 		return
 	_tool_label.text = "LAMPIONE  %d rottami  %d/%d" % [cost, lamps, max_lamps]
 	_tool_label.add_theme_color_override(&"font_color", TerrainGrid.LAMP_PREVIEW_COLOR.linear_to_srgb())
 	_tool_label.show()
+	_tool_icon.show()
 
 
 ## Indicatore sole/luna nella riga superiore: tempo al tramonto di giorno, poi la fase.

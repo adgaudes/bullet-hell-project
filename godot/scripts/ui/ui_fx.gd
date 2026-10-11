@@ -25,6 +25,7 @@ var _play_counts: Dictionary[StringName, int] = {}
 var _scene_changes := 0
 var _time := 0.0
 var _last_sound_frame := -1
+var _pulsed: Control
 
 
 func _ready() -> void:
@@ -212,6 +213,7 @@ func _hide_cursor() -> void:
 func _process(delta: float) -> void:
 	_time += delta
 	var target := cursor_target()
+	_pulse(target)
 	if target == null or not target.is_visible_in_tree() or not target.has_focus() or is_transitioning or not cursor_enabled:
 		_hide_cursor()
 		return
@@ -223,3 +225,18 @@ func _process(delta: float) -> void:
 	var rest := _cursor_rest(target) + Vector2(sin(_time * 6.0) * 2.0, 0.0)
 	var k := 1.0 - exp(-delta / (CURSOR_SECONDS * 0.4))
 	_cursor.position = _cursor.position.lerp(rest, k)
+
+
+## Il controllo con il focus respira: self_modulate fra 1 e 1,12, un ciclo ogni 1,6 s.
+## Il precedente torna bianco quando perde il focus.
+func _pulse(target: Control) -> void:
+	if _pulsed != target:
+		if is_instance_valid(_pulsed):
+			_pulsed.self_modulate = Color.WHITE
+		_pulsed = target
+	if target == null or not target.has_focus():
+		if is_instance_valid(target):
+			target.self_modulate = Color.WHITE
+		return
+	var glow := 1.0 + 0.12 * (0.5 + 0.5 * sin(_time * TAU / 1.6))
+	target.self_modulate = Color(glow, glow, glow, 1.0)

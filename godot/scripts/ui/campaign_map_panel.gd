@@ -17,6 +17,7 @@ var _buttons: Dictionary[StringName, Button] = {}
 var _detail: Label
 var _back: Button
 var _marks: Dictionary[StringName, UiIcon] = {}
+var _badges: Dictionary[StringName, Label] = {}
 
 const INK := Color("3b2718")
 const INK_GREEN := Color("3f7a2a")
@@ -74,6 +75,26 @@ func _ready() -> void:
 		mark.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT, Control.PRESET_MODE_MINSIZE, 8)
 		mark.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 		_marks[id] = mark
+		# Numero del livello in un cerchio di rame, in alto a sinistra.
+		var badge := Label.new()
+		badge.name = "Badge"
+		badge.text = str(i + 1)
+		badge.theme_type_variation = &"SectionLabel"
+		badge.add_theme_font_size_override(&"font_size", 16)
+		badge.add_theme_color_override(&"font_color", INK)
+		badge.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		badge.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		badge.custom_minimum_size = Vector2(28, 28)
+		var circle := StyleBoxFlat.new()
+		circle.bg_color = UiPalette.BORDER
+		circle.border_color = INK
+		circle.set_border_width_all(2)
+		circle.set_corner_radius_all(14)
+		badge.add_theme_stylebox_override(&"normal", circle)
+		badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		button.add_child(badge)
+		badge.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT, Control.PRESET_MODE_MINSIZE, 8)
+		_badges[id] = badge
 	_detail = Label.new()
 	_detail.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -154,10 +175,14 @@ func button_text(id: StringName) -> String:
 	if not _buttons.has(id):
 		return ""
 	var mark := "V" if is_completed(id) else ("" if is_unlocked(id) else "X")
-	return "%s\n%s" % [_buttons[id].text, mark]
+	return "%d  %s\n%s" % [LevelCatalog.index_of(id) + 1, _buttons[id].text, mark]
 
 
 ## Icona sulla carta: `check` completato, `lock` bloccato o in costruzione, vuoto se giocabile.
+func card_badge(id: StringName) -> Label:
+	return _badges.get(id)
+
+
 func card_mark(id: StringName) -> StringName:
 	if not _marks.has(id) or not _marks[id].visible:
 		return &""
@@ -187,7 +212,7 @@ func _refresh() -> void:
 		var entry: Dictionary = LevelCatalog.all()[i]
 		var id: StringName = entry.id
 		var button: Button = _buttons[id]
-		button.text = "%d  %s" % [i + 1, (entry.title as String).to_upper()]
+		button.text = (entry.title as String).to_upper()
 		var color := INK_LOCKED
 		if is_completed(id):
 			color = INK_GREEN
