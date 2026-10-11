@@ -131,8 +131,6 @@ func _build() -> void:
 	dust.lifetime = 9.0
 	dust.preprocess = 9.0
 	dust.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
-	dust.emission_rect_extents = Vector2(700, 60)
-	dust.position = Vector2(640, 860)
 	dust.direction = Vector2(0, -1)
 	dust.spread = 25.0
 	dust.gravity = Vector2.ZERO
@@ -142,6 +140,8 @@ func _build() -> void:
 	dust.scale_amount_max = 3.5
 	dust.color = Color(1.0, 0.72, 0.4, 0.55)
 	add_child(dust)
+	_layout_dust()
+	resized.connect(_layout_dust)
 	var logo := GameLogo.new()
 	logo.name = "Logo"
 	logo.letter_size = 44
@@ -177,6 +177,15 @@ func _build() -> void:
 	_prompts.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT, Control.PRESET_MODE_MINSIZE, 40)
 	_prompts.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	_prompts.grow_vertical = Control.GROW_DIRECTION_BEGIN
+
+
+## La polvere copre tutta la larghezza, anche a 16:9 (viewport piu largo di 1280).
+func _layout_dust() -> void:
+	var dust := get_node_or_null(^"Dust") as CPUParticles2D
+	if dust == null:
+		return
+	dust.position = Vector2(size.x * 0.5, size.y + 60.0)
+	dust.emission_rect_extents = Vector2(size.x * 0.55, 60.0)
 
 
 func _button(text: String, action: Callable) -> Button:

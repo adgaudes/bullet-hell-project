@@ -10,6 +10,8 @@ signal finished
 
 const MENU_SCENE := "res://scenes/main/main_menu.tscn"
 const WINDOW_TITLE := "Dwarmageddon: Dig or Die"
+## Suoni dell'intro, sintetizzati prima che parta l'animazione (niente intoppi a t=0).
+const SOUND_IDS: Array[StringName] = [&"quake_rumble", &"terrain_raise", &"nail_shot", &"scrap_pickup"]
 
 @export var vignette: PackedScene
 ## Test e catture: gira anche in headless e non cambia scena alla fine.
@@ -22,6 +24,8 @@ var _ground: ColorRect
 var _dust: CPUParticles2D
 var _tween: Tween
 var _audio: AudioStreamPlayer
+var _streams: Dictionary[StringName, AudioStreamWAV] = {}
+var _fade: ColorRect
 var _pause_menu: Node
 var _ending := false
 var _logo_rest := Vector2.ZERO
@@ -48,16 +52,44 @@ func _ready() -> void:
 	_build()
 	is_playing = true
 	if vignette != null:
-		var scene := vignette.instantiate()
-		add_child(scene)
-		await scene.finished
-		scene.queue_free()
+		await _play_vignette()
 	if is_playing and not _ending:
 		_play_logo()
 
 
+## Vignetta futura: la scena deve emettere `finished`; se lo fa gia nel proprio
+## `_ready` non resta nulla appeso, se non ha il segnale viene saltata con un avviso.
+func _play_vignette() -> void:
+	var scene := vignette.instantiate()
+	if not scene.has_signal(&"finished"):
+		push_warning("BootIntro: la vignetta non ha il segnale `finished`, saltata")
+		scene.free()
+		return
+	var done := [false]
+	scene.connect(&"finished", func() -> void: done[0] = true)
+	add_child(scene)
+	while not done[0] and is_playing and not _ending:
+		await get_tree().process_frame
+	scene.queue_free()
+
+
+func _exit_tree() -> void:
+	# Un suono ancora in riproduzione all'uscita lascerebbe il playback orfano.
+	if _audio != null:
+		_audio.stop()
+
+
 func logo() -> GameLogo:
 	return _logo
+
+
+func prebuilt_sound_count() -> int:
+	return _streams.size()
+
+
+## Opacita del velo finale (0 = intro visibile, 1 = colore di fondo pieno).
+func fade_alpha() -> float:
+	return _fade.color.a if _fade != null else 0.0
 
 
 ## Qualunque tasto, pulsante o click salta alla fine.
@@ -115,6 +147,17 @@ func _build() -> void:
 	_audio = AudioStreamPlayer.new()
 	_audio.bus = &"SFX"
 	add_child(_audio)
+	for id in SOUND_IDS:
+		var stream := SfxLibrary.build(id)
+		if stream != null:
+			_streams[id] = stream
+	# Velo finale: un ColorRect del colore di fondo che si opacizza (modulate
+	# moltiplicherebbe BG per se stesso e finirebbe quasi al nero).
+	_fade = ColorRect.new()
+	_fade.color = Color(UiPalette.BG, 0.0)
+	_fade.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_fade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_fade)
 
 
 func _play_logo() -> void:
@@ -141,7 +184,7 @@ func _shake(strength: float) -> void:
 
 
 func _sound(id: StringName, volume_db: float) -> void:
-	var stream := SfxLibrary.build(id)
+	var stream: AudioStreamWAV = _streams.get(id)
 	if stream == null:
 		return
 	_audio.stream = stream
@@ -154,7 +197,7 @@ func _finish() -> void:
 		return
 	_ending = true
 	var fade := create_tween()
-	fade.tween_property(self, "modulate", Color(UiPalette.BG, 1.0), 0.5)
+	fade.tween_property(_fade, "color:a", 1.0, 0.5)
 	fade.tween_callback(_on_faded)
 
 

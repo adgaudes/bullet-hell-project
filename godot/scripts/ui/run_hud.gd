@@ -4,8 +4,6 @@ extends CanvasLayer
 ## rottamatori abbattuti; annuncio del boss con freccia di direzione e barra
 ## della sua vita (D-043). Solo lettura: mai focus ne input.
 
-const HEALTH_ON := UiPalette.DANGER
-const HEALTH_OFF := Color(0.18, 0.12, 0.12, 0.8)
 const XP_COLOR := UiPalette.XP
 const BOSS_COLOR := Color(0.95, 0.6, 0.08)
 const DAY_COLOR := Color(1.0, 0.9, 0.55)
@@ -138,6 +136,8 @@ func _ready() -> void:
 	_warning_plate.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP, Control.PRESET_MODE_MINSIZE, 96)
 	_warning_plate.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	_warning_plate.rotation_degrees = -1.5
+	# Ruota attorno al centro della dimensione attuale, anche dopo un testo piu lungo.
+	_warning_plate.resized.connect(func() -> void: _warning_plate.pivot_offset = _warning_plate.size * 0.5)
 	_boss_warning = Label.new()
 	_boss_warning.theme_type_variation = &"HudLabel"
 	_boss_warning.add_theme_font_size_override(&"font_size", 28)
@@ -217,7 +217,6 @@ func set_event_warning(text: String, direction: Vector3, seconds_left: float, co
 		_night_notice_left = 0.0
 	_boss_warning.show()
 	_warning_plate.show()
-	_warning_plate.pivot_offset = _warning_plate.size * 0.5
 	if not with_arrow:
 		_boss_arrow.hide()
 		return
@@ -393,7 +392,6 @@ func show_notice(text: String, seconds: float, color: Color) -> void:
 	_boss_warning.add_theme_color_override(&"font_color", color)
 	_boss_warning.show()
 	_warning_plate.show()
-	_warning_plate.pivot_offset = _warning_plate.size * 0.5
 
 
 func is_night_notice_visible() -> bool:

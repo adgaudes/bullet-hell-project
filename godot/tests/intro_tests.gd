@@ -14,6 +14,9 @@ func _initialize() -> void:
 	await _test_sequence_completes()
 	await _test_skip_on_input()
 	await _test_handoff_keeps_pause_disabled()
+	await _test_fade_and_sounds()
+	await _test_skip_by_key()
+	await _test_vignette_hook()
 	await _frames(2)
 	print("PROTOTYPE01_TESTS %s failures=%d" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
@@ -98,3 +101,70 @@ func _test_handoff_keeps_pause_disabled() -> void:
 	if is_instance_valid(intro):
 		intro.queue_free()
 	await _frames(1)
+
+
+## La dissolvenza finale arriva al colore di fondo del tema (non a BG moltiplicato per
+## se stesso) e i suoni sono sintetizzati prima che parta l'animazione.
+func _test_fade_and_sounds() -> void:
+	var intro := IntroScene.instantiate() as BootIntro
+	intro.force_play = true
+	intro.change_scene_on_finish = false
+	root.add_child(intro)
+	await _frames(2)
+	_check(intro.prebuilt_sound_count() == 4, "quattro suoni pronti prima del tween (%d)" % intro.prebuilt_sound_count())
+	_check(intro.fade_alpha() == 0.0, "all'inizio nessuna dissolvenza")
+	intro.skip()
+	await _frames(60)
+	_check(intro.fade_alpha() >= 0.999 and intro.modulate == Color.WHITE, "alla fine il velo BG e opaco e la modulazione e intatta (alpha %.2f)" % intro.fade_alpha())
+	intro.queue_free()
+	await _frames(1)
+
+
+## Un tasto vero (Esc) a meta intro la chiude: passa dalla pausa disattivata fino a
+## `_unhandled_input`.
+func _test_skip_by_key() -> void:
+	var intro := IntroScene.instantiate() as BootIntro
+	intro.force_play = true
+	intro.change_scene_on_finish = false
+	root.add_child(intro)
+	await _frames(30)
+	var done := [false]
+	intro.finished.connect(func() -> void: done[0] = true)
+	for pressed in [true, false]:
+		var event := InputEventKey.new()
+		event.physical_keycode = KEY_ESCAPE
+		event.keycode = KEY_ESCAPE
+		event.pressed = pressed
+		Input.parse_input_event(event)
+		await _frames(2)
+	await _frames(60)
+	_check(done[0] and not intro.is_playing, "Esc salta l'intro")
+	_check(not root.get_node("PauseMenu").call(&"is_open"), "Esc durante l'intro non apre la pausa")
+	intro.queue_free()
+	await _frames(1)
+
+
+## Aggancio della vignetta: una scena che emette `finished` gia nel proprio _ready non
+## blocca l'intro; una scena senza il segnale viene saltata con un avviso.
+func _test_vignette_hook() -> void:
+	var instant := GDScript.new()
+	instant.source_code = "extends Node\nsignal finished\nfunc _ready() -> void:\n\tfinished.emit()\n"
+	instant.reload()
+	for variant in ["instant", "no_signal"]:
+		var node := Node.new()
+		if variant == "instant":
+			node.set_script(instant)
+		var scene := PackedScene.new()
+		scene.pack(node)
+		node.free()
+		var intro := IntroScene.instantiate() as BootIntro
+		intro.force_play = true
+		intro.change_scene_on_finish = false
+		intro.vignette = scene
+		root.add_child(intro)
+		var done := [false]
+		intro.finished.connect(func() -> void: done[0] = true)
+		await _frames(60 * 5)
+		_check(done[0] and intro.logo().is_complete(), "vignetta %s: l'intro arriva alla fine" % variant)
+		intro.queue_free()
+		await _frames(1)

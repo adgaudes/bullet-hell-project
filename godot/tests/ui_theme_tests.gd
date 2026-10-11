@@ -59,7 +59,6 @@ func _test_palette() -> void:
 	_check(normal != null and focus != null and hover != null, "pulsante con stylebox piatti")
 	_check(focus.border_color == UiPalette.FOCUS and focus.border_color != hover.border_color, "focus turchese, diverso dall'hover")
 	_check(focus.shadow_size > 0 and normal.shadow_size == 0, "bagliore solo sul focus")
-	_check(UiPalette.paper_texture() != null and UiPalette.paper_texture() == UiPalette.paper_texture(), "grana di carta generata una volta")
 
 
 ## Il tema di progetto (`gui/theme/custom`, generato da build_theme.gd) deve essere
@@ -128,22 +127,13 @@ func _test_screens_focus() -> void:
 	var menu := MenuScene.instantiate()
 	root.add_child(menu)
 	await _frames(3)
-	var buttons: Array[Button] = []
-	_collect_buttons(menu, buttons)
-	_check(buttons.size() >= 4, "menu con almeno 4 pulsanti (%d)" % buttons.size())
-	var all_distinct := true
-	var all_big := true
-	for button in buttons:
-		if button.get_theme_stylebox(&"focus") == button.get_theme_stylebox(&"normal"):
-			all_distinct = false
-		if button.get_theme_font_size(&"font_size") < 14:
-			all_big = false
-	_check(all_distinct, "ogni pulsante del menu ha un focus distinto")
-	_check(all_big, "nessun pulsante sotto 14 px")
+	_check_focus_distinct(menu, "menu", 4)
 	_check((menu.get_node_or_null(^"Background") as Control) != null, "menu con sfondo dipinto")
 	_check((menu.get_node_or_null(^"Background") as ColorRect).material is ShaderMaterial, "sfondo con il cielo dipinto")
 	_check(menu.get_node_or_null(^"Logo") is GameLogo, "logo nel menu")
 	_check(menu.get_node_or_null(^"ProfilePlate") is PanelContainer, "targhetta del profilo")
+	var dust: CPUParticles2D = menu.get_node(^"Dust")
+	_check(is_equal_approx(dust.position.x, menu.size.x * 0.5) and is_equal_approx(dust.emission_rect_extents.x, menu.size.x * 0.55), "polvere centrata sulla larghezza del menu (%.0f su %.0f)" % [dust.position.x, menu.size.x])
 	menu.queue_free()
 	await _frames(2)
 
@@ -170,6 +160,7 @@ func _test_pause_and_settings() -> void:
 			main_buttons += 1
 	_check(main_buttons >= 5, "Riprendi, Impostazioni, Torna al menu, Esci e Indietro in MainButton (%d)" % main_buttons)
 	_check(settings.custom_minimum_size.x == 760.0, "pannello Impostazioni largo 760")
+	_check_focus_distinct(pause, "pausa e Impostazioni", 5)
 
 
 ## Level-up a carte con fascia di rarita, Officina e campagna con le varianti del tema.
@@ -182,13 +173,13 @@ func _test_cards_and_panels() -> void:
 	await _frames(2)
 	_check(level_up.card_count() == 3, "tre carte")
 	var text := level_up.card_text(0)
-	_check(text.contains(UpgradeCatalog.RARITY_NAMES[offer[0].rarity]) and text.contains(offer[0].name), "la carta mostra rarita e nome: %s" % text.replace("
-", " | "))
+	_check(text.contains(UpgradeCatalog.RARITY_NAMES[offer[0].rarity]) and text.contains(offer[0].name), "la carta mostra rarita e nome: %s" % text.replace("\n", " | "))
 	_check(level_up.title_text() == "LIVELLO 2", "titolo del level-up: %s" % level_up.title_text())
 	var card := level_up.card(0)
 	_check(card.theme_type_variation == &"CardButton" and card.custom_minimum_size == Vector2(300, 300), "carta CardButton 300x300")
 	var focus_box := card.get_theme_stylebox(&"focus") as StyleBoxFlat
 	_check(focus_box != null and focus_box.shadow_size > 0, "carta con bagliore sul focus")
+	_check_focus_distinct(level_up, "level-up", 3)
 	level_up.close()
 	level_up.queue_free()
 	var workshop := WorkshopPanel.new()
@@ -204,6 +195,7 @@ func _test_cards_and_panels() -> void:
 			card_rows += 1
 	_check(card_rows == PermanentCatalog.all().size(), "righe dell'Officina in CardButton (%d)" % card_rows)
 	_check(workshop._scrap_label.theme_type_variation == &"ScrapLabel", "contatore rottami in ScrapLabel")
+	_check_focus_distinct(workshop, "Officina", 2)
 	workshop.close()
 	workshop.queue_free()
 	var campaign := CampaignMapPanel.new()
@@ -219,6 +211,7 @@ func _test_cards_and_panels() -> void:
 		if child is ColorRect:
 			links += 1
 	_check(links == LevelCatalog.count() - 1, "una linea rame fra una carta e l'altra (%d)" % links)
+	_check_focus_distinct(campaign, "campagna", 2)
 	campaign.close()
 	campaign.queue_free()
 	await _frames(2)
@@ -234,8 +227,7 @@ func _test_game_over() -> void:
 	_check(panel._title.theme_type_variation == &"TitleLabel", "titolo in TitleLabel")
 	_check(panel._title.get_theme_color(&"font_color").is_equal_approx(UiPalette.DANGER), "sconfitta in corallo")
 	_check(panel._summary.get_parent() is PanelContainer, "riepilogo in un pannello")
-	_check(panel._summary.tab_stops.size() == 1 and panel._summary.text.contains("Tempo	01:01") and panel._summary.text.contains("Rottami in Officina	20"), "righe allineate con i tab: %s" % panel._summary.text.replace("
-", " | "))
+	_check(panel._summary.tab_stops.size() == 1 and panel._summary.text.contains("Tempo\t01:01") and panel._summary.text.contains("Rottami in Officina\t20"), "righe allineate con i tab: %s" % panel._summary.text.replace("\n", " | "))
 	panel.open(61.0, 3, 12, true, 5, 20)
 	await _frames(1)
 	_check(panel._title.get_theme_color(&"font_color").is_equal_approx(UiPalette.SUCCESS), "vittoria in verde")
@@ -246,6 +238,7 @@ func _test_game_over() -> void:
 		if button.theme_type_variation == &"MainButton":
 			main += 1
 	_check(main >= 5, "pulsanti di fine livello in MainButton (%d)" % main)
+	_check_focus_distinct(panel, "fine livello", 5)
 	paused = false
 	panel.queue_free()
 	await _frames(2)
@@ -267,8 +260,11 @@ func _test_hud() -> void:
 	_check(not hud._day_dial.visible, "ciclo spento: quadrante nascosto")
 	_check(hud._level_label.get_theme_font(&"font") == UiPalette.title_font(), "numeri dell'HUD in slab")
 	_check(hud._xp_bar.anchor_top == 1.0, "barra esperienza in basso")
-	hud.show_notice("PROVA", 1.0, UiPalette.TEXT)
+	hud.show_notice("PROVA DI UN AVVISO MOLTO PIU LUNGO DEL PRECEDENTE", 1.0, UiPalette.TEXT)
 	_check(hud._warning_plate.visible and hud._boss_warning.visible, "avviso su targa")
+	await _frames(2)
+	_check(hud._warning_plate.pivot_offset.is_equal_approx(hud._warning_plate.size * 0.5), "la targa ruota attorno al centro della sua dimensione attuale")
+	_check(not ("HEALTH_ON" in (load("res://scripts/ui/run_hud.gd") as GDScript).get_script_constant_map()), "costanti HEALTH_* tolte dall'HUD")
 	hud.clear_event_warning()
 	_check(not hud._warning_plate.visible, "targa nascosta con l'avviso")
 	hud.queue_free()
@@ -280,6 +276,22 @@ func _descendants(node: Node) -> Array[Node]:
 	for child in node.get_children():
 		out.append_array(_descendants(child))
 	return out
+
+
+## Ogni pulsante della schermata ha un focus diverso dal normale e testo di almeno 14 px.
+func _check_focus_distinct(screen: Node, label: String, at_least: int) -> void:
+	var buttons: Array[Button] = []
+	_collect_buttons(screen, buttons)
+	_check(buttons.size() >= at_least, "%s: almeno %d pulsanti (%d)" % [label, at_least, buttons.size()])
+	var all_distinct := true
+	var all_big := true
+	for button in buttons:
+		if button.get_theme_stylebox(&"focus") == button.get_theme_stylebox(&"normal"):
+			all_distinct = false
+		if button.get_theme_font_size(&"font_size") < 14:
+			all_big = false
+	_check(all_distinct, "%s: ogni pulsante ha un focus distinto" % label)
+	_check(all_big, "%s: nessun pulsante sotto 14 px" % label)
 
 
 func _collect_buttons(node: Node, out: Array[Button]) -> void:

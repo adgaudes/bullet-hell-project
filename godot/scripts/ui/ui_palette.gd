@@ -30,7 +30,6 @@ const SIZE_SMALL := 16
 
 static var _title_font: Font
 static var _text_fonts: Dictionary = {}
-static var _paper: Texture2D
 
 
 static func title_font() -> Font:
@@ -55,22 +54,6 @@ static func text_font(weight := 400) -> Font:
 			variation.variation_opentype = {TextServerManager.get_primary_interface().name_to_tag("weight"): float(weight)}
 			_text_fonts[weight] = variation
 	return _text_fonts[weight]
-
-
-## Grana di carta: rumore a basso contrasto 256x256, ripetibile, generato una volta.
-static func paper_texture() -> Texture2D:
-	if _paper == null:
-		var noise := FastNoiseLite.new()
-		noise.noise_type = FastNoiseLite.TYPE_CELLULAR
-		noise.frequency = 0.08
-		noise.seed = 7
-		var image := Image.create(256, 256, false, Image.FORMAT_RGBA8)
-		for y in 256:
-			for x in 256:
-				var v := 0.5 + 0.5 * noise.get_noise_2d(float(x), float(y))
-				image.set_pixel(x, y, Color(1.0, 0.92, 0.8, 0.06 * v))
-		_paper = ImageTexture.create_from_image(image)
-	return _paper
 
 
 static func panel_box(raised := false) -> StyleBoxFlat:

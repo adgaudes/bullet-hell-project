@@ -5,6 +5,8 @@ extends Control
 
 const SIZE := 22.0
 const GAP := 6.0
+const OFF_COLOR := Color(0.12, 0.08, 0.07, 0.85)
+const OFF_CENTER := Color(0.25, 0.18, 0.15)
 
 var _health := 0
 var _max := 0
@@ -39,7 +41,7 @@ func _draw() -> void:
 			var angle := PI / 6.0 + k * PI / 3.0
 			points.append(center + Vector2(cos(angle), sin(angle)) * SIZE * 0.5)
 		var lit := i < _health
-		draw_colored_polygon(points, UiPalette.DANGER if lit else Color(0.12, 0.08, 0.07, 0.85))
+		draw_colored_polygon(points, UiPalette.DANGER if lit else OFF_COLOR)
 		points.append(points[0])
 		draw_polyline(points, UiPalette.OUTLINE, 2.0)
-		draw_circle(center, SIZE * 0.16, UiPalette.OUTLINE if lit else Color(0.25, 0.18, 0.15))
+		draw_circle(center, SIZE * 0.16, UiPalette.OUTLINE if lit else OFF_CENTER)
