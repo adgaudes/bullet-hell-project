@@ -170,17 +170,25 @@ def _begin_emit_graph(mat):
 # -- grafi di cottura -------------------------------------------------------------------
 
 
-def paint_albedo_graph(mat, image, kind, style=None, coords=None, w=None):
-    """Albedo dipinta. Senza `coords` usa le coordinate oggetto (modelli: origine a terra,
-    quindi il fango sale da Z = 0); con `coords`/`w` toroidali (tile) niente fango."""
+def _coords(nodes, links, coords_fn):
+    """Coordinate del rumore: oggetto (modelli) o quelle di `coords_fn` (tile toroidali).
+    Restituisce (coords, w, tiled)."""
+    if coords_fn is None:
+        return nodes.new("ShaderNodeTexCoord").outputs["Object"], None, False
+    coords, w = coords_fn(nodes, links)
+    return coords, w, True
+
+
+def paint_albedo_graph(mat, image, kind, style=None, coords_fn=None):
+    """Albedo dipinta. Senza `coords_fn` usa le coordinate oggetto (modelli: origine a
+    terra, quindi il fango sale da Z = 0); con `coords_fn` toroidale (tile) niente fango,
+    niente rampa per volume, niente occlusione geometrica."""
     style = style or STYLES[kind]
     nodes, links, emit = _begin_emit_graph(mat)
     base = nodes.new("ShaderNodeAttribute")
     base.attribute_name = "Col"
     color = base.outputs["Color"]
-    tiled = coords is not None
-    if coords is None:
-        coords = nodes.new("ShaderNodeTexCoord").outputs["Object"]
+    coords, w, tiled = _coords(nodes, links, coords_fn)
     if kind != "lamp":
         separate = nodes.new("ShaderNodeSeparateXYZ")
         links.new(coords, separate.inputs["Vector"])
@@ -213,12 +221,12 @@ def paint_albedo_graph(mat, image, kind, style=None, coords=None, w=None):
     _bake_target(nodes, image)
 
 
-def paint_orm_graph(mat, image, kind, style=None, coords=None, w=None):
+def paint_orm_graph(mat, image, kind, style=None, coords_fn=None):
     """ORM: R = occlusione, G = roughness (base, piu bassa dove consumato), B = metallo.
     Sulle tile (coords toroidali) l'occlusione e piatta e la roughness varia col rumore."""
     style = style or STYLES[kind]
     nodes, links, emit = _begin_emit_graph(mat)
-    tiled = coords is not None
+    coords, w, tiled = _coords(nodes, links, coords_fn)
     if kind == "lamp" or tiled:
         occlusion = math_node(nodes, links, "ADD", 1.0, 0.0)
     else:
@@ -238,7 +246,7 @@ def paint_orm_graph(mat, image, kind, style=None, coords=None, w=None):
     _bake_target(nodes, image)
 
 
-def paint_normal_graph(mat, image, kind, style=None, coords=None, w=None):
+def paint_normal_graph(mat, image, kind, style=None, coords_fn=None):
     """Rilievo procedurale (Bump su un BSDF: Emission non ha una presa Normal) per la
     normal map in spazio tangente. Vernice: trama fine piu pieghe larghe; gear: grana e
     graffi; tile: rilievo piu marcato; lamp: piatta."""
@@ -249,8 +257,7 @@ def paint_normal_graph(mat, image, kind, style=None, coords=None, w=None):
     bsdf = nodes.new("ShaderNodeBsdfDiffuse")
     links.new(bsdf.outputs["BSDF"], out.inputs["Surface"])
     if kind != "lamp":
-        if coords is None:
-            coords = nodes.new("ShaderNodeTexCoord").outputs["Object"]
+        coords, w, _tiled = _coords(nodes, links, coords_fn)
         bump = nodes.new("ShaderNodeBump")
         bump.inputs["Distance"].default_value = 0.002
         if kind == "paint":
