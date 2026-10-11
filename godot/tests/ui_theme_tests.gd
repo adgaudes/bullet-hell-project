@@ -300,6 +300,16 @@ func _test_game_over() -> void:
 		if button.theme_type_variation == &"MainButton":
 			main += 1
 	_check(main >= 5, "pulsanti di fine livello in MainButton (%d)" % main)
+	# Un pannello aperto sopra (Officina) tiene il focus: la grazia di fine livello non lo ruba.
+	var other := Button.new()
+	other.text = "Sopra"
+	root.add_child(other)
+	panel.open(10.0, 1, 0, false, 0, 0)
+	await _frames(3)
+	other.grab_focus()
+	await _frames(70)
+	_check(root.get_viewport().gui_get_focus_owner() == other, "la fine livello non ruba il focus a chi sta sopra")
+	other.queue_free()
 	_check_focus_distinct(panel, "fine livello", 5)
 	paused = false
 	panel.queue_free()

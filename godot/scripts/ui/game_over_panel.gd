@@ -196,6 +196,10 @@ func has_next_level() -> bool:
 func focus_default(prefer_workshop := true) -> void:
 	if not is_open:
 		return
+	# Un pannello aperto sopra (Officina) ha gia il focus: non glielo si ruba.
+	var owner := get_viewport().gui_get_focus_owner()
+	if owner != null and not is_ancestor_of(owner):
+		return
 	if prefer_workshop:
 		_workshop.grab_focus()
 	elif _next.visible:

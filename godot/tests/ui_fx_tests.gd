@@ -65,6 +65,12 @@ func _test_cursor_follows_focus() -> void:
 	buttons[4].pressed.emit()
 	await _frames(12)
 	_check(fx.play_count(&"ui_confirm") == confirms + 1 and buttons[4].scale.is_equal_approx(Vector2.ONE), "pressione: ui_confirm e rimbalzo che torna a 1")
+	# Il bersaglio si sposta dopo il focus (layout, scroll, pop-in): il cursore lo segue.
+	column.position = Vector2(500, 400)
+	await _frames(12)
+	var moved := buttons[4].get_global_rect()
+	var cursor_after := fx.cursor_position()
+	_check(cursor_after.x < moved.position.x and absf(cursor_after.x - moved.position.x) < 60.0 and absf(cursor_after.y - (moved.position.y + moved.size.y * 0.5)) < moved.size.y, "il cursore segue il bersaglio spostato (%s vs %s)" % [cursor_after, moved.position])
 	buttons[4].queue_free()
 	await _frames(3)
 	_check(not fx.cursor_visible(), "pulsante liberato: cursore nascosto, nessun errore")

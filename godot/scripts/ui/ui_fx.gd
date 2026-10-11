@@ -18,7 +18,6 @@ var is_transitioning := false
 
 var _veil: ColorRect
 var _cursor: UiIcon
-var _cursor_tween: Tween
 var _target: Control
 var _audio: AudioStreamPlayer
 var _streams: Dictionary[StringName, AudioStreamWAV] = {}
@@ -159,12 +158,10 @@ func _on_focus_changed(control: Control) -> void:
 		_hide_cursor()
 		return
 	play(&"ui_move", -12.0)
+	if not _cursor.visible:
+		# Da nascosto parte gia accanto al bersaglio, un po' piu a sinistra.
+		_cursor.position = _cursor_rest(control) - Vector2(24.0, 0.0)
 	_cursor.visible = true
-	if _cursor_tween != null and _cursor_tween.is_valid():
-		_cursor_tween.kill()
-	_cursor_tween = create_tween()
-	_cursor_tween.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
-	_cursor_tween.tween_property(_cursor, "position", _cursor_rest(control), CURSOR_SECONDS).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 
 
 func _cursor_rest(control: Control) -> Vector2:
@@ -174,8 +171,6 @@ func _cursor_rest(control: Control) -> Vector2:
 
 func _hide_cursor() -> void:
 	_cursor.visible = false
-	if _cursor_tween != null and _cursor_tween.is_valid():
-		_cursor_tween.kill()
 
 
 func _process(delta: float) -> void:
@@ -186,6 +181,8 @@ func _process(delta: float) -> void:
 	if target == null or not target.is_visible_in_tree() or not target.has_focus():
 		_hide_cursor()
 		return
-	# Segue il bersaglio (scroll, layout) e oscilla piano quando e fermo.
-	if _cursor_tween == null or not _cursor_tween.is_running():
-		_cursor.position = _cursor_rest(target) + Vector2(sin(_time * 6.0) * 2.0, 0.0)
+	# Insegue il bersaglio ogni frame (anche se si sposta per layout, scroll o pop-in)
+	# con un ritardo esponenziale di CURSOR_SECONDS, e oscilla piano.
+	var rest := _cursor_rest(target) + Vector2(sin(_time * 6.0) * 2.0, 0.0)
+	var k := 1.0 - exp(-delta / (CURSOR_SECONDS * 0.4))
+	_cursor.position = _cursor.position.lerp(rest, k)
