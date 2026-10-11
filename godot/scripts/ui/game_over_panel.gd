@@ -37,7 +37,7 @@ func _ready() -> void:
 	layer = 95
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_overlay = ColorRect.new()
-	_overlay.color = Color(0.05, 0.01, 0.01, 0.85)
+	_overlay.color = Color("2a0f0c", 0.9)
 	_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(_overlay)
 	var center := CenterContainer.new()
@@ -46,21 +46,28 @@ func _ready() -> void:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override(&"separation", 48)
 	center.add_child(row)
+	var frame := PanelContainer.new()
+	frame.custom_minimum_size = Vector2(460, 0)
+	row.add_child(frame)
 	var column := VBoxContainer.new()
-	column.custom_minimum_size = Vector2(440, 0)
 	column.add_theme_constant_override(&"separation", 14)
 	column.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_child(column)
+	frame.add_child(column)
 	_build_map_box(row)
 	_title = Label.new()
 	_title.text = "ROTTAMATO"
+	_title.theme_type_variation = &"TitleLabel"
 	_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_title.add_theme_font_size_override(&"font_size", 44)
 	column.add_child(_title)
+	# Tabella a due colonne: etichetta, tab, valore (il testo resta leggibile dai test).
+	var table := PanelContainer.new()
+	table.add_theme_stylebox_override(&"panel", UiPalette.panel_box(true))
+	column.add_child(table)
 	_summary = Label.new()
-	_summary.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_summary.add_theme_font_size_override(&"font_size", 22)
-	column.add_child(_summary)
+	_summary.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	_summary.add_theme_font_size_override(&"font_size", 20)
+	_summary.tab_stops = PackedFloat32Array([280.0])
+	table.add_child(_summary)
 	_workshop = _button(column, "Officina")
 	_workshop.pressed.connect(func() -> void: workshop_requested.emit())
 	_next = _button(column, "Prossimo livello")
@@ -84,18 +91,22 @@ func _build_map_box(parent: Control) -> void:
 	parent.add_child(_map_box)
 	var heading := Label.new()
 	heading.text = "IL TUO CAMPO"
+	heading.theme_type_variation = &"SectionLabel"
 	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	heading.add_theme_font_size_override(&"font_size", 20)
 	_map_box.add_child(heading)
 	_map_rect = TextureRect.new()
 	_map_rect.custom_minimum_size = Vector2(MAP_SIZE, MAP_SIZE)
 	_map_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_map_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	_map_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	_map_box.add_child(_map_rect)
+	var map_frame := PanelContainer.new()
+	map_frame.add_theme_stylebox_override(&"panel", UiPalette.panel_box(true))
+	map_frame.add_child(_map_rect)
+	_map_box.add_child(map_frame)
 	_map_caption = Label.new()
+	_map_caption.theme_type_variation = &"MutedLabel"
 	_map_caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_map_caption.add_theme_font_size_override(&"font_size", 13)
+	_map_caption.add_theme_font_size_override(&"font_size", 14)
 	_map_box.add_child(_map_caption)
 	_save_map = Button.new()
 	_save_map.text = "Salva mappa"
@@ -144,11 +155,12 @@ func open(seconds: float, level: int, kills: int, victory := false, scrap := 0, 
 	is_open = true
 	is_victory = victory
 	_title.text = "LIVELLO COMPLETATO" if victory else "ROTTAMATO"
-	_overlay.color = Color(0.02, 0.05, 0.03, 0.85) if victory else Color(0.05, 0.01, 0.01, 0.85)
-	_summary.text = "Tempo %s\nLivello %d\nRottamatori abbattuti %d\nRottami portati fuori %d" \
+	_title.add_theme_color_override(&"font_color", UiPalette.SUCCESS if victory else UiPalette.DANGER)
+	_overlay.color = Color("0f2416", 0.9) if victory else Color("2a0f0c", 0.9)
+	_summary.text = "Tempo\t%s\nLivello\t%d\nRottamatori abbattuti\t%d\nRottami portati fuori\t%d" \
 		% [RunHud.format_time(seconds), level, kills, scrap]
 	if banked >= 0:
-		_summary.text += "\nRottami in Officina %d" % banked
+		_summary.text += "\nRottami in Officina\t%d" % banked
 	if save_failed:
 		_summary.text += "\n" + SAVE_FAILED_TEXT
 	get_tree().paused = true
@@ -192,7 +204,7 @@ func focus_default(prefer_workshop := true) -> void:
 func _button(parent: Control, text: String) -> Button:
 	var button := Button.new()
 	button.text = text
+	button.theme_type_variation = &"MainButton"
 	button.custom_minimum_size = Vector2(0, 52)
-	button.add_theme_font_size_override(&"font_size", 20)
 	parent.add_child(button)
 	return button

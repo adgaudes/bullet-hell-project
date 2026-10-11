@@ -16,6 +16,7 @@ func _initialize() -> void:
 	await _test_screens_focus()
 	await _test_pause_and_settings()
 	await _test_cards_and_panels()
+	await _test_game_over()
 	await _frames(2)
 	print("PROTOTYPE01_TESTS %s failures=%d" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
@@ -191,6 +192,33 @@ func _test_cards_and_panels() -> void:
 	_check(links == LevelCatalog.count() - 1, "una linea rame fra una carta e l'altra (%d)" % links)
 	campaign.close()
 	campaign.queue_free()
+	await _frames(2)
+
+
+## Fine livello: pannello, titolo colorato per esito, tabella allineata con i tab.
+func _test_game_over() -> void:
+	var panel := GameOverPanel.new()
+	root.add_child(panel)
+	await _frames(1)
+	panel.open(61.0, 3, 12, false, 5, 20)
+	await _frames(1)
+	_check(panel._title.theme_type_variation == &"TitleLabel", "titolo in TitleLabel")
+	_check(panel._title.get_theme_color(&"font_color").is_equal_approx(UiPalette.DANGER), "sconfitta in corallo")
+	_check(panel._summary.get_parent() is PanelContainer, "riepilogo in un pannello")
+	_check(panel._summary.tab_stops.size() == 1 and panel._summary.text.contains("Tempo	01:01") and panel._summary.text.contains("Rottami in Officina	20"), "righe allineate con i tab: %s" % panel._summary.text.replace("
+", " | "))
+	panel.open(61.0, 3, 12, true, 5, 20)
+	await _frames(1)
+	_check(panel._title.get_theme_color(&"font_color").is_equal_approx(UiPalette.SUCCESS), "vittoria in verde")
+	var buttons: Array[Button] = []
+	_collect_buttons(panel, buttons)
+	var main := 0
+	for button in buttons:
+		if button.theme_type_variation == &"MainButton":
+			main += 1
+	_check(main >= 5, "pulsanti di fine livello in MainButton (%d)" % main)
+	paused = false
+	panel.queue_free()
 	await _frames(2)
 
 

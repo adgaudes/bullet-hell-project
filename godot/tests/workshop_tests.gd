@@ -189,7 +189,7 @@ func _test_banking_and_workshop_flow() -> void:
 	await _frames(2)
 	_check(panel.is_open and not panel.is_victory, "rottamato: schermata di fine livello")
 	_check(profile.scrap == 5 + expected and profile.runs == 1, "i rottami salvati vanno in Officina (%d + %d)" % [5, expected])
-	_check((panel._summary.text as String).contains("Rottami in Officina %d" % profile.scrap), "il riepilogo mostra il totale in Officina")
+	_check((panel._summary.text as String).contains("Rottami in Officina	%d" % profile.scrap), "il riepilogo mostra il totale in Officina")
 	_check(not workshop.is_open, "l'Officina resta chiusa finche non la si chiede")
 	panel.workshop_requested.emit()
 	_check(workshop.is_open and workshop.row_text(&"base_health").contains("0/3"), "dal pulsante si apre l'Officina con il catalogo")
