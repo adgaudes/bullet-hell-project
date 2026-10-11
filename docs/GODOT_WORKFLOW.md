@@ -162,6 +162,8 @@ Trappola verificata (6 ottobre 2026): **non mettere in pausa l'albero a meta di 
 
 Limite noto (6 ottobre 2026): due run identiche con un numero diverso di passi fisici per frame (`--fixed-fps 60` contro `--fixed-fps 10` a 60 Hz) si separano comunque dopo un po': `move_and_slide` di un nemico che striscia su un muro restituisce posizioni diverse di frazioni di millimetro. E nel motore, non nel gioco: per confronti usare sempre lo stesso `--fixed-fps`.
 
+Identita e interfaccia (D-079, D-080): logo in PNG (`logo_wide` 2048, `logo_stacked` 1024, `icon` 256) con `godot_console --path godot --resolution 1280x800 --quit-after 900 --script res://tests/tools/capture_logo.gd -- --out=../output/identity`; intro a tre tempi, menu (con riga `MENU_FRAME_MS`, tempo reale a vsync spento) e pausa con `godot_console --path godot --resolution 1280x800 --fixed-fps 60 --quit-after 6000 --script res://tests/tools/capture_ui.gd -- --out=../output/identity`; le altre schermate con gli script esistenti (`capture_run`, `capture_workshop`, `capture_campaign`, `capture_settings`, `capture_night`, `capture_boss`) e `--out=../output/identity`. **Tema di progetto**: dopo ogni modifica a `scripts/ui/ui_palette.gd` rigenerare `resources/ui/theme.tres` con `godot_console --headless --path godot --script res://tests/tools/build_theme.gd` (la suite `ui_theme_tests.gd` segnala se e vecchio). **Avvio**: la `main_scene` e `scenes/main/boot_intro.tscn` (intro di 4 s, poi il menu); `--autostart`, `--level=` e gli altri prefissi di `RunLaunchOptions.AUTOSTART_PREFIXES` la saltano, come l'headless; `--intro-test` la forza anche in headless (suite `intro_tests.gd`).
+
 Catture di Officina, mappa di fine livello e menu iniziale: `godot_console --path godot --resolution 1280x800 --fixed-fps 60 --script res://tests/tools/capture_workshop.gd -- --out=../output/workshop`. Sotto `--script` l'autoload `PlayerProfile` non legge ne scrive `user://profile.cfg`: test e catture impostano il profilo in memoria.
 
 Trappola verificata (6 ottobre 2026): `add_child()` su un nodo fratello **durante il `_ready` della scena** fallisce ("Parent node is busy setting up children") e il nodo resta fuori dall'albero senza altri sintomi. Usare `add_child.call_deferred()`.
@@ -183,6 +185,17 @@ Trappola verificata (5 ottobre 2026): in un test `extends SceneTree`, la scena a
 Il gate (`Invoke-GodotChecks.ps1`) ha un timeout di 300 s per processo: un test appeso risulta FAIL con exit 124 invece di bloccare tutto.
 
 Per l'input nei test: `Input.action_press()` per azioni tenute; per azioni a evento (dash) usare `Input.parse_input_event()` con `InputEventAction`, perche `is_action_just_pressed` in `_physics_process` puo perdere una pressione simulata.
+
+Trappole verificate (11 ottobre 2026, interfaccia):
+
+- Un `Theme` assegnato a `root.theme` **non raggiunge** i Control dentro un `CanvasLayer` (pausa, HUD, level-up, Officina, campagna, fine livello): Godot risale solo per Control e Window. Serve il tema di progetto (`gui/theme/custom`), e `ThemeDB` non ha un setter a runtime: per questo il tema e un `.tres` generato.
+- `MenuButton` e una classe built-in: `set_type_variation("MenuButton", "Button")` fallisce con "cannot be marked as a variation". La variante si chiama `MainButton`.
+- `TextServer.name_to_tag` non e statico: `TextServerManager.get_primary_interface().name_to_tag("weight")` per l'asse `wght` di una `FontVariation`.
+- Un `ShaderMaterial` su una Label con font **MSDF** campiona il campo di distanza, non il glifo: colori casuali. Il font slab e importato senza MSDF.
+- Dentro un `SubViewport` il tema della radice non arriva: `GameLogo` imposta i font direttamente (`add_theme_font_override`).
+- `Performance.TIME_PROCESS` include l'attesa del vsync: per misurare una schermata usare il tempo reale per frame con `window_set_vsync_mode(VSYNC_DISABLED)` e `Engine.max_fps = 0` (`capture_ui.gd`).
+- I tick fisici sono 120 al secondo: in uno script di cattura "un secondo" sono 60 `process_frame` con `--fixed-fps 60`, non 60 `physics_frame`.
+- Dopo un `class_name` nuovo, `--script` fallisce con "Identifier not declared" finche non si esegue `--editor --quit` (cache delle classi).
 
 ### Verifica visiva
 

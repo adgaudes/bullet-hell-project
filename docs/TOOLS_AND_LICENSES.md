@@ -57,6 +57,17 @@ Scostamenti dai pacchetti originali: di Debug Draw 3D sono incluse solo le libre
 
 Aggiornare un addon: scaricare la release in una cartella temporanea, sostituire la cartella in `godot/addons/`, rieseguire `--editor --quit` e il gate, aggiornare questa tabella.
 
+## Font (`godot/assets/fonts/`)
+
+Scaricati l'11 ottobre 2026 da <https://github.com/google/fonts> (D-079, D-080), con la licenza accanto al file. Entrambi SIL Open Font License 1.1: uso, distribuzione nel gioco e modifica consentiti, nessun costo, nessuna attribuzione obbligatoria nel gioco (la licenza va distribuita con il font, ed e nel repository).
+
+| Font | File | Origine | Licenza | Uso |
+|---|---|---|---|---|
+| Alfa Slab One (JM Sole, 2016) | `AlfaSlabOne-Regular.ttf`, `OFL-AlfaSlabOne.txt` | `ofl/alfaslabone` | OFL 1.1, Reserved Font Name "Alfa Slab" | titoli, logo, numeri dell'HUD (`UiPalette.title_font()`) |
+| Rubik (Rubik Project Authors, 2015; variabile, asse `wght`) | `Rubik[wght].ttf`, `OFL-Rubik.txt` | `ofl/rubik` | OFL 1.1 | testo, pulsanti, opzioni (`UiPalette.text_font(peso)`) |
+
+Importazione: `.import` standard (niente MSDF: lo shader del gradiente del logo campiona i glifi rasterizzati). Il tema che li usa e `godot/resources/ui/theme.tres`, generato da `tests/tools/build_theme.gd`.
+
 ### Regola: cercare addon utili e proporli
 
 A ogni nuovo task l'agente controlla se nell'Asset Library o nell'Asset Store di Godot (o su GitHub) esiste un addon o un asset che farebbe meglio o prima, e **lo propone al proprietario quando pensa che convenga scaricarlo**: beneficio concreto, licenza, costo (solo gratuiti; quelli a pagamento si propongono e basta), manutenzione, compatibilita con Godot 4.7.x, Windows, Linux e Steam Deck. Si scarica dopo il suo si. Anche "valutato, non serve" va annotato quando la domanda e ricorrente.

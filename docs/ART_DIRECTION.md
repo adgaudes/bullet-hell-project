@@ -144,3 +144,28 @@ Tile dipinte e ripetibili per suolo (terra, lastre, asfalto, terra scavata, fang
 - rapporto fra tecnologia terrestre, fantasy e aliena;
 - tecnica foliage e budget su Steam Deck;
 - provenienza e licenza di ogni reference o modello destinato a superare la fase placeholder.
+
+
+## Identita e interfaccia (11 ottobre 2026, D-079 e D-080)
+
+**Nome: "Dwarmageddon: Dig or Die".** Gioco di parole Dwarf + Armageddon: i quattro personaggi del roster sono nani di questo mondo (tozzi, testa e mani grandi, baricentro basso, come gia nelle schede); il divieto resta sull'archetipo steampunk con ingranaggi d'ottone, non sulla parola. Il sottotitolo dice la firma del gioco: il terreno.
+
+**Logo** (`scenes/ui/game_logo.tscn`, vettoriale, nessun PNG sorgente): wordmark "DWARMAGEDDON" in Alfa Slab One con gradiente rame → ocra, outline scuro e linea di base ad arco (la parola "spinge" come un terrapieno); due sole decorazioni, un chiodo della chiodatrice piantato di sbieco nella prima "O" con una crepa, e una zolla di terra con tre ciuffi d'erba sotto la parola; "DIG OR DIE" in crema su una targa scura inclinata di due gradi. Impaginazioni `wide` (menu, intro, capsule larghe) e `stacked` (icona e formati quadrati). Esportazione PNG con `tests/tools/capture_logo.gd`.
+
+**Font** (SIL OFL 1.1, `godot/assets/fonts/`): Alfa Slab One per titoli, logo e numeri dell'HUD (mai sotto 16 px); Rubik (variabile, pesi 400/500/700) per testo, pulsanti e opzioni (mai sotto 14 px).
+
+**Palette dell'interfaccia** (`scripts/ui/ui_palette.gd`):
+
+| Token | Valore | Uso |
+|---|---|---|
+| `BG` | `#17110d` | fondo del menu, overlay |
+| `PANEL` / `PANEL_RAISED` | `#2a1f18` a 0,94 / `#38291f` | pannelli / pulsanti, righe, carte |
+| `BORDER` / `BORDER_LIGHT` | `#b5652d` / `#e0a060` | bordo rame / luce sul bordo e intestazioni |
+| `TEXT` / `TEXT_MUTED` | `#f2e6cf` / `#c9a25f` | testo / secondario |
+| `FOCUS` | `#3fc1b5` | bordo e bagliore del controllo attivo |
+| `DANGER` / `SUCCESS` | `#e3553f` / `#7fc24f` | vita, sconfitta / vittoria, acquistato |
+| `SCRAP` / `XP` | `#f28a2e` / `#1ad9a6` | rottami / esperienza |
+
+Le rarita del level-up restano i colori di `UpgradeCatalog.RARITY_COLORS`. Il tema vale per tutte le schermate attraverso `resources/ui/theme.tres` (vedi `GODOT_WORKFLOW.md`); i nodi usano le varianti di tipo e non si colorano da soli.
+
+**Intro all'avvio**: 4 secondi, il terreno sale con la polvere, le lettere cadono con una scossa, il chiodo si pianta, la targa si stampa, l'erba spunta; saltabile. Il punto d'aggancio per una vignetta con i personaggi nuovi (dopo il piano 2 del restyling) e `BootIntro.vignette`.
