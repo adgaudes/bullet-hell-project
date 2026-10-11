@@ -2,7 +2,8 @@ class_name UiPalette
 extends RefCounted
 ## Palette, font e tema dell'interfaccia (D-080). Un solo posto: le schermate usano le
 ## varianti di tipo (`theme_type_variation`) e non colorano piu i nodi uno a uno.
-## L'autoload UiTheme applica `build_theme()` alla radice prima di ogni scena.
+## `tests/tools/build_theme.gd` salva `build_theme()` in `resources/ui/theme.tres`, il tema di
+## progetto (`gui/theme/custom`): va rilanciato dopo ogni modifica qui.
 
 const BG := Color("17110d")
 const PANEL := Color(0.165, 0.122, 0.094, 0.94)
@@ -135,6 +136,12 @@ static func build_theme() -> Theme:
 	theme.set_type_variation(&"ScrapLabel", &"Label")
 	theme.set_font(&"font", &"ScrapLabel", text_font(700))
 	theme.set_color(&"font_color", &"ScrapLabel", SCRAP)
+	theme.set_type_variation(&"PromptLabel", &"Label")
+	theme.set_font(&"font", &"PromptLabel", text_font(500))
+	theme.set_font_size(&"font_size", &"PromptLabel", 17)
+	theme.set_color(&"font_color", &"PromptLabel", TEXT)
+	theme.set_color(&"font_outline_color", &"PromptLabel", OUTLINE)
+	theme.set_constant(&"outline_size", &"PromptLabel", 4)
 	theme.set_type_variation(&"HudLabel", &"Label")
 	theme.set_font(&"font", &"HudLabel", title_font())
 	theme.set_font_size(&"font_size", &"HudLabel", SIZE_SECTION)

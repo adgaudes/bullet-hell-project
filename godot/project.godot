@@ -21,7 +21,6 @@ config/icon="res://icon.png"
 [autoload]
 
 GameSettings="*res://scripts/services/game_settings.gd"
-UiTheme="*res://scripts/ui/ui_theme.gd"
 PauseMenu="*res://scenes/ui/pause_menu.tscn"
 PlayerProfile="*res://scripts/services/player_profile.gd"
 DebugMenu="*res://addons/debug_menu/debug_menu.tscn"
@@ -42,6 +41,10 @@ window/vsync/vsync_mode=3
 [editor_plugins]
 
 enabled=PackedStringArray("res://addons/controller_icons/plugin.cfg", "res://addons/debug_menu/plugin.cfg")
+
+[gui]
+
+theme/custom="res://resources/ui/theme.tres"
 
 [input]
 

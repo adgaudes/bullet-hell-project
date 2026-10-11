@@ -30,6 +30,7 @@ func _ready() -> void:
 	_menu_button = Button.new()
 	_menu_button.name = "MenuButton"
 	_menu_button.text = "Torna al menu"
+	_menu_button.theme_type_variation = &"MainButton"
 	_menu_button.custom_minimum_size = _settings_button.custom_minimum_size
 	_menu_button.pressed.connect(return_to_menu)
 	_quit_button.add_sibling(_menu_button)
