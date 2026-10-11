@@ -62,18 +62,46 @@ func _test_palette() -> void:
 	_check(UiPalette.paper_texture() != null and UiPalette.paper_texture() == UiPalette.paper_texture(), "grana di carta generata una volta")
 
 
-## Il tema di progetto (`gui/theme/custom`, generato da build_theme.gd) e aggiornato
-## rispetto a UiPalette: i CanvasLayer lo ricevono solo da li.
+## Il tema di progetto (`gui/theme/custom`, generato da build_theme.gd) deve essere
+## identico a `UiPalette.build_theme()`: i CanvasLayer lo ricevono solo da li. Confronto
+## campo per campo di colori, costanti, dimensioni, varianti e StyleBoxFlat.
 func _test_theme_on_root() -> void:
 	var project := ThemeDB.get_project_theme()
 	_check(project != null, "tema di progetto registrato")
 	if project == null:
 		return
-	_check(project.get_font_size(&"font_size", &"TitleLabel") == UiPalette.SIZE_TITLE, "tema di progetto: titolo a %d" % UiPalette.SIZE_TITLE)
-	_check(project.default_font_size == UiPalette.SIZE_TEXT, "tema di progetto: testo a %d" % UiPalette.SIZE_TEXT)
-	var focus := project.get_stylebox(&"focus", &"Button") as StyleBoxFlat
-	_check(focus != null and focus.border_color.is_equal_approx(UiPalette.FOCUS), "tema di progetto: focus turchese")
-	_check(project.get_type_variation_base(&"MainButton") == &"Button" and project.get_type_variation_base(&"HudLabel") == &"Label", "tema di progetto: varianti presenti (rigenerare con build_theme.gd se manca)")
+	var expected := UiPalette.build_theme()
+	var differences := _theme_differences(expected, project)
+	_check(differences.is_empty(), "theme.tres allineato a UiPalette (rigenerare con build_theme.gd): %s" % ", ".join(differences.slice(0, 5)))
+
+
+func _theme_differences(expected: Theme, actual: Theme) -> PackedStringArray:
+	var out: PackedStringArray = []
+	if expected.default_font_size != actual.default_font_size:
+		out.append("default_font_size")
+	for type_name in expected.get_type_list():
+		if expected.get_type_variation_base(type_name) != actual.get_type_variation_base(type_name):
+			out.append("variation %s" % type_name)
+		for name in expected.get_color_list(type_name):
+			if not expected.get_color(name, type_name).is_equal_approx(actual.get_color(name, type_name)):
+				out.append("%s/%s" % [type_name, name])
+		for name in expected.get_constant_list(type_name):
+			if expected.get_constant(name, type_name) != actual.get_constant(name, type_name):
+				out.append("%s/%s" % [type_name, name])
+		for name in expected.get_font_size_list(type_name):
+			if expected.get_font_size(name, type_name) != actual.get_font_size(name, type_name):
+				out.append("%s/%s" % [type_name, name])
+		for name in expected.get_stylebox_list(type_name):
+			var a := expected.get_stylebox(name, type_name) as StyleBoxFlat
+			var b := actual.get_stylebox(name, type_name) as StyleBoxFlat
+			if a == null or b == null:
+				if (a == null) != (b == null):
+					out.append("%s/%s" % [type_name, name])
+				continue
+			var same := a.bg_color.is_equal_approx(b.bg_color) and a.border_color.is_equal_approx(b.border_color) 				and a.border_width_top == b.border_width_top and a.border_width_left == b.border_width_left 				and a.corner_radius_top_left == b.corner_radius_top_left and a.shadow_size == b.shadow_size 				and a.shadow_color.is_equal_approx(b.shadow_color) and a.content_margin_left == b.content_margin_left 				and a.content_margin_top == b.content_margin_top
+			if not same:
+				out.append("%s/%s" % [type_name, name])
+	return out
 
 
 func _test_logo() -> void:

@@ -160,7 +160,10 @@ func _finish() -> void:
 
 func _on_faded() -> void:
 	is_playing = false
-	if _pause_menu != null:
+	# Con il cambio di scena la pausa resta disattivata: la riattiva il menu quando
+	# esce (`MainMenu._exit_tree`). Riattivarla qui aprirebbe il pannello di pausa a
+	# un Esc premuto nel frame del cambio scena.
+	if not change_scene_on_finish and _pause_menu != null:
 		_pause_menu.set(&"enabled", true)
 	finished.emit()
 	if change_scene_on_finish:
@@ -168,6 +171,4 @@ func _on_faded() -> void:
 
 
 func _go_to_menu() -> void:
-	if _pause_menu != null:
-		_pause_menu.set(&"enabled", true)
 	get_tree().change_scene_to_file.call_deferred(MENU_SCENE)

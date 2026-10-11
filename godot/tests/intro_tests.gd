@@ -13,6 +13,7 @@ func _initialize() -> void:
 	_test_skip_rules()
 	await _test_sequence_completes()
 	await _test_skip_on_input()
+	await _test_handoff_keeps_pause_disabled()
 	await _frames(2)
 	print("PROTOTYPE01_TESTS %s failures=%d" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
@@ -74,4 +75,26 @@ func _test_skip_on_input() -> void:
 	_check(count[0] == 1 and not intro.is_playing, "salto: una sola fine (%d)" % count[0])
 	_check(intro.logo().is_complete(), "il salto mostra il logo completo")
 	intro.queue_free()
+	await _frames(1)
+
+
+## Quando l'intro passa la mano al menu, la pausa resta disattivata finche il menu non
+## la gestisce da solo: altrimenti un Esc nel frame del cambio scena apre il pannello
+## di pausa sopra il menu.
+func _test_handoff_keeps_pause_disabled() -> void:
+	var intro := IntroScene.instantiate() as BootIntro
+	intro.force_play = true
+	intro.change_scene_on_finish = true
+	root.add_child(intro)
+	await _frames(5)
+	var pause := root.get_node("PauseMenu")
+	var enabled_at_finish := [true]
+	intro.finished.connect(func() -> void: enabled_at_finish[0] = pause.get(&"enabled"))
+	intro.skip()
+	await _frames(60)
+	_check(not enabled_at_finish[0], "alla fine dell'intro con cambio scena la pausa e ancora disattivata")
+	await _frames(3)
+	_check(root.get_node_or_null("PauseMenu/%Overlay") != null and not (root.get_node("PauseMenu/%Overlay") as Control).visible, "nessun pannello di pausa aperto dopo il cambio scena")
+	if is_instance_valid(intro):
+		intro.queue_free()
 	await _frames(1)
