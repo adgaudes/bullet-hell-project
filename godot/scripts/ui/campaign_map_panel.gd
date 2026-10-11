@@ -8,9 +8,6 @@ extends CanvasLayer
 signal closed
 signal level_chosen(id: StringName)
 
-const DONE_COLOR := UiPalette.SUCCESS
-const OPEN_COLOR := UiPalette.BORDER_LIGHT
-const LOCKED_COLOR := Color(UiPalette.TEXT_MUTED, 0.5)
 
 var is_open := false
 var _profile: PlayerProfileService
@@ -19,6 +16,11 @@ var _row: HBoxContainer
 var _buttons: Dictionary[StringName, Button] = {}
 var _detail: Label
 var _back: Button
+var _marks: Dictionary[StringName, UiIcon] = {}
+
+const INK := Color("3b2718")
+const INK_GREEN := Color("3f7a2a")
+const INK_LOCKED := Color("8a7a66")
 
 
 func _ready() -> void:
@@ -64,6 +66,14 @@ func _ready() -> void:
 		button.mouse_entered.connect(func() -> void: _show_detail(id))
 		_row.add_child(button)
 		_buttons[id] = button
+		var mark := UiIcon.make(&"check", 26.0, UiPalette.BORDER)
+		mark.name = "Mark"
+		mark.outline = INK
+		mark.visible = false
+		button.add_child(mark)
+		mark.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT, Control.PRESET_MODE_MINSIZE, 8)
+		mark.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+		_marks[id] = mark
 	_detail = Label.new()
 	_detail.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -143,6 +153,13 @@ func button_text(id: StringName) -> String:
 	return _buttons[id].text if _buttons.has(id) else ""
 
 
+## Icona sulla carta: `check` completato, `lock` bloccato o in costruzione, vuoto se giocabile.
+func card_mark(id: StringName) -> StringName:
+	if not _marks.has(id) or not _marks[id].visible:
+		return &""
+	return _marks[id].kind
+
+
 func _on_pressed(id: StringName) -> void:
 	if not is_open or not can_play(id):
 		return
@@ -168,11 +185,15 @@ func _refresh() -> void:
 		var button: Button = _buttons[id]
 		var mark := "V" if is_completed(id) else ("" if is_unlocked(id) else "X")
 		button.text = "%d  %s\n%s" % [i + 1, (entry.title as String).to_upper(), mark]
-		var color := LOCKED_COLOR
+		var color := INK_LOCKED
 		if is_completed(id):
-			color = DONE_COLOR
+			color = INK_GREEN
 		elif can_play(id):
-			color = OPEN_COLOR
+			color = INK
+		var mark_icon: UiIcon = _marks[id]
+		mark_icon.visible = is_completed(id) or not can_play(id)
+		mark_icon.kind = &"check" if is_completed(id) else &"lock"
+		mark_icon.tint = UiPalette.SUCCESS if is_completed(id) else UiPalette.BORDER
 		button.add_theme_color_override(&"font_color", color)
 		button.add_theme_color_override(&"font_focus_color", color)
 		button.add_theme_color_override(&"font_hover_color", color)

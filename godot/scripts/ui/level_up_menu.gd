@@ -16,6 +16,11 @@ var _title: Label
 var _subtitle: Label
 var _cards: HBoxContainer
 var _buttons: Array[Button] = []
+var _icons: Array[UiIcon] = []
+var _ribbons: Array[Label] = []
+
+const INK := Color("3b2718")
+const INK_SOFT := Color("7a4a26")
 
 
 func _ready() -> void:
@@ -54,6 +59,8 @@ func open(offer: Array[Dictionary], levels: Dictionary, player_level: int) -> vo
 		_cards.remove_child(button)
 		button.queue_free()
 	_buttons.clear()
+	_icons.clear()
+	_ribbons.clear()
 	_title.text = "LIVELLO %d" % player_level
 	for upgrade in offer:
 		_buttons.append(_make_card(upgrade, int(levels.get(upgrade.id, 0))))
@@ -93,6 +100,14 @@ func card_count() -> int:
 
 func card(index: int) -> Button:
 	return _buttons[index]
+
+
+func card_icon(index: int) -> UiIcon:
+	return _icons[index]
+
+
+func card_ribbon(index: int) -> Label:
+	return _ribbons[index]
 
 
 ## Testo della carta (rarita, nome, tipo, descrizione) su righe, per test e automazione.
@@ -139,39 +154,42 @@ func _make_card(upgrade: Dictionary, current_level: int) -> Button:
 	var color: Color = UpgradeCatalog.RARITY_COLORS[upgrade.rarity].linear_to_srgb()
 	var button := Button.new()
 	button.theme_type_variation = &"CardButton"
-	button.custom_minimum_size = Vector2(300, 300)
+	button.custom_minimum_size = Vector2(300, 320)
 	button.focus_mode = Control.FOCUS_ALL
-	for state: StringName in [&"normal", &"hover", &"pressed", &"focus", &"disabled"]:
-		var box := UiPalette.button_box(state, color)
-		box.set_corner_radius_all(8)
-		box.set_content_margin_all(0)
-		if state == &"focus":
-			box.border_color = color
-			box.shadow_color = Color(UiPalette.FOCUS, 0.45)
-			box.shadow_size = 10
-		button.add_theme_stylebox_override(state, box)
 	var column := VBoxContainer.new()
 	column.set_anchors_preset(Control.PRESET_FULL_RECT)
+	column.offset_left = 0
+	column.offset_top = 6
+	column.offset_right = 0
+	column.offset_bottom = -6
 	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	column.add_theme_constant_override(&"separation", 8)
+	column.add_theme_constant_override(&"separation", 6)
 	button.add_child(column)
-	var rarity := Label.new()
-	rarity.text = UpgradeCatalog.RARITY_NAMES[upgrade.rarity]
-	rarity.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	rarity.theme_type_variation = &"SectionLabel"
-	rarity.add_theme_font_size_override(&"font_size", 16)
-	rarity.add_theme_color_override(&"font_color", UiPalette.OUTLINE)
-	var band := StyleBoxFlat.new()
-	band.bg_color = color
-	band.set_content_margin_all(6)
-	band.corner_radius_top_left = 6
-	band.corner_radius_top_right = 6
-	rarity.add_theme_stylebox_override(&"normal", band)
-	column.add_child(rarity)
+	# Nastro della rarita: texture bianca tinta del colore della rarita, testo scuro.
+	var ribbon := Label.new()
+	ribbon.text = UpgradeCatalog.RARITY_NAMES[upgrade.rarity]
+	ribbon.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	ribbon.theme_type_variation = &"SectionLabel"
+	ribbon.add_theme_font_size_override(&"font_size", 16)
+	ribbon.add_theme_color_override(&"font_color", UiPalette.OUTLINE)
+	var band := UiPalette.plate("ribbon", UiPalette.panel_box(true), 14.0, 10.0, Vector4(12, 5, 12, 7), color)
+	ribbon.add_theme_stylebox_override(&"normal", band)
+	column.add_child(ribbon)
+	_ribbons.append(ribbon)
+	var spacer := Control.new()
+	spacer.custom_minimum_size = Vector2(0, 10)
+	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	column.add_child(spacer)
+	var icon := UiIcon.make(UiIcon.for_category(upgrade.category), 48.0, UiPalette.BORDER)
+	icon.name = "Icon"
+	icon.outline = INK
+	icon.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	column.add_child(icon)
+	_icons.append(icon)
 	var body := MarginContainer.new()
-	body.add_theme_constant_override(&"margin_left", 14)
-	body.add_theme_constant_override(&"margin_right", 14)
-	body.add_theme_constant_override(&"margin_bottom", 14)
+	body.add_theme_constant_override(&"margin_left", 16)
+	body.add_theme_constant_override(&"margin_right", 16)
+	body.add_theme_constant_override(&"margin_bottom", 12)
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	body.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	column.add_child(body)
@@ -182,7 +200,7 @@ func _make_card(upgrade: Dictionary, current_level: int) -> Button:
 	var name_label := Label.new()
 	name_label.text = upgrade.name
 	name_label.theme_type_variation = &"SectionLabel"
-	name_label.add_theme_color_override(&"font_color", UiPalette.TEXT)
+	name_label.add_theme_color_override(&"font_color", INK)
 	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	text.add_child(name_label)
@@ -190,16 +208,18 @@ func _make_card(upgrade: Dictionary, current_level: int) -> Button:
 	var kind := Label.new()
 	kind.text = "%s  -  %s" % [UpgradeCatalog.CATEGORY_NAMES.get(upgrade.category, ""), level_text]
 	kind.theme_type_variation = &"MutedLabel"
+	kind.add_theme_color_override(&"font_color", INK_SOFT)
 	kind.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	text.add_child(kind)
 	var description := Label.new()
 	description.text = UpgradeCatalog.describe(upgrade)
 	description.add_theme_font_size_override(&"font_size", 17)
+	description.add_theme_color_override(&"font_color", INK)
 	description.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	description.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	description.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	text.add_child(description)
-	for label: Label in [rarity, name_label, kind, description]:
+	for label: Label in [ribbon, name_label, kind, description]:
 		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	# La carta con il focus si alza: scala 1,04 attorno al centro, 120 ms, anche in pausa.
 	button.pivot_offset = button.custom_minimum_size * 0.5

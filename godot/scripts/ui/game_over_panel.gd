@@ -61,11 +61,12 @@ func _ready() -> void:
 	column.add_child(_title)
 	# Tabella a due colonne: etichetta, tab, valore (il testo resta leggibile dai test).
 	var table := PanelContainer.new()
-	table.add_theme_stylebox_override(&"panel", UiPalette.panel_box(true))
+	table.add_theme_stylebox_override(&"panel", UiPalette.plate("plate_card", UiPalette.panel_box(true), 28.0, 0.0, Vector4(18, 12, 18, 12)))
 	column.add_child(table)
 	_summary = Label.new()
 	_summary.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	_summary.add_theme_font_size_override(&"font_size", 20)
+	_summary.add_theme_color_override(&"font_color", UiPalette.OUTLINE)
 	_summary.tab_stops = PackedFloat32Array([280.0])
 	table.add_child(_summary)
 	_workshop = _button(column, "Officina")

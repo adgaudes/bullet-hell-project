@@ -238,9 +238,13 @@ func _test_cards_and_panels() -> void:
 	_check(text.contains(UpgradeCatalog.RARITY_NAMES[offer[0].rarity]) and text.contains(offer[0].name), "la carta mostra rarita e nome: %s" % text.replace("\n", " | "))
 	_check(level_up.title_text() == "LIVELLO 2", "titolo del level-up: %s" % level_up.title_text())
 	var card := level_up.card(0)
-	_check(card.theme_type_variation == &"CardButton" and card.custom_minimum_size == Vector2(300, 300), "carta CardButton 300x300")
-	var focus_box := card.get_theme_stylebox(&"focus") as StyleBoxFlat
-	_check(focus_box != null and focus_box.shadow_size > 0, "carta con bagliore sul focus")
+	_check(card.theme_type_variation == &"CardButton" and card.custom_minimum_size == Vector2(300, 320), "carta CardButton 300x320")
+	var focus_box := card.get_theme_stylebox(&"focus") as StyleBoxTexture
+	_check(focus_box != null and focus_box.texture.resource_path.ends_with("plate_card_focus.png"), "carta con la pergamena del focus (alone)")
+	_check(level_up.card_icon(0) != null and level_up.card_icon(0).kind == UiIcon.for_category(offer[0].category), "icona della categoria sulla carta")
+	var ribbon := level_up.card_ribbon(0)
+	var ribbon_box := ribbon.get_theme_stylebox(&"normal") as StyleBoxTexture
+	_check(ribbon_box != null and ribbon_box.texture.resource_path.ends_with("ribbon.png") and ribbon_box.modulate_color.is_equal_approx(UpgradeCatalog.RARITY_COLORS[offer[0].rarity].linear_to_srgb()), "nastro della rarita tinto")
 	_check_focus_distinct(level_up, "level-up", 3)
 	level_up.close()
 	level_up.queue_free()
@@ -257,6 +261,11 @@ func _test_cards_and_panels() -> void:
 			card_rows += 1
 	_check(card_rows == PermanentCatalog.all().size(), "righe dell'Officina in CardButton (%d)" % card_rows)
 	_check(workshop._scrap_label.theme_type_variation == &"ScrapLabel", "contatore rottami in ScrapLabel")
+	var rows_with_icon := 0
+	for row in rows:
+		if row.theme_type_variation == &"CardButton" and row.get_node_or_null(^"Icon") is UiIcon:
+			rows_with_icon += 1
+	_check(rows_with_icon == PermanentCatalog.all().size(), "ogni riga dell'Officina ha la sua icona (%d)" % rows_with_icon)
 	_check_focus_distinct(workshop, "Officina", 2)
 	workshop.close()
 	workshop.queue_free()
@@ -273,6 +282,14 @@ func _test_cards_and_panels() -> void:
 		if child is ColorRect:
 			links += 1
 	_check(links == LevelCatalog.count() - 1, "una linea rame fra una carta e l'altra (%d)" % links)
+	var marks_ok := true
+	for i in LevelCatalog.count():
+		var id: StringName = LevelCatalog.all()[i].id
+		var mark := campaign.card_mark(id)
+		var expected_mark: StringName = &"check" if campaign.is_completed(id) else (&"lock" if not campaign.can_play(id) else &"")
+		if mark != expected_mark:
+			marks_ok = false
+	_check(marks_ok, "icona check/lock sulle carte della campagna")
 	_check_focus_distinct(campaign, "campagna", 2)
 	campaign.close()
 	campaign.queue_free()
@@ -289,6 +306,8 @@ func _test_game_over() -> void:
 	_check(panel._title.theme_type_variation == &"TitleLabel", "titolo in TitleLabel")
 	_check(panel._title.get_theme_color(&"font_color").is_equal_approx(UiPalette.DANGER), "sconfitta in corallo")
 	_check(panel._summary.get_parent() is PanelContainer, "riepilogo in un pannello")
+	var note := (panel._summary.get_parent() as PanelContainer).get_theme_stylebox(&"panel") as StyleBoxTexture
+	_check(note != null and note.texture.resource_path.ends_with("plate_card.png") and panel._summary.get_theme_color(&"font_color").is_equal_approx(UiPalette.OUTLINE), "riepilogo su pergamena con testo scuro")
 	_check(panel._summary.tab_stops.size() == 1 and panel._summary.text.contains("Tempo\t01:01") and panel._summary.text.contains("Rottami in Officina\t20"), "righe allineate con i tab: %s" % panel._summary.text.replace("\n", " | "))
 	panel.open(61.0, 3, 12, true, 5, 20)
 	await _frames(1)

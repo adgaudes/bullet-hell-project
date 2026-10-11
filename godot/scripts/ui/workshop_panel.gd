@@ -15,6 +15,10 @@ var _overlay: ColorRect
 var _scrap_label: Label
 var _rows: VBoxContainer
 var _buttons: Dictionary[StringName, Button] = {}
+
+const INK := Color("3b2718")
+const INK_GREEN := Color("3f7a2a")
+const INK_RED := Color("a8321e")
 var _back: Button
 
 
@@ -61,11 +65,18 @@ func _ready() -> void:
 		var id: StringName = entry.id
 		var button := Button.new()
 		button.theme_type_variation = &"CardButton"
-		button.custom_minimum_size = Vector2(0, 58)
+		button.custom_minimum_size = Vector2(0, 62)
 		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		button.pressed.connect(func() -> void: _on_pressed(id))
 		_rows.add_child(button)
 		_buttons[id] = button
+		# Icona a sinistra; il testo lascia lo spazio con gli spazi iniziali.
+		var icon := UiIcon.make(UiIcon.for_permanent(id), 34.0, UiPalette.BORDER)
+		icon.name = "Icon"
+		icon.outline = INK
+		button.add_child(icon)
+		icon.set_anchors_and_offsets_preset(Control.PRESET_CENTER_LEFT, Control.PRESET_MODE_MINSIZE, 14)
+		icon.grow_vertical = Control.GROW_DIRECTION_BOTH
 	_back = Button.new()
 	_back.text = "Torna"
 	_back.theme_type_variation = &"MainButton"
@@ -132,14 +143,14 @@ func _refresh() -> void:
 		var level := _profile.level_of(id)
 		var cost := _profile.cost_of(id)
 		var price := "AL MASSIMO"
-		var color := UiPalette.SUCCESS
+		var color := INK_GREEN
 		if cost >= 0 and _profile.scrap >= cost:
 			price = "%d rottami" % cost
-			color = UiPalette.TEXT
+			color = INK
 		elif cost >= 0:
 			price = "%d rottami (ne mancano %d)" % [cost, cost - _profile.scrap]
-			color = UiPalette.DANGER
+			color = INK_RED
 		var button := _buttons[id]
-		button.text = "  %s  %d/%d  -  %s\n  %s" % [entry.name, level, (entry.costs as Array).size(), price, entry.text]
+		button.text = "          %s  %d/%d  -  %s\n          %s" % [entry.name, level, (entry.costs as Array).size(), price, entry.text]
 		for state: StringName in [&"font_color", &"font_focus_color", &"font_hover_color", &"font_pressed_color"]:
 			button.add_theme_color_override(state, color)
