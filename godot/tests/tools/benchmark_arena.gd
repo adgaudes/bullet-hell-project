@@ -6,13 +6,25 @@ extends SceneTree
 ## `--enemies=N` (default: max_alive del tuning) per isolare il costo dell'orda.
 ## `--no-motion` spegne il movimento procedurale degli attori (ActorMotion) per confronto;
 ## `--motion-ab` misura nello stesso processo il passo del direttore con e senza (riga `motion_ab`).
+## `--preset=deck|low|medium|high|max` (restyling 2026-10-11) applica il preset grafico prima di
+## costruire l'arena; il limite di fps viene tolto, cosi il frame misurato e il costo reale.
 ## Marker: PROTOTYPE01_ARENA_BENCH ...
 
 const WARMUP_FRAMES := 120
 const MEASURE_FRAMES := 600
+const PRESET_ARGS := {"deck": GameSettingsService.Preset.STEAM_DECK, "low": GameSettingsService.Preset.LOW,
+	"medium": GameSettingsService.Preset.MEDIUM, "high": GameSettingsService.Preset.HIGH, "max": GameSettingsService.Preset.MAX}
 
 
 func _initialize() -> void:
+	var preset_name := "high"
+	var settings := root.get_node_or_null("GameSettings") as GameSettingsService
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--preset=") and settings != null:
+			preset_name = arg.trim_prefix("--preset=")
+			settings.set_preset(PRESET_ARGS.get(preset_name, GameSettingsService.Preset.HIGH))
+	# Il limite di fps (default 60) coprirebbe il costo reale del frame.
+	Engine.max_fps = 0
 	var start := Time.get_ticks_usec()
 	var scene: Node3D = preload("res://scenes/main/arena_run.tscn").instantiate()
 	root.add_child(scene)
@@ -38,6 +50,8 @@ func _initialize() -> void:
 	# Il campo di percorso legge gli ostacoli dopo due passi fisici.
 	for i in 5:
 		await physics_frame
+	# La scena riapplica le impostazioni (e il limite di fps) al suo avvio: si toglie di nuovo.
+	Engine.max_fps = 0
 
 	var t := Time.get_ticks_usec()
 	district.rebuild()
@@ -127,8 +141,8 @@ func _initialize() -> void:
 		% [headless, director.enemies.size(), frames, frame_total / frames, physics_total / frames, process_total / frames,
 			Performance.get_monitor(Performance.TIME_FPS)])
 	if not headless:
-		print("PROTOTYPE01_ARENA_BENCH render draw_calls=%d primitives=%d objects=%d video_mem_mb=%.0f"
-			% [Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME),
+		print("PROTOTYPE01_ARENA_BENCH render preset=%s draw_calls=%d primitives=%d objects=%d video_mem_mb=%.0f"
+			% [preset_name, Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME),
 				Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME),
 				Performance.get_monitor(Performance.RENDER_TOTAL_OBJECTS_IN_FRAME),
 				Performance.get_monitor(Performance.RENDER_VIDEO_MEM_USED) / 1048576.0])
