@@ -19,7 +19,7 @@ func _initialize() -> void:
 	_player = PlayerScene.instantiate()
 	_player.terrain_field = _field
 	root.add_child(_player)
-	_player.global_position = Vector3(0, 0.9, 0)
+	_player.position = Vector3(0, 0.9, 0)
 	await _frames(3)
 	await _test_mode_cycle()
 	await _test_continuous_dig_fills_pack()

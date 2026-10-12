@@ -21,7 +21,7 @@ func _initialize() -> void:
 	_player = PlayerScene.instantiate()
 	_player.terrain_field = _field
 	root.add_child(_player)
-	_player.global_position = Vector3(0, 0.9, 0)
+	_player.position = Vector3(0, 0.9, 0)
 	_path = PathField.new()
 	_path.target = _player
 	_path.terrain_field = _field
