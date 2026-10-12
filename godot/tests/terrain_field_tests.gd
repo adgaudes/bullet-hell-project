@@ -12,6 +12,8 @@ func _initialize() -> void:
 	Engine.physics_ticks_per_second = 60
 	await _open()
 	_test_flat_start()
+	_test_collision_chunks()
+	await _test_body_pushed_up()
 	_test_sculpt_volume_and_bell()
 	_test_sculpt_across_region_border()
 	_test_level()
@@ -39,6 +41,55 @@ func _test_flat_start() -> void:
 	_check(_field.resolution == 129, "64 m a passo 0,5 = 129 vertici per lato (%d)" % _field.resolution)
 	_check(is_zero_approx(_field.height_at(Vector3(3.3, 0, -7.1))), "quota zero all'inizio")
 	_check(_field.normal_at(Vector3.ZERO).is_equal_approx(Vector3.UP), "normale verticale su un piano")
+
+
+func _test_collision_chunks() -> void:
+	print("collision chunks")
+	var collision: TerrainCollision = _field.get_node(^"Collision")
+	_check(collision.chunk_count() == 25, "64 m -> 5 x 5 chunk da 16 m (%d)" % collision.chunk_count())
+	_check(collision.body.collision_layer == 1, "il corpo del terreno sta sul layer 1")
+	var before := collision.refreshed_count()
+	_field.sculpt(Vector3(0, 0, 0), 2.4, 1.0)
+	_check(collision.refreshed_count() - before == 4, "una pennellata sul confine aggiorna i quattro chunk toccati (%d)" % (collision.refreshed_count() - before))
+	var space := root.get_world_3d().direct_space_state
+	var query := PhysicsRayQueryParameters3D.create(Vector3(0, 5, 0), Vector3(0, -5, 0), 1)
+	var hit := space.intersect_ray(query)
+	_check(not hit.is_empty() and absf(hit.position.y - 1.0) < 0.1, "il raggio tocca la collisione alla quota nuova (%.2f)" % (hit.position.y if not hit.is_empty() else -99.0))
+	_field.sculpt(Vector3(0, 0, 0), 2.4, -1.0)
+
+
+func _test_body_pushed_up() -> void:
+	print("body pushed up")
+	var body := CharacterBody3D.new()
+	var shape := CollisionShape3D.new()
+	var capsule := CapsuleShape3D.new()
+	capsule.radius = 0.35
+	capsule.height = 1.4
+	shape.shape = capsule
+	body.add_child(shape)
+	body.floor_max_angle = atan(0.8)
+	body.position = Vector3(15, 0.7, 15)
+	root.add_child(body)
+	for i in 10:
+		body.velocity = Vector3(0, -2, 0)
+		body.move_and_slide()
+		await physics_frame
+	_check(body.is_on_floor(), "la capsula poggia sul terreno piano")
+	# Il rilievo sale a gradini di 0,1 m come con un pennello: un salto di 1 m in un colpo
+	# infila la capsula nel terreno, e Jolt non la spinge su (corpo incassato, vedi report).
+	for s in 10:
+		_field.sculpt(Vector3(15, 0, 15), 2.4, 0.1)
+		for i in 3:
+			body.velocity = Vector3(0, -2, 0)
+			body.move_and_slide()
+			await physics_frame
+	for i in 10:
+		body.velocity = Vector3(0, -2, 0)
+		body.move_and_slide()
+		await physics_frame
+	_check(body.is_on_floor() and body.position.y > 1.5, "alzare sotto la capsula la spinge su (%.2f)" % body.position.y)
+	body.queue_free()
+	_field.sculpt(Vector3(15, 0, 15), 2.4, -1.0)
 
 
 func _test_sculpt_volume_and_bell() -> void:
