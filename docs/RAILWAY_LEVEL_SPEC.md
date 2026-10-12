@@ -62,9 +62,10 @@ Suite: `railway_tests.gd` (pianta rettangolare, fascia piatta e libera, vagoni c
 | Seme | Esito | Fine run (s) | Livello | Rottami fuori | Note |
 |---|---|---|---|---|---|
 | 1 | morte | 1155 | 22 | 8 | Trivella raggiunta a 720 s con 6 punti vita, portata a 27 punti vita; 200 pennellate (vene dei vagoni, lampioni di notte) |
-| 2, 3 | da completare | | | | le run sono lente (oltre 15 minuti reali ciascuna con altri processi in parallelo); esito da aggiungere |
+| 2 | morte | 734 | 19 | 8 | morto all'arrivo della Trivella (1 punto vita a 720 s), boss intatto a 180; 93 pennellate |
+| 3 | da completare | | | | run in corso al momento del commit (oltre 15 minuti reali ciascuna); esito da aggiungere |
 
-Lettura provvisoria: la ferrovia sul rilievo resta dura come prima (il cortile aperto sui binari) e la Trivella non viene piu battuta dal bot con i soli chiodi: senza alzare argini sulla sua rotta (il bot lo fa solo con 8 m3 nello zaino e a portata) arriva a fine run con pochi punti vita. Da confermare col playtest.
+Lettura provvisoria: la ferrovia sul rilievo e piu dura di prima (sulla griglia lo scrapper vinceva 3 run su 3): il cortile aperto sui binari e l'orda in salita lenta lasciano il bot con 1-6 punti vita all'arrivo della Trivella, che non viene piu battuta con i soli chiodi; il bot alza argini sulla sua rotta solo con 8 m3 nello zaino e a portata. Valori da bilanciare dopo il playtest (vita della Trivella, orda prima del boss, zainetto iniziale).
 
 ### 8.2 Sulla griglia a celle (9 ottobre 2026, superate da D-087, conservate per confronto)
 
