@@ -3,8 +3,9 @@
 ## Stato
 
 - Pilastro centrale del concept, approvato come direzione modificabile.
-- Implementazione tecnica non ancora scelta.
-- Il prototipo deve dimostrare profondita sistemica prima di adottare tecnologia voxel o plugin esterni.
+- **Implementazione tecnica scelta e fatta per il quartiere (tappa A, 12 ottobre 2026, D-085): strategia D ibrida con rilievo continuo** (campo di quote a 0,5 m, Terrain3D per la resa, collisione a chunk nostra, Jolt), pennello continuo con zainetto di terra, pendenza massima di marcia; dettagli nella sezione "Rilievo continuo" qui sotto, spec in `docs/superpowers/specs/2026-10-12-continuous-terrain-design.md`.
+- La griglia a celle (strategia A) resta nella ferrovia e nelle scene minori fino alla tappa B.
+- Il prototipo deve dimostrare profondita sistemica prima di adottare tecnologia voxel.
 
 ## Promessa
 
@@ -272,6 +273,14 @@ Misure:
 
 Lo spike non entra nel progetto principale finche non supera i gate e una revisione della dipendenza scelta.
 
+## Rilievo continuo (tappa A: quartiere, 12 ottobre 2026)
+
+Cosa c'e: `TerrainField` (quote, pennello a campana, livella, pendenza, aree protette, base e delta, salvataggio), `TerrainCollision` (chunk `HeightMapShape3D` rigenerati sotto il pennello nello stesso passo), `SoilPack` (zainetto da 60 m3, 20 all'avvio: scavare riempie, alzare svuota), tool del giocatore in quattro modi (Scava, Alza, Livella, Lampione) con anello a decal e portata di 3,6 m, campo di percorso sulla pendenza (0,8 m/m; saltatori 1,2), orda che rallenta in salita e rosicchia gli argini quando resta bloccata, quartiere a pennellate (argini dei cortili, cumuli con vene di rottami, solchi) su una base mossa, rottami solo dalle vene (uno ogni 0,8 m3 sotto la base del cumulo), Demolitore che spiana le cime conservando la terra e alza barricate a cumulo, lampioni su suolo piano che cadono se il suolo si muove di 40 cm, terremoto a cresta e solco, piazzola di estrazione a disco piano di 3 m, mappa di fine livello sui delta di quota, upgrade `pack_size`, `brush_size`, Prolunga in metri, resa a cinque strati con tinte di alzato, scavato e fango, prato e prop sulle quote, zainetto sul modello.
+
+Misure (PC, headless, 12 ottobre 2026): pennellata del giocatore 1,1 ms in media e 4 ms al massimo con i chunk aggiornati (0,6 ms a chunk), base ricalcolata 0,58 s, pennellate del quartiere e assestamento di prato e prop 1,0 s, passo del direttore con 70 nemici 3,0 ms. Steam Deck non misurato.
+
+Gate tecnici: navigazione e collisioni senza blocchi (i nemici bloccati rosicchiano, le pendenze oltre 0,8 sono muri), controller e tastiera equivalenti (il tool e lo stesso), budget su PC rispettato; **gate di gioco (i tester usano il terreno per risolvere problemi, due soluzioni valide, vantaggio e conseguenza prevedibili) aperti fino al playtest del proprietario**.
+
 ## Gate per proseguire
 
 - I tester usano il terreno per risolvere problemi, non soltanto per raccogliere risorse.
@@ -287,7 +296,7 @@ Se questi gate falliscono, modificare la grammatica del terreno prima di aumenta
 
 ## Decisioni aperte
 
-- griglia visibile, nascosta o regioni irregolari;
+- ~~griglia visibile, nascosta o regioni irregolari~~ (rilievo continuo senza griglia, D-082/D-085);
 - visuale e strumenti di anteprima durante la costruzione;
 - quantita di terreno modificabile per situazione;
 - velocita e rischio degli interventi personali;
@@ -296,6 +305,6 @@ Se questi gate falliscono, modificare la grammatica del terreno prima di aumenta
 - velocita, preavviso e reversibilita delle inondazioni;
 - persistenza fra tappe della stessa run;
 - possibilita e costo di riparare una trasformazione sbagliata;
-- necessita reale di deformazione continua o voxel.
+- ~~necessita reale di deformazione continua~~ (scelta: continua, D-085) o voxel (no);
 - livello massimo di profondita, cavita e sporgenze leggibile dalla camera isometrica;
 - confini e giustificazione delle eventuali zone non deformabili.

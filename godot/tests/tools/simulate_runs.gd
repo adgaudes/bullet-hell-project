@@ -29,12 +29,15 @@ extends SceneTree
 ##             l'esperienza e prende sempre la prima carta;
 ##   kiter     si allontana dai nemici e raccoglie esperienza, non tocca il terreno;
 ##   scrapper  come kiter, e in piu scava quando puo per riempire il cassone e
-##             prende presto la carta del cassone.
+##             prende presto la carta del cassone. Sul rilievo continuo (D-085) scava
+##             la vena piu vicina (entro 70 m) tenendo il pennello finche ha rottami e,
+##             dopo 60 s di livello, alza una volta un argine di 3 s dove sta.
 ## Col boss in campo i bot che si muovono gli girano attorno a portata di chiodatrice.
 ## Movimento e mira passano dalle azioni di input (`Input.action_press`), il tool
 ## da un `InputEventAction`; le carte del level-up da `LevelUpMenu.press`.
 ## Marker: PROTOTYPE01_SIM (una riga per run), PROTOTYPE01_SIM_SUMMARY,
-## PROTOTYPE01_SIM_AFFORD (run necessarie per ogni livello dell'Officina).
+## PROTOTYPE01_SIM_AFFORD (run necessarie per ogni livello dell'Officina),
+## PROTOTYPE01_SIM_BRUSH (ogni pennellata del bot sul rilievo: tempo, modo, punto).
 
 ## Scena del livello scelto con `--level=` (default: il primo del catalogo).
 var _scene_path := LevelCatalog.scene_of(LevelCatalog.first())
@@ -81,6 +84,20 @@ var _run: ArenaRun
 var _player: PlayerCharacter
 var _companion: Companion
 var _grid: TerrainGrid
+## Rilievo continuo (D-085): con questo la griglia e null.
+var _field: TerrainField
+## Vena puntata dal bot (centro XZ) e argine gia alzato in questa run.
+var _vein_target := Vector3.INF
+var _rampart_left := 0.0
+var _rampart_done := false
+## Raggio entro cui il bot cerca una vena, distanza minima dai nemici per scolpire.
+## I depositi del quartiere stanno a 50 m e oltre dal cortile: il bot ci cammina solo
+## quando nessun nemico e entro VEIN_WALK_SAFE_M.
+const VEIN_SEARCH_M := 70.0
+const VEIN_WALK_SAFE_M := 8.0
+const BRUSH_SAFE_M := 3.5
+const RAMPART_AT_SECONDS := 60.0
+const RAMPART_HOLD_SECONDS := 3.0
 var _director: EnemyDirector
 var _path: PathField
 var _scrap: ScrapField
@@ -184,7 +201,8 @@ func _simulate(bot: StringName, run_seed: int) -> Dictionary:
 	_run.extraction_pad = null
 	_player = _scene.get_node(^"Player")
 	_companion = _scene.get_node(^"Companion")
-	_grid = _scene.get_node(^"TerrainGrid")
+	_grid = _scene.get_node_or_null(^"TerrainGrid")
+	_field = _scene.get_node_or_null(^"TerrainField")
 	_director = _scene.get_node(^"EnemyDirector")
 	_path = _scene.get_node(^"PathField")
 	_scrap = _scene.get_node(^"ScrapField")
@@ -202,6 +220,9 @@ func _simulate(bot: StringName, run_seed: int) -> Dictionary:
 	_move = Vector2.ZERO
 	_aim = Vector2.ZERO
 	_dig_cooldown = 0.0
+	_vein_target = Vector3.INF
+	_rampart_left = 0.0
+	_rampart_done = false
 	_stuck_seconds = 0.0
 	_escape_left = 0.0
 	_digs = 0
@@ -295,7 +316,10 @@ func _tick_bot(step: float) -> void:
 			if _escape_left <= 0.0:
 				_move = _choose_direction()
 		if _params.digs:
-			if not _tick_lamps():
+			if _field != null:
+				if not _tick_lamps():
+					_tick_relief_brush(step)
+			elif not _tick_lamps():
 				_tick_digging()
 	_apply_inputs()
 
@@ -381,7 +405,9 @@ func _choose_direction() -> Vector2:
 				score -= 3.0
 			if not _walkable(future):
 				score -= 1.0
-			if _grid.cell_state_at(_world(middle)) == TerrainState.CellState.LOWERED:
+			if _grid != null and _grid.cell_state_at(_world(middle)) == TerrainState.CellState.LOWERED:
+				score -= 0.3
+			if _field != null and _field.slope_at(_world(middle)) > 0.4:
 				score -= 0.3
 			if absf(future.x) > limit.x or absf(future.y) > limit.y:
 				score -= 5.0
@@ -405,11 +431,13 @@ func _tick_lamps() -> bool:
 	var wanted := _run.is_night() and _dig_cooldown <= 0.0 and lamps.count() < lamps.max_count 		and _companion.carried >= lamps.scrap_cost and _nearest_enemy_distance() >= 3.5
 	var spot_ok := false
 	if wanted:
-		var cell := _grid.cell_at(_player.terrain_target)
-		spot_ok = lamps.can_place(cell) and lamps.can_afford(_player.terrain_target)
+		if _field != null:
+			spot_ok = lamps.can_place(_player.terrain_target) and lamps.can_afford(_player.terrain_target)
+		else:
+			spot_ok = lamps.can_place(_grid.cell_at(_player.terrain_target)) and lamps.can_afford(_player.terrain_target)
 		# Nessun lampione a meno di 1,6 raggi da uno gia piazzato: copertura, non ammassi.
-		for other in lamps.cells():
-			if _planar(_grid.to_global(_grid.cell_local_position(other, TerrainState.CellState.NORMAL))).distance_to(_planar(_player.terrain_target)) < lamps.light_radius * 1.6:
+		for other in lamps.positions():
+			if _planar(other).distance_to(_planar(_player.terrain_target)) < lamps.light_radius * 1.6:
 				spot_ok = false
 				break
 	if not (wanted and spot_ok):
@@ -423,9 +451,86 @@ func _tick_lamps() -> bool:
 		while _player.terrain_tool_mode != TerrainState.ToolMode.LAMP:
 			_player._toggle_terrain_mode()
 		return true
-	_press_tool()
+	if _field != null:
+		# Sul rilievo il lampione si pianta tenendo il pennello un passo in modo Lampione.
+		_hold_brush(TerrainField.ToolMode.LAMP)
+		_player.tool_held = false
+	else:
+		_press_tool()
 	_dig_cooldown = 1.0
 	return true
+
+
+## Rilievo continuo: scava la vena piu vicina con rottami finche ne ha, se nessun nemico e
+## a meno di BRUSH_SAFE_M; una volta per run, dopo RAMPART_AT_SECONDS, alza un argine di
+## RAMPART_HOLD_SECONDS dove sta (D-085, spec sezione 7).
+func _tick_relief_brush(step: float) -> void:
+	_aim = Vector2.ZERO
+	if _rampart_left > 0.0:
+		_rampart_left -= step
+		if _rampart_left <= 0.0 or _nearest_enemy_distance() < VEIN_WALK_SAFE_M * 0.6:
+			_rampart_left = 0.0
+			_player.tool_held = false
+		else:
+			_hold_brush(TerrainField.ToolMode.RAISE)
+		return
+	if _nearest_enemy_distance() < BRUSH_SAFE_M or _player.pack == null:
+		_player.tool_held = false
+		return
+	if not _rampart_done and _run.elapsed >= RAMPART_AT_SECONDS and not _player.pack.is_empty() 			and _nearest_enemy_distance() > VEIN_WALK_SAFE_M:
+		_rampart_done = true
+		_rampart_left = RAMPART_HOLD_SECONDS
+		_hold_brush(TerrainField.ToolMode.RAISE)
+		return
+	var waiting := _scrap.positions_near(_player.global_position, _companion.tuning.pickup_radius_from_player).size()
+	if _companion.carried + waiting >= _companion.capacity:
+		_player.tool_held = false
+		return
+	if _vein_target == Vector3.INF or _scrap.vein_scrap_left(_vein_target) <= 0:
+		_vein_target = _nearest_vein()
+	if _vein_target == Vector3.INF:
+		_player.tool_held = false
+		return
+	var here := _planar(_player.global_position)
+	var to_vein := _planar(_vein_target) - here
+	var reach := _planar(_player.terrain_target).distance_to(here)
+	if to_vein.length() > reach + 1.0:
+		# Troppo lontana: ci si avvicina solo col campo libero (la mira segue la marcia).
+		_player.tool_held = false
+		if _move.is_zero_approx() and _nearest_enemy_distance() > VEIN_WALK_SAFE_M:
+			_move = to_vein.normalized()
+		return
+	_aim = to_vein.normalized()
+	var facing := _planar(-_player.global_basis.z).normalized()
+	if facing.dot(_aim) > 0.95:
+		_hold_brush(TerrainField.ToolMode.DIG)
+	else:
+		_player.tool_held = false
+
+
+## Tiene premuto il pennello nel modo voluto (lo stesso flag che imposta l'input del giocatore).
+func _hold_brush(mode: int) -> void:
+	while _player.terrain_tool_mode != mode:
+		_player._toggle_terrain_mode()
+	if not _player.tool_held:
+		var target := _player.terrain_target
+		print("PROTOTYPE01_SIM_BRUSH t=%.2f mode=%s x=%.1f z=%.1f" % [_run.elapsed, TerrainField.TOOL_MODE_NAMES[mode], target.x, target.z])
+		_digs += 1
+	_player.tool_held = true
+
+
+func _nearest_vein() -> Vector3:
+	var here := _planar(_player.global_position)
+	var best := Vector3.INF
+	var best_distance := VEIN_SEARCH_M
+	for vein in _scrap.veins():
+		if vein.scrap_left <= 0:
+			continue
+		var distance := _planar(vein.center).distance_to(here)
+		if distance < best_distance and _path.cost_at(vein.center) != PathField.UNREACHABLE:
+			best_distance = distance
+			best = vein.center
+	return best
 
 
 func _tick_digging() -> void:

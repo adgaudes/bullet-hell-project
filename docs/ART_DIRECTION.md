@@ -136,6 +136,10 @@ Le classi come meccanica non esistono ancora: si costruisce prima l'Ingegnere (p
 
 Tile dipinte e ripetibili per suolo (terra, lastre, asfalto, terra scavata, fango, erba), muri (intonaco scrostato con mattoni, muschio, corteccia) e piante (ciuffi, cartelle di foglie); maschera mondo condivisa fra piano e celle del terreno; rovine generate per impronta e dipinte in triplanare; prato basso a chiazze di fili sottili e cespugli a cartelle, mossi dallo stesso campo di vento (`wind.gdshaderinc`, D-083); prop con albedo, normal e ORM cotte; cielo a gradiente dipinto, sole caldo basso con ambiente freddo (ombre blu-viola), ACES, glow in soft light, contrasto 1,12 e saturazione 1,22; rim light su attori e prop; notte blu-violacea.
 
+### Suolo sul rilievo continuo (12 ottobre 2026, D-085)
+
+Il suolo e Terrain3D con cinque strati dalle stesse tile dipinte (terra, lastre, asfalto, terra smossa, fango) scelti dal control map: piazza lastricata, strada in asfalto, cime di argini e cumuli in terra smossa, il resto terra con il prato dipinto sul color map sotto i ciuffi. Lo shader del rilievo tinge dal delta rispetto alla base del livello: rame caldo dove il giocatore ha alzato (argini spinati piu chiari), terra scura dove ha scavato, fango lucido nelle conche sotto -0,6 m, fianchi ripidi piu spenti. Il prato non cresce sui fianchi ripidi ed e piu fitto nelle conche; rovine, alberi e prop poggiano sulle quote. Lo zainetto di terra dell'ingegnere e una sacca di tela sotto lo zaino-officina con una striscia sul fianco che si riempie dal basso e si gonfia a zaino pieno. Catture in `output/terrain/`; giudizio del proprietario aperto (gli argini mostrano i gradini della heightfield da 0,5 m).
+
 ## Questioni aperte prima dell'Art Lock
 
 - grado esatto di caricatura delle proporzioni;

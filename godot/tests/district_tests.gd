@@ -27,6 +27,9 @@ func _initialize() -> void:
 	_player = _scene.get_node(^"Player")
 	_director = _scene.get_node(^"EnemyDirector")
 	_director.spawning = false
+	# Prima del primo passo: il rilievo ha gia sporcato il campo di percorso e un costo
+	# si deve poter leggere senza griglia (il bot lo fa al primo tick).
+	_check(_path.cost_at(Vector3(10.0, 0.0, 10.0)) >= 0.0, "costo leggibile prima del primo passo fisico")
 	await _frames(5)
 	_test_scale()
 	_test_features()
@@ -284,5 +287,8 @@ func _test_window_follows_player() -> void:
 	var cell := _path.cell_of(_player.global_position)
 	_check(_path.is_inside(cell), "il giocatore e dentro la finestra")
 	_check(_path.cost_at(_player.global_position) == 0.0, "costo zero sulla cella del giocatore")
+	# Dopo il ricentro una pennellata sporca il campo: il costo si rilegge senza griglia (bot sulle vene).
+	_field.sculpt(Vector3(74.0, 0.0, 64.0), 2.4, 1.0)
+	_check(_path.cost_at(Vector3(74.0, 0.0, 64.0)) >= 0.0, "costo leggibile dopo una pennellata nella finestra ricentrata")
 	_player.global_position = Vector3(0.0, 0.88, 0.0)
 	await _frames(3)

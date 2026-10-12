@@ -45,3 +45,16 @@ Rimandati, da valutare dopo il primo playtest: ritira le carte, scarta un upgrad
 ## 6. Primo prototipo
 
 Una sola arma automatica di base, 6-8 upgrade, tre rarita (Comune, Non comune, Raro), le regole 1-4. La sinergia (regola 5) e i leggendari entrano quando il pool e abbastanza grande da renderli visibili.
+
+## 7. Rilievo continuo (12 ottobre 2026, D-085)
+
+Col terreno continuo il tool non lavora piu a celle: il pennello ha un raggio (2,4 m) e un volume. Cambiano:
+
+- **Prolunga** (Officina): +1,2 m di portata del tool per livello (era una cella);
+- **Zainetto largo** (Officina, nuovo, costi 12/20/30): +20 m3 di capacita dello zainetto di terra per livello;
+- **Pala larga** (carta comune, nuova, tre livelli): +0,4 m di raggio del pennello per livello;
+- **Scavo esplosivo**: scatta ogni 0,5 s di scavo continuo, non a ogni cella;
+- **Argini spinati** (era "Terrapieni spinati"): i rottamatori che spingono contro un argine (delta oltre 0,3 m dalla base) si fanno male;
+- i rottami vengono solo dalle vene sepolte nei cumuli (uno ogni 0,8 m3 scavati sotto la base), mai dal suolo nudo: il reddito per livello resta quello di D-056.
+
+Valori provvisori, da bilanciare con le run simulate e il playtest.

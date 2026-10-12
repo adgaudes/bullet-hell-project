@@ -21,7 +21,7 @@ var _failures := 0
 var _scene: Node3D
 var _audio: RunAudio
 var _run: ArenaRun
-var _grid: TerrainGrid
+var _field: TerrainField
 var _player: PlayerCharacter
 var _companion: Companion
 var _director: EnemyDirector
@@ -39,7 +39,7 @@ func _initialize() -> void:
 	root.add_child(_scene)
 	_audio = _scene.get_node(^"RunAudio")
 	_run = _scene.get_node(^"Run")
-	_grid = _scene.get_node(^"TerrainGrid")
+	_field = _scene.get_node(^"TerrainField")
 	_player = _scene.get_node(^"Player")
 	_companion = _scene.get_node(^"Companion")
 	_director = _scene.get_node(^"EnemyDirector")
@@ -323,32 +323,44 @@ func _test_player_events() -> void:
 func _test_terrain_events() -> void:
 	print("terrain")
 	_place_player(Vector3.ZERO)
+	# Il disco di partenza e protetto nei primi 10 s: via, per scolpire subito.
+	_run._start_protect_left = 0.0
+	_field.set_protected(Vector3.ZERO, _field.tuning.start_protected_radius_m, false)
 	var digs := _count(&"terrain_dig")
 	var raises := _count(&"terrain_raise")
 	var dig_target := Vector3(4.8, 0.0, 4.8)
-	_check(_grid.apply_command_at(dig_target, TerrainState.ToolMode.DIG, _player) and _count(&"terrain_dig") == digs + 1, "scavo: terrain_dig")
-	_check(_grid.apply_command_at(Vector3(-4.8, 0.0, 4.8), TerrainState.ToolMode.RAISE, _player) and _count(&"terrain_raise") == raises + 1, "rialzo: terrain_raise")
+	# Tre pennellate nello stesso passo: un suono solo (al piu uno ogni 0,25 s).
+	for i in 3:
+		_field.player_sculpt(dig_target, 2.4, -0.3, TerrainField.ToolMode.DIG)
+	_check(_count(&"terrain_dig") == digs + 1, "scavo continuo: un terrain_dig per passo (%d)" % (_count(&"terrain_dig") - digs))
+	await _frames(20)
+	_field.player_sculpt(Vector3(-4.8, 0.0, 4.8), 2.4, 0.3, TerrainField.ToolMode.RAISE)
+	_check(_count(&"terrain_raise") == raises + 1, "rialzo: terrain_raise")
 	_check(_count(&"terrain_dig") == digs + 1, "il rialzo non suona come uno scavo")
-	await _frames(12)
-	# Lo strumento del giocatore su una cella gia scavata: rifiuto.
+	await _frames(20)
+	# Lo strumento del giocatore su un'area protetta: rifiuto.
 	var rejects := _count(&"tool_reject")
-	_player.terrain_tool_mode = TerrainState.ToolMode.DIG
+	_player.terrain_tool_mode = TerrainField.ToolMode.DIG
 	_player.look_at(Vector3(dig_target.x, _player.global_position.y, dig_target.z))
 	_player._update_terrain_target()
-	_grid.force_cell_state(_grid.cell_at(_player.terrain_target), TerrainState.CellState.LOWERED)
+	_field.set_protected(_player.terrain_target, 3.0, true)
 	digs = _count(&"terrain_dig")
-	_player._use_terrain_tool()
+	_player.tool_held = true
+	await _frames(3)
+	_player.tool_held = false
 	_check(_count(&"tool_reject") == rejects + 1 and _count(&"terrain_dig") == digs, "comando rifiutato: tool_reject")
+	_field.set_protected(_player.terrain_target, 3.0, false)
 	await _frames(12)
-	# Rialzo senza rottami: stesso suono.
-	_grid.force_cell_state(_grid.cell_at(_player.terrain_target), TerrainState.CellState.LOWERED)
-	_player.terrain_tool_mode = TerrainState.ToolMode.RAISE
-	var carried := _companion.carried
-	_companion.carried = 0
-	_player._use_terrain_tool()
-	_check(_count(&"tool_reject") == rejects + 2, "rialzo senza rottami: tool_reject")
-	_companion.carried = carried
-	_player.terrain_tool_mode = TerrainState.ToolMode.DIG
+	# Alzare a zaino vuoto: stesso suono di rifiuto.
+	_player.terrain_tool_mode = TerrainField.ToolMode.RAISE
+	_player.pack.take(_player.pack.capacity)
+	_player._update_terrain_target()
+	_player.tool_held = true
+	await _frames(3)
+	_player.tool_held = false
+	_check(_count(&"tool_reject") == rejects + 2, "alzare a zaino vuoto: tool_reject")
+	_player.pack.give(20.0)
+	_player.terrain_tool_mode = TerrainField.ToolMode.DIG
 	await _frames(12)
 
 

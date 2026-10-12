@@ -152,6 +152,7 @@ level_up_menu = NodePath("../LevelUpMenu")
 run = NodePath("../Run")
 workshop = NodePath("../WorkshopPanel")
 
-[node name="FlowPreview" type="Node3D" parent="." node_paths=PackedStringArray("path_field")]
+[node name="FlowPreview" type="Node3D" parent="." node_paths=PackedStringArray("path_field", "terrain_field")]
 script = ExtResource("20_flow")
 path_field = NodePath("../PathField")
+terrain_field = NodePath("../TerrainField")

@@ -201,6 +201,30 @@ Trappole verificate (11 ottobre 2026, interfaccia):
 - I tick fisici sono 120 al secondo: in uno script di cattura "un secondo" sono 60 `process_frame` con `--fixed-fps 60`, non 60 `physics_frame`.
 - Dopo un `class_name` nuovo, `--script` fallisce con "Identifier not declared" finche non si esegue `--editor --quit` (cache delle classi).
 
+### Terreno continuo (D-085, tappa A, 12 ottobre 2026)
+
+Il quartiere (`arena_run.tscn`) sta su `TerrainField` (campo di quote a 0,5 m, 204 m, sorgente di verita anche in headless) con Terrain3D 1.0.2 per la resa e `TerrainCollision` (196 `HeightMapShape3D` da 16 m, layer 1) per la fisica, con Jolt. La griglia a celle (`TerrainGrid`) resta solo nella ferrovia e nelle scene minori fino alla tappa B. Comandi:
+
+- rilievo di base cotto: `godot_console --headless --path godot --script res://tests/tools/bake_terrain_base.gd` scrive `levels/district/base.bin` (LFS); se manca, `RuinsDistrict.apply_base_relief` lo ricalcola all'avvio (circa 0,6 s);
+- tile per Terrain3D: `godot_console --headless --path godot --script res://tests/tools/pack_terrain_tiles.gd` ricava da `assets/textures/surfaces/ground_*.png` i cinque strati `assets/textures/terrain/<nome>_{albedo_height,normal_rough}.png` a 1024 px con gli `.import` VRAM, poi `--editor --quit`;
+- shader del rilievo: `resources/materials/terrain_relief.gdshader` e la copia dello shader generato da Terrain3D piu il blocco "Rilievo"; dopo un aggiornamento di Terrain3D si rigenera la copia con `godot_console --path godot --resolution 320x200 --script res://tests/tools/dump_terrain_shader.gd -- --out=<file>` (serve una finestra) e si riporta il blocco;
+- catture: `godot_console --path godot --resolution 1280x800 --fixed-fps 60 --quit-after 4000 --script res://tests/tools/capture_terrain.gd -- --out=../output/terrain` (argine, solco, vena a meta, barricata, zainetto vuoto e pieno, vista dall'alto); `capture_district.gd` e `capture_night.gd` funzionano come prima;
+- benchmark: `benchmark_arena.gd` stampa anche la riga `PROTOTYPE01_ARENA_BENCH terrain` (100 pennellate casuali: media e massimo, chunk aggiornati, base);
+- zainetto sul modello: il costruttore dell'ingegnere esporta anche l'oggetto `PackSack`; `capture_character.gd -- --pack=0,0.5,1` mostra i tre riempimenti.
+
+Trappole verificate:
+
+- `Terrain3D` esiste solo con una finestra: in headless `TerrainField.terrain3d()` e null e colori, strati e base dello shader non si applicano (le suite lo sanno); `restyle_tests` va lanciata anche con finestra per i controlli su Terrain3D;
+- `Terrain3D.data` e `collision` nascono un fotogramma dopo `add_child`: `TerrainField` aspetta un `process_frame` e poi emette `render_ready`; chi dipinge strati o colori (il quartiere) lo fa su quel segnale;
+- la collisione di Terrain3D resta spenta (`Terrain3DCollision.DISABLED`): i corpi stanno sui chunk nostri; Jolt e obbligatorio (con Godot Physics 40 corpi su heightmap costano 17 ms a passo);
+- un rialzo secco sotto un corpo lo incastra nella heightfield: il pennello del giocatore alza 2 cm a passo, il Demolitore posa la barricata solo su un punto libero da corpi, il terremoto riappoggia i nemici sulla nuova quota;
+- `update_maps` di Terrain3D aggiorna solo le regioni con `edited = true` (`_mark_regions`); `set_height` non interpola: le quote vanno scritte a vertice;
+- il quartiere viene prima del rilievo nella scena: prato, prop e rovine si appoggiano alle quote con `RuinsDistrict.settle_on_relief()` (chiamata da `ArenaRun` dopo il rilievo); il prato usa un generatore proprio cosi il risultato non dipende dall'ordine;
+- il disco di partenza (6 m) e protetto nei primi 10 s: nei test che scolpiscono subito vicino all'origine va tolto (`run._start_protect_left = 0; field.set_protected(Vector3.ZERO, 6, false)`);
+- l'emissione di un `Decal` ignora l'alfa della texture: l'anello del pennello ha RGB pari all'alfa, altrimenti riempie tutto il quadrato;
+- `PathField` senza griglia: `_terrain_index` parte a -1 (prima partiva a 0 e `cost_at` prima del primo passo cercava `grid.state` su null);
+- `--editor --quit` riordina `project.godot` (`physics_engine` dopo `physics_ticks_per_second`): non e una modifica da committare.
+
 ### Verifica visiva
 
 Lo script salva un PNG, che l'agente puo poi **aprire e guardare**:

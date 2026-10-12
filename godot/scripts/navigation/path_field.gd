@@ -112,6 +112,7 @@ func _ready() -> void:
 	_step_mask.resize(count)
 	_step_mask.fill(255)
 	_terrain_index.resize(count)
+	_terrain_index.fill(-1)
 	_next.resize(count)
 	_next.fill(NEXT_UNKNOWN)
 	if grid != null:
@@ -420,7 +421,7 @@ func _refresh_blocked() -> void:
 		var t := _terrain_index[i]
 		if blocked == 0 and _slope_blocked[i] != 0:
 			blocked = 1
-		if blocked == 0 and t >= 0:
+		if blocked == 0 and t >= 0 and grid != null:
 			var terrain_cell := Vector2i(t % grid.state.width, t / grid.state.width)
 			if grid.state.get_state(terrain_cell) == TerrainState.CellState.RAISED:
 				blocked = 1

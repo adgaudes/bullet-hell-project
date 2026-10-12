@@ -8,6 +8,8 @@ extends SceneTree
 ## `--motion-ab` misura nello stesso processo il passo del direttore con e senza (riga `motion_ab`).
 ## `--preset=deck|low|medium|high|max` (restyling 2026-10-11) applica il preset grafico prima di
 ## costruire l'arena; il limite di fps viene tolto, cosi il frame misurato e il costo reale.
+## Sul rilievo continuo (D-085) misura anche la base (`apply_base_relief`), 100 pennellate
+## casuali del giocatore e l'aggiornamento dei chunk di collisione (riga `terrain`).
 ## Marker: PROTOTYPE01_ARENA_BENCH ...
 
 const WARMUP_FRAMES := 120
@@ -30,7 +32,8 @@ func _initialize() -> void:
 	root.add_child(scene)
 	var instantiate_usec := Time.get_ticks_usec() - start
 	var district: RuinsDistrict = scene.get_node(^"District")
-	var grid: TerrainGrid = scene.get_node(^"TerrainGrid")
+	var grid: TerrainGrid = scene.get_node_or_null(^"TerrainGrid")
+	var field: TerrainField = scene.get_node_or_null(^"TerrainField")
 	var director: EnemyDirector = scene.get_node(^"EnemyDirector")
 	var path: PathField = scene.get_node(^"PathField")
 	var player: PlayerCharacter = scene.get_node(^"Player")
@@ -57,16 +60,27 @@ func _initialize() -> void:
 	district.rebuild()
 	var arena_usec := Time.get_ticks_usec() - t
 	t = Time.get_ticks_usec()
-	grid.rebuild()
-	var grid_usec := Time.get_ticks_usec() - t
-	t = Time.get_ticks_usec()
+	var grid_usec := 0
+	var layout_usec := 0
 	var cells: Array[Vector2i] = []
-	for feature: Dictionary in district.terrain_features:
-		var center := grid.cell_at(Vector3(feature.center.x, 0.0, feature.center.y))
-		for offset: Vector2i in feature.offsets:
-			cells.append(center + offset)
-	grid.set_cell_states(cells, TerrainState.CellState.RAISED)
-	var layout_usec := Time.get_ticks_usec() - t
+	if grid != null:
+		grid.rebuild()
+		grid_usec = Time.get_ticks_usec() - t
+		t = Time.get_ticks_usec()
+		for feature: Dictionary in district.terrain_features:
+			var center := grid.cell_at(Vector3(feature.center.x, 0.0, feature.center.y))
+			for offset: Vector2i in feature.offsets:
+				cells.append(center + offset)
+		grid.set_cell_states(cells, TerrainState.CellState.RAISED)
+		layout_usec = Time.get_ticks_usec() - t
+	elif field != null:
+		# Base del rilievo ricalcolata (come senza `base.bin`), poi le pennellate del quartiere.
+		district.apply_base_relief(field)
+		grid_usec = Time.get_ticks_usec() - t
+		t = Time.get_ticks_usec()
+		district.apply_strokes(field)
+		district.settle_on_relief()
+		layout_usec = Time.get_ticks_usec() - t
 	t = Time.get_ticks_usec()
 	path.scan_static_obstacles()
 	var scan_usec := Time.get_ticks_usec() - t
@@ -77,9 +91,32 @@ func _initialize() -> void:
 	print("PROTOTYPE01_ARENA_BENCH build instantiate_ms=%.1f arena_ms=%.1f grid_ms=%.1f layout_ms=%.1f (%d celle) scan_ms=%.1f (%d chunk) solve_ms=%.2f"
 		% [instantiate_usec / 1000.0, arena_usec / 1000.0, grid_usec / 1000.0, layout_usec / 1000.0, cells.size(),
 			scan_usec / 1000.0, path.chunks_scanned, solve_usec / 1000.0])
-	print("PROTOTYPE01_ARENA_BENCH content cells=%d collisions=%d features=%d blocks=%d props=%d trees=%d tufts=%d flowers=%d"
-		% [grid.state.cell_count(), grid.active_collision_count(), district.terrain_features.size(),
-			district.stats.blocks, district.stats.props, district.stats.trees, district.stats.tufts, district.stats.flowers])
+	if grid != null:
+		print("PROTOTYPE01_ARENA_BENCH content cells=%d collisions=%d features=%d blocks=%d props=%d trees=%d tufts=%d flowers=%d"
+			% [grid.state.cell_count(), grid.active_collision_count(), district.terrain_features.size(),
+				district.stats.blocks, district.stats.props, district.stats.trees, district.stats.tufts, district.stats.flowers])
+	if field != null:
+		var collision: TerrainCollision = field.get_node(^"Collision")
+		print("PROTOTYPE01_ARENA_BENCH content vertices=%d chunks=%d strokes=%d blocks=%d props=%d trees=%d tufts=%d flowers=%d"
+			% [field.resolution * field.resolution, collision.chunk_count(), district.terrain_strokes.size(),
+				district.stats.blocks, district.stats.props, district.stats.trees, district.stats.tufts, district.stats.flowers])
+		# Cento pennellate casuali del giocatore (raggio del tuning) fuori dalle aree protette.
+		var rng := RandomNumberGenerator.new()
+		rng.seed = 7
+		var brush_total := 0
+		var brush_max := 0
+		var refreshed_before := collision.refreshed_count()
+		for i in 100:
+			var at := Vector3(rng.randf_range(-80.0, 80.0), 0.0, rng.randf_range(-80.0, 80.0))
+			var b0 := Time.get_ticks_usec()
+			field.player_sculpt(at, field.tuning.brush_radius_m, -0.03 if i % 2 == 0 else 0.03, TerrainField.ToolMode.DIG if i % 2 == 0 else TerrainField.ToolMode.RAISE)
+			var took := Time.get_ticks_usec() - b0
+			brush_total += took
+			brush_max = maxi(brush_max, took)
+		var refreshed := collision.refreshed_count() - refreshed_before
+		print("PROTOTYPE01_ARENA_BENCH terrain brush_avg_ms=%.2f brush_max_ms=%.2f chunks=%d chunks_refreshed=%d chunk_refresh_ms=%.3f base_bake_ms=%.1f strokes_ms=%.1f"
+			% [brush_total / 100000.0, brush_max / 1000.0, collision.chunk_count(), refreshed,
+				(brush_total / 1000.0) / maxi(refreshed, 1), grid_usec / 1000.0, layout_usec / 1000.0])
 
 	if night:
 		var run: ArenaRun = scene.get_node(^"Run")

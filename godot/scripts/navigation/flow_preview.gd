@@ -35,6 +35,8 @@ const SOLVE_WAIT_SECONDS := 0.5
 @export var path_field: PathField
 ## Opzionale: senza griglia `show_now()` funziona, ma niente attivazione automatica.
 @export var grid: TerrainGrid
+## Rilievo continuo (D-085): le impronte partono dalle pennellate del giocatore e stanno alle quote.
+@export var terrain_field: TerrainField
 ## Mostra le impronte a ogni comando del tool terreno del giocatore.
 @export var auto_show_on_terrain_change := true
 ## Mentre sono visibili, le impronte seguono i ricalcoli del campo (il giocatore
@@ -128,6 +130,8 @@ func _ready() -> void:
 	set_process(false)
 	if grid != null:
 		grid.command_applied.connect(_on_command_applied)
+	if terrain_field != null:
+		terrain_field.player_sculpted.connect(_on_player_sculpted)
 	if path_field != null:
 		path_field.solved.connect(_on_field_solved)
 
@@ -237,6 +241,11 @@ func _fade_at(age: float) -> float:
 	var rise := 1.0 if fade_in <= 0.0 else clampf(age / fade_in, 0.0, 1.0)
 	var fall := 1.0 if fade_out <= 0.0 else clampf((duration - age) / fade_out, 0.0, 1.0)
 	return minf(rise, fall)
+
+
+## Una pennellata del giocatore sul rilievo (non quelle di boss ed eventi: `sculpt`).
+func _on_player_sculpted(_center: Vector3, _radius: float, _volume: float, _mode: int) -> void:
+	_on_command_applied(Vector2i.ZERO, TerrainState.ToolMode.DIG, TerrainState.CellState.NORMAL)
 
 
 func _on_command_applied(_cell: Vector2i, _mode: TerrainState.ToolMode, _state: TerrainState.CellState) -> void:
@@ -389,8 +398,10 @@ func _write_marks(goal: Vector3) -> void:
 	_multimesh.visible_instance_count = marks.size()
 
 
-## Quota della cima della cella terreno sotto il punto.
+## Quota del suolo sotto il punto: rilievo continuo o cima della cella della griglia.
 func _ground_y(pos: Vector3) -> float:
+	if terrain_field != null:
+		return terrain_field.height_at(pos)
 	if grid == null:
 		return 0.0
 	var cell := grid.cell_at(pos)

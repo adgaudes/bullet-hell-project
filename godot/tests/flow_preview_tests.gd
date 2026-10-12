@@ -64,11 +64,45 @@ func _initialize() -> void:
 	await _test_duration_and_retrigger()
 	await _test_manual_only()
 	_test_mark_cap()
+	await _test_relief_player_strokes_trigger()
 	# T-12: i nodi messi in coda con queue_free vanno liberati prima di uscire, o
 	# il motore segnala istanze ObjectDB perse all'uscita.
 	await _frames(2)
 	print("PROTOTYPE01_TESTS %s failures=%d" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
+
+
+## Rilievo continuo (D-085): le impronte partono dalle pennellate del giocatore
+## (`player_sculpted`), non da quelle di boss ed eventi (`sculpt`).
+func _test_relief_player_strokes_trigger() -> void:
+	print("relief strokes")
+	var relief := TerrainField.new()
+	relief.size_m = 32.0
+	relief.tuning = TerrainTuning.new()
+	relief.render = false
+	_world.add_child(relief)
+	var flow := FlowPreview.new()
+	flow.name = "FlowPreviewRelief"
+	flow.path_field = _field
+	flow.terrain_field = relief
+	_world.add_child(flow)
+	await _frames(2)
+	var traces := flow.trace_count
+	# Il campo di percorso qui sta sulla griglia: la risoluzione dopo la pennellata si
+	# chiama a mano (nel livello la fa PathField su `region_changed`).
+	relief.sculpt(Vector3(4.0, 0.0, 4.0), 2.4, 1.0)
+	await _frames(2)
+	_field.solve()
+	await _frames(30)
+	_check(not flow.is_showing() and flow.trace_count == traces, "una pennellata del boss o di un evento non mostra le impronte")
+	relief.player_sculpt(Vector3(-4.0, 0.0, 4.0), 2.4, -0.3, TerrainField.ToolMode.DIG)
+	await _frames(2)
+	_field.solve()
+	await _frames(30)
+	_check(flow.is_showing() and flow.trace_count == traces + 1, "una pennellata del giocatore le mostra (%d)" % flow.trace_count)
+	_check(absf(flow._ground_y(Vector3(4.0, 0.0, 4.0)) - relief.height_at(Vector3(4.0, 0.0, 4.0))) < 0.01, "le impronte stanno alla quota del rilievo")
+	flow.queue_free()
+	relief.queue_free()
 
 
 func _check(condition: bool, label: String) -> void:
