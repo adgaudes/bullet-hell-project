@@ -29,6 +29,9 @@
 *.usdc filter=lfs diff=lfs merge=lfs -text
 *.glb filter=lfs diff=lfs merge=lfs -text
 
+# Rilievo di base cotto del terreno continuo (D-085, levels/district/base.bin).
+*.bin filter=lfs diff=lfs merge=lfs -text
+
 # Raster images and texture sources.
 *.png filter=lfs diff=lfs merge=lfs -text
 *.jpg filter=lfs diff=lfs merge=lfs -text

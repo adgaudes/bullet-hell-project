@@ -32,6 +32,25 @@ const SHELL_VINE_REACH := 0.3
 const CROWN_PIECE_HEIGHT := Vector2(0.12, 0.42)
 const REBAR_HEIGHT := Vector2(0.3, 0.8)
 const DOOR_SIZE := Vector2(1.0, 2.1)
+## Pennellate dei punti di interesse (spec 6.1): argini dei cortili, cumuli, solchi.
+const RING_STEP := 1.6
+const RAMPART_HEIGHT := 1.4
+## Pennello degli argini: piu stretto di quello del giocatore, cosi il fianco supera la
+## pendenza di marcia (circa 1,1 m/m contro 0,8) e l'argine e un muro, non una rampa.
+const RAMPART_BRUSH := 2.0
+## Un varco toglie le pennellate a meno di questa distanza dalla sua direzione: restano
+## circa 2,8 m di passaggio piano.
+const GATE_CLEAR_M := 2.4
+const DEPOSIT_HEIGHT := 1.5
+const DEPOSIT_TINT := Color(0.5, 0.28, 0.12)
+const TRENCH_STEP := 1.2
+const TRENCH_BRUSH := 1.6
+const TRENCH_DEPTH := -0.8
+const NO_TINT := Color(0.0, 0.0, 0.0, 0.0)
+## Direzione mondo (XZ) dei varchi 0..3, come in `_ring_offsets` via `cell_offset_to_world`.
+const GATE_DIRECTIONS: Array[Vector2] = [Vector2(0.0, -1.0), Vector2(0.0, 1.0), Vector2(1.0, 0.0), Vector2(-1.0, 0.0)]
+## Tipi di pennellata che sono cortili (anelli di argini).
+const COURTYARD_KINDS: Array[StringName] = [&"start", &"three_gates", &"two_gates", &"broken", &"double"]
 
 @export_group("District")
 ## Raggio della piazza centrale: dentro il suolo e lastricato, fuori prevale il verde.
@@ -99,10 +118,17 @@ const DOOR_SIZE := Vector2(1.0, 2.1)
 		bush_count = value
 		_queue_rebuild()
 
-## Disposizione del terreno da applicare alla griglia. Ogni voce:
+## Disposizione del terreno da applicare alla griglia (ferrovia). Ogni voce:
 ## { kind: StringName, center: Vector2 (mondo XZ, centro di una cella), state: CellState,
 ##   offsets: Array[Vector2i] (celle attorno al centro, assi Unreal), gates: Array[int], radius: int }.
 var terrain_features: Array[Dictionary] = []
+## Gli stessi punti di interesse come pennellate sul rilievo continuo (D-085, spec 6.1).
+## Ogni voce: { kind: StringName, center: Vector2 (XZ), radius: float (anello: raggio in m;
+##   deposito e trincea: raggio del pennello), height: float (m al colmo, + argine o cumulo,
+##   - solco), tint: Color (alfa 0 = nessuna), scrap: int, marker: Vector2, gates: Array[int],
+##   points: Array[Vector2] (centri delle pennellate), brush: float (raggio del pennello),
+##   step: float (passo fra i punti, 0 = punto singolo) }.
+var terrain_strokes: Array[Dictionary] = []
 
 ## Mappa di occupazione dell'area giocabile a passo di 1 m: 1 = riservato
 ## (punto di interesse, edificio, oggetto con collisione).
@@ -110,6 +136,8 @@ var _occupancy := PackedByteArray()
 var _occupancy_columns := 0
 var _occupancy_rows := 0
 var _unit_box: BoxMesh
+## Ingombri (XZ) delle rovine interne e dei palazzi ai lati, nell'ordine di costruzione.
+var _block_rects: Array[Rect2] = []
 
 
 func _init() -> void:
@@ -133,9 +161,10 @@ func cover_limit() -> float:
 	return half_x() + 20.0
 
 
-## I ciuffi stanno sopra le celle Normal (12 cm), che coprono tutta l'arena.
+## Senza celle Normal (12 cm) i ciuffi partono da quota zero; sul rilievo li appoggia
+## il Task 14 del terreno continuo (`terrain_field.height_at`).
 func cover_height() -> float:
-	return 0.12
+	return 0.0
 
 
 func _cover_excluded(p: Vector2) -> bool:
@@ -153,6 +182,8 @@ func _cover_chance(p: Vector2) -> float:
 
 func _compose() -> void:
 	terrain_features.clear()
+	terrain_strokes.clear()
+	_block_rects.clear()
 	_reset_occupancy()
 	stats["features"] = 0
 	_build_ground()
@@ -299,6 +330,7 @@ func _plan_start_courtyard() -> void:
 	var gates: Array[int] = [0, 1, 2, 3]
 	var half := Vector2.ONE * (r + 0.5) * CELL
 	_add_feature(&"start", Vector2.ZERO, TerrainState.CellState.RAISED, _ring_offsets(r, gates), gates, r, half, 2.0)
+	_add_ring_stroke(&"start", Vector2.ZERO, r * CELL, gates, _ring_points(Vector2.ZERO, r * CELL, gates))
 	# Area di partenza libera da edifici e oggetti.
 	_reserve(_rect_around(Vector2.ZERO, Vector2.ONE * start_clear_radius))
 
@@ -342,10 +374,17 @@ func _plan_courtyards() -> void:
 				gates = [0, 1, 2, 3]
 				broken = 0.3
 		var offsets := _ring_offsets(radius, gates, broken)
+		# Generatore proprio per le pennellate mancanti: `_rng` resta com'era e la pianta
+		# del quartiere non cambia (D-065).
+		var stroke_rng := RandomNumberGenerator.new()
+		stroke_rng.seed = layout_seed + 101 + i
+		var points := _ring_points(center, radius * CELL, gates, broken, stroke_rng)
 		if variant == &"double" and radius >= 4:
 			var inner_gates: Array[int] = [2 if gates.has(0) else 0]
 			offsets.append_array(_ring_offsets(2, inner_gates))
+			points.append_array(_ring_points(center, 2 * CELL, inner_gates))
 		_add_feature(variant, center, TerrainState.CellState.RAISED, offsets, gates, radius, half, 4.0)
+		_add_ring_stroke(variant, center, radius * CELL, gates, points)
 
 
 ## Depositi di rottami: blocchi di 2x2 o 3x3 celle Raised. Scavarli produce rottami
@@ -364,6 +403,10 @@ func _plan_deposits() -> void:
 			for dx in range(lo, lo + size):
 				offsets.append(Vector2i(dx, dy))
 		_add_feature(&"deposit", center, TerrainState.CellState.RAISED, offsets, [], size, half, 3.0)
+		# Cumulo con vena (spec 5.1) al baricentro del vecchio blocco di celle.
+		var heap := feature_centroid(center, offsets)
+		var heap_radius := size * CELL * 0.5 + 1.0
+		_add_stroke(&"deposit", heap, heap_radius, DEPOSIT_HEIGHT, DEPOSIT_TINT, 6 + 2 * (size - 2), [], [heap], heap_radius, 0.0)
 
 
 ## Trincee: file di celle Lowered gia scavate (canali crollati): rallentano chi le
@@ -382,6 +425,138 @@ func _plan_trenches() -> void:
 		for k in range(lo, lo + length):
 			offsets.append(Vector2i(k, 0) if along_x else Vector2i(0, k))
 		_add_feature(&"trench", center, TerrainState.CellState.LOWERED, offsets, [], length, half, 2.0)
+		# Solco lungo la stessa linea di celle, un punto ogni TRENCH_STEP.
+		var a := center + cell_offset_to_world(offsets[0])
+		var b := center + cell_offset_to_world(offsets[offsets.size() - 1])
+		var steps := maxi(int(a.distance_to(b) / TRENCH_STEP), 1)
+		var points: Array[Vector2] = []
+		for t in steps + 1:
+			points.append(a.lerp(b, float(t) / steps))
+		_add_stroke(&"trench", (a + b) * 0.5, TRENCH_BRUSH, TRENCH_DEPTH, NO_TINT, 0, [], points, TRENCH_BRUSH, a.distance_to(b) / steps)
+
+
+# --- Pennellate del terreno continuo -------------------------------------------------------
+
+func _add_stroke(kind: StringName, center: Vector2, radius: float, height: float, tint: Color, scrap: int,
+		gates: Array[int], points: Array[Vector2], brush: float, step: float) -> void:
+	terrain_strokes.append({
+		kind = kind, center = center, radius = radius, height = height, tint = tint, scrap = scrap,
+		marker = center, gates = gates, points = points, brush = brush, step = step,
+	})
+
+
+func _add_ring_stroke(kind: StringName, center: Vector2, radius_m: float, gates: Array[int], points: Array[Vector2]) -> void:
+	_add_stroke(kind, center, radius_m, RAMPART_HEIGHT, NO_TINT, 0, gates, points, RAMPART_BRUSH, TAU * radius_m / _ring_count(radius_m))
+
+
+## Punti dell'anello: un multiplo di 4, cosi un punto cade esattamente su ogni varco.
+static func _ring_count(radius_m: float) -> int:
+	return maxi(1, roundi(TAU * radius_m / RING_STEP / 4.0)) * 4
+
+
+## Centri delle pennellate di un anello di raggio [param radius_m], uno ogni ~RING_STEP m,
+## senza quelli a meno di GATE_CLEAR_M dai varchi in [param gates]; con [param broken] > 0
+## ne manca una quota a caso (l'argine e piu basso in quei tratti). Il primo punto sta in
+## diagonale, a meta di un tratto pieno.
+func _ring_points(center: Vector2, radius_m: float, gates: Array[int], broken := 0.0,
+		rng: RandomNumberGenerator = null) -> Array[Vector2]:
+	var points: Array[Vector2] = []
+	var count := _ring_count(radius_m)
+	var first := roundi(count / 8.0)
+	for k in count:
+		var angle := TAU * float(k + first) / count
+		var p := center + Vector2(cos(angle), sin(angle)) * radius_m
+		var in_gate := false
+		for gate in gates:
+			in_gate = in_gate or p.distance_to(center + GATE_DIRECTIONS[gate] * radius_m) < GATE_CLEAR_M
+		if in_gate:
+			continue
+		if broken > 0.0 and rng != null and rng.randf() < broken:
+			continue
+		points.append(p)
+	return points
+
+
+## Ingombri XZ delle rovine (con le ali) e dei palazzi ai lati: macerie e aree protette.
+func block_rects() -> Array[Rect2]:
+	return _block_rects
+
+
+## Strade dipinte dal suolo: la sola est-ovest a z = 0 (RG_ROAD_HALF in ruins_ground.gdshaderinc).
+func _road_segments() -> Array:
+	return [[Vector2(-half_x(), 0.0), Vector2(half_x(), 0.0)]]
+
+
+## Attenuazione del rilievo: 20 % nella piazza e nel cortile di partenza, pieno fuori.
+func _relief_calm(p: Vector2) -> float:
+	return 1.0 - 0.8 * (1.0 - smoothstep(plaza_radius_m * 0.6, plaza_radius_m * 1.3, p.length()))
+
+
+## Somma delle campane (1 - d^2)^2 di una fila di pennelli a passo [param step]: divide
+## l'altezza di una pennellata cosi il colmo della fila vale l'altezza voluta.
+static func line_overlap(step: float, brush: float) -> float:
+	if step <= 0.0:
+		return 1.0
+	var total := 1.0
+	var k := 1
+	while k * step < brush:
+		var d := k * step / brush
+		total += 2.0 * (1.0 - d * d) * (1.0 - d * d)
+		k += 1
+	return total
+
+
+## Rilievo di base del quartiere (spec 6.1): rumore a tre ottave attenuato nella piazza,
+## cumuli di macerie attorno alle rovine e solchi lungo le strade; poi `commit_base()`.
+## Deterministico per `layout_seed`, indipendente dall'ordine di costruzione.
+func apply_base_relief(field: TerrainField) -> void:
+	var noise := FastNoiseLite.new()
+	noise.seed = layout_seed
+	noise.frequency = 0.025
+	var half := field.half_extent()
+	var r := field.resolution
+	for iz in r:
+		for ix in r:
+			var x := ix * TerrainField.SPACING - half
+			var z := iz * TerrainField.SPACING - half
+			var h := noise.get_noise_2d(x, z) * 1.2 + noise.get_noise_2d(x * 2.8, z * 2.8) * 0.5 + noise.get_noise_2d(x * 6.5, z * 6.5) * 0.25
+			field._heights[iz * r + ix] = h * _relief_calm(Vector2(x, z))
+	var rubble := RandomNumberGenerator.new()
+	rubble.seed = layout_seed + 7
+	for block in block_rects():
+		for k in 6:
+			var angle := TAU * k / 6.0
+			var p := block.get_center() + Vector2(cos(angle), sin(angle)) * (block.size.length() * 0.5 + 1.5)
+			field.sculpt(Vector3(p.x, 0, p.y), 3.0, rubble.randf_range(0.4, 0.8))
+	# Solco di 0,3 m al colmo (la fila di pennelli si somma), attenuato come il rumore.
+	var furrow := -0.3 / line_overlap(1.5, 2.0)
+	for road: Array in _road_segments():
+		var from: Vector2 = road[0]
+		var to: Vector2 = road[1]
+		var length := from.distance_to(to)
+		for t in int(length / 1.5) + 1:
+			var p: Vector2 = from.lerp(to, minf(t * 1.5 / length, 1.0))
+			field.sculpt(Vector3(p.x, 0, p.y), 2.0, furrow * _relief_calm(p))
+	field.commit_base()
+	field._mirror_all()
+	# Le quote del rumore sono scritte senza pennello: collisione e percorso vanno avvisati.
+	field.region_changed.emit(AABB(Vector3(-half, TerrainField.MIN_HEIGHT, -half),
+		Vector3(half * 2.0, TerrainField.MAX_HEIGHT - TerrainField.MIN_HEIGHT, half * 2.0)))
+
+
+## Pennellate dei punti di interesse sopra la base: sporgono da essa, cosi il Demolitore
+## le vede come gli argini del layout. Con [param scrap_field] le vene dei depositi si
+## registrano (Task 9: `add_vein`); finche il metodo manca si saltano.
+func apply_strokes(field: TerrainField, scrap_field: ScrapField = null) -> void:
+	for stroke: Dictionary in terrain_strokes:
+		var amount: float = stroke.height / line_overlap(stroke.step, stroke.brush)
+		for p: Vector2 in stroke.points:
+			field.sculpt(Vector3(p.x, 0.0, p.y), stroke.brush, amount)
+		var center := Vector3(stroke.center.x, 0.0, stroke.center.y)
+		if stroke.tint.a > 0.0:
+			field.tint(center, stroke.radius, stroke.tint, 1.0)
+		if stroke.kind == &"deposit" and scrap_field != null and scrap_field.has_method(&"add_vein"):
+			scrap_field.call(&"add_vein", center, stroke.radius, stroke.scrap, field.base_height_at(center))
 
 
 # --- Edifici e oggetti dentro il perimetro ----------------------------------------------
@@ -412,6 +587,7 @@ func _low_ruin(index: int, center: Vector2, footprint: Vector2) -> void:
 	_ruin_shell("Block%d" % index, Vector3(center.x, 0.0, center.y), Vector3(footprint.x, height, footprint.y),
 		yaw, tint, _rng.randf_range(0.1, 0.5))
 	_reserve(_rect_around(center, footprint * 0.5, 1.0))
+	_block_rects.append(_rect_around(center, footprint * 0.5))
 	if _rng.randf() < 0.5:
 		var side := 1.0 if _rng.randf() < 0.5 else -1.0
 		var wing_size := Vector2(_rng.randf_range(4.0, 7.0), _rng.randf_range(3.0, 6.0))
@@ -420,6 +596,7 @@ func _low_ruin(index: int, center: Vector2, footprint: Vector2) -> void:
 			_ruin_shell("Block%dWing" % index, Vector3(wing_center.x, 0.0, wing_center.y),
 				Vector3(wing_size.x, maxf(height * _rng.randf_range(0.5, 0.8), SHELL_MIN_WALL), wing_size.y), yaw, tint, 0.5)
 			_reserve(_rect_around(wing_center, wing_size * 0.5, 1.0))
+			_block_rects.append(_rect_around(wing_center, wing_size * 0.5))
 	if _rng.randf() < 0.5:
 		var rubble_center := center + Vector2(0.0, footprint.y * 0.5 + 2.5)
 		if _is_free(_rect_around(rubble_center, Vector2.ONE * 2.2, 0.5)):

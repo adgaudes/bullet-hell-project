@@ -61,7 +61,10 @@ func begin() -> void:
 	held = 0.0
 	intact = false
 	center = Vector2i(-1, -1)
-	_ensure_marker()
+	# Ponte fino al Task 12 del terreno continuo: senza griglia la piazzola non ha ancora
+	# una forma sul rilievo (niente marker, `advance` non fa nulla).
+	if grid != null:
+		_ensure_marker()
 	print("PROTOTYPE01_EXTRACTION_CALLED hold=%.1f" % hold_seconds)
 	extraction_started.emit()
 

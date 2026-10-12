@@ -7,7 +7,8 @@ const RunScene := preload("res://scenes/main/arena_run.tscn")
 var _failures := 0
 var _scene: Node3D
 var _run: ArenaRun
-var _grid: TerrainGrid
+var _field: TerrainField
+var _district: RuinsDistrict
 var _player: PlayerCharacter
 var _companion: Companion
 var _director: EnemyDirector
@@ -22,7 +23,8 @@ func _initialize() -> void:
 	_scene = RunScene.instantiate()
 	root.add_child(_scene)
 	_run = _scene.get_node(^"Run")
-	_grid = _scene.get_node(^"TerrainGrid")
+	_field = _scene.get_node(^"TerrainField")
+	_district = _scene.get_node(^"District")
 	_player = _scene.get_node(^"Player")
 	_companion = _scene.get_node(^"Companion")
 	_director = _scene.get_node(^"EnemyDirector")
@@ -40,7 +42,7 @@ func _initialize() -> void:
 	await _test_contact_damage()
 	await _test_weapon_kills_and_drops_xp()
 	await _test_wall_blocks_line_of_fire()
-	await _test_lowered_cell_slows_enemies()
+	await _test_uphill_slows_enemies()
 	await _test_level_up_flow()
 	_test_companion_upgrades()
 	await _test_death_ends_run()
@@ -76,51 +78,54 @@ func _place_player(at: Vector3) -> void:
 	_path.solve()
 
 
-func _cell_world(cell: Vector2i) -> Vector3:
-	var p := _grid.to_global(_grid.cell_local_position(cell, TerrainState.CellState.NORMAL))
-	return Vector3(p.x, 0.0, p.z)
+## Raggio in metri dell'anello del cortile di partenza.
+func _ring_radius() -> float:
+	return _run.tuning.wall_ring_radius * RuinsDistrict.CELL
 
 
-func _gates() -> Array[Vector2i]:
-	var c := Vector2i(_grid.state.width / 2, _grid.state.height / 2)
-	var r := _run.tuning.wall_ring_radius
-	return [c + Vector2i(r, 0), c + Vector2i(-r, 0), c + Vector2i(0, r), c + Vector2i(0, -r)]
+## Chiude un varco come farebbe l'argine: tre pennellate lungo l'anello, cosi fra il tappo
+## e le pennellate vicine non resta una sella calpestabile.
+func _seal_gate(gate: Vector3) -> void:
+	var tangent := Vector3(-gate.z, 0.0, gate.x).normalized()
+	for k in [-1, 0, 1]:
+		_field.sculpt(gate + tangent * 1.6 * k, 2.0, 1.4)
 
 
+## I quattro varchi del cortile di partenza, sui lati dell'anello (XZ).
+func _gates() -> Array[Vector3]:
+	var r := _ring_radius()
+	return [Vector3(0.0, 0.0, -r), Vector3(0.0, 0.0, r), Vector3(r, 0.0, 0.0), Vector3(-r, 0.0, 0.0)]
+
+
+## Il cortile di partenza e un anello di argini sul rilievo con quattro varchi piani.
 func _test_courtyard_walls() -> void:
 	print("courtyard")
-	# Il cortile di partenza e l'anello attorno alla cella centrale; nell'arena grande
-	# (D-042) ci sono anche altri punti di interesse Raised, piu lontani.
-	var c := Vector2i(_grid.state.width / 2, _grid.state.height / 2)
-	var r := _run.tuning.wall_ring_radius
-	var ring := 0
-	var raised := 0
-	for y in _grid.state.height:
-		for x in _grid.state.width:
-			if _grid.state.get_state(Vector2i(x, y)) != TerrainState.CellState.RAISED:
-				continue
-			raised += 1
-			if maxi(absi(x - c.x), absi(y - c.y)) == r:
-				ring += 1
-	_check(ring == 28, "28 celle di mura nel cortile di partenza (trovate %d)" % ring)
-	_check(raised > ring, "altri punti di interesse Raised oltre il cortile (%d in tutto)" % raised)
-	var clear := true
-	for y in range(c.y - r + 1, c.y + r):
-		for x in range(c.x - r + 1, c.x + r):
-			clear = clear and _grid.state.get_state(Vector2i(x, y)) == TerrainState.CellState.NORMAL
-	_check(clear, "dentro il cortile tutte le celle sono Normal")
+	var ring_radius := _ring_radius()
+	var start: Dictionary = _district.terrain_strokes[0]
+	_check(start.kind == &"start" and is_equal_approx(start.radius, ring_radius), "il cortile di partenza e un anello di %.1f m" % ring_radius)
+	var high := 0
+	for p: Vector2 in start.points:
+		if _field.height_at(Vector3(p.x, 0.0, p.y)) > 1.0:
+			high += 1
+	_check(high == start.points.size(), "l'argine supera 1 m su tutte le pennellate (%d/%d)" % [high, start.points.size()])
+	var flat := true
+	for i in 16:
+		var angle := TAU * i / 16.0
+		var p := Vector3(cos(angle), 0.0, sin(angle)) * ring_radius * 0.5
+		flat = flat and absf(_field.height_at(p)) < 0.3
+	_check(flat, "dentro il cortile il suolo e quasi piano")
 	var gates_open := true
 	for gate in _gates():
-		gates_open = gates_open and _grid.state.get_state(gate) == TerrainState.CellState.NORMAL
+		gates_open = gates_open and absf(_field.height_at(gate)) < 0.3
 	_check(gates_open, "quattro varchi aperti")
 	_check(_path.is_ready(), "campo di percorso pronto")
 
 
-## Da fuori le mura il percorso attraversa l'anello solo nei varchi.
+## Da fuori gli argini il percorso attraversa l'anello solo nei varchi.
 func _test_path_uses_gates() -> void:
 	print("path")
 	_place_player(Vector3.ZERO)
-	var ring := _run.tuning.wall_ring_radius * 2.4
+	var ring := _ring_radius()
 	var start := Vector3(6.0, 0.0, -15.0)
 	var point := start
 	var reached := false
@@ -130,8 +135,8 @@ func _test_path_uses_gates() -> void:
 		if next == null:
 			break
 		point = next
-		var outer := maxf(absf(point.x), absf(point.z))
-		if outer > ring - 1.2 and outer < ring + 1.2 and minf(absf(point.x), absf(point.z)) > 1.2:
+		var distance := Vector2(point.x, point.z).length()
+		if distance > ring - 1.2 and distance < ring + 1.2 and minf(absf(point.x), absf(point.z)) > 2.0:
 			through_wall = true
 		if _path.cell_of(point) == _path.cell_of(_player.global_position):
 			reached = true
@@ -142,12 +147,15 @@ func _test_path_uses_gates() -> void:
 
 func _test_sealed_courtyard() -> void:
 	print("sealed")
-	_grid.set_cell_states(_gates(), TerrainState.CellState.RAISED)
+	for gate in _gates():
+		_seal_gate(gate)
+	await _frames(2)
 	_path.solve()
 	var outside := Vector3(6.0, 0.0, -15.0)
 	_check(_path.cost_at(outside) == PathField.UNREACHABLE, "cortile chiuso: da fuori il giocatore e irraggiungibile")
-	_check(_path.next_waypoint(outside) == null, "nessun waypoint: i nemici puntano dritto contro le mura")
-	_grid.set_cell_states(_gates(), TerrainState.CellState.NORMAL)
+	_check(_path.next_waypoint(outside) == null, "nessun waypoint: i nemici puntano dritto contro gli argini")
+	for gate in _gates():
+		_field.level(gate, 4.0, _field.base_height_at(gate), 1.0)
 	await _frames(2)
 	_path.solve()
 	_check(_path.cost_at(outside) < PathField.UNREACHABLE, "varchi riaperti: di nuovo raggiungibile")
@@ -202,36 +210,44 @@ func _test_weapon_kills_and_drops_xp() -> void:
 func _test_wall_blocks_line_of_fire() -> void:
 	print("line of fire")
 	_clear_enemies()
-	var c := Vector2i(_grid.state.width / 2, _grid.state.height / 2)
-	var wall := _cell_world(c + Vector2i(_run.tuning.wall_ring_radius, 2))
-	var outward := wall.normalized()
+	# Un punto dell'argine in diagonale, lontano dai varchi.
+	var direction := RuinsDistrict.cell_offset_to_world(Vector2i(_run.tuning.wall_ring_radius, 2)).normalized()
+	var outward := Vector3(direction.x, 0.0, direction.y)
+	var wall := outward * _ring_radius()
 	_place_player(wall - outward * 3.0)
 	_director.set_physics_process(false)
 	var behind := _director.spawn_at(wall + outward * 2.0)
+	behind.global_position.y = _field.height_at(behind.global_position) + Enemy.spawn_height()
 	await _frames(2)
-	_check(_weapon.find_target() == null, "nessun bersaglio dietro una cella rialzata")
-	behind.global_position = _player.global_position + Vector3(0.0, 0.0, 0.0) - outward * 3.0
-	behind.global_position.y = Enemy.spawn_height()
+	_check(_weapon.find_target() == null, "nessun bersaglio dietro un argine")
+	behind.global_position = _player.global_position - outward * 3.0
+	behind.global_position.y = _field.height_at(behind.global_position) + Enemy.spawn_height()
 	await _frames(1)
 	_check(_weapon.find_target() == behind, "lo stesso nemico allo scoperto e un bersaglio")
 	_director.set_physics_process(true)
 	_clear_enemies()
 
 
-func _test_lowered_cell_slows_enemies() -> void:
-	print("lowered")
+## In salita il rottamatore rallenta (Task 7): dosso dolce fuori dal cortile.
+func _test_uphill_slows_enemies() -> void:
+	print("uphill")
 	_clear_enemies()
-	var c := Vector2i(_grid.state.width / 2, _grid.state.height / 2)
-	_place_player(_cell_world(c + Vector2i(-3, 0)))
-	var normal_enemy := _director.spawn_at(_cell_world(c + Vector2i(1, -2)))
-	var dug := c + Vector2i(1, 2)
-	_grid.apply_command_at(_cell_world(dug), TerrainState.ToolMode.DIG)
-	var slow_enemy := _director.spawn_at(_cell_world(dug))
+	_place_player(Vector3.ZERO)
+	var mound := Vector3(0.0, 0.0, -16.0)
+	_field.sculpt(mound, 5.0, 2.0)
+	await _frames(2)
+	_path.solve()
+	var normal_enemy := _director.spawn_at(Vector3(12.0, 0.0, -12.0))
+	normal_enemy.global_position.y = _field.height_at(normal_enemy.global_position) + Enemy.spawn_height()
+	var slow_enemy := _director.spawn_at(Vector3(0.0, 0.0, -19.5))
+	slow_enemy.global_position.y = _field.height_at(slow_enemy.global_position) + Enemy.spawn_height()
 	await _frames(20)
 	var normal_speed := Vector2(normal_enemy.velocity.x, normal_enemy.velocity.z).length()
 	var slow_speed := Vector2(slow_enemy.velocity.x, slow_enemy.velocity.z).length()
-	_check(normal_speed > 2.0, "su cella Normal va a piena velocita (%.2f m/s)" % normal_speed)
-	_check(slow_speed < 1.3, "su cella Lowered rallenta (%.2f m/s)" % slow_speed)
+	_check(normal_speed > 2.0, "in piano va a piena velocita (%.2f m/s)" % normal_speed)
+	_check(slow_speed < normal_speed * 0.85, "in salita rallenta (%.2f m/s)" % slow_speed)
+	_field.level(mound, 6.0, _field.base_height_at(mound), 1.0)
+	await _frames(2)
 	_clear_enemies()
 
 

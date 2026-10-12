@@ -1,6 +1,6 @@
 extends SceneTree
-## Test dell'arena grande (D-042): quartiere in rovina con griglia 85x85 e punti
-## di interesse del terreno. Eseguire con:
+## Test dell'arena grande (D-042) sul rilievo continuo (D-085): quartiere in rovina
+## con TerrainField di 204 m e punti di interesse come pennellate. Eseguire con:
 ##   godot_console --headless --path godot --fixed-fps 60 --script res://tests/district_tests.gd
 
 const RunScene := preload("res://scenes/main/arena_run.tscn")
@@ -11,7 +11,7 @@ const NORMAL := TerrainState.CellState.NORMAL
 var _failures := 0
 var _scene: Node3D
 var _district: RuinsDistrict
-var _grid: TerrainGrid
+var _field: TerrainField
 var _path: PathField
 var _player: PlayerCharacter
 var _director: EnemyDirector
@@ -22,7 +22,7 @@ func _initialize() -> void:
 	_scene = RunScene.instantiate()
 	root.add_child(_scene)
 	_district = _scene.get_node(^"District")
-	_grid = _scene.get_node(^"TerrainGrid")
+	_field = _scene.get_node(^"TerrainField")
 	_path = _scene.get_node(^"PathField")
 	_player = _scene.get_node(^"Player")
 	_director = _scene.get_node(^"EnemyDirector")
@@ -30,7 +30,7 @@ func _initialize() -> void:
 	await _frames(5)
 	_test_scale()
 	_test_features()
-	_test_features_applied_to_grid()
+	_test_strokes_applied_to_field()
 	_test_determinism()
 	_test_blocks_are_low_and_inside()
 	_test_start_area_is_clear()
@@ -57,42 +57,16 @@ func _frames(n: int) -> void:
 		await physics_frame
 
 
+static func _at(p: Vector2) -> Vector3:
+	return Vector3(p.x, 0.0, p.y)
+
+
 func _test_scale() -> void:
 	print("scale")
 	_check(_district.play_half_extent >= 100.0, "area giocabile di almeno 200 m di lato (%.0f)" % (_district.play_half_extent * 2.0))
-	var extent_m := _grid.width_extent_cm() / 100.0
-	_check(_grid.state.width == 85 and _grid.state.height == 85, "griglia 85x85")
-	_check(absf(extent_m - _district.play_half_extent * 2.0) <= 2.4, "la griglia copre l'arena (%.1f m)" % extent_m)
-	_check(_grid.presented_cell_count() == _grid.state.cell_count(), "tutte le %d celle presentate" % _grid.state.cell_count())
-	var batches := 0
-	for child in _grid.get_children():
-		if child is MultiMeshInstance3D:
-			batches += 1
-	_check(batches == 2, "due lotti MultiMesh: celle piatte e terrapieni (T-07)")
-	var flat: MultiMeshInstance3D = _grid.get_node(^"CellsFlat")
-	var lowered_cell := Vector2i(-1, -1)
-	var normal_cell := Vector2i(-1, -1)
-	for y in _grid.state.height:
-		for x in _grid.state.width:
-			var cell := Vector2i(x, y)
-			if _grid.state.get_state(cell) == LOWERED and lowered_cell.x < 0:
-				lowered_cell = cell
-			elif _grid.state.get_state(cell) == NORMAL and normal_cell.x < 0:
-				normal_cell = cell
-	# In --headless il renderer fittizio conserva solo l'origine delle istanze, non la base
-	# (scala): le scale si verificano solo con una finestra (capture_district).
-	if DisplayServer.get_name() != "headless":
-		var lowered_scale := flat.multimesh.get_instance_transform(lowered_cell.y * _grid.state.width + lowered_cell.x).basis.get_scale().y
-		var normal_scale := flat.multimesh.get_instance_transform(normal_cell.y * _grid.state.width + normal_cell.x).basis.get_scale().y
-		_check(absf(lowered_scale - 0.04) < 0.001 and absf(normal_scale - 0.12) < 0.001,
-			"nel lotto piatto l'altezza viene dalla scala dell'istanza (%.2f, %.2f)" % [lowered_scale, normal_scale])
-		var raised_batch: MultiMeshInstance3D = _grid.get_node(^"CellsRaised")
-		_check(raised_batch.multimesh.get_instance_transform(normal_cell.y * _grid.state.width + normal_cell.x).basis.get_scale().is_zero_approx(),
-			"una cella Normal e nascosta nel lotto dei terrapieni")
-	else:
-		_check(lowered_cell.x >= 0 and normal_cell.x >= 0, "celle Lowered e Normal presenti per il controllo delle scale (solo con finestra)")
+	_check(_field.resolution == 409, "quartiere 204 m -> 409 vertici per lato (%d)" % _field.resolution)
+	_check(absf(_field.half_extent() - _district.play_half_extent) <= 0.5, "il rilievo copre l'arena (%.1f m)" % (_field.half_extent() * 2.0))
 	_check(is_equal_approx(_path.half_extent, _district.play_half_extent), "campo di percorso esteso all'arena")
-	_check(is_equal_approx(_grid.plaza_radius, _district.plaza_radius()), "raggio della piazza condiviso fra suolo e celle")
 
 
 func _test_features() -> void:
@@ -126,46 +100,55 @@ func _test_features() -> void:
 	_check(away_from_start, "cortili secondari fuori dall'area di partenza")
 	_check(variants.size() >= 3, "almeno tre varianti di cortile %s" % [variants.keys()])
 
-	var all_valid := true
+	var all_inside := true
 	var snapped := true
+	var half := _field.half_extent()
 	for f: Dictionary in features:
 		snapped = snapped and f.center.is_equal_approx(RuinsDistrict.snap_to_cell(f.center))
-		var center := _grid.cell_at(Vector3(f.center.x, 0.0, f.center.y))
 		for offset: Vector2i in f.offsets:
-			all_valid = all_valid and _grid.state.is_valid(center + offset)
+			var p: Vector2 = f.center + RuinsDistrict.cell_offset_to_world(offset)
+			all_inside = all_inside and absf(p.x) <= half and absf(p.y) <= half
 	_check(snapped, "centri dei punti di interesse al centro di una cella")
-	_check(all_valid, "tutte le celle dei punti di interesse sono dentro la griglia")
+	_check(all_inside, "tutte le celle dei punti di interesse sono dentro il rilievo")
 
 
-func _test_features_applied_to_grid() -> void:
-	print("grid layout")
-	var expected := {}
-	for f: Dictionary in _district.terrain_features:
-		var center := _grid.cell_at(Vector3(f.center.x, 0.0, f.center.y))
-		for offset: Vector2i in f.offsets:
-			expected[center + offset] = f.state
-	var matching := true
-	for cell: Vector2i in expected:
-		matching = matching and _grid.state.get_state(cell) == expected[cell]
-	_check(matching, "ogni cella dei punti di interesse ha lo stato previsto (%d celle)" % expected.size())
-	var changed := 0
-	for y in _grid.state.height:
-		for x in _grid.state.width:
-			if _grid.state.get_state(Vector2i(x, y)) != NORMAL:
-				changed += 1
-	_check(changed == expected.size(), "nessun'altra cella modificata (%d)" % changed)
-	_check(_grid.active_collision_count() == expected.values().count(RAISED), "una collisione attiva per cella Raised (%d)" % _grid.active_collision_count())
-	# Il centro del cortile di partenza e sulla cella centrale, come nell'arena piccola.
-	var cell_world := _grid.to_global(_grid.cell_local_position(Vector2i(42, 42), NORMAL))
-	_check(Vector2(cell_world.x, cell_world.z).is_zero_approx(), "cella (42,42) all'origine")
+## I punti di interesse sono pennellate sul rilievo: argini alti, cumuli con vena,
+## cortili piani, base mossa (spec 6.1).
+func _test_strokes_applied_to_field() -> void:
+	print("strokes")
+	var strokes := _district.terrain_strokes
+	_check(strokes.size() >= 10, "il quartiere produce pennellate (%d)" % strokes.size())
+	if strokes.is_empty():
+		return
+	var start: Dictionary = strokes[0]
+	_check(start.kind == &"start" and start.points.size() > 8, "cortile di partenza come anello di pennellate (%d punti)" % start.points.size())
+	var ring_point: Vector2 = start.points[0]
+	_check(_field.height_at(_at(ring_point)) > 1.0, "l'argine del cortile e alto piu di 1 m (%.2f)" % _field.height_at(_at(ring_point)))
+	_check(_field.delta_at(_at(ring_point)) > 0.8, "l'argine sporge dalla base (il Demolitore lo vede) (%.2f)" % _field.delta_at(_at(ring_point)))
+	_check(absf(_field.height_at(Vector3.ZERO)) < 0.3, "il centro del cortile e quasi piano (%.2f)" % _field.height_at(Vector3.ZERO))
+	var deposits := 0
+	var heaps_ok := true
+	for stroke: Dictionary in strokes:
+		if stroke.kind == &"deposit":
+			deposits += 1
+			heaps_ok = heaps_ok and stroke.scrap >= 6 and _field.height_at(_at(stroke.center)) > 1.0
+	_check(deposits >= 6, "almeno sei depositi (%d)" % deposits)
+	_check(heaps_ok, "ogni deposito e un cumulo alto piu di 1 m con una vena di almeno 6 rottami")
+	var bumpy := 0
+	for i in 40:
+		if absf(_field.base_height_at(Vector3(-90.0 + i * 4.5, 0.0, 60.0))) > 0.15:
+			bumpy += 1
+	_check(bumpy > 10, "il rilievo di base e mosso (%d/40 campioni oltre 15 cm)" % bumpy)
 
 
 func _test_determinism() -> void:
 	print("determinism")
 	var before := _district.terrain_features.duplicate(true)
+	var strokes_before := _district.terrain_strokes.duplicate(true)
 	var stats_before: Dictionary = _district.stats.duplicate()
 	_district.rebuild()
 	_check(_district.terrain_features == before, "stessi punti di interesse dopo la ricostruzione")
+	_check(_district.terrain_strokes == strokes_before, "stesse pennellate dopo la ricostruzione (%d)" % _district.terrain_strokes.size())
 	_check(_district.stats == stats_before, "stesse statistiche dopo la ricostruzione %s" % [_district.stats])
 	var other := RuinsDistrict.new()
 	other.layout_seed = _district.layout_seed + 1
@@ -209,10 +192,11 @@ func _test_start_area_is_clear() -> void:
 	query.shape = shape
 	query.transform = Transform3D(Basis(), Vector3(0.0, 1.0, 0.0))
 	query.collision_mask = 1
+	var terrain_body: StaticBody3D = _field.get_node(^"Collision").body
 	var foreign := 0
 	for hit in space.intersect_shape(query, 64):
 		var collider: Node = hit.collider
-		if collider.get_parent() != _grid:
+		if collider != terrain_body:
 			foreign += 1
 	_check(foreign == 0, "nessun ostacolo statico nell'area di partenza (%d)" % foreign)
 
@@ -254,27 +238,24 @@ func _test_markers() -> void:
 	# Il deposito indicato e davvero il piu vicino, nella direzione giusta.
 	var nearest := INF
 	var nearest_center := Vector2.ZERO
-	for f: Dictionary in _district.terrain_features:
-		var marker: Vector2 = f.marker
-		if f.kind == &"deposit" and marker.length() >= ArenaRun.MARKER_MIN_DISTANCE and marker.length() < nearest:
+	var nearest_radius := 0.0
+	for s: Dictionary in _district.terrain_strokes:
+		var marker: Vector2 = s.marker
+		if s.kind == &"deposit" and marker.length() >= ArenaRun.MARKER_MIN_DISTANCE and marker.length() < nearest:
 			nearest = marker.length()
 			nearest_center = marker
+			nearest_radius = s.radius
 	var first: Dictionary = deposits[0] if not deposits.is_empty() else {}
 	_check(not first.is_empty() and absf(first.distance - nearest) < 0.1 and first.direction.normalized().dot(nearest_center.normalized()) > 0.99,
 		"il primo deposito indicato e il piu vicino (%.0f m)" % nearest)
-	# Scavato del tutto, sparisce dagli indicatori.
-	var cells: Array[Vector2i] = []
-	for f: Dictionary in _district.terrain_features:
-		if f.kind == &"deposit" and f.marker == nearest_center:
-			var center := _grid.cell_at(Vector3(f.center.x, 0.0, f.center.y))
-			for offset: Vector2i in f.offsets:
-				cells.append(center + offset)
-	_grid.set_cell_states(cells, NORMAL)
+	# Spianato del tutto, sparisce dagli indicatori.
+	var heap := _at(nearest_center)
+	_field.level(heap, nearest_radius + 1.0, _field.base_height_at(heap), 1.0)
 	await _frames(70)
 	var still := false
 	for m: Dictionary in run.current_markers():
 		still = still or (m.text == "ROTTAMI" and absf(m.distance - nearest) < 0.1)
-	_check(not still, "un deposito esaurito non e piu indicato")
+	_check(not still, "un deposito spianato non e piu indicato")
 	# R-29: il marker di un deposito 2x2 sta al centro del blocco, a mezza cella dalla cella di ancoraggio.
 	var even_ok := true
 	var even_found := false

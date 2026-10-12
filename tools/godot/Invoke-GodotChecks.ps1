@@ -31,7 +31,8 @@ $expectedMarkers = @(
     "PROTOTYPE01_INPUT_READY",
     "PROTOTYPE01_EXPOSURE_READY",
     "PROTOTYPE01_ARENA_READY",
-    "PROTOTYPE01_TERRAIN_GRID_READY",
+    # Alternative separate da "|": basta una (griglia della ferrovia o rilievo continuo del quartiere).
+    "PROTOTYPE01_TERRAIN_GRID_READY|PROTOTYPE01_TERRAIN_FIELD_READY",
     "PROTOTYPE01_CHARACTER_READY",
     "PROTOTYPE01_TERRAIN_MODE Dig",
     "PROTOTYPE01_CAMERA_READY",
@@ -84,7 +85,7 @@ function Invoke-Captured([string]$file, [string[]]$arguments, [int]$timeoutSecon
 }
 
 function Test-Markers([string]$text) {
-    $missing = @($expectedMarkers | Where-Object { -not $text.Contains($_) })
+    $missing = @($expectedMarkers | Where-Object { $marker = $_; -not ($marker -split '\|' | Where-Object { $text.Contains($_) }) })
     $errors = Get-RuntimeErrors $text
     if ($missing.Count -gt 0) { Write-Host "  FAIL marker mancanti: $($missing -join ', ')" }
     if ($errors.Count -gt 0) { Write-Host "  FAIL errori runtime:`n$($errors -join "`n")" }

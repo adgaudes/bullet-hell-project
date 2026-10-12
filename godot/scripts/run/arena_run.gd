@@ -38,6 +38,8 @@ const MAIN_MENU_SCENE := "res://scenes/main/main_menu.tscn"
 ## Nome a schermo di ogni boss (annuncio e barra vita).
 const BOSS_NAMES: Dictionary[StringName, String] = {&"demolisher": "IL DEMOLITORE", &"driller": "LA TRIVELLA"}
 ## Direzioni di arrivo annunciate: nome e verso nel mondo (nord = -Z = alto dello schermo).
+## Rilievo di base cotto da `tests/tools/bake_terrain_base.gd` (LFS); se manca si ricalcola.
+const BASE_RELIEF_PATH := "res://levels/district/base.bin"
 const BOSS_DIRECTIONS := [
 	["NORD", Vector3(0.0, 0.0, -1.0)], ["EST", Vector3(1.0, 0.0, 0.0)],
 	["SUD", Vector3(0.0, 0.0, 1.0)], ["OVEST", Vector3(-1.0, 0.0, 0.0)],
@@ -52,6 +54,8 @@ const BOSS_DIRECTIONS := [
 @export var player: PlayerCharacter
 @export var companion: Companion
 @export var grid: TerrainGrid
+## Rilievo continuo del livello (D-085); con questo nodo la griglia non c'e piu.
+@export var terrain_field: TerrainField
 @export var director: EnemyDirector
 @export var weapon: AutoWeapon
 @export var xp_field: XpField
@@ -106,6 +110,10 @@ var _profile: PlayerProfileService
 var _death_scrap_share := 0.0
 ## Fotografia della griglia a inizio livello e conteggi del tool, per la mappa finale (D-052).
 var _initial_terrain := PackedByteArray()
+## Quote iniziali del rilievo continuo per la mappa di fine livello (Task 13: RunMap.snapshot_heights).
+var _initial_heights := PackedFloat32Array()
+## Secondi in cui il cortile di partenza resta non scolpibile.
+var _start_protect_left := 0.0
 ## Mappa di fine run catturata alla vittoria, prima che l'orda e il boss siano liberati.
 var _final_map: Image
 var _start_position := Vector3.ZERO
@@ -135,7 +143,8 @@ func _ready() -> void:
 	_setup_camera_distance()
 	# La cella protetta (0,0) e un residuo della parita Unreal (smoke test): nel livello
 	# nessuna cella e intoccabile (R-28).
-	grid.set_protected_cell(Vector2i(-1, -1))
+	if grid != null:
+		grid.set_protected_cell(Vector2i(-1, -1))
 	boss_call_at = _boss_call_from_command_line(tuning.boss_call_seconds)
 
 	player.invulnerability_seconds = tuning.player_invulnerability
@@ -148,7 +157,8 @@ func _ready() -> void:
 	_death_scrap_share = tuning.death_scrap_share
 	_apply_permanent_upgrades()
 	_build_terrain_layout()
-	_initial_terrain = RunMap.snapshot(grid.state)
+	if grid != null:
+		_initial_terrain = RunMap.snapshot(grid.state)
 	_start_position = player.global_position
 
 	player.health_changed.connect(hud.set_health)
@@ -163,7 +173,8 @@ func _ready() -> void:
 		game_over.workshop_requested.connect(workshop.open)
 		# Tornando dall'Officina il passo successivo e ripartire.
 		workshop.closed.connect(game_over.focus_default.bind(false))
-	grid.command_applied.connect(_on_terrain_command)
+	if grid != null:
+		grid.command_applied.connect(_on_terrain_command)
 	hud.set_health(player.health, player.max_health)
 	_refresh_xp()
 	var title := LevelCatalog.title_of(level_id)
@@ -185,6 +196,7 @@ func _physics_process(delta: float) -> void:
 	if extraction_pad != null:
 		extraction_pad.advance(delta)
 	_tick_boss(delta)
+	_tick_start_protection(delta)
 	_tick_markers(delta)
 	_open_next_level_up()
 
@@ -204,10 +216,21 @@ func _tick_markers(delta: float) -> void:
 		hud.set_markers(current_markers())
 
 
-## Un cortile o un deposito resta indicato finche ha almeno una cella Raised:
-## un deposito scavato del tutto sparisce dagli indicatori.
+## Un cortile o un deposito resta indicato finche il suo argine o cumulo sporge dalla
+## base (rilievo continuo) o finche ha almeno una cella Raised (griglia): un deposito
+## spianato del tutto sparisce dagli indicatori.
 func _refresh_marker_targets() -> void:
 	_marker_targets.clear()
+	if terrain_field != null:
+		for stroke: Dictionary in district.terrain_strokes:
+			if stroke.height <= 0.0:
+				continue
+			var center := Vector3(stroke.center.x, 0.0, stroke.center.y)
+			# Fino al Task 9 (vene di rottami) anche i depositi contano finche il cumulo sporge.
+			if terrain_field.highest_bump(center, stroke.radius + 2.0, 0.8) == null:
+				continue
+			_add_marker_target(stroke.kind == &"deposit", stroke.marker)
+		return
 	for feature: Dictionary in district.terrain_features:
 		if feature.state != TerrainState.CellState.RAISED:
 			continue
@@ -220,15 +243,17 @@ func _refresh_marker_targets() -> void:
 		if not standing:
 			continue
 		# I vagoni sui binari (livello 2) sono depositi di rottami a tutti gli effetti.
-		var is_deposit: bool = feature.kind == &"deposit" or feature.kind == &"wagon"
 		# Il baricentro vero del blocco (R-29): i depositi 2x2 non hanno una cella centrale.
-		var marker: Vector2 = feature.get("marker", feature.center)
-		_marker_targets.append({
-			center = Vector3(marker.x, 0.0, marker.y),
-			kind = &"deposit" if is_deposit else &"courtyard",
-			text = "ROTTAMI" if is_deposit else "CORTILE",
-			color = MARKER_DEPOSIT_COLOR if is_deposit else MARKER_COURTYARD_COLOR,
-		})
+		_add_marker_target(feature.kind == &"deposit" or feature.kind == &"wagon", feature.get("marker", feature.center))
+
+
+func _add_marker_target(is_deposit: bool, marker: Vector2) -> void:
+	_marker_targets.append({
+		center = Vector3(marker.x, 0.0, marker.y),
+		kind = &"deposit" if is_deposit else &"courtyard",
+		text = "ROTTAMI" if is_deposit else "CORTILE",
+		color = MARKER_DEPOSIT_COLOR if is_deposit else MARKER_COURTYARD_COLOR,
+	})
 
 
 ## I due cortili e i due depositi piu vicini fuori vista, piu il boss se e in campo.
@@ -414,6 +439,11 @@ func _walkable_near(origin: Vector3, radius: float) -> Variant:
 ## La scala e scritta in quattro posti (R-27): se non coincidono le feature del quartiere
 ## finirebbero su celle sbagliate in silenzio. Qui si grida all'avvio.
 func _check_scale() -> void:
+	if district != null and terrain_field != null \
+			and (Vector2.ONE * terrain_field.half_extent() - district.half_extents()).length() > 0.5:
+		push_error("Scala incoerente: rilievo %.1f m di semilato, distretto %s" % [terrain_field.half_extent(), district.half_extents()])
+	if grid == null:
+		return
 	if district != null and not is_equal_approx(grid.cell_size_m(), RuinsDistrict.CELL):
 		push_error("Scala incoerente: griglia %.2f m per cella, distretto %.2f" % [grid.cell_size_m(), RuinsDistrict.CELL])
 	if director.path_field != null and district != null \
@@ -520,7 +550,8 @@ func _apply_permanent_upgrades() -> void:
 		applied.append("%s=%d" % [id, owned])
 		match id:
 			&"tool_reach":
-				player.tool_range_bonus_cm = grid.cell_size_m() * 100.0 * owned
+				if grid != null:
+					player.tool_range_bonus_cm = grid.cell_size_m() * 100.0 * owned
 			&"base_health":
 				player.set_max_health(tuning.player_max_health + owned)
 			&"reflexes":
@@ -555,6 +586,9 @@ func _build_terrain_layout() -> void:
 	if district == null:
 		_build_courtyard_walls()
 		return
+	if terrain_field != null:
+		_build_terrain_relief()
+		return
 	grid.plaza_radius = district.plaza_radius()
 	var raised := 0
 	var lowered := 0
@@ -575,10 +609,34 @@ func _build_terrain_layout() -> void:
 		% [district.terrain_features.size(), raised, lowered])
 
 
+## Rilievo continuo (D-085): base cotta (`BASE_RELIEF_PATH`) o ricalcolata dal quartiere,
+## poi le pennellate dei punti di interesse; dischi protetti attorno alle rovine e, per i
+## primi secondi, al cortile di partenza. Le quote iniziali per la mappa arrivano col Task 13.
+func _build_terrain_relief() -> void:
+	if not terrain_field.load_base(BASE_RELIEF_PATH):
+		district.apply_base_relief(terrain_field)
+	district.apply_strokes(terrain_field, companion.scrap_field if companion != null else null)
+	var margin: float = terrain_field.tuning.protected_radius_m
+	for rect: Rect2 in district.block_rects():
+		var center := rect.get_center()
+		terrain_field.set_protected(Vector3(center.x, 0.0, center.y), rect.size.length() * 0.5 + margin, true)
+	_start_protect_left = terrain_field.tuning.start_protected_seconds
+	terrain_field.set_protected(Vector3.ZERO, terrain_field.tuning.start_protected_radius_m, true)
+	print("PROTOTYPE01_TERRAIN_LAYOUT_READY strokes=%d" % district.terrain_strokes.size())
+
+
+func _tick_start_protection(delta: float) -> void:
+	if terrain_field == null or _start_protect_left <= 0.0:
+		return
+	_start_protect_left -= delta
+	if _start_protect_left <= 0.0:
+		terrain_field.set_protected(Vector3.ZERO, terrain_field.tuning.start_protected_radius_m, false)
+
+
 ## Mura del cortile: anello di celle Raised con un varco al centro di ogni lato.
 func _build_courtyard_walls() -> void:
 	var radius := tuning.wall_ring_radius
-	if radius <= 0:
+	if radius <= 0 or grid == null:
 		return
 	var center := Vector2i(grid.state.width / 2, grid.state.height / 2)
 	var cells: Array[Vector2i] = []
@@ -766,6 +824,11 @@ func abandon_run() -> void:
 
 ## Mappa del campo come l'ha lasciato il giocatore, per la schermata di fine livello.
 func build_run_map() -> Image:
+	if grid == null:
+		# Rilievo continuo: la mappa delle quote arriva col Task 13 (RunMap.render_heights).
+		var placeholder := Image.create_empty(64, 64, false, Image.FORMAT_RGB8)
+		placeholder.fill(Color(0.12, 0.1, 0.08))
+		return placeholder
 	var buildings: Array[Rect2] = []
 	if district != null:
 		for child in district.get_children():
@@ -933,7 +996,8 @@ func _blast_effect(center: Vector3, radius: float) -> void:
 
 ## Terrapieni spinati: le celle rialzate prendono un colore metallico chiaro.
 func _set_raised_tint(color: Color) -> void:
-	grid.raised_color_override = color
+	if grid != null:
+		grid.raised_color_override = color
 
 
 func _turret_part() -> Node3D:
