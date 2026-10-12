@@ -38,9 +38,26 @@ func _initialize() -> void:
 	await _frames(3)
 	await _test_uphill_slows()
 	await _test_enemy_gnaws_out_of_pit()
+	await _test_spawn_on_mound()
 	await _frames(2)
 	print("PROTOTYPE01_TESTS %s failures=%d" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
+
+
+## Review finale: un nemico nato su un cumulo deve nascere sopra il rilievo, non dentro
+## (la heightfield ha una faccia sola: chi nasce sotto cade per sempre).
+func _test_spawn_on_mound() -> void:
+	print("spawn on mound")
+	var at := Vector3(12.0, 0.0, 12.0)
+	_field.sculpt(at, 3.0, 2.0)
+	await _frames(2)
+	var enemy := _director.spawn_at(at)
+	var ground := _field.height_at(at)
+	_check(enemy.global_position.y >= ground + Enemy.spawn_height() - 0.05, "nasce sopra il cumulo (y %.2f, suolo %.2f)" % [enemy.global_position.y, ground])
+	await _frames(30)
+	_check(enemy.global_position.y > _field.height_at(enemy.global_position) - 0.5, "dopo mezzo secondo e ancora sopra il suolo (y %.2f)" % enemy.global_position.y)
+	_director.clear_horde()
+	await _frames(2)
 
 
 func _test_uphill_slows() -> void:

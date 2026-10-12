@@ -301,7 +301,7 @@ func drive(delta: float) -> void:
 				_wall_stall_left = WALL_STALL_SECONDS
 	var has_wall := false
 	if terrain_field != null:
-		has_wall = wall_point != Vector3.INF and _point_is_target(wall_point)
+		has_wall = wall_point != Vector3.INF and _point_is_target(wall_point) and _still_stands(wall_point)
 	else:
 		has_wall = _wall_target.x >= 0 and grid.state.get_state(_wall_target) == TerrainState.CellState.RAISED
 	if has_wall and _wall_stalled(delta):
@@ -383,6 +383,11 @@ func _start_demolition(cell: Vector2i) -> void:
 	print("PROTOTYPE01_BOSS_DEMOLISH_START X=%d Y=%d" % [cell.x, cell.y])
 
 
+## Sul rilievo: il punto sporge ancora dalla base (o ha una vena con rottami).
+func _still_stands(at: Vector3) -> bool:
+	return terrain_field.highest_bump(at, HAMMER_RADIUS * 0.5, WALL_MIN_DELTA) != null or _vein_under(at)
+
+
 ## Sul rilievo: un punto e un bersaglio se non e una propria barricata ne un punto ignorato.
 func _point_is_target(at: Vector3) -> bool:
 	for b in barricade_points:
@@ -447,6 +452,7 @@ func _tick_demolition_at(delta: float) -> void:
 		return
 	var at := demolish_point
 	demolish_point = Vector3.INF
+	wall_point = Vector3.INF
 	_blade.position.y = BLADE_REST.y
 	walls_demolished += 1
 	DebrisBurst.spawn(get_parent(), Vector3(at.x, terrain_field.height_at(at) + 0.6, at.z), EARTH_COLOR, 14, 5.0, 0.22)

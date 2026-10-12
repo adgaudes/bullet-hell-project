@@ -469,7 +469,8 @@ func _apply_brush(delta: float) -> void:
 			if got > 0.0:
 				terrain_field.player_sculpt(terrain_target, radius, rate * got / wanted, terrain_tool_mode)
 		TerrainField.ToolMode.LEVEL:
-			var volume := terrain_field.player_level(terrain_target, radius, terrain_field.tuning.level_rate * delta)
+			# La terra per alzare i dintorni viene dallo zaino: oltre quella la pennellata si scala.
+			var volume := terrain_field.player_level_budget(terrain_target, radius, terrain_field.tuning.level_rate * delta, pack.amount)
 			if volume < 0.0:
 				pack.give(-volume)
 			else:

@@ -43,6 +43,7 @@ func _initialize() -> void:
 	await _test_weapon_kills_and_drops_xp()
 	await _test_wall_blocks_line_of_fire()
 	await _test_uphill_slows_enemies()
+	await _test_dig_debris_throttled()
 	await _test_level_up_flow()
 	_test_companion_upgrades()
 	await _test_death_ends_run()
@@ -249,6 +250,23 @@ func _test_uphill_slows_enemies() -> void:
 	_field.level(mound, 6.0, _field.base_height_at(mound), 1.0)
 	await _frames(2)
 	_clear_enemies()
+
+
+## Review finale: le zolle che saltano mentre si scava sono al piu una ogni 0,2 s, non una
+## per passo fisico (120 nodi al secondo).
+func _test_dig_debris_throttled() -> void:
+	print("dig debris")
+	_place_player(Vector3.ZERO)
+	_run._start_protect_left = 0.0
+	_field.set_protected(Vector3.ZERO, _field.tuning.start_protected_radius_m, false)
+	var before := _scene.find_children("*", "CPUParticles3D", false, false).size()
+	for i in 24:
+		_field.player_sculpt(Vector3(3.0, 0.0, -3.0), 2.4, -0.05, TerrainField.ToolMode.DIG)
+		await physics_frame
+	var bursts := _scene.find_children("*", "CPUParticles3D", false, false).size() - before
+	_check(bursts >= 1 and bursts <= 3, "24 passi di scavo in 0,4 s: da 1 a 3 zolle (%d)" % bursts)
+	_field.level(Vector3(3.0, 0.0, -3.0), 3.0, _field.base_height_at(Vector3(3.0, 0.0, -3.0)), 1.0)
+	await _frames(2)
 
 
 func _test_level_up_flow() -> void:

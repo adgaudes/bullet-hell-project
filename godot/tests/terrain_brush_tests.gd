@@ -26,6 +26,7 @@ func _initialize() -> void:
 	await _test_raise_with_empty_pack()
 	await _test_dig_with_full_pack()
 	await _test_level_mode()
+	await _test_level_with_empty_pack()
 	await _test_protected_is_red()
 	await _frames(2)
 	print("PROTOTYPE01_TESTS %s failures=%d" % ["PASS" if _failures == 0 else "FAIL", _failures])
@@ -104,6 +105,22 @@ func _test_level_mode() -> void:
 	await _hold(0.6)
 	_check(_field.height_at(target + Vector3(1.0, 0, 0)) < bump - 0.3, "livella abbassa il cumulo accanto al centro")
 	_check(_player._preview.last_color == BrushPreview.LEVEL_COLOR, "anello bianco in Livella")
+
+
+## Review finale: Livella scambia terra nei due versi (spec sezione 3): a zaino vuoto non
+## puo alzare i dintorni verso una cima.
+func _test_level_with_empty_pack() -> void:
+	print("level with empty pack")
+	var target := _player.terrain_target
+	_field.sculpt(target, 1.2, 1.0)
+	var side := target + Vector3(1.6, 0.0, 0.0)
+	var before := _field.height_at(side)
+	_player.pack.take(_player.pack.capacity)
+	await _hold(0.4)
+	_check(_field.height_at(side) <= before + 0.01, "a zaino vuoto Livella non alza i dintorni (%.2f -> %.2f)" % [before, _field.height_at(side)])
+	_check(_player.pack.amount < 0.01, "lo zaino resta vuoto (%.2f m3)" % _player.pack.amount)
+	_player.pack.give(20.0)
+	_field.level(target, 3.0, _field.base_height_at(target), 1.0)
 
 
 func _test_protected_is_red() -> void:

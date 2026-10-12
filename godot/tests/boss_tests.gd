@@ -144,6 +144,8 @@ func _test_call_and_arrival() -> void:
 	if _boss == null:
 		return
 	_check(_boss.terrain_field == _field, "il boss conosce il rilievo")
+	_check(_boss.global_position.y >= _field.height_at(_boss.global_position) + Demolisher.boss_spawn_height() - 0.3,
+		"nasce sopra il rilievo (y %.2f, suolo %.2f)" % [_boss.global_position.y, _field.height_at(_boss.global_position)])
 	_check(_director.enemies.has(_boss), "registrato fra i nemici: armi e scavo esplosivo lo vedono")
 	var offset := _boss.global_position - _player.global_position
 	offset.y = 0.0
@@ -260,7 +262,8 @@ func _test_boss_levels_player_mound() -> void:
 	var demolished := _boss.walls_demolished
 	await _frames(60 * 6)
 	_check(_field.delta_at(at) < 0.6, "il Demolitore spiana il cumulo del giocatore (delta %.2f)" % _field.delta_at(at))
-	_check(_boss.walls_demolished > demolished, "contato come muro demolito (%d)" % _boss.walls_demolished)
+	_check(_boss.walls_demolished == demolished + 1, "contato come un solo muro demolito (%d)" % (_boss.walls_demolished - demolished))
+	_check(not _boss.is_demolishing() or _planar_distance(_boss.demolish_point, at) > 3.0, "spianato, non rimartella lo stesso punto")
 	_player._invulnerable_left = 0.0
 
 

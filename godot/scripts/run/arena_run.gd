@@ -122,9 +122,13 @@ var cells_raised := 0
 ## Rilievo continuo: metri cubi scavati e alzati dal giocatore.
 var volume_dug := 0.0
 var volume_raised := 0.0
-## Secondi di scavo continuo accumulati per lo scavo esplosivo (scatta ogni `every_seconds`).
+## Secondi di scavo continuo accumulati per lo scavo esplosivo (scatta ogni `every_seconds`)
+## e passo fisico dell'ultima pennellata (tempo di gioco, non reale).
 var _blast_charge := 0.0
-var _last_sculpt_msec := 0
+var _last_sculpt_frame := -1
+## Le zolle che saltano mentre si scava: al piu una ogni DEBRIS_EVERY_SECONDS.
+const DEBRIS_EVERY_SECONDS := 0.2
+var _debris_left := 0.0
 
 
 func _ready() -> void:
@@ -634,7 +638,7 @@ func _build_terrain_layout() -> void:
 ## poi le pennellate dei punti di interesse; dischi protetti attorno alle rovine e, per i
 ## primi secondi, al cortile di partenza. Le quote iniziali per la mappa arrivano col Task 13.
 func _build_terrain_relief() -> void:
-	if not terrain_field.load_base(BASE_RELIEF_PATH):
+	if not terrain_field.load_base(BASE_RELIEF_PATH, district.layout_seed):
 		district.apply_base_relief(terrain_field)
 	district.apply_strokes(terrain_field, _scrap_field())
 	var margin: float = terrain_field.tuning.protected_radius_m
@@ -992,11 +996,13 @@ func _upgrade_companion_turret(new_level: int) -> void:
 func _on_player_sculpted(center: Vector3, radius: float, volume: float, mode: int) -> void:
 	volume_dug += maxf(-volume, 0.0)
 	volume_raised += maxf(volume, 0.0)
-	var now := Time.get_ticks_msec()
-	var since := (now - _last_sculpt_msec) * 0.001 if _last_sculpt_msec > 0 else 0.0
-	_last_sculpt_msec = now
+	var frame := Engine.get_physics_frames()
+	var since := float(frame - _last_sculpt_frame) / Engine.physics_ticks_per_second if _last_sculpt_frame >= 0 else 0.0
+	_last_sculpt_frame = frame
 	var top := Vector3(center.x, terrain_field.height_at(center) + 0.1, center.z)
-	if absf(volume) > 0.05:
+	_debris_left -= since if since < 0.5 else _debris_left
+	if absf(volume) > 0.05 and _debris_left <= 0.0:
+		_debris_left = DEBRIS_EVERY_SECONDS
 		DebrisBurst.spawn(get_parent(), top, Demolisher.EARTH_COLOR, 4, 2.6, 0.12)
 	if mode != TerrainField.ToolMode.DIG or dig_blast_radius <= 0.0 or volume >= 0.0:
 		_blast_charge = 0.0

@@ -19,7 +19,7 @@ const MIN_HEIGHT := -2.5
 const MAX_HEIGHT := 4.0
 const REGION_SIZE := 256
 const SAVE_MAGIC := "TFLD"
-const SAVE_VERSION := 1
+const SAVE_VERSION := 2
 const TOOL_MODE_NAMES: Array[String] = ["Dig", "Raise", "Level", "Lamp"]
 
 @export var size_m := 204.0
@@ -177,6 +177,44 @@ func player_level(center: Vector3, radius: float, strength: float) -> float:
 	return volume
 
 
+## Livella del giocatore con la terra disponibile: se per alzare i dintorni servirebbero
+## piu di [param max_raise_m3], la pennellata viene scalata (spec sezione 3: Livella
+## scambia terra nei due versi, non la crea).
+func player_level_budget(center: Vector3, radius: float, strength: float, max_raise_m3: float) -> float:
+	var target := height_at(center)
+	var needed := _raise_volume(center, radius, target, strength)
+	if needed > max_raise_m3:
+		strength *= maxf(max_raise_m3, 0.0) / needed
+	if strength <= 0.0:
+		return 0.0
+	return player_level(center, radius, strength)
+
+
+## Terra (m3) che `level` aggiungerebbe nel disco, senza scrivere.
+func _raise_volume(center: Vector3, radius: float, target: float, strength: float) -> float:
+	var raised := 0.0
+	var r2 := radius * radius
+	var x0 := maxi(int(floor((center.x - radius + _half) / SPACING)), 0)
+	var x1 := mini(int(ceil((center.x + radius + _half) / SPACING)), resolution - 1)
+	var z0 := maxi(int(floor((center.z - radius + _half) / SPACING)), 0)
+	var z1 := mini(int(ceil((center.z + radius + _half) / SPACING)), resolution - 1)
+	for iz in range(z0, z1 + 1):
+		var wz := iz * SPACING - _half
+		for ix in range(x0, x1 + 1):
+			var wx := ix * SPACING - _half
+			var d2 := ((wx - center.x) * (wx - center.x) + (wz - center.z) * (wz - center.z)) / r2
+			if d2 >= 1.0:
+				continue
+			var i := iz * resolution + ix
+			if _protected[i] != 0:
+				continue
+			var falloff := (1.0 - d2) * (1.0 - d2)
+			var before := _heights[i]
+			var after := clampf(before + (target - before) * clampf(strength * falloff, 0.0, 1.0), MIN_HEIGHT, MAX_HEIGHT)
+			raised += maxf(after - before, 0.0) * SPACING * SPACING
+	return raised
+
+
 ## Fissa il rilievo attuale come "naturale": delta e bump si misurano da qui.
 func commit_base() -> void:
 	_base = _heights.duplicate()
@@ -227,7 +265,9 @@ func _tint_disc(center: Vector3, radius: float, color: Color, strength: float) -
 
 # --- Salvataggio del rilievo di base ------------------------------------------------
 
-func save_base(path: String) -> int:
+## Scrive le quote e il seme del layout che le ha prodotte ([param layout_seed]):
+## un file cotto con un altro quartiere viene rifiutato da `load_base`.
+func save_base(path: String, layout_seed := 0) -> int:
 	var file := FileAccess.open(path + ".tmp", FileAccess.WRITE)
 	if file == null:
 		return 0
@@ -235,6 +275,7 @@ func save_base(path: String) -> int:
 	file.store_32(SAVE_VERSION)
 	file.store_32(resolution)
 	file.store_float(size_m)
+	file.store_32(layout_seed)
 	var raw := _heights.to_byte_array()
 	var packed := raw.compress(FileAccess.COMPRESSION_ZSTD)
 	file.store_32(raw.size())
@@ -245,13 +286,15 @@ func save_base(path: String) -> int:
 	return 20 + packed.size()
 
 
-func load_base(path: String) -> bool:
+func load_base(path: String, layout_seed := 0) -> bool:
 	var file := FileAccess.open(path, FileAccess.READ)
 	if file == null:
 		return false
 	if file.get_buffer(4).get_string_from_ascii() != SAVE_MAGIC or file.get_32() != SAVE_VERSION:
 		return false
 	if file.get_32() != resolution or not is_equal_approx(file.get_float(), size_m):
+		return false
+	if file.get_32() != layout_seed:
 		return false
 	var raw_size := file.get_32()
 	var packed_size := file.get_32()

@@ -148,8 +148,12 @@ func spawn_kind(world: Vector3, kind: StringName) -> Enemy:
 
 
 ## Registra un nemico gia costruito (boss): armi e scavo esplosivo lo vedono come gli altri.
+## [param world].y e l'altezza del centro sopra il suolo: sul rilievo si somma la quota del
+## terreno (un corpo nato dentro la heightfield, che ha una faccia sola, cadrebbe per sempre).
 func add_enemy(enemy: Enemy, world: Vector3) -> void:
 	add_child(enemy)
+	if terrain_field != null:
+		world.y += terrain_field.height_at(world)
 	enemy.global_position = world
 	# Entra nell'albero all'origine e viene spostato nello stesso passo: senza questo
 	# l'interpolazione fisica lo disegnerebbe per un frame fra l'origine e l'anello (E-10).
@@ -319,7 +323,8 @@ func _leash(enemy: Enemy) -> bool:
 	var point: Variant = _find_spawn_point()
 	if point == null:
 		return false
-	enemy.global_position = Vector3(point.x, Enemy.spawn_height(), point.z)
+	var ground := terrain_field.height_at(point) if terrain_field != null else 0.0
+	enemy.global_position = Vector3(point.x, ground + Enemy.spawn_height(), point.z)
 	# Teletrasporto: senza questo l'interpolazione fisica disegna una striscia di 40 m.
 	enemy.reset_physics_interpolation()
 	enemy.velocity = Vector3.ZERO
