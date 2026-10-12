@@ -23,6 +23,7 @@ func _initialize() -> void:
 	_test_is_flat()
 	_test_save_load_base()
 	await _test_player_sculpt_signals()
+	_test_soil_pack()
 	await _frames(2)
 	print("PROTOTYPE01_TESTS %s failures=%d" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
@@ -208,6 +209,19 @@ func _test_player_sculpt_signals() -> void:
 	_check(got.size() == 1 and got[0][3] == TerrainField.ToolMode.DIG and absf(got[0][2] - v) < 0.001, "player_sculpt emette player_sculpted con volume e modo")
 	_check(absf(_field.volume_moved - absf(v)) < 0.001, "volume_moved accumula il valore assoluto")
 	await _frames(1)
+
+
+func _test_soil_pack() -> void:
+	print("soil pack")
+	var pack := SoilPack.new(60.0, 20.0)
+	var seen: Array = []
+	pack.changed.connect(func(a: float, c: float) -> void: seen.append([a, c]))
+	_check(absf(pack.take(5.0) - 5.0) < 0.001 and absf(pack.amount - 15.0) < 0.001, "take toglie quello che chiede")
+	_check(absf(pack.take(50.0) - 15.0) < 0.001 and pack.is_empty(), "take oltre il contenuto da solo cio che c'e e svuota")
+	_check(absf(pack.give(70.0) - 60.0) < 0.001 and absf(pack.fill_ratio() - 1.0) < 0.001, "give oltre la capacita accoglie fino al tetto, il resto si perde")
+	pack.add_capacity(20.0)
+	_check(absf(pack.capacity - 80.0) < 0.001 and absf(pack.fill_ratio() - 0.75) < 0.001, "add_capacity alza il tetto")
+	_check(seen.size() == 4, "ogni cambio emette changed (%d)" % seen.size())
 
 
 func _check(condition: bool, label: String) -> void:
