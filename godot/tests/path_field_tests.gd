@@ -48,6 +48,7 @@ func _initialize() -> void:
 	await _test_full_field_mode_unchanged()
 	await _test_spawn_ring_and_leash()
 	await _test_rectangular_arena()
+	await _test_slope_blocks_path()
 	# T-12: i nodi messi in coda con queue_free vanno liberati prima di uscire, o
 	# il motore segnala istanze ObjectDB perse all'uscita.
 	await _frames(2)
@@ -312,3 +313,40 @@ func _test_rectangular_arena() -> void:
 	_target.global_position = Vector3.ZERO
 	field.queue_free()
 	await _frames(2)
+
+
+func _test_slope_blocks_path() -> void:
+	print("slope")
+	var field := TerrainField.new()
+	field.size_m = 48.0
+	field.tuning = TerrainTuning.new()
+	root.add_child(field)
+	var target := Node3D.new()
+	root.add_child(target)
+	target.global_position = Vector3(0, 0, 0)
+	var path := PathField.new()
+	path.target = target
+	path.terrain_field = field
+	path.half_extent = 24.0
+	path.window_cells = 0
+	root.add_child(path)
+	await _frames(3)
+	path.solve()
+	var far := Vector3(0, 0, 14)
+	_check(path.cost_at(far) < PathField.UNREACHABLE, "in piano la cella lontana e raggiungibile")
+	# Un argine alto 1,6 m e lungo 30 m fra il bersaglio e la cella.
+	for x in range(-15, 16, 2):
+		field.sculpt(Vector3(x, 0, 7), 2.4, 1.6)
+	await _frames(1)
+	path.solve()
+	_check(path.cost_at(far) > path.cost_at(Vector3(0, 0, 4)) + 20.0, "l'argine costringe ad aggirare: costo molto maggiore")
+	_check(not path.is_walkable(Vector3(0, 0, 6.2)), "il fianco ripido non e calpestabile")
+	_check(path.is_walkable(Vector3(0, 0, 7)), "la cima (piana) e calpestabile")
+	# Dolce: un dosso di 0,4 m non blocca.
+	for x in range(-15, 16, 2):
+		field.level(Vector3(x, 0, 7), 2.6, 0.4, 1.0)
+	await _frames(1)
+	path.solve()
+	_check(path.cost_at(far) < path.cost_at(Vector3(0, 0, 4)) + 15.0, "un dosso dolce si attraversa")
+	path.queue_free()
+	field.queue_free()
