@@ -226,10 +226,14 @@ func _refresh_marker_targets() -> void:
 			if stroke.height <= 0.0:
 				continue
 			var center := Vector3(stroke.center.x, 0.0, stroke.center.y)
-			# Fino al Task 9 (vene di rottami) anche i depositi contano finche il cumulo sporge.
-			if terrain_field.highest_bump(center, stroke.radius + 2.0, 0.8) == null:
+			var is_deposit: bool = stroke.kind == &"deposit"
+			if is_deposit and _scrap_field() != null:
+				# Un deposito vale finche la sua vena ha rottami, anche se il cumulo e spianato.
+				if _scrap_field().vein_scrap_left(center) <= 0:
+					continue
+			elif terrain_field.highest_bump(center, stroke.radius + 2.0, 0.8) == null:
 				continue
-			_add_marker_target(stroke.kind == &"deposit", stroke.marker)
+			_add_marker_target(is_deposit, stroke.marker)
 		return
 	for feature: Dictionary in district.terrain_features:
 		if feature.state != TerrainState.CellState.RAISED:
@@ -245,6 +249,10 @@ func _refresh_marker_targets() -> void:
 		# I vagoni sui binari (livello 2) sono depositi di rottami a tutti gli effetti.
 		# Il baricentro vero del blocco (R-29): i depositi 2x2 non hanno una cella centrale.
 		_add_marker_target(feature.kind == &"deposit" or feature.kind == &"wagon", feature.get("marker", feature.center))
+
+
+func _scrap_field() -> ScrapField:
+	return companion.scrap_field if companion != null else null
 
 
 func _add_marker_target(is_deposit: bool, marker: Vector2) -> void:
@@ -615,7 +623,7 @@ func _build_terrain_layout() -> void:
 func _build_terrain_relief() -> void:
 	if not terrain_field.load_base(BASE_RELIEF_PATH):
 		district.apply_base_relief(terrain_field)
-	district.apply_strokes(terrain_field, companion.scrap_field if companion != null else null)
+	district.apply_strokes(terrain_field, _scrap_field())
 	var margin: float = terrain_field.tuning.protected_radius_m
 	for rect: Rect2 in district.block_rects():
 		var center := rect.get_center()

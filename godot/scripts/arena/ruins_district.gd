@@ -545,8 +545,8 @@ func apply_base_relief(field: TerrainField) -> void:
 
 
 ## Pennellate dei punti di interesse sopra la base: sporgono da essa, cosi il Demolitore
-## le vede come gli argini del layout. Con [param scrap_field] le vene dei depositi si
-## registrano (Task 9: `add_vein`); finche il metodo manca si saltano.
+## le vede come gli argini del layout. Con [param scrap_field] ogni deposito registra la
+## sua vena di rottami alla quota di base del cumulo (spec 5.1).
 func apply_strokes(field: TerrainField, scrap_field: ScrapField = null) -> void:
 	for stroke: Dictionary in terrain_strokes:
 		var amount: float = stroke.height / line_overlap(stroke.step, stroke.brush)
@@ -555,8 +555,8 @@ func apply_strokes(field: TerrainField, scrap_field: ScrapField = null) -> void:
 		var center := Vector3(stroke.center.x, 0.0, stroke.center.y)
 		if stroke.tint.a > 0.0:
 			field.tint(center, stroke.radius, stroke.tint, 1.0)
-		if stroke.kind == &"deposit" and scrap_field != null and scrap_field.has_method(&"add_vein"):
-			scrap_field.call(&"add_vein", center, stroke.radius, stroke.scrap, field.base_height_at(center))
+		if stroke.kind == &"deposit" and scrap_field != null:
+			scrap_field.add_vein(center, stroke.radius, stroke.scrap, field.base_height_at(center))
 
 
 # --- Edifici e oggetti dentro il perimetro ----------------------------------------------

@@ -248,14 +248,18 @@ func _test_markers() -> void:
 	var first: Dictionary = deposits[0] if not deposits.is_empty() else {}
 	_check(not first.is_empty() and absf(first.distance - nearest) < 0.1 and first.direction.normalized().dot(nearest_center.normalized()) > 0.99,
 		"il primo deposito indicato e il piu vicino (%.0f m)" % nearest)
-	# Spianato del tutto, sparisce dagli indicatori.
+	# Vena esaurita (tutti i rottami estratti), sparisce dagli indicatori anche se il cumulo resta.
 	var heap := _at(nearest_center)
-	_field.level(heap, nearest_radius + 1.0, _field.base_height_at(heap), 1.0)
+	var scrap_field: ScrapField = _scene.get_node(^"ScrapField")
+	_check(scrap_field.vein_scrap_left(heap) >= 6, "il deposito ha una vena (%d rottami)" % scrap_field.vein_scrap_left(heap))
+	_field.sculpt(heap, nearest_radius, -2.0)
+	scrap_field.extract_from_veins(heap, nearest_radius, 100.0)
+	_check(scrap_field.vein_scrap_left(heap) == 0, "vena esaurita")
 	await _frames(70)
 	var still := false
 	for m: Dictionary in run.current_markers():
 		still = still or (m.text == "ROTTAMI" and absf(m.distance - nearest) < 0.1)
-	_check(not still, "un deposito spianato non e piu indicato")
+	_check(not still, "un deposito esaurito non e piu indicato")
 	# R-29: il marker di un deposito 2x2 sta al centro del blocco, a mezza cella dalla cella di ancoraggio.
 	var even_ok := true
 	var even_found := false

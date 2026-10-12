@@ -1,7 +1,8 @@
 extends SceneTree
-## Test delle correzioni di economia e ritmo (D-056): rottami solo dalle celle
-## rialzate, rottami di recupero per livelli, carte ripetibili, rottamatori veloci,
-## menu di level-up aperto a fine passo. Eseguire con:
+## Test delle correzioni di economia e ritmo (D-056) sul rilievo continuo (D-085):
+## rottami solo dalle vene sepolte nei cumuli, rottami appoggiati al rilievo, rottami
+## di recupero per livelli, carte ripetibili, rottamatori veloci, menu di level-up
+## aperto a fine passo. Le vene si provano su un TerrainField di 64 m a parte. Eseguire con:
 ##   godot_console --headless --path godot --fixed-fps 60 --script res://tests/economy_tests.gd
 
 const RunScene := preload("res://scenes/main/arena_run.tscn")
@@ -11,7 +12,8 @@ const RAISE := TerrainState.ToolMode.RAISE
 var _failures := 0
 var _scene: Node3D
 var _run: ArenaRun
-var _grid: TerrainGrid
+var _field: TerrainField
+var _vein_scrap: ScrapField
 var _player: PlayerCharacter
 var _director: EnemyDirector
 var _scrap: ScrapField
@@ -25,7 +27,6 @@ func _initialize() -> void:
 	_scene = RunScene.instantiate()
 	root.add_child(_scene)
 	_run = _scene.get_node(^"Run")
-	_grid = _scene.get_node(^"TerrainGrid")
 	_player = _scene.get_node(^"Player")
 	_director = _scene.get_node(^"EnemyDirector")
 	_scrap = _scene.get_node(^"ScrapField")
@@ -36,6 +37,12 @@ func _initialize() -> void:
 	(_scene.get_node(^"PlayerWeapon") as Node).set_physics_process(false)
 	_companion.set_physics_process(false)
 	_test_scrap_sources()
+	_setup_vein_field()
+	await _frames(3)
+	_test_scrap_only_from_veins()
+	_test_vein_exhausted_gives_nothing()
+	await _test_scrap_rests_and_rolls()
+	_field.queue_free()
 	_test_recovery_scrap()
 	await _test_filler_effects()
 	await _test_runners()
@@ -100,17 +107,62 @@ func _test_catalog_and_fillers() -> void:
 func _test_scrap_sources() -> void:
 	print("scrap sources")
 	_check(not _scrap.bare_ground_yields_scrap, "nel livello il terreno nudo non rende rottami")
-	var before := _scrap.count()
-	_check(_grid.apply_command_at(Vector3(0.0, 0.0, -4.8), DIG, _player) and _scrap.count() == before,
-		"scavare un fossato nel terreno nudo: nessun rottame")
-	# Un muro del cortile (anello a 4 celle dal centro): smontarlo rende un rottame.
-	var wall := Vector3(2.4, 0.0, -9.6)
-	_check(_grid.cell_state_at(wall) == TerrainState.CellState.RAISED, "c'e un muro del cortile")
-	_check(_grid.apply_command_at(wall, DIG, _player) and _scrap.count() == before + 1, "smontare un muro rende un rottame")
-	_check(_grid.apply_command_at(wall, DIG, _player) and _scrap.count() == before + 1, "scavare ancora li sotto non ne rende altri")
-	_check(_grid.apply_command_at(Vector3(4.8, 0.0, 0.0), RAISE, _player)
-		and _grid.apply_command_at(Vector3(4.8, 0.0, 0.0), DIG, _player) and _scrap.count() == before + 2,
-		"un terrapieno tuo, smontato, rende il rottame che e costato")
+	_check(_scrap.terrain_field != null and not _scrap.veins().is_empty(), "il livello registra le vene dei depositi (%d)" % _scrap.veins().size())
+
+
+## Campo di 64 m senza rilievo di base, con un ScrapField collegato: le vene si provano
+## senza il rumore del quartiere.
+func _setup_vein_field() -> void:
+	_field = TerrainField.new()
+	_field.size_m = 64.0
+	_field.tuning = TerrainTuning.new()
+	_field.position = Vector3(0.0, -50.0, 0.0)
+	root.add_child(_field)
+	_vein_scrap = ScrapField.new()
+	_vein_scrap.terrain_field = _field
+	_vein_scrap.bare_ground_yields_scrap = false
+	_field.add_child(_vein_scrap)
+
+
+func _test_scrap_only_from_veins() -> void:
+	print("veins")
+	_vein_scrap.add_vein(Vector3(10, 0, 10), 3.0, 6, 0.0)
+	_field.sculpt(Vector3(10, 0, 10), 3.0, 1.5)
+	_check(_vein_scrap.vein_scrap_left(Vector3(10, 0, 10)) == 6, "la vena parte con sei rottami")
+	var before := _vein_scrap.count()
+	_field.player_sculpt(Vector3(10, 0, 10), 2.4, -0.3, TerrainField.ToolMode.DIG)
+	_check(_vein_scrap.count() == before, "scavare la parte sopra la base del cumulo non da rottami")
+	for i in 12:
+		_field.player_sculpt(Vector3(10, 0, 10), 2.4, -0.3, TerrainField.ToolMode.DIG)
+	_check(_vein_scrap.count() > before, "sotto la base della vena escono rottami (%d)" % (_vein_scrap.count() - before))
+	_check(_vein_scrap.count() - before <= 6, "mai piu della vena")
+	for i in 30:
+		_field.player_sculpt(Vector3(10, 0, 10), 2.4, -0.3, TerrainField.ToolMode.DIG)
+	_check(_vein_scrap.vein_scrap_left(Vector3(10, 0, 10)) == 0 and _vein_scrap.count() - before == 6, "la vena si esaurisce a sei")
+	var exhausted := _vein_scrap.count()
+	_field.player_sculpt(Vector3(10, 0, 10), 2.4, -0.3, TerrainField.ToolMode.DIG)
+	_check(_vein_scrap.count() == exhausted, "vena esaurita: niente rottami")
+
+
+func _test_vein_exhausted_gives_nothing() -> void:
+	print("bare ground")
+	var before := _vein_scrap.count()
+	for i in 20:
+		_field.player_sculpt(Vector3(-20, 0, -20), 2.4, -0.3, TerrainField.ToolMode.DIG)
+	_check(_vein_scrap.count() == before, "il suolo nudo non da rottami (D-056)")
+
+
+func _test_scrap_rests_and_rolls() -> void:
+	print("rest and roll")
+	_field.sculpt(Vector3(-10, 0, 10), 3.0, 0.8)
+	_vein_scrap.spawn_on_ground(Vector3(-10, 0, 10))
+	var scrap_at: Variant = _vein_scrap.nearest(Vector3(-10, 0, 10), 0.5)
+	var expected := _field.height_at(Vector3(-10, 0, 10)) + ScrapField.SCRAP_SIZE
+	_check(scrap_at != null and absf((scrap_at as Vector3).y - expected) < 0.05, "il rottame poggia sulla quota del rilievo")
+	_field.sculpt(Vector3(-10, 0, 10), 2.4, 1.0)
+	await _frames(2)
+	var moved: Variant = _vein_scrap.nearest(Vector3(-10, 0, 10), 4.0)
+	_check(moved != null and Vector2((moved as Vector3).x + 10.0, (moved as Vector3).z - 10.0).length() > 1.0, "alzare sotto il rottame lo fa rotolare piu in basso")
 
 
 func _test_recovery_scrap() -> void:
