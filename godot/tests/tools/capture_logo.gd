@@ -12,8 +12,8 @@ func _initialize() -> void:
 			_out = arg.trim_prefix("--out=")
 	await process_frame
 	await _render("logo_wide", "wide", 150, Vector2i(2048, 640), Color(0, 0, 0, 0), true)
-	await _render("logo_stacked", "stacked", 150, Vector2i(1024, 1024), Color(0, 0, 0, 0), true)
-	await _render("icon", "stacked", 44, Vector2i(256, 256), Color("b5652d"), false)
+	await _render("logo_stacked", "stacked", 84, Vector2i(1024, 1024), Color(0, 0, 0, 0), true)
+	await _render("icon", "stacked", 20, Vector2i(256, 256), Color("b5652d"), false)
 	quit()
 
 

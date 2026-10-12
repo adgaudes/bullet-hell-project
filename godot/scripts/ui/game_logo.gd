@@ -1,7 +1,7 @@
 class_name GameLogo
 extends Control
 ## Logo "Dwarmageddon: Dig or Die" (D-079), vettoriale: una Label per lettera su una
-## linea di base ad arco, chiodo piantato nella prima "O" con crepa, zolla con ciuffi
+## linea di base ad arco (sempre su una riga), chiodo piantato nella prima "O" con crepa, zolla con ciuffi
 ## d'erba sotto, sottotitolo su targa inclinata. I metodi `set_*_progress` (0..1)
 ## servono all'intro (BootIntro) per animarlo; `set_all(1.0)` lo mostra finito.
 
@@ -39,11 +39,10 @@ var _font_height := 0.0
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_rows.clear()
-	if layout == "wide":
-		_rows.append(TITLE)
-	else:
-		_rows.append(TITLE.substr(0, 6))
-		_rows.append(TITLE.substr(6))
+	# Il nome resta sempre su una riga (scelta del proprietario, 12 ottobre 2026: la
+	# divisione DWARMA / GEDDON non gli piaceva). "stacked" cambia solo la targa del
+	# sottotitolo, piu larga e piu alta per i formati quadrati.
+	_rows.append(TITLE)
 	_material = ShaderMaterial.new()
 	_material.shader = load("res://resources/materials/logo_letters.gdshader")
 	_material.set_shader_parameter(&"top_y", float(letter_size) * 0.15)
@@ -193,6 +192,8 @@ func _build_subtitle() -> void:
 	_plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_plate)
 	var plate_size := Vector2(letter_size * 3.4, letter_size * 0.42)
+	if layout == "stacked":
+		plate_size = Vector2(custom_minimum_size.x * 0.6, letter_size * 0.5)
 	_plate.position = Vector2((custom_minimum_size.x - plate_size.x) * 0.5, _ground_rect.position.y + _ground_rect.size.y * 0.25)
 	_plate.size = plate_size
 	_plate.pivot_offset = plate_size * 0.5
@@ -211,7 +212,7 @@ func _build_subtitle() -> void:
 	_subtitle.text = SUBTITLE
 	_subtitle.theme_type_variation = &"SectionLabel"
 	_subtitle.add_theme_font_override(&"font", UiPalette.title_font())
-	_subtitle.add_theme_font_size_override(&"font_size", int(letter_size * 0.28))
+	_subtitle.add_theme_font_size_override(&"font_size", int(letter_size * (0.34 if layout == "stacked" else 0.28)))
 	_subtitle.add_theme_color_override(&"font_color", UiPalette.TEXT)
 	_subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_subtitle.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
