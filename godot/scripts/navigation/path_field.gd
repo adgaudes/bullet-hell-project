@@ -69,6 +69,15 @@ var last_recenter_usec := 0
 
 var _static_blocked := PackedByteArray()
 var _blocked := PackedByteArray()
+## Con `terrain_field`: celle troppo ripide (1) e, per cella, i passi consentiti verso le vicine,
+## un bit per direzione nell'ordine di NEIGHBORS (0 +x, 1 -x, 2 +z, 3 -z, 4..7 diagonali).
+## Senza terreno continuo la maschera resta a 255 e non pesa sul Dijkstra.
+var _slope_blocked := PackedByteArray()
+var _step_mask := PackedByteArray()
+## Area XZ (mondo) cambiata dall'ultimo ricalcolo di pendenze; `_slopes_all` = da rifare tutte.
+var _dirty_rect := Rect2()
+var _has_dirty_rect := false
+var _slopes_all := true
 ## Cella terreno (indice x + y * larghezza) sotto ogni cella del campo, -1 se fuori griglia.
 var _terrain_index := PackedInt32Array()
 ## Chunk -> PackedByteArray(CHUNK * CHUNK) di ostacoli statici.
@@ -99,6 +108,9 @@ func _ready() -> void:
 	costs.fill(UNREACHABLE)
 	_static_blocked.resize(count)
 	_blocked.resize(count)
+	_slope_blocked.resize(count)
+	_step_mask.resize(count)
+	_step_mask.fill(255)
 	_terrain_index.resize(count)
 	_next.resize(count)
 	_next.fill(NEXT_UNKNOWN)
@@ -106,7 +118,7 @@ func _ready() -> void:
 		grid.cell_changed.connect(func(_cell: Vector2i, _state: TerrainState.CellState) -> void: _terrain_dirty = true)
 		grid.rebuilt.connect(_on_grid_rebuilt)
 	if terrain_field != null:
-		terrain_field.region_changed.connect(func(_aabb: AABB) -> void: _terrain_dirty = true)
+		terrain_field.region_changed.connect(_on_terrain_region_changed)
 	# Gli ostacoli dell'arena entrano nello spazio fisico dopo un passo.
 	await get_tree().physics_frame
 	if not is_inside_tree():
@@ -230,7 +242,11 @@ func _best_neighbor(cell: Vector2i) -> int:
 func is_reachable_from(cell: Vector2i, neighbor: Vector2i) -> bool:
 	if terrain_field == null:
 		return true
-	return terrain_field.can_step(_cell_world(_index(cell)), _cell_world(_index(neighbor)), max_grade)
+	var offset := neighbor - cell
+	var k := NEIGHBORS.find(offset)
+	if k >= 0 and is_inside(cell) and is_inside(neighbor):
+		return (_step_mask[_index(cell)] >> k) & 1 != 0
+	return terrain_field.can_step(cell_center(cell), cell_center(neighbor), max_grade)
 
 
 ## Centro mondo della cella a indice locale [param index] (stessa formula di `cell_center`).
@@ -261,6 +277,13 @@ func scan_static_obstacles() -> void:
 	_fill_window()
 
 
+func _on_terrain_region_changed(aabb: AABB) -> void:
+	_terrain_dirty = true
+	var rect := Rect2(aabb.position.x, aabb.position.z, aabb.size.x, aabb.size.z)
+	_dirty_rect = _dirty_rect.merge(rect) if _has_dirty_rect else rect
+	_has_dirty_rect = true
+
+
 func _on_grid_rebuilt() -> void:
 	_terrain_chunks.clear()
 	_refresh_terrain()
@@ -289,6 +312,7 @@ func _world_inside(wc: Vector2i) -> bool:
 
 
 func _fill_window() -> void:
+	_slopes_all = true
 	# Chunk per chunk: una sola lettura della cache (gli array impacchettati si copiano
 	# per valore: 4096 letture singole costavano quanto la soluzione intera).
 	var first_chunk := Vector2i(origin.x / CHUNK, origin.y / CHUNK)
@@ -388,11 +412,13 @@ func _flush_terrain() -> void:
 
 func _refresh_blocked() -> void:
 	_terrain_dirty = false
+	if terrain_field != null:
+		_refresh_slopes()
 	_next.fill(NEXT_UNKNOWN)
 	for i in _blocked.size():
 		var blocked := _static_blocked[i]
 		var t := _terrain_index[i]
-		if blocked == 0 and terrain_field != null and terrain_field.slope_at(_cell_world(i)) > max_grade:
+		if blocked == 0 and _slope_blocked[i] != 0:
 			blocked = 1
 		if blocked == 0 and t >= 0:
 			var terrain_cell := Vector2i(t % grid.state.width, t / grid.state.width)
@@ -400,6 +426,58 @@ func _refresh_blocked() -> void:
 				blocked = 1
 		_blocked[i] = blocked
 	_dirty = true
+
+
+## Ricalcola pendenza e passi solo per le celle toccate dall'area cambiata (piu un
+## anello: la pendenza e i passi guardano le vicine); tutte dopo un ricentro.
+func _refresh_slopes() -> void:
+	var rect := _dirty_rect
+	var all := _slopes_all
+	var any := _has_dirty_rect
+	_slopes_all = false
+	_has_dirty_rect = false
+	if columns == 0 or not (all or any):
+		return
+	var lo := Vector2i.ZERO
+	var hi := Vector2i(columns - 1, columns - 1)
+	if not all:
+		lo = _world_cell_of(Vector3(rect.position.x, 0.0, rect.position.y)) - origin
+		hi = _world_cell_of(Vector3(rect.end.x, 0.0, rect.end.y)) - origin
+	var r1_lo := Vector2i(maxi(lo.x - 1, 0), maxi(lo.y - 1, 0))
+	var r1_hi := Vector2i(mini(hi.x + 1, columns - 1), mini(hi.y + 1, columns - 1))
+	for y in range(r1_lo.y, r1_hi.y + 1):
+		for x in range(r1_lo.x, r1_hi.x + 1):
+			var i := y * columns + x
+			var here := _cell_world(i)
+			_slope_blocked[i] = 1 if terrain_field.slope_at(here) > max_grade else 0
+			var m := 0
+			for k in 4:
+				var nx := x + NEIGHBORS[k].x
+				var ny := y + NEIGHBORS[k].y
+				if nx >= 0 and ny >= 0 and nx < columns and ny < columns 						and terrain_field.can_step(here, _cell_world(ny * columns + nx), max_grade):
+					m |= 1 << k
+			_step_mask[i] = m
+	# Diagonali dalle gambe ortogonali (in entrambi gli ordini); anello piu largo di uno.
+	var r2_lo := Vector2i(maxi(lo.x - 2, 0), maxi(lo.y - 2, 0))
+	var r2_hi := Vector2i(mini(hi.x + 2, columns - 1), mini(hi.y + 2, columns - 1))
+	for y in range(r2_lo.y, r2_hi.y + 1):
+		for x in range(r2_lo.x, r2_hi.x + 1):
+			var i := y * columns + x
+			var m := _step_mask[i] & 15
+			for k in range(4, 8):
+				var dx := NEIGHBORS[k].x
+				var dy := NEIGHBORS[k].y
+				var nx := x + dx
+				var ny := y + dy
+				if nx < 0 or ny < 0 or nx >= columns or ny >= columns:
+					continue
+				var bit_x := 0 if dx > 0 else 1
+				var bit_y := 2 if dy > 0 else 3
+				var via_x := (m >> bit_x) & 1 != 0 and (_step_mask[y * columns + nx] >> bit_y) & 1 != 0
+				var via_y := (m >> bit_y) & 1 != 0 and (_step_mask[ny * columns + x] >> bit_x) & 1 != 0
+				if via_x or via_y:
+					m |= 1 << k
+			_step_mask[i] = m
 
 
 ## Dijkstra dal bersaglio con code a secchi (costi interi: 10 ortogonale,
@@ -429,7 +507,7 @@ func solve() -> void:
 	dist.resize(count)
 	dist.fill(0x7fffffff)
 	var blocked := _blocked
-	var tf := terrain_field
+	var steps := _step_mask
 	var buckets: Array[PackedInt32Array] = []
 	buckets.resize(BUCKETS)
 	for b in BUCKETS:
@@ -456,36 +534,36 @@ func solve() -> void:
 			var up := y > 0 and blocked[current - n] == 0
 			var down := y < n - 1 and blocked[current + n] == 0
 			var c := level + ORTHO_COST
-			if left and (tf == null or tf.can_step(_cell_world(current - 1), _cell_world(current), max_grade)) and dist[current - 1] > c:
+			if left and steps[current - 1] & 1 != 0 and dist[current - 1] > c:
 				dist[current - 1] = c
 				buckets[c % BUCKETS].append(current - 1)
 				pending += 1
-			if right and (tf == null or tf.can_step(_cell_world(current + 1), _cell_world(current), max_grade)) and dist[current + 1] > c:
+			if right and steps[current + 1] & 2 != 0 and dist[current + 1] > c:
 				dist[current + 1] = c
 				buckets[c % BUCKETS].append(current + 1)
 				pending += 1
-			if up and (tf == null or tf.can_step(_cell_world(current - n), _cell_world(current), max_grade)) and dist[current - n] > c:
+			if up and steps[current - n] & 4 != 0 and dist[current - n] > c:
 				dist[current - n] = c
 				buckets[c % BUCKETS].append(current - n)
 				pending += 1
-			if down and (tf == null or tf.can_step(_cell_world(current + n), _cell_world(current), max_grade)) and dist[current + n] > c:
+			if down and steps[current + n] & 8 != 0 and dist[current + n] > c:
 				dist[current + n] = c
 				buckets[c % BUCKETS].append(current + n)
 				pending += 1
 			c = level + DIAG_COST
-			if left and up and blocked[current - n - 1] == 0 and (tf == null or tf.can_step(_cell_world(current - n - 1), _cell_world(current), max_grade)) and dist[current - n - 1] > c:
+			if left and up and blocked[current - n - 1] == 0 and steps[current - n - 1] & 16 != 0 and dist[current - n - 1] > c:
 				dist[current - n - 1] = c
 				buckets[c % BUCKETS].append(current - n - 1)
 				pending += 1
-			if right and up and blocked[current - n + 1] == 0 and (tf == null or tf.can_step(_cell_world(current - n + 1), _cell_world(current), max_grade)) and dist[current - n + 1] > c:
+			if right and up and blocked[current - n + 1] == 0 and steps[current - n + 1] & 64 != 0 and dist[current - n + 1] > c:
 				dist[current - n + 1] = c
 				buckets[c % BUCKETS].append(current - n + 1)
 				pending += 1
-			if left and down and blocked[current + n - 1] == 0 and (tf == null or tf.can_step(_cell_world(current + n - 1), _cell_world(current), max_grade)) and dist[current + n - 1] > c:
+			if left and down and blocked[current + n - 1] == 0 and steps[current + n - 1] & 32 != 0 and dist[current + n - 1] > c:
 				dist[current + n - 1] = c
 				buckets[c % BUCKETS].append(current + n - 1)
 				pending += 1
-			if right and down and blocked[current + n + 1] == 0 and (tf == null or tf.can_step(_cell_world(current + n + 1), _cell_world(current), max_grade)) and dist[current + n + 1] > c:
+			if right and down and blocked[current + n + 1] == 0 and steps[current + n + 1] & 128 != 0 and dist[current + n + 1] > c:
 				dist[current + n + 1] = c
 				buckets[c % BUCKETS].append(current + n + 1)
 				pending += 1
