@@ -67,8 +67,9 @@ player = NodePath("../Player")
 scrap_field = NodePath("../ScrapField")
 path_field = NodePath("../PathField")
 
-[node name="LampField" type="Node3D" parent="." node_paths=PackedStringArray("companion")]
+[node name="LampField" type="Node3D" parent="." node_paths=PackedStringArray("terrain_field", "companion")]
 script = ExtResource("21_lamps")
+terrain_field = NodePath("../TerrainField")
 companion = NodePath("../Companion")
 
 [node name="EnemyDirector" type="Node3D" parent="." node_paths=PackedStringArray("player", "path_field", "terrain_field")]

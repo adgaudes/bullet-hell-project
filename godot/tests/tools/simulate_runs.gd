@@ -213,7 +213,7 @@ func _simulate(bot: StringName, run_seed: int) -> Dictionary:
 	_player.health_changed.connect(_on_health_changed.bind([_player.health]))
 	_run.boss_spawned.connect(_on_boss_spawned)
 	if _run.lamp_field != null:
-		_run.lamp_field.lamp_placed.connect(func(_cell: Vector2i) -> void: _lamps_bought += 1)
+		_run.lamp_field.lamp_placed.connect(func(_at: Vector3) -> void: _lamps_bought += 1)
 
 	var step := 1.0 / Engine.physics_ticks_per_second
 	var timed_out := false

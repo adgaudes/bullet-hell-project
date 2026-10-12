@@ -362,8 +362,7 @@ func brush_radius() -> float:
 
 ## DIG -> RAISE -> LEVEL -> (LAMP se il LampField conosce il rilievo) -> DIG.
 func _toggle_field_mode() -> void:
-	# Ponte provvisorio fino al Task 11 del terreno continuo (LampField avra un export terrain_field).
-	var lamp_ok := lamp_field != null and lamp_field.get("terrain_field") != null
+	var lamp_ok := lamp_field != null and lamp_field.terrain_field != null
 	match terrain_tool_mode:
 		TerrainField.ToolMode.DIG:
 			terrain_tool_mode = TerrainField.ToolMode.RAISE
@@ -455,8 +454,7 @@ func _brush_blocked() -> bool:
 		TerrainField.ToolMode.RAISE:
 			return pack.is_empty()
 		TerrainField.ToolMode.LAMP:
-			# Ponte provvisorio fino al Task 11 del terreno continuo (can_place(point: Vector3)).
-			return lamp_field == null or not lamp_field.call(&"can_place", terrain_target) or not lamp_field.can_afford(terrain_target)
+			return lamp_field == null or not lamp_field.can_place(terrain_target) or not lamp_field.can_afford(terrain_target)
 	return false
 
 

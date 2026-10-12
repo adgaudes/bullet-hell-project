@@ -194,7 +194,7 @@ func _connect_signals() -> void:
 		run.level_completed.connect(play.bind(&"victory", 0.0))
 		run.night_phase_changed.connect(_on_night_phase)
 		if run.lamp_field != null:
-			run.lamp_field.lamp_placed.connect(func(_cell: Vector2i) -> void: play(&"terrain_raise"))
+			run.lamp_field.lamp_placed.connect(func(_at: Vector3) -> void: play(&"terrain_raise"))
 		if run.train_event != null:
 			# Fischio al preavviso e all'ingresso; un tonfo per ogni cosa travolta.
 			run.train_event.train_warned.connect(func(_direction: Vector3, _seconds: float) -> void: play(&"train_horn"))
