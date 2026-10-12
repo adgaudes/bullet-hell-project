@@ -80,3 +80,6 @@ tools/ContentBuilder/output/
 
 # Cache di Python degli script Blender
 tools/blender/__pycache__/
+
+# Hook di Git LFS scritti per errore in una cartella "dev/null" (Windows)
+dev/null/
