@@ -176,6 +176,9 @@ func _plan_wagons() -> void:
 		if not found:
 			continue
 		placed.append(x)
+		# La pianta in celle sceglieva qui il binario con un numero casuale: si consuma lo
+		# stesso numero cosi le posizioni restano quelle di prima (spec sezione 3, D-065).
+		_rng.randf()
 		var center := Vector2(x, 0.0)
 		_add_stroke(&"wagon", center, WAGON_RADIUS, WAGON_HEIGHT, WAGON_TINT, WAGON_SCRAP, [], [center], WAGON_RADIUS, 0.0)
 		stats.wagons += 1
@@ -190,6 +193,7 @@ func _plan_trenches() -> void:
 		if spot == null:
 			continue
 		var center: Vector2 = spot
+		_reserve(_rect_around(center, half, 2.0))
 		var a := center - Vector2(half.x - CELL * 0.5, 0.0)
 		var b := center + Vector2(half.x - CELL * 0.5, 0.0)
 		var steps := maxi(int(a.distance_to(b) / TRENCH_STEP), 1)
@@ -210,6 +214,11 @@ func apply_strokes(field: TerrainField, scrap_field: ScrapField = null) -> void:
 		var amount: float = stroke.height / line_overlap(stroke.step, stroke.brush)
 		for p: Vector2 in stroke.points:
 			field.sculpt(Vector3(p.x, 0.0, p.y), stroke.brush, amount)
+	# Una vena sulla fascia, esaurita, torna del colore della ghiaia, non bianca.
+	if scrap_field != null:
+		for vein in scrap_field.veins():
+			if is_on_tracks(Vector2(vein.center.x, vein.center.z)):
+				vein.exhausted_tint = BALLAST_TINT
 
 
 ## Strati del quartiere piu la fascia: asfalto e ghiaia scura per tutta la lunghezza.

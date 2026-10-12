@@ -21,6 +21,7 @@ func _initialize() -> void:
 	_test_brush_outside_field()
 	_test_reset_to_base()
 	_test_bump_along()
+	_test_dig_to_base_offset()
 	_test_grade_and_can_step()
 	_test_protected()
 	_test_base_delta_and_bump()
@@ -218,6 +219,13 @@ func _test_reset_to_base() -> void:
 	_field._protected.fill(0)
 	_field.sculpt(Vector3(14.0, 0.0, 0.0), 2.0, -1.0)
 	_check(_field.collision_body() == collision.body, "collision_body espone il corpo del terreno")
+	# Fascia gia alla base: niente da fare, nessun segnale (il treno lo chiama a ogni passo).
+	var emitted := [0]
+	var watcher := func(_aabb: AABB) -> void: emitted[0] += 1
+	_field.region_changed.connect(watcher)
+	var again := _field.reset_to_base(Vector3(0.0, 0.0, 0.0), Vector2(8.0, 3.6))
+	_field.region_changed.disconnect(watcher)
+	_check(is_zero_approx(again) and emitted[0] == 0, "un secondo reset sulla fascia piatta non emette nulla (%d)" % emitted[0])
 
 
 ## Primo argine lungo un segmento (Trivella): punto con quota, o null.
@@ -231,6 +239,25 @@ func _test_bump_along() -> void:
 	_field.tint_rect(Vector3.ZERO, Vector2(10.0, 3.6), Color.RED, 1.0)
 	_field.paint_layer_rect(Vector3.ZERO, Vector2(10.0, 3.6), 2)
 	_check(true, "tint_rect e paint_layer_rect non fanno nulla in headless")
+
+
+## Il solco della Trivella: porta il disco a [depth] sotto la base, vertice per vertice,
+## solo scavando. Un fossato gia piu profondo non viene riempito, un pendio di base non
+## viene scavato oltre la profondita.
+func _test_dig_to_base_offset() -> void:
+	print("dig to base offset")
+	_field.sculpt(Vector3(0.0, 0.0, 0.0), 2.0, -1.6)
+	var deep_before := _field.height_at(Vector3.ZERO)
+	var volume := _field.dig_to_base_offset(Vector3(0.0, 0.0, 0.0), 1.2, 0.8)
+	_check(volume <= 0.0, "scavare non aggiunge terra (volume %.2f)" % volume)
+	_check(absf(_field.height_at(Vector3.ZERO) - deep_before) < 0.001, "un fossato piu profondo del solco resta com'era")
+	_field.sculpt(Vector3(0.0, 0.0, 0.0), 2.0, 1.6)
+	var dug := _field.dig_to_base_offset(Vector3(6.0, 0.0, 0.0), 1.2, 0.8)
+	_check(dug < -0.1 and absf(_field.delta_at(Vector3(6.0, 0.0, 0.0)) + 0.8) < 0.01, "sul piano il solco arriva a 0,8 m sotto la base (%.2f)" % _field.delta_at(Vector3(6.0, 0.0, 0.0)))
+	var twice := _field.dig_to_base_offset(Vector3(6.0, 0.0, 0.0), 1.2, 0.8)
+	# La campana porta al fondo il centro in un colpo e i bordi in piu passate (convergenza geometrica).
+	_check(absf(twice) < absf(dug) * 0.5, "un secondo passaggio scava meno della meta (%.2f contro %.2f): converge al fondo" % [twice, dug])
+	_field.sculpt(Vector3(6.0, 0.0, 0.0), 1.2, 0.8)
 
 
 func _test_grade_and_can_step() -> void:

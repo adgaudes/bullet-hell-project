@@ -196,11 +196,57 @@ func reset_to_base(center: Vector3, half_size: Vector2) -> float:
 	if r[2] < r[0] or r[3] < r[1]:
 		return 0.0
 	var volume := 0.0
+	var changed := 0
 	for iz in range(r[1], r[3] + 1):
 		for ix in range(r[0], r[2] + 1):
 			var i := iz * resolution_x + ix
+			if _heights[i] == _base[i]:
+				continue
 			volume += absf(_heights[i] - _base[i]) * SPACING * SPACING
 			_heights[i] = _base[i]
+			changed += 1
+	# Fascia gia alla base (quasi ogni passo del treno): niente specchio, chunk ne segnale.
+	if changed == 0:
+		return 0.0
+	_mirror_rect(r[0], r[1], r[2], r[3])
+	_emit_rect_changed(r[0], r[1], r[2], r[3])
+	return volume
+
+
+## Scava il disco fino a [param depth] metri sotto la base, vertice per vertice e solo
+## verso il basso (campana al bordo): un fossato gia piu profondo resta com'e, un pendio
+## di base non viene scavato oltre la profondita. E il solco della Trivella. Ritorna il
+## volume (negativo o zero).
+func dig_to_base_offset(center: Vector3, radius: float, depth: float) -> float:
+	var volume := 0.0
+	var r2 := radius * radius
+	var r := _rect_indices(center, Vector2(radius, radius))
+	if r[2] < r[0] or r[3] < r[1]:
+		return 0.0
+	var changed := 0
+	for iz in range(r[1], r[3] + 1):
+		var wz := iz * SPACING - _half.y
+		for ix in range(r[0], r[2] + 1):
+			var wx := ix * SPACING - _half.x
+			var d2 := ((wx - center.x) * (wx - center.x) + (wz - center.z) * (wz - center.z)) / r2
+			if d2 >= 1.0:
+				continue
+			var i := iz * resolution_x + ix
+			if _protected[i] != 0:
+				continue
+			var falloff := (1.0 - d2) * (1.0 - d2)
+			var before := _heights[i]
+			var floor_h := _base[i] - depth
+			if before <= floor_h:
+				continue
+			var after := clampf(before + (floor_h - before) * falloff, MIN_HEIGHT, MAX_HEIGHT)
+			if after >= before:
+				continue
+			_heights[i] = after
+			volume += (after - before) * SPACING * SPACING
+			changed += 1
+	if changed == 0:
+		return 0.0
 	_mirror_rect(r[0], r[1], r[2], r[3])
 	_emit_rect_changed(r[0], r[1], r[2], r[3])
 	return volume

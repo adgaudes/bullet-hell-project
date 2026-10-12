@@ -55,7 +55,18 @@ Regola col terreno, leggibile al primo incontro: **carica in linea retta e scava
 
 Suite: `railway_tests.gd` (pianta rettangolare, fascia piatta e libera, vagoni come cumuli con vena, cortile a cavallo, saltatori), `train_tests.gd` (preavviso, fascia riportata alla base, vene azzerate, nemici travolti, giocatore spinto su un punto calpestabile, lampioni, vagone scavato a meta), `driller_tests.gd` (carica dritta, solco idempotente, argine che ferma e stordisce senza rottami, vena sotto l'argine, rialzo basso, rovina aggirata, treno, sconfitta che chiude il livello), `campaign_tests.gd` (catalogo, sblocco, mappa, prossimo livello, `--level=`). Catture: `capture_railway.gd` (panoramica, treno in arrivo, Trivella in carica). Simulazioni: `simulate_runs.gd -- --level=railway`.
 
-## 8. Prime simulazioni (9 ottobre 2026, bot di D-055, semi 1-3, `--level=railway`)
+## 8. Simulazioni
+
+### 8.1 Sul rilievo continuo (12 ottobre 2026, D-087, `--level=railway --bots=scrapper`)
+
+| Seme | Esito | Fine run (s) | Livello | Rottami fuori | Note |
+|---|---|---|---|---|---|
+| 1 | morte | 1155 | 22 | 8 | Trivella raggiunta a 720 s con 6 punti vita, portata a 27 punti vita; 200 pennellate (vene dei vagoni, lampioni di notte) |
+| 2, 3 | da completare | | | | le run sono lente (oltre 15 minuti reali ciascuna con altri processi in parallelo); esito da aggiungere |
+
+Lettura provvisoria: la ferrovia sul rilievo resta dura come prima (il cortile aperto sui binari) e la Trivella non viene piu battuta dal bot con i soli chiodi: senza alzare argini sulla sua rotta (il bot lo fa solo con 8 m3 nello zaino e a portata) arriva a fine run con pochi punti vita. Da confermare col playtest.
+
+### 8.2 Sulla griglia a celle (9 ottobre 2026, superate da D-087, conservate per confronto)
 
 | Bot | Esito | Fine run (s) | Rottami fuori | Note |
 |---|---|---|---|---|

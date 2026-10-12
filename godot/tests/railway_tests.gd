@@ -37,6 +37,8 @@ func _initialize() -> void:
 	_test_features_off_tracks()
 	_test_blocks_inside_and_off_tracks()
 	_test_determinism()
+	_test_trenches_reserved()
+	await _test_baked_base_matches_code()
 	await _test_spawn_and_path_in_corridor()
 	await _test_markers_include_wagons()
 	await _test_hoppers()
@@ -214,6 +216,44 @@ func _test_determinism() -> void:
 	_district.rebuild()
 	_check(_district.terrain_strokes == before, "stesse pennellate dopo la ricostruzione")
 	_check(_district.stats == stats_before, "stesse statistiche dopo la ricostruzione %s" % [_district.stats])
+
+
+## Le trincee riservano la loro area: nessuna rovina sopra un solco e nessun solco sopra un altro.
+func _test_trenches_reserved() -> void:
+	print("trenches reserved")
+	var trenches := _strokes(&"trench")
+	var clear := true
+	var apart := true
+	for i in trenches.size():
+		for p: Vector2 in trenches[i].points:
+			for rect: Rect2 in _district.block_rects():
+				clear = clear and not rect.grow(1.0).has_point(p)
+		for j in i:
+			apart = apart and trenches[i].center.distance_to(trenches[j].center) > 4.0
+	_check(clear, "nessuna rovina sopra una trincea")
+	_check(apart, "trincee distinte fra loro")
+
+
+## La base cotta in `levels/railway/base.bin` e quella che il codice ricalcola: un file
+## vecchio verrebbe caricato in silenzio (stesso seme), qui invece si confronta.
+func _test_baked_base_matches_code() -> void:
+	print("baked base")
+	var fresh := TerrainField.new()
+	fresh.size_m = _field.size_m
+	fresh.tuning = _field.tuning
+	fresh.render = false
+	root.add_child(fresh)
+	await _frames(2)
+	_district.apply_base_relief(fresh)
+	var worst := 0.0
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 11
+	for i in 400:
+		var p := Vector3(rng.randf_range(-150.0, 150.0), 0.0, rng.randf_range(-58.0, 58.0))
+		worst = maxf(worst, absf(fresh.height_at(p) - _field.base_height_at(p)))
+	_check(worst < 0.01, "base cotta uguale a quella ricalcolata (scarto massimo %.4f m)" % worst)
+	fresh.queue_free()
+	await _frames(2)
 
 
 func _test_spawn_and_path_in_corridor() -> void:

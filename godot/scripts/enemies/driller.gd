@@ -98,6 +98,8 @@ var _rig: Node3D
 var _aim_strip: MeshInstance3D
 var _bit_spin := 0.0
 var _hit_this_charge: Dictionary[Node, bool] = {}
+## Secondi di carica senza avanzare (incastrata in un fossato profondo o contro un bordo).
+var _charge_stall := 0.0
 var _motion_time := 0.0
 var _stun_weight := 0.0
 
@@ -278,6 +280,7 @@ func _start_charge() -> void:
 	charges += 1
 	charge_start = global_position
 	last_wall = NO_WALL
+	_charge_stall = 0.0
 	_hit_this_charge.clear()
 	_aim_strip.visible = false
 	var target := charge_start + charge_direction * charge_length
@@ -286,6 +289,7 @@ func _start_charge() -> void:
 
 
 func _tick_charge(delta: float) -> void:
+	var before := global_position
 	rotation.y = atan2(-charge_direction.x, -charge_direction.z)
 	var planar := Vector3(velocity.x, 0.0, velocity.z).move_toward(charge_direction * charge_speed, ACCELERATION * delta)
 	velocity = Vector3(planar.x, 0.0 if is_on_floor() else velocity.y - 9.8 * delta, planar.z)
@@ -299,10 +303,10 @@ func _tick_charge(delta: float) -> void:
 	if wall != null:
 		_break_wall(Vector3((wall as Vector3).x, 0.0, (wall as Vector3).z))
 		return
-	# Solco: la punta porta il terreno a furrow_depth_m sotto la base, mai oltre.
-	var floor_h := terrain_field.base_height_at(tip) - furrow_depth_m
-	if terrain_field.height_at(tip) > floor_h + 0.05:
-		var volume := terrain_field.level(Vector3(tip.x, 0.0, tip.z), FURROW_RADIUS, floor_h, 1.0)
+	# Solco: la punta scava fino a furrow_depth_m sotto la base, mai oltre e mai in su
+	# (un fossato del giocatore piu profondo resta com'e).
+	if terrain_field.height_at(tip) > terrain_field.base_height_at(tip) - furrow_depth_m + 0.05:
+		var volume := terrain_field.dig_to_base_offset(Vector3(tip.x, 0.0, tip.z), FURROW_RADIUS, furrow_depth_m)
 		if volume < -0.01:
 			furrow_length_m += Vector2(velocity.x, velocity.z).length() * delta
 			DebrisBurst.spawn(get_parent(), Vector3(tip.x, terrain_field.height_at(tip) + 0.3, tip.z), EARTH_COLOR, 6, 3.0, 0.16)
@@ -322,6 +326,11 @@ func _tick_charge(delta: float) -> void:
 			return
 	if _planar(pos - charge_start).length() >= charge_length:
 		_end_charge(&"length")
+		return
+	# Ferma da piu di un secondo (fossato profondo, bordo): la carica finisce come contro una rovina.
+	_charge_stall = _charge_stall + delta if _planar(global_position - before).length() < 0.02 else 0.0
+	if _charge_stall > 1.0:
+		_end_charge(&"blocked")
 
 
 func _hit_in_the_way(body: Node3D, damages: bool) -> void:

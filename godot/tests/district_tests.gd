@@ -32,6 +32,7 @@ func _initialize() -> void:
 	_test_features()
 	_test_strokes_applied_to_field()
 	_test_determinism()
+	await _test_baked_base_matches_code()
 	_test_blocks_are_low_and_inside()
 	_test_start_area_is_clear()
 	await _test_far_path_and_spawn()
@@ -152,6 +153,27 @@ func _test_determinism() -> void:
 	root.add_child(other)
 	_check(other.terrain_strokes != strokes_before and other.terrain_strokes.size() >= 10, "un altro seme produce un altro quartiere")
 	other.queue_free()
+
+
+## La base cotta in `levels/district/base.bin` e quella che il codice ricalcola.
+func _test_baked_base_matches_code() -> void:
+	print("baked base")
+	var fresh := TerrainField.new()
+	fresh.size_m = _field.size_m
+	fresh.tuning = _field.tuning
+	fresh.render = false
+	root.add_child(fresh)
+	await _frames(2)
+	_district.apply_base_relief(fresh)
+	var worst := 0.0
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 11
+	for i in 400:
+		var p := Vector3(rng.randf_range(-98.0, 98.0), 0.0, rng.randf_range(-98.0, 98.0))
+		worst = maxf(worst, absf(fresh.height_at(p) - _field.base_height_at(p)))
+	_check(worst < 0.01, "base cotta uguale a quella ricalcolata (scarto massimo %.4f m)" % worst)
+	fresh.queue_free()
+	await _frames(2)
 
 
 func _test_blocks_are_low_and_inside() -> void:

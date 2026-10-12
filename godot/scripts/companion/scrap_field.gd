@@ -145,7 +145,7 @@ func _process(delta: float) -> void:
 # --- Vene di rottami sul rilievo continuo (spec 5.1) --------------------------------------
 
 func add_vein(center: Vector3, radius: float, scrap: int, base_height: float) -> void:
-	_veins.append({ center = center, radius = radius, scrap_left = scrap, base_height = base_height, dug_m3 = 0.0 })
+	_veins.append({ center = center, radius = radius, scrap_left = scrap, base_height = base_height, dug_m3 = 0.0, exhausted_tint = Color.WHITE })
 
 
 func veins() -> Array[Dictionary]:
@@ -161,7 +161,7 @@ func exhaust_veins_in_rect(rect: Rect2) -> int:
 			vein.scrap_left = 0
 			vein.dug_m3 = 0.0
 			if terrain_field != null:
-				terrain_field.tint(vein.center, vein.radius, Color.WHITE, 1.0)
+				terrain_field.tint(vein.center, vein.radius, vein.get("exhausted_tint", Color.WHITE), 1.0)
 			count += 1
 	return count
 
@@ -206,7 +206,7 @@ func extract_from_veins(center: Vector3, radius: float, volume: float) -> int:
 			print("PROTOTYPE01_VEIN_SCRAP left=%d" % vein.scrap_left)
 		if vein.scrap_left == 0:
 			# Vena finita: il cumulo perde la tinta di ruggine (niente in headless).
-			terrain_field.tint(vein.center, vein.radius, Color.WHITE, 1.0)
+			terrain_field.tint(vein.center, vein.radius, vein.get("exhausted_tint", Color.WHITE), 1.0)
 	return spawned
 
 

@@ -315,13 +315,10 @@ func _plan_courtyards() -> void:
 			&"broken":
 				gates = [0, 1, 2, 3]
 				broken = 0.3
-		# La pianta in celle riservava il rettangolo dell'anello e, per la variante
-		# "broken", estraeva un numero per ogni cella dell'anello: si fa lo stesso
-		# cosi il quartiere resta identico (D-065).
-		if broken > 0.0:
-			for k in 8 * radius - gates.size():
-				_rng.randf()
-		_reserve(_rect_around(center, half, 4.0))
+		# La pianta in celle riservava il rettangolo attorno al baricentro delle celle
+		# dell'anello (varchi e celle "broken" esclusi, con un numero casuale per cella):
+		# si rifa lo stesso conto cosi il quartiere resta identico (D-065).
+		_reserve(_rect_around(center + _ring_cells_centroid(radius, gates, broken), half, 4.0))
 		# Generatore proprio per le pennellate mancanti: `_rng` resta com'era e la pianta
 		# del quartiere non cambia (D-065).
 		var stroke_rng := RandomNumberGenerator.new()
@@ -373,6 +370,31 @@ func _plan_trenches() -> void:
 		for t in steps + 1:
 			points.append(a.lerp(b, float(t) / steps))
 		_add_stroke(&"trench", (a + b) * 0.5, TRENCH_BRUSH, TRENCH_DEPTH, NO_TINT, 0, [], points, TRENCH_BRUSH, a.distance_to(b) / steps)
+
+
+## Baricentro mondo (XZ, relativo al centro) delle celle dell'anello di raggio [param radius]
+## passi, senza i varchi in [param gates]; con [param broken] > 0 una quota casuale di
+## celle manca (un `_rng.randf()` per cella, come la vecchia griglia). Serve alla riserva
+## dei cortili per tenere la pianta di prima (D-065).
+func _ring_cells_centroid(radius: int, gates: Array[int], broken := 0.0) -> Vector2:
+	var sum := Vector2.ZERO
+	var count := 0
+	for dy in range(-radius, radius + 1):
+		for dx in range(-radius, radius + 1):
+			if maxi(absi(dx), absi(dy)) != radius:
+				continue
+			var is_gate := (dx == radius and dy == 0 and gates.has(0)) \
+				or (dx == -radius and dy == 0 and gates.has(1)) \
+				or (dy == radius and dx == 0 and gates.has(2)) \
+				or (dy == -radius and dx == 0 and gates.has(3))
+			if is_gate:
+				continue
+			if broken > 0.0 and _rng.randf() < broken:
+				continue
+			# Assi Unreal della vecchia griglia: x avanti = -Z Godot, y destra = +X Godot.
+			sum += Vector2(dy * CELL, -dx * CELL)
+			count += 1
+	return sum / count if count > 0 else Vector2.ZERO
 
 
 ## Punto piu vicino sul passo storico di 2,4 m (la pianta nasce ancora su quel reticolo).

@@ -49,6 +49,7 @@ func _initialize() -> void:
 	await _test_wall_over_vein_gives_scrap()
 	await _test_low_mound_does_not_stop()
 	await _test_furrow_is_idempotent()
+	await _test_furrow_does_not_fill_trench()
 	await _test_charge_length_and_trench()
 	await _test_blocked_by_ruin_uses_path()
 	await _test_train_hits_boss()
@@ -263,6 +264,21 @@ func _test_furrow_is_idempotent() -> void:
 	_check(await _wait_phase(Driller.Phase.CHARGE, 200), "seconda carica sulla stessa linea")
 	_check(await _wait_phase(Driller.Phase.REST, 700), "si ferma di nuovo")
 	_check(absf(_field.delta_at(probe) - first) < 0.08, "il solco resta a %.2f m (era %.2f)" % [_field.delta_at(probe), first])
+
+
+
+## Un fossato del giocatore piu profondo del solco non viene riempito dalla carica.
+func _test_furrow_does_not_fill_trench() -> void:
+	print("furrow keeps trench")
+	_clear_tracks()
+	_place_player(Vector3(-100.0, 0.0, 0.0))
+	_place_boss(Vector3(0.0, 0.0, 0.0), Driller.Phase.REST, 0.05)
+	var trench := Vector3(-12.0, 0.0, 0.0)
+	_field.sculpt(trench, 2.0, -1.6)
+	var depth_before := _field.delta_at(trench)
+	_check(await _wait_phase(Driller.Phase.CHARGE, 200), "carica attraverso il fossato")
+	_check(await _wait_phase(Driller.Phase.REST, 700), "si ferma da sola")
+	_check(_field.delta_at(trench) <= depth_before + 0.05, "il fossato resta profondo (%.2f, era %.2f)" % [_field.delta_at(trench), depth_before])
 
 
 ## La carica finisce dopo `charge_length` metri; un solco non la rallenta.
