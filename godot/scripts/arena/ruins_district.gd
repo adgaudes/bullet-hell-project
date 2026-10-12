@@ -47,6 +47,8 @@ const TRENCH_STEP := 1.2
 const TRENCH_BRUSH := 1.6
 const TRENCH_DEPTH := -0.8
 const NO_TINT := Color(0.0, 0.0, 0.0, 0.0)
+## Verde del prato dipinto sul color map di Terrain3D (sotto i ciuffi).
+const GRASS_PAINT := Color(0.42, 0.55, 0.22)
 ## Direzione mondo (XZ) dei varchi 0..3, come in `_ring_offsets` via `cell_offset_to_world`.
 const GATE_DIRECTIONS: Array[Vector2] = [Vector2(0.0, -1.0), Vector2(0.0, 1.0), Vector2(1.0, 0.0), Vector2(-1.0, 0.0)]
 ## Tipi di pennellata che sono cortili (anelli di argini).
@@ -172,10 +174,10 @@ func _cover_excluded(p: Vector2) -> bool:
 
 
 ## Fuori dalla piazza il verde e quasi ovunque: niente rumore, costo basso.
-func _cover_chance(p: Vector2) -> float:
+func _cover_chance(p: Vector2, bonus := 0.0) -> float:
 	if p.length() > plaza_radius_m * 1.25:
 		return 0.72
-	return super._cover_chance(p)
+	return super._cover_chance(p, bonus)
 
 
 # --- Composizione --------------------------------------------------------------------
@@ -553,10 +555,45 @@ func apply_strokes(field: TerrainField, scrap_field: ScrapField = null) -> void:
 		for p: Vector2 in stroke.points:
 			field.sculpt(Vector3(p.x, 0.0, p.y), stroke.brush, amount)
 		var center := Vector3(stroke.center.x, 0.0, stroke.center.y)
-		if stroke.tint.a > 0.0:
-			field.tint(center, stroke.radius, stroke.tint, 1.0)
 		if stroke.kind == &"deposit" and scrap_field != null:
 			scrap_field.add_vein(center, stroke.radius, stroke.scrap, field.base_height_at(center))
+	paint_surface(field)
+
+
+## Strati e tinte di Terrain3D per il quartiere (spec 6.2): piazza lastricata, strada in
+## asfalto, cime di argini e cumuli in terra smossa, ruggine sui depositi. Niente in
+## headless; da richiamare quando Terrain3D diventa pronto (`TerrainField.render_ready`).
+func paint_surface(field: TerrainField) -> void:
+	if field.terrain3d() == null:
+		return
+	field.paint_layer(Vector3.ZERO, plaza_radius_m * 0.8, TerrainSurface.LAYER_SLABS)
+	for road: Array in _road_segments():
+		var from: Vector2 = road[0]
+		var to: Vector2 = road[1]
+		var length := from.distance_to(to)
+		for t in int(length / 1.5) + 1:
+			var p: Vector2 = from.lerp(to, minf(t * 1.5 / length, 1.0))
+			field.paint_layer(Vector3(p.x, 0.0, p.y), 2.2, TerrainSurface.LAYER_ASPHALT)
+	for stroke: Dictionary in terrain_strokes:
+		if stroke.height <= 0.0:
+			continue
+		for p: Vector2 in stroke.points:
+			field.paint_layer(Vector3(p.x, 0.0, p.y), stroke.brush * 0.6, TerrainSurface.LAYER_DUG_SOIL)
+		if stroke.tint.a > 0.0:
+			field.tint(Vector3(stroke.center.x, 0.0, stroke.center.y), stroke.radius, stroke.tint, 1.0)
+	# Prato dipinto dove cresce il verde (stessa formula dei ciuffi), fuori dalla piazza.
+	var green: Array[Vector3] = []
+	var pitch := 3.0
+	var half := field.half_extent()
+	var k := 0
+	for z in range(int(-half / pitch), int(half / pitch) + 1):
+		for x in range(int(-half / pitch), int(half / pitch) + 1):
+			k += 1
+			var p := Vector2(x * pitch + (0.7 if k % 2 == 0 else -0.7), z * pitch)
+			if p.length() < plaza_radius_m * 0.8 or _cover_sampled(p) < 0.5:
+				continue
+			green.append(Vector3(p.x, 0.0, p.y))
+	field.tint_points(green, pitch * 0.9, GRASS_PAINT, 0.55)
 
 
 # --- Edifici e oggetti dentro il perimetro ----------------------------------------------

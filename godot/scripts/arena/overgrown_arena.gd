@@ -35,6 +35,8 @@ const LAMP_POST_MODEL := preload("res://assets/models/lamp_post.glb")
 
 const WORLD_STATIC_LAYER := 1
 
+## Rilievo continuo (D-085): quote per prato, detriti, prop e rovine; senza, tutto a quota 0.
+@export var terrain_field: TerrainField
 @export var layout_seed := 20261004:
 	set(value):
 		layout_seed = value
@@ -222,8 +224,9 @@ func _cover_excluded(p: Vector2) -> bool:
 
 
 ## Probabilita [0,1] che un punto candidato porti un ciuffo; segue la formula del suolo.
-func _cover_chance(p: Vector2) -> float:
-	var cover := _cover_sampled(p)
+## [param bonus] alza la copertura (prato piu fitto nelle conche del rilievo).
+func _cover_chance(p: Vector2, bonus := 0.0) -> float:
+	var cover := _cover_sampled(p) + bonus
 	return 1.0 if cover >= 0.5 + _rng.randf_range(-0.04, 0.06) else 0.0
 
 
@@ -771,6 +774,9 @@ func _barrier(base: Vector3, yaw_deg: float) -> void:
 # --- Composizione ----------------------------------------------------------------
 
 func _build_ground() -> void:
+	# Col rilievo continuo il suolo e Terrain3D: nessuna lastra e nessuna collisione piatta.
+	if terrain_field != null:
+		return
 	var size := Vector3(ground_size(), 0.4, ground_size())
 	var body := _static_body("Ground", Transform3D(Basis(), Vector3(0.0, -0.2, 0.0)))
 	var material := ShaderMaterial.new()
@@ -916,6 +922,14 @@ func _build_ground_cover() -> void:
 	var limit_z := cover_limit_z()
 	var height := cover_height()
 	_reset_cover_lattice()
+	# Generatore proprio: il prato si rifa anche da solo (`settle_on_relief`) e deve
+	# uscire uguale a ogni costruzione, qualunque cosa sia stata estratta prima.
+	var outer_rng := _rng
+	_rng = RandomNumberGenerator.new()
+	_rng.seed = layout_seed + 977
+	# Il quartiere viene prima del rilievo nella scena: alla prima costruzione il campo
+	# non e pronto e il prato nasce a quota zero; `settle_on_relief` lo rifa dopo.
+	var relief_ready := _relief_ready()
 	# Campionamento stratificato (T-02): una griglia di candidati con jitter invece del
 	# rigetto su 144k punti; l'ordine e mescolato con un passo primo, cosi se i posti
 	# finiscono prima della fine la copertura resta uniforme. I dati vanno dritti nel
@@ -952,7 +966,16 @@ func _build_ground_cover() -> void:
 		var p := Vector2(-limit + (index % side + _rng.randf()) * pitch, -limit_z + (index / side + _rng.randf()) * pitch_z)
 		if _cover_excluded(p):
 			continue
-		var chance := _cover_chance(p)
+		var ground := height
+		var bonus := 0.0
+		if relief_ready:
+			var at := Vector3(p.x, 0.0, p.y)
+			# Niente prato sui fianchi ripidi; piu fitto nelle conche (spec 6.2).
+			if terrain_field.slope_at(at) > 0.6:
+				continue
+			ground = terrain_field.height_at(at)
+			bonus = 0.12 * clampf(-terrain_field.delta_at(at), 0.0, 1.0)
+		var chance := _cover_chance(p, bonus)
 		var yaw := _rng.randf_range(0.0, TAU)
 		# I detriti stanno anche sul costruito (chance 0), dove l'erba non cresce.
 		if _rng.randf() < litter_share and litter_count < litter_target and chance >= 0.0:
@@ -960,19 +983,19 @@ func _build_ground_cover() -> void:
 			var s := _rng.randf_range(0.6, 1.4)
 			var size := Vector3(0.22 * s, 0.015, 0.16 * s) if leaf else Vector3(0.14 * s, 0.07 * s, 0.11 * s)
 			var color := LITTER_COLORS[_rng.randi_range(3, 5)] if leaf else LITTER_COLORS[_rng.randi_range(0, 2)]
-			_write_instance(litter_buffer, litter_count, yaw, size, Vector3(p.x, height + size.y * 0.5, p.y), color)
+			_write_instance(litter_buffer, litter_count, yaw, size, Vector3(p.x, ground + size.y * 0.5, p.y), color)
 			litter_count += 1
 			continue
 		if chance <= 0.0 or (chance < 1.0 and _rng.randf() > chance):
 			continue
 		if _rng.randf() < flower_share and flower_count < flower_target:
 			var s := _rng.randf_range(0.7, 1.3)
-			_write_instance(flower_buffer, flower_count, yaw, Vector3(s, s, s), Vector3(p.x, height, p.y), _pick(FLOWER_COLORS))
+			_write_instance(flower_buffer, flower_count, yaw, Vector3(s, s, s), Vector3(p.x, ground, p.y), _pick(FLOWER_COLORS))
 			flower_count += 1
 		elif tuft_count < tuft_target:
 			# Prato basso (D-083): ciuffi piccoli e fitti, poco variati, tinta sobria.
 			var s := _rng.randf_range(0.8, 1.25)
-			_write_instance(tufts, tuft_count, yaw, Vector3(s, s * _rng.randf_range(0.8, 1.2), s), Vector3(p.x, height, p.y),
+			_write_instance(tufts, tuft_count, yaw, Vector3(s, s * _rng.randf_range(0.8, 1.2), s), Vector3(p.x, ground, p.y),
 				_pick(LEAF_TINTS) * _rng.randf_range(0.95, 1.2))
 			tuft_count += 1
 	tufts.resize(tuft_count * 16)
@@ -984,6 +1007,38 @@ func _build_ground_cover() -> void:
 	stats.tufts = tuft_count
 	stats.flowers = flower_count
 	stats.litter = litter_count
+	_rng = outer_rng
+
+
+func _relief_ready() -> bool:
+	return terrain_field != null and terrain_field.is_node_ready() and terrain_field.resolution > 0
+
+
+## Rilievo continuo (D-085): appoggia alle quote i corpi generati a quota zero (rovine
+## un poco affondate, cosi i muri non galleggiano sulle ondulazioni) e rifa prato, fiori e
+## detriti sulle quote. Da chiamare quando il rilievo di base e pronto; ripetibile.
+func settle_on_relief() -> void:
+	if not _relief_ready():
+		return
+	var half := terrain_field.half_extent()
+	for node in _generated:
+		if not (node is Node3D) or node is MultiMeshInstance3D or node is DirectionalLight3D:
+			continue
+		var body := node as Node3D
+		if absf(body.position.x) > half or absf(body.position.z) > half:
+			continue
+		if not body.has_meta(&"flat_y"):
+			body.set_meta(&"flat_y", body.position.y)
+		var flat_y: float = body.get_meta(&"flat_y")
+		var sink := 0.2 if String(body.name).begins_with("Block") else 0.0
+		body.position.y = flat_y + terrain_field.height_at(body.position) - sink
+	for cover_name in ["GrassTufts", "Flowers", "Litter"]:
+		var old := get_node_or_null(NodePath(cover_name))
+		if old != null:
+			_generated.erase(old)
+			remove_child(old)
+			old.queue_free()
+	_build_ground_cover()
 
 
 ## Scrive un'istanza (rotazione attorno a Y, scala, posizione, colore) nel formato del

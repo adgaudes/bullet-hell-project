@@ -20,7 +20,9 @@ func _ready() -> void:
 			for x in 128:
 				var d := Vector2(x - 63.5, y - 63.5).length() / 63.5
 				var a := clampf(1.0 - absf(d - 0.9) / 0.1, 0.0, 1.0)
-				image.set_pixel(x, y, Color(1, 1, 1, a))
+				# RGB pari all'alfa: l'emissione del Decal non guarda l'alfa e col bianco
+				# pieno riempirebbe tutto il quadrato (visto sulle catture del rilievo).
+				image.set_pixel(x, y, Color(a, a, a, a))
 		_ring = ImageTexture.create_from_image(image)
 	texture_albedo = _ring
 	texture_emission = _ring

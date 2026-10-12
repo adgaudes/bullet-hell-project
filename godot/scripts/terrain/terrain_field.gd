@@ -8,6 +8,8 @@ extends Node3D
 ## tool del giocatore (rottami, suoni, impronte, contatori).
 
 signal region_changed(aabb: AABB)
+## Terrain3D e pronto per colori e strati (solo con finestra, un fotogramma dopo `_ready`).
+signal render_ready
 signal player_sculpted(center: Vector3, radius: float, volume: float, mode: int)
 
 enum ToolMode { DIG, RAISE, LEVEL, LAMP }
@@ -178,12 +180,40 @@ func player_level(center: Vector3, radius: float, strength: float) -> float:
 ## Fissa il rilievo attuale come "naturale": delta e bump si misurano da qui.
 func commit_base() -> void:
 	_base = _heights.duplicate()
+	if _terrain_ready:
+		TerrainSurface.update_base(_terrain, _base, resolution, _half)
+
+
+## Strato di tile (TerrainSurface.LAYER_*) sul control map di Terrain3D in un disco; niente in headless.
+func paint_layer(center: Vector3, radius: float, layer: int) -> void:
+	if not _terrain_ready:
+		return
+	var data := _terrain.data
+	var pixel := Color(Terrain3DUtil.as_float(Terrain3DUtil.enc_base(layer)), 0.0, 0.0, 0.0)
+	for p in _disc_points(center, radius):
+		data.set_pixel(Terrain3DRegion.TYPE_CONTROL, _vertex_world(p), pixel)
+	_mark_regions(center, radius)
+	data.update_maps(Terrain3DRegion.TYPE_CONTROL, false)
 
 
 ## Pittura sul color map di Terrain3D (strade, piazza, cumuli, barricate); niente in headless.
 func tint(center: Vector3, radius: float, color: Color, strength: float) -> void:
 	if not _terrain_ready:
 		return
+	_tint_disc(center, radius, color, strength)
+	_terrain.data.update_maps(Terrain3DRegion.TYPE_COLOR, false)
+
+
+## Tante pennellate di colore con un solo aggiornamento delle mappe (prato dipinto).
+func tint_points(points: Array[Vector3], radius: float, color: Color, strength: float) -> void:
+	if not _terrain_ready or points.is_empty():
+		return
+	for center in points:
+		_tint_disc(center, radius, color, strength)
+	_terrain.data.update_maps(Terrain3DRegion.TYPE_COLOR, false)
+
+
+func _tint_disc(center: Vector3, radius: float, color: Color, strength: float) -> void:
 	var data := _terrain.data
 	for p in _disc_points(center, radius):
 		var world := _vertex_world(p)
@@ -193,7 +223,6 @@ func tint(center: Vector3, radius: float, color: Color, strength: float) -> void
 		var mixed := Color(old.r, old.g, old.b, old.a).lerp(Color(color.r, color.g, color.b, old.a), w)
 		data.set_pixel(Terrain3DRegion.TYPE_COLOR, world, mixed)
 	_mark_regions(center, radius)
-	data.update_maps(Terrain3DRegion.TYPE_COLOR, false)
 
 
 # --- Salvataggio del rilievo di base ------------------------------------------------
@@ -318,8 +347,9 @@ func _build_terrain3d() -> void:
 	_terrain.name = "Terrain3D"
 	_terrain.vertex_spacing = SPACING
 	_terrain.region_size = REGION_SIZE
-	_terrain.collision.mode = Terrain3DCollision.DISABLED
 	add_child(_terrain)
+	# La collisione di Terrain3D non serve (D-085: chunk nostri); l'oggetto nasce con il nodo.
+	_disable_terrain3d_collision()
 	var camera := get_viewport().get_camera_3d()
 	if camera != null:
 		_terrain.set_camera(camera)
@@ -328,13 +358,32 @@ func _build_terrain3d() -> void:
 		await get_tree().process_frame
 	if _terrain.data == null or not is_inside_tree():
 		return
+	_disable_terrain3d_collision()
 	var region_m := REGION_SIZE * SPACING
 	for gx in [-region_m * 0.5, region_m * 0.5]:
 		for gz in [-region_m * 0.5, region_m * 0.5]:
 			_terrain.data.add_region_blankp(Vector3(gx, 0.0, gz), false)
+	_apply_quality_preset()
 	_terrain_ready = true
 	TerrainSurface.apply(_terrain)
+	TerrainSurface.update_base(_terrain, _base, resolution, _half)
 	_mirror_all()
+	render_ready.emit()
+
+
+## Steam Deck e Basso: meno anelli di LOD e piu piccoli (spec 6.3).
+func _apply_quality_preset() -> void:
+	var settings := get_node_or_null(^"/root/GameSettings") as GameSettingsService
+	if settings == null:
+		return
+	if settings.preset == GameSettingsService.Preset.STEAM_DECK or settings.preset == GameSettingsService.Preset.LOW:
+		_terrain.mesh_lods = 5
+		_terrain.mesh_size = 32
+
+
+func _disable_terrain3d_collision() -> void:
+	if _terrain != null and _terrain.collision != null:
+		_terrain.collision.mode = Terrain3DCollision.DISABLED
 
 
 func _mirror_all() -> void:

@@ -644,6 +644,9 @@ func _build_terrain_relief() -> void:
 	_start_protect_left = terrain_field.tuning.start_protected_seconds
 	terrain_field.set_protected(Vector3.ZERO, terrain_field.tuning.start_protected_radius_m, true)
 	_initial_heights = RunMap.snapshot_heights(terrain_field)
+	# Prato, prop e rovine sulle quote; strati e tinte quando Terrain3D e pronto (con finestra).
+	district.settle_on_relief()
+	terrain_field.render_ready.connect(district.paint_surface.bind(terrain_field))
 	print("PROTOTYPE01_TERRAIN_LAYOUT_READY strokes=%d" % district.terrain_strokes.size())
 
 

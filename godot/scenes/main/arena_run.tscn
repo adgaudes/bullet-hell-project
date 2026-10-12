@@ -28,8 +28,9 @@
 [node name="ArenaRun" type="Node3D"]
 script = ExtResource("1_probe")
 
-[node name="District" type="Node3D" parent="."]
+[node name="District" type="Node3D" parent="." node_paths=PackedStringArray("terrain_field")]
 script = ExtResource("2_arena")
+terrain_field = NodePath("../TerrainField")
 play_half_extent = 102.0
 clear_half_extent = 0.0
 grass_tufts = 90000

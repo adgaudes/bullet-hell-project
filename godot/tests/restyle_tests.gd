@@ -1,6 +1,8 @@
 extends SceneTree
-## Restyling grafico (spec 2026-10-11): tile di superficie, texture negli shader, preset
-## grafici, camera a tre distanze.
+## Restyling grafico (spec 2026-10-11) sul rilievo continuo (D-085): tile di superficie,
+## strati di Terrain3D e shader del rilievo, texture negli shader, prato e prop appoggiati
+## al rilievo, preset grafici, camera a tre distanze. Con finestra si controlla anche
+## Terrain3D (`godot_console --path godot --resolution 1280x800 --fixed-fps 60 --script ...`).
 ##   godot_console --headless --path godot --fixed-fps 60 --script res://tests/restyle_tests.gd
 
 const SURFACE_DIR := "res://assets/textures/surfaces"
@@ -53,20 +55,26 @@ func _test_surface_tiles() -> void:
 func _test_terrain_textures() -> void:
 	print("terrain textures")
 	await _open_scene()
-	var grid: TerrainGrid = _scene.get_node(^"TerrainGrid")
-	var batch: MultiMeshInstance3D = grid.get_node(^"CellsFlat")
-	var material := batch.material_override as ShaderMaterial
-	for map in ["albedo", "normal", "orm"]:
-		_check(material.get_shader_parameter("ground_%s" % map) is TextureLayered, "le celle hanno l'array ground_%s" % map)
-	var tile_scale: Variant = material.get_shader_parameter(&"tile_scale")
-	_check(tile_scale != null and tile_scale > 0.0, "le celle hanno la scala delle tile")
-	var raised: MultiMeshInstance3D = grid.get_node(^"CellsRaised")
-	_check(raised.material_override == material, "i terrapieni condividono il materiale delle celle")
-	var ground := _scene.get_node(^"District").find_child("Ground", true, false)
-	var ground_mesh: MeshInstance3D = ground.find_child("*", true, false) as MeshInstance3D if ground != null else null
-	var ground_material := ground_mesh.material_override as ShaderMaterial if ground_mesh != null else null
-	_check(ground_material != null and ground_material.get_shader_parameter(&"ground_albedo") is TextureLayered, "il suolo usa l'array ground_albedo")
-	_check(ground_material != null and ground_material.get_shader_parameter(&"ground_orm") is TextureLayered, "il suolo usa l'array ground_orm")
+	var district: RuinsDistrict = _scene.get_node(^"District")
+	var field: TerrainField = _scene.get_node(^"TerrainField")
+	_check(district.terrain_field == field, "il quartiere conosce il rilievo")
+	_check(district.find_child("Ground", true, false) == null, "niente lastra piatta: il suolo e il rilievo")
+	for layer: String in TerrainSurface.LAYERS:
+		var albedo_path := "res://assets/textures/terrain/%s_albedo_height.png" % layer
+		var normal_path := "res://assets/textures/terrain/%s_normal_rough.png" % layer
+		_check(ResourceLoader.exists(albedo_path) and ResourceLoader.exists(normal_path), "tile %s impacchettate per Terrain3D" % layer)
+	var dirt: Texture2D = load("res://assets/textures/terrain/dirt_albedo_height.png")
+	_check(dirt is CompressedTexture2D and dirt.get_width() == 1024 and dirt.get_image().get_format() in COMPRESSED_FORMATS,
+		"tile del rilievo a 1024 px compresse in VRAM")
+	var code: String = TerrainSurface.SHADER.code
+	_check(code.contains("delta_tint") and code.contains("base_map") and code.contains("raised_tint"), "lo shader del rilievo legge il delta dalla base e tinge gli argini")
+	var terrain := field.terrain3d()
+	if terrain != null:
+		_check(terrain.material.shader_override_enabled and terrain.material.shader_override == TerrainSurface.SHADER, "shader del rilievo attivo")
+		_check(terrain.assets.get_texture_count() == TerrainSurface.LAYERS.size(), "cinque strati di tile (%d)" % terrain.assets.get_texture_count())
+		_check(terrain.material.get_shader_param("base_map") != null, "la base del rilievo e nello shader")
+	else:
+		print("  skip controlli Terrain3D (headless)")
 	await _close_scene()
 
 
@@ -128,6 +136,29 @@ func _test_vegetation_and_props() -> void:
 			if mat != null and mat.get_shader_parameter(&"textured") == true:
 				leaves_textured = true
 	_check(leaves_textured, "la chioma dell'albero usa le cartelle di foglie dipinte")
+	# Rilievo continuo (D-085): prato e prop poggiano sulle quote, niente prato sui fianchi.
+	var field: TerrainField = _scene.get_node(^"TerrainField")
+	var sample := tufts.multimesh.get_instance_transform(0).origin
+	_check(absf(sample.y - field.height_at(sample)) < 0.15, "il prato poggia sul rilievo (%.2f vs %.2f)" % [sample.y, field.height_at(sample)])
+	var on_steep := 0
+	var off_ground := 0
+	for i in range(0, tufts.multimesh.instance_count, 97):
+		var origin := tufts.multimesh.get_instance_transform(i).origin
+		if field.slope_at(origin) > 0.6:
+			on_steep += 1
+		if absf(origin.y - field.height_at(origin)) > 0.15:
+			off_ground += 1
+	_check(on_steep == 0, "niente prato sui fianchi ripidi (%d)" % on_steep)
+	_check(off_ground == 0, "tutto il prato campionato poggia sul rilievo (%d fuori quota)" % off_ground)
+	var settled := 0
+	var floating := 0
+	for child in district.get_children():
+		if child is StaticBody3D and (child.name.begins_with("Block") or child.name.begins_with("Tree") or child.name.begins_with("WreckedCar")):
+			settled += 1
+			var at: Vector3 = (child as Node3D).global_position
+			if absf(at.y - field.height_at(at)) > 0.4:
+				floating += 1
+	_check(settled > 10 and floating == 0, "rovine, alberi e auto appoggiati al rilievo (%d controllati, %d fuori quota)" % [settled, floating])
 	await _close_scene()
 
 
