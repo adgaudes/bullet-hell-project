@@ -6,7 +6,7 @@ extends Node3D
 ## cambia o quando il Demolitore ci passa sopra. Non blocca il passaggio: il campo di
 ## percorso non lo vede. Sul rilievo continuo (D-085) un lampione e un punto: si pianta
 ## su suolo piano, a distanza da altri lampioni, e cade se il suolo si sposta di oltre
-## FALL_SHIFT_M; sulla griglia (ferrovia) resta per cella.
+## FALL_SHIFT_M.
 
 signal lamps_changed(count: int)
 signal lamp_placed(at: Vector3)
@@ -21,8 +21,7 @@ const FLAT_TOLERANCE_M := 0.3
 const MIN_SPACING_M := 2.0
 const FALL_SHIFT_M := 0.4
 
-@export var grid: TerrainGrid
-## Rilievo continuo (D-085): con questo i lampioni stanno su punti, non su celle.
+## Rilievo continuo (D-085): i lampioni stanno su punti del rilievo.
 @export var terrain_field: TerrainField
 ## Chi paga i lampioni (rottami del cassone); senza compagno sono gratis (scene senza compagno).
 @export var companion: Companion
@@ -34,8 +33,6 @@ var light_radius := 5.0
 ## Luce logica dove registrare i lampioni; senza, i lampioni sono solo visivi.
 var light_field: LightField
 
-## Griglia: lampioni per cella.
-var _lamps: Dictionary[Vector2i, Dictionary] = {}
 ## Rilievo: { position: Vector3 (base del palo), node: Node3D, source: int, rest_height: float }.
 var _posts: Array[Dictionary] = []
 var _pole_mesh: CylinderMesh
@@ -45,62 +42,35 @@ var _head_material: StandardMaterial3D
 
 
 func _ready() -> void:
-	if grid != null:
-		grid.cell_changed.connect(_on_cell_changed)
-		grid.rebuilt.connect(_on_grid_rebuilt)
 	if terrain_field != null:
 		terrain_field.region_changed.connect(_on_region_changed)
 
 
 func count() -> int:
-	return _lamps.size() + _posts.size()
+	return _posts.size()
 
 
-func has_lamp(cell: Vector2i) -> bool:
-	return _lamps.has(cell)
-
-
-## Celle con un lampione (griglia).
-func cells() -> Array[Vector2i]:
-	var result: Array[Vector2i] = []
-	result.assign(_lamps.keys())
-	return result
-
-
-## Basi dei pali nel mondo (rilievo e griglia).
+## Basi dei pali nel mondo.
 func positions() -> Array[Vector3]:
 	var result: Array[Vector3] = []
 	for post in _posts:
 		result.append(post.position)
-	for cell: Vector2i in _lamps:
-		result.append((_lamps[cell].node as Node3D).global_position)
 	return result
 
 
-## Il punto (Vector3, rilievo) o la cella (Vector2i, griglia) puo ricevere un lampione
-## (regole della specifica, senza il costo).
-func can_place(target: Variant) -> bool:
-	if _lamps.size() + _posts.size() >= max_count:
+## Il punto puo ricevere un lampione (regole della specifica, senza il costo).
+func can_place(point: Vector3) -> bool:
+	if _posts.size() >= max_count or terrain_field == null:
 		return false
-	if target is Vector3:
-		if terrain_field == null:
-			return grid != null and can_place(grid.cell_at(target))
-		var point := target as Vector3
-		var half := terrain_field.half_extents()
-		if absf(point.x) > half.x - FLAT_RADIUS_M or absf(point.z) > half.y - FLAT_RADIUS_M:
+	var half := terrain_field.half_extents()
+	if absf(point.x) > half.x - FLAT_RADIUS_M or absf(point.z) > half.y - FLAT_RADIUS_M:
+		return false
+	if terrain_field.is_protected(point) or not terrain_field.is_flat(point, FLAT_RADIUS_M, FLAT_TOLERANCE_M):
+		return false
+	for post in _posts:
+		if _planar_distance(post.position, point) < MIN_SPACING_M:
 			return false
-		if terrain_field.is_protected(point) or not terrain_field.is_flat(point, FLAT_RADIUS_M, FLAT_TOLERANCE_M):
-			return false
-		for post in _posts:
-			if _planar_distance(post.position, point) < MIN_SPACING_M:
-				return false
-		return true
-	var cell := target as Vector2i
-	if grid == null or not grid.state.is_valid(cell) or grid.state.is_protected(cell):
-		return false
-	if grid.state.get_state(cell) == TerrainState.CellState.LOWERED:
-		return false
-	return not _lamps.has(cell)
+	return true
 
 
 ## Il compagno ha i rottami per un lampione, entro il raggio di rifornimento dal punto.
@@ -110,55 +80,30 @@ func can_afford(world_target: Vector3) -> bool:
 	return companion.can_supply_count(world_target, scrap_cost)
 
 
-## Piazza un lampione nel punto (rilievo) o sulla cella sotto [param world_target]
-## (griglia), pagandolo. False se rifiutato.
+## Piazza un lampione nel punto sotto [param world_target], pagandolo. False se rifiutato.
 func place_at(world_target: Vector3) -> bool:
-	if terrain_field != null:
-		var point := Vector3(world_target.x, 0.0, world_target.z)
-		if not can_place(point):
-			print("PROTOTYPE01_LAMP_REJECTED x=%.1f z=%.1f reason=ground count=%d" % [point.x, point.z, count()])
-			return false
-		if not can_afford(world_target):
-			print("PROTOTYPE01_LAMP_REJECTED x=%.1f z=%.1f reason=scrap" % [point.x, point.z])
-			return false
-		if companion != null:
-			companion.spend_count(scrap_cost)
-		var base := _build_post(point)
-		print("PROTOTYPE01_LAMP_PLACED x=%.1f z=%.1f count=%d" % [point.x, point.z, count()])
-		lamp_placed.emit(base)
-		lamps_changed.emit(count())
-		return true
-	var cell := grid.cell_at(world_target)
-	if not can_place(cell):
-		print("PROTOTYPE01_LAMP_REJECTED X=%d Y=%d reason=cell count=%d" % [cell.x, cell.y, _lamps.size()])
+	var point := Vector3(world_target.x, 0.0, world_target.z)
+	if not can_place(point):
+		print("PROTOTYPE01_LAMP_REJECTED x=%.1f z=%.1f reason=ground count=%d" % [point.x, point.z, count()])
 		return false
 	if not can_afford(world_target):
-		print("PROTOTYPE01_LAMP_REJECTED X=%d Y=%d reason=scrap" % [cell.x, cell.y])
+		print("PROTOTYPE01_LAMP_REJECTED x=%.1f z=%.1f reason=scrap" % [point.x, point.z])
 		return false
 	if companion != null:
 		companion.spend_count(scrap_cost)
-	var lamp := _build_lamp(cell)
-	print("PROTOTYPE01_LAMP_PLACED X=%d Y=%d count=%d" % [cell.x, cell.y, _lamps.size()])
-	lamp_placed.emit(lamp.global_position)
+	var base := _build_post(point)
+	print("PROTOTYPE01_LAMP_PLACED x=%.1f z=%.1f count=%d" % [point.x, point.z, count()])
+	lamp_placed.emit(base)
 	lamps_changed.emit(count())
 	return true
-
-
 ## Abbatte i lampioni entro [param radius] (piano XZ) da [param world]; restituisce quanti.
 func knock_down_near(world: Vector3, radius: float) -> int:
-	var hit_cells: Array[Vector2i] = []
-	for cell: Vector2i in _lamps:
-		var at: Vector3 = _lamps[cell].node.global_position
-		if _planar_distance(at, world) <= radius:
-			hit_cells.append(cell)
-	for cell in hit_cells:
-		_remove(cell, &"demolisher")
 	var hit_posts := 0
 	for i in range(_posts.size() - 1, -1, -1):
 		if _planar_distance(_posts[i].position, world) <= radius:
 			_remove_post(i, &"demolisher")
 			hit_posts += 1
-	return hit_cells.size() + hit_posts
+	return hit_posts
 
 
 ## Abbatte i lampioni con la base nel rettangolo XZ (il treno); ritorna quanti.
@@ -174,8 +119,6 @@ func knock_down_in_rect(rect: Rect2) -> int:
 
 ## Toglie tutti i lampioni (ricostruzioni, test).
 func remove_all(reason: StringName) -> void:
-	for cell in cells():
-		_remove(cell, reason)
 	for i in range(_posts.size() - 1, -1, -1):
 		_remove_post(i, reason)
 
@@ -240,15 +183,6 @@ func _build_post(point: Vector3) -> Vector3:
 	return base
 
 
-func _build_lamp(cell: Vector2i) -> Node3D:
-	var cell_state := grid.state.get_state(cell)
-	var surface := grid.to_global(grid.cell_local_position(cell, cell_state))
-	var base := Vector3(surface.x, surface.y * 2.0 - grid.global_position.y, surface.z)
-	var made := _spawn_lamp_node("Lamp_%d_%d" % [cell.x, cell.y], base)
-	_lamps[cell] = {node = made[0], source = made[1]}
-	return made[0]
-
-
 func _free_entry(entry: Dictionary) -> void:
 	if light_field != null and entry.source > 0:
 		light_field.remove_source(entry.source)
@@ -267,16 +201,6 @@ func _remove_post(index: int, reason: StringName) -> void:
 	lamps_changed.emit(count())
 
 
-func _remove(cell: Vector2i, reason: StringName) -> void:
-	var entry: Dictionary = _lamps[cell]
-	_lamps.erase(cell)
-	var at: Vector3 = (entry.node as Node3D).global_position
-	_free_entry(entry)
-	print("PROTOTYPE01_LAMP_LOST X=%d Y=%d reason=%s count=%d" % [cell.x, cell.y, reason, count()])
-	lamp_lost.emit(at, reason)
-	lamps_changed.emit(count())
-
-
 ## Il suolo sotto un palo si e spostato di oltre FALL_SHIFT_M (scavo, rialzo, martello,
 ## terremoto): il lampione cade.
 func _on_region_changed(aabb: AABB) -> void:
@@ -287,17 +211,6 @@ func _on_region_changed(aabb: AABB) -> void:
 			continue
 		if absf(terrain_field.height_at(p) - float(_posts[i].rest_height)) > FALL_SHIFT_M:
 			_remove_post(i, &"terrain")
-
-
-## La cella cambia stato (scavo, rialzo, demolizione, esplosione): il lampione e perso.
-func _on_cell_changed(cell: Vector2i, _state: TerrainState.CellState) -> void:
-	if _lamps.has(cell):
-		_remove(cell, &"terrain")
-
-
-func _on_grid_rebuilt() -> void:
-	for cell in cells():
-		_remove(cell, &"rebuild")
 
 
 static func _planar_distance(a: Vector3, b: Vector3) -> float:

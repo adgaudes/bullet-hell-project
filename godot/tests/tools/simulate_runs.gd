@@ -83,8 +83,6 @@ var _scene: Node3D
 var _run: ArenaRun
 var _player: PlayerCharacter
 var _companion: Companion
-var _grid: TerrainGrid
-## Rilievo continuo (D-085): con questo la griglia e null.
 var _field: TerrainField
 ## Vena puntata dal bot (centro XZ) e argine gia alzato in questa run.
 var _vein_target := Vector3.INF
@@ -201,7 +199,6 @@ func _simulate(bot: StringName, run_seed: int) -> Dictionary:
 	_run.extraction_pad = null
 	_player = _scene.get_node(^"Player")
 	_companion = _scene.get_node(^"Companion")
-	_grid = _scene.get_node_or_null(^"TerrainGrid")
 	_field = _scene.get_node_or_null(^"TerrainField")
 	_director = _scene.get_node(^"EnemyDirector")
 	_path = _scene.get_node(^"PathField")
@@ -315,12 +312,8 @@ func _tick_bot(step: float) -> void:
 				_dark_samples += 1
 			if _escape_left <= 0.0:
 				_move = _choose_direction()
-		if _params.digs:
-			if _field != null:
-				if not _tick_lamps():
-					_tick_relief_brush(step)
-			elif not _tick_lamps():
-				_tick_digging()
+		if _params.digs and not _tick_lamps():
+			_tick_relief_brush(step)
 	_apply_inputs()
 
 
@@ -405,8 +398,6 @@ func _choose_direction() -> Vector2:
 				score -= 3.0
 			if not _walkable(future):
 				score -= 1.0
-			if _grid != null and _grid.cell_state_at(_world(middle)) == TerrainState.CellState.LOWERED:
-				score -= 0.3
 			if _field != null and _field.slope_at(_world(middle)) > 0.4:
 				score -= 0.3
 			if absf(future.x) > limit.x or absf(future.y) > limit.y:
@@ -427,14 +418,11 @@ func _tick_lamps() -> bool:
 	var lamps: LampField = _run.lamp_field
 	if lamps == null:
 		return false
-	var in_lamp_mode := _player.terrain_tool_mode == TerrainState.ToolMode.LAMP
+	var in_lamp_mode := _player.terrain_tool_mode == TerrainField.ToolMode.LAMP
 	var wanted := _run.is_night() and _dig_cooldown <= 0.0 and lamps.count() < lamps.max_count 		and _companion.carried >= lamps.scrap_cost and _nearest_enemy_distance() >= 3.5
 	var spot_ok := false
 	if wanted:
-		if _field != null:
-			spot_ok = lamps.can_place(_player.terrain_target) and lamps.can_afford(_player.terrain_target)
-		else:
-			spot_ok = lamps.can_place(_grid.cell_at(_player.terrain_target)) and lamps.can_afford(_player.terrain_target)
+		spot_ok = lamps.can_place(_player.terrain_target) and lamps.can_afford(_player.terrain_target)
 		# Nessun lampione a meno di 1,6 raggi da uno gia piazzato: copertura, non ammassi.
 		for other in lamps.positions():
 			if _planar(other).distance_to(_planar(_player.terrain_target)) < lamps.light_radius * 1.6:
@@ -443,12 +431,12 @@ func _tick_lamps() -> bool:
 	if not (wanted and spot_ok):
 		# Torna a scavare: il tool premuto in modo lampione agirebbe al passo dopo.
 		if in_lamp_mode:
-			while _player.terrain_tool_mode != TerrainState.ToolMode.DIG:
+			while _player.terrain_tool_mode != TerrainField.ToolMode.DIG:
 				_player._toggle_terrain_mode()
 		return false
 	if not in_lamp_mode:
 		# Prima il modo, poi il colpo al passo successivo (l'evento arriva al frame dopo).
-		while _player.terrain_tool_mode != TerrainState.ToolMode.LAMP:
+		while _player.terrain_tool_mode != TerrainField.ToolMode.LAMP:
 			_player._toggle_terrain_mode()
 		return true
 	if _field != null:
@@ -531,42 +519,6 @@ func _nearest_vein() -> Vector3:
 			best_distance = distance
 			best = vein.center
 	return best
-
-
-func _tick_digging() -> void:
-	_aim = Vector2.ZERO
-	if _dig_cooldown > 0.0:
-		return
-	var waiting := _scrap.positions_near(_player.global_position, _companion.tuning.pickup_radius_from_player).size()
-	if _companion.carried + waiting >= _companion.capacity:
-		return
-	if _nearest_enemy_distance() < 3.5:
-		return
-	var here := _planar(_player.global_position)
-	var reach := _planar(_player.terrain_target).distance_to(here)
-	var facing := _planar(-_player.global_basis.z).normalized()
-	var best := Vector2.ZERO
-	var best_score := 0.0
-	for i in DIRECTIONS:
-		var direction := Vector2.RIGHT.rotated(TAU * i / DIRECTIONS)
-		var target := _world(here + direction * reach)
-		if not _grid.can_apply_at(target, TerrainState.ToolMode.DIG, _player):
-			continue
-		var score := 2.0 if _grid.cell_state_at(target) == TerrainState.CellState.RAISED else 1.0
-		# Niente buche sulla propria strada.
-		if score < 2.0 and not _move.is_zero_approx() and direction.dot(_move.normalized()) > 0.85:
-			continue
-		score += 0.4 * direction.dot(facing)
-		if score > best_score:
-			best_score = score
-			best = direction
-	if best.is_zero_approx():
-		return
-	_aim = best
-	if facing.dot(best) > 0.985 and _grid.can_apply_at(_player.terrain_target, TerrainState.ToolMode.DIG, _player):
-		_press_tool()
-		_dig_cooldown = 0.5
-		_digs += 1
 
 
 func _nearest_enemy_distance() -> float:

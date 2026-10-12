@@ -33,9 +33,7 @@ const HIT_FLASH_SECONDS := 0.3
 # gruppo "Motion" (R-41).
 
 @export var tuning: PlayerTuning
-## Griglia su cui agisce il tool (SetTerrainGrid in Unreal). Opzionale.
-@export var terrain_grid: TerrainGrid
-## Rilievo continuo (D-082): se presente sostituisce la griglia per il tool.
+## Rilievo continuo (D-082) su cui agisce il pennello. Opzionale.
 @export var terrain_field: TerrainField
 ## Lampioni (D-058, tappa 2): senza, il tool cicla solo fra scavo e rialzo.
 @export var lamp_field: LampField
@@ -70,8 +68,6 @@ var health := 0
 var invulnerability_seconds := 0.8
 ## Moltiplicatore permanente della velocita (upgrade), combinato col terreno.
 var speed_bonus := 1.0
-## Portata in piu del tool, in centimetri Unreal (upgrade permanente Prolunga, D-049).
-var tool_range_bonus_cm := 0.0
 var _invulnerable_left := 0.0
 
 var _movement := PlanarMovement.new()
@@ -164,7 +160,7 @@ func _ready() -> void:
 		floor_max_angle = atan(terrain_field.tuning.max_grade)
 
 	print("PROTOTYPE01_CHARACTER_READY")
-	if terrain_grid != null or terrain_field != null:
+	if terrain_field != null:
 		_update_terrain_target()
 		print("PROTOTYPE01_TERRAIN_MODE Dig")
 
@@ -233,8 +229,6 @@ func _run_pending_actions() -> void:
 		match action:
 			&"dash":
 				_start_dash()
-			&"terrain_tool":
-				_use_terrain_tool()
 			&"terrain_mode":
 				_toggle_terrain_mode()
 	_pending_actions.clear()
@@ -284,7 +278,7 @@ func _physics_process(delta: float) -> void:
 	_update_motion(delta)
 
 
-## Sopra una cella Lowered la velocita massima perde la penalita della griglia.
+## In salita la velocita massima cala con la pendenza davanti (rilievo continuo).
 func _update_terrain_speed_modifier() -> void:
 	speed_multiplier = speed_bonus
 	if terrain_field != null:
@@ -294,74 +288,17 @@ func _update_terrain_speed_modifier() -> void:
 			if g > 0.0:
 				speed_multiplier *= lerpf(1.0, 0.5, clampf(g / terrain_field.tuning.max_grade, 0.0, 1.0))
 		return
-	if terrain_grid != null and terrain_grid.cell_state_at(global_position) == TerrainState.CellState.LOWERED:
-		speed_multiplier *= 1.0 - terrain_grid.lowered_speed_penalty()
 
 
-func _use_terrain_tool() -> void:
-	if terrain_field != null or terrain_grid == null:
-		return
-	_update_terrain_target()
-	if terrain_tool_mode == TerrainState.ToolMode.LAMP:
-		if lamp_field == null or not lamp_field.place_at(terrain_target):
-			terrain_tool_rejected.emit()
-			return
-		if _animator != null:
-			_animator.play_dig()
-		_update_terrain_target()
-		return
-	var raising := terrain_tool_mode == TerrainState.ToolMode.RAISE
-	if raising and companion != null 			and terrain_grid.can_apply_at(terrain_target, terrain_tool_mode, self) 			and not companion.can_supply(terrain_target):
-		print("PROTOTYPE01_TERRAIN_RAISE_NO_SCRAP")
-		terrain_tool_rejected.emit()
-		return
-	if not terrain_grid.apply_command_at(terrain_target, terrain_tool_mode, self):
-		terrain_tool_rejected.emit()
-		return
-	if raising and companion != null:
-		companion.spend()
-	if _animator != null:
-		_animator.play_dig()
-	_update_terrain_target()
-
-
-## DIG -> RAISE -> LAMP -> DIG (LAMP solo se esiste un LampField, D-058).
+## Scava -> Alza -> Livella -> Lampione -> Scava (Lampione solo con un LampField, D-058).
 func _toggle_terrain_mode() -> void:
-	if terrain_field != null:
-		_toggle_field_mode()
-		return
-	match terrain_tool_mode:
-		TerrainState.ToolMode.DIG:
-			terrain_tool_mode = TerrainState.ToolMode.RAISE
-		TerrainState.ToolMode.RAISE:
-			terrain_tool_mode = TerrainState.ToolMode.LAMP if lamp_field != null else TerrainState.ToolMode.DIG
-		_:
-			terrain_tool_mode = TerrainState.ToolMode.DIG
-	print("PROTOTYPE01_TERRAIN_MODE %s" % TOOL_MODE_NAMES[terrain_tool_mode])
-	terrain_mode_changed.emit(terrain_tool_mode)
-	_update_terrain_target()
+	_toggle_field_mode()
 
 
-## Bersaglio a distanza fissa lungo il forward planare, con anteprima sulla griglia.
+## Bersaglio del pennello davanti al giocatore (o sotto il cursore), con l'anello di anteprima.
 func _update_terrain_target() -> void:
 	if terrain_field != null:
 		_update_field_target()
-		return
-	if terrain_grid == null:
-		return
-	var forward := -global_basis.z
-	forward.y = 0.0
-	if forward.is_zero_approx():
-		terrain_grid.hide_preview()
-		return
-	terrain_target = global_position + forward.normalized() * UnrealSpace.length(maxf(tuning.terrain_tool_range_cm, 100.0) + tool_range_bonus_cm)
-	var blocked := false
-	if terrain_tool_mode == TerrainState.ToolMode.RAISE:
-		blocked = companion != null and not companion.can_supply(terrain_target)
-	elif terrain_tool_mode == TerrainState.ToolMode.LAMP:
-		blocked = lamp_field == null or not lamp_field.can_place(terrain_grid.cell_at(terrain_target)) \
-			or not lamp_field.can_afford(terrain_target)
-	terrain_grid.update_preview(terrain_target, terrain_tool_mode, self, blocked)
 
 
 ## Materiale della striscia dello zainetto (null senza sacca nel modello).

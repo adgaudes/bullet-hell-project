@@ -21,7 +21,9 @@ func _initialize() -> void:
 	_scene = preload("res://scenes/main/arena_run.tscn").instantiate()
 	root.add_child(_scene)
 	var player: PlayerCharacter = _scene.get_node(^"Player")
-	var grid: TerrainGrid = _scene.get_node(^"TerrainGrid")
+	var field: TerrainField = _scene.get_node(^"TerrainField")
+	(_scene.get_node(^"Run") as ArenaRun)._start_protect_left = 0.0
+	field.set_protected(Vector3.ZERO, field.tuning.start_protected_radius_m, false)
 	var director: EnemyDirector = _scene.get_node(^"EnemyDirector")
 	var flow: FlowPreview = _scene.get_node(^"FlowPreview")
 	director.spawning = false
@@ -37,18 +39,18 @@ func _initialize() -> void:
 		director.spawn_at(spot)
 	director.set_physics_process(false)
 
-	grid.apply_command_at(Vector3(2.4, 0.0, 2.4), TerrainState.ToolMode.DIG, player)
+	field.player_sculpt(Vector3(2.4, 0.0, 2.4), 2.4, -0.8, TerrainField.ToolMode.DIG)
 	await _settle()
 	_report(flow, "open")
 	await _save_both("open")
 
-	grid.apply_command_at(Vector3(0.0, 0.0, -WALL_DISTANCE), TerrainState.ToolMode.RAISE, player)
+	field.player_sculpt(Vector3(0.0, 0.0, -WALL_DISTANCE), 2.4, 1.4, TerrainField.ToolMode.RAISE)
 	await _settle()
 	_report(flow, "north_closed")
 	await _save_both("north_closed")
 
 	for gate: Vector3 in [Vector3(WALL_DISTANCE, 0.0, 0.0), Vector3(-WALL_DISTANCE, 0.0, 0.0), Vector3(0.0, 0.0, WALL_DISTANCE)]:
-		grid.apply_command_at(gate, TerrainState.ToolMode.RAISE, player)
+		field.player_sculpt(gate, 2.4, 1.4, TerrainField.ToolMode.RAISE)
 	await _settle()
 	_report(flow, "sealed")
 	await _save_both("sealed")

@@ -49,7 +49,6 @@ const PROTECTED_IDS: Array[StringName] = [&"boss_warning", &"victory", &"train_h
 @export var player: PlayerCharacter
 @export var weapon: AutoWeapon
 @export var director: EnemyDirector
-@export var grid: TerrainGrid
 @export var xp_field: XpField
 @export var companion: Companion
 @export var level_up_menu: LevelUpMenu
@@ -175,8 +174,6 @@ func _connect_signals() -> void:
 		weapon.fired.connect(_on_weapon_fired)
 	if director != null:
 		director.enemy_killed.connect(_on_enemy_killed)
-	if grid != null:
-		grid.command_applied.connect(_on_terrain_command)
 	if xp_field != null:
 		xp_field.collected.connect(_on_xp_collected)
 	if companion != null:
@@ -222,10 +219,6 @@ func _on_weapon_fired(_count: int) -> void:
 
 func _on_enemy_killed(_world_position: Vector3, _total: int) -> void:
 	play(&"enemy_death")
-
-
-func _on_terrain_command(_cell: Vector2i, mode: TerrainState.ToolMode, _state: TerrainState.CellState) -> void:
-	play(&"terrain_raise" if mode == TerrainState.ToolMode.RAISE else &"terrain_dig")
 
 
 func _on_player_sculpted(_center: Vector3, _radius: float, volume: float, mode: int) -> void:

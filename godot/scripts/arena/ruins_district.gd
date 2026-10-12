@@ -7,14 +7,13 @@ extends OvergrownArena
 ## Dentro il perimetro ci sono solo rovine basse (al massimo 4,5 m, cosi non
 ## coprono mai il giocatore visto dalla camera a sud), auto, macerie, alberi e
 ## lampioni, che formano strade e strettoie per il campo di percorso. Le torri
-## alte restano fuori dal perimetro, come skyline. La griglia terreno copre
-## l'intera arena: i **punti di interesse** del terreno (cortili con mura,
-## depositi di rottami, trincee) sono prodotti qui come dati in celle
-## (`terrain_features`) e applicati alla griglia da ArenaRun.
+## alte restano fuori dal perimetro, come skyline. I **punti di interesse** del
+## terreno (cortili con argini, depositi con vena, trincee) sono prodotti qui come
+## pennellate (`terrain_strokes`) e applicati al rilievo continuo da ArenaRun.
 ##
 ## Deterministico per seme: editor, gioco e test vedono lo stesso quartiere.
 
-## Lato di una cella terreno in metri (TerrainTuning.cell_size_cm = 240).
+## Passo storico della pianta (2,4 m): raggi di cortili e lotti si misurano ancora in questi passi.
 const CELL := 2.4
 ## Orientamento del cortile: lato aperto. 0 = +X Unreal (nord, -Z Godot),
 ## 1 = -X Unreal (sud), 2 = +Y Unreal (est, +X Godot), 3 = -Y Unreal (ovest).
@@ -49,7 +48,7 @@ const TRENCH_DEPTH := -0.8
 const NO_TINT := Color(0.0, 0.0, 0.0, 0.0)
 ## Verde del prato dipinto sul color map di Terrain3D (sotto i ciuffi).
 const GRASS_PAINT := Color(0.42, 0.55, 0.22)
-## Direzione mondo (XZ) dei varchi 0..3, come in `_ring_offsets` via `cell_offset_to_world`.
+## Direzione mondo (XZ) dei varchi 0..3.
 const GATE_DIRECTIONS: Array[Vector2] = [Vector2(0.0, -1.0), Vector2(0.0, 1.0), Vector2(1.0, 0.0), Vector2(-1.0, 0.0)]
 ## Tipi di pennellata che sono cortili (anelli di argini).
 const COURTYARD_KINDS: Array[StringName] = [&"start", &"three_gates", &"two_gates", &"broken", &"double"]
@@ -120,11 +119,7 @@ const COURTYARD_KINDS: Array[StringName] = [&"start", &"three_gates", &"two_gate
 		bush_count = value
 		_queue_rebuild()
 
-## Disposizione del terreno da applicare alla griglia (ferrovia). Ogni voce:
-## { kind: StringName, center: Vector2 (mondo XZ, centro di una cella), state: CellState,
-##   offsets: Array[Vector2i] (celle attorno al centro, assi Unreal), gates: Array[int], radius: int }.
-var terrain_features: Array[Dictionary] = []
-## Gli stessi punti di interesse come pennellate sul rilievo continuo (D-085, spec 6.1).
+## I punti di interesse come pennellate sul rilievo continuo (D-085, spec 6.1).
 ## Ogni voce: { kind: StringName, center: Vector2 (XZ), radius: float (anello: raggio in m;
 ##   deposito e trincea: raggio del pennello), height: float (m al colmo, + argine o cumulo,
 ##   - solco), tint: Color (alfa 0 = nessuna), scrap: int, marker: Vector2, gates: Array[int],
@@ -183,12 +178,10 @@ func _cover_chance(p: Vector2, bonus := 0.0) -> float:
 # --- Composizione --------------------------------------------------------------------
 
 func _compose() -> void:
-	terrain_features.clear()
 	terrain_strokes.clear()
 	_block_rects.clear()
 	_reset_occupancy()
-	stats["features"] = 0
-	_build_ground()
+	stats["strokes"] = 0
 	_build_boundary()
 	_plan_start_courtyard()
 	_plan_courtyards()
@@ -275,63 +268,10 @@ func _find_free_spot(half: Vector2, margin: float, min_center_distance: float, a
 
 # --- Punti di interesse del terreno ---------------------------------------------------
 
-## Centro di cella piu vicino: la cella centrale della griglia e all'origine.
-static func snap_to_cell(p: Vector2) -> Vector2:
-	return Vector2(roundf(p.x / CELL) * CELL, roundf(p.y / CELL) * CELL)
-
-
-## Spostamento mondo (XZ) di un offset in celle (assi Unreal: x avanti = -Z, y destra = +X).
-static func cell_offset_to_world(offset: Vector2i) -> Vector2:
-	return Vector2(offset.y * CELL, -offset.x * CELL)
-
-
-## Baricentro mondo (XZ) delle celle di un punto di interesse: per i blocchi di lato pari
-## (depositi 2x2, vagoni) non coincide con la cella di ancoraggio `center` (R-29).
-static func feature_centroid(center: Vector2, offsets: Array[Vector2i]) -> Vector2:
-	if offsets.is_empty():
-		return center
-	var sum := Vector2.ZERO
-	for offset in offsets:
-		sum += cell_offset_to_world(offset)
-	return center + sum / offsets.size()
-
-
-## Celle dell'anello di mura a distanza [param radius], senza i varchi dei lati
-## in [param gates]; con [param broken] > 0 una quota casuale di celle manca.
-func _ring_offsets(radius: int, gates: Array[int], broken := 0.0) -> Array[Vector2i]:
-	var cells: Array[Vector2i] = []
-	for dy in range(-radius, radius + 1):
-		for dx in range(-radius, radius + 1):
-			if maxi(absi(dx), absi(dy)) != radius:
-				continue
-			var is_gate := (dx == radius and dy == 0 and gates.has(0)) \
-				or (dx == -radius and dy == 0 and gates.has(1)) \
-				or (dy == radius and dx == 0 and gates.has(2)) \
-				or (dy == -radius and dx == 0 and gates.has(3))
-			if is_gate:
-				continue
-			if broken > 0.0 and _rng.randf() < broken:
-				continue
-			cells.append(Vector2i(dx, dy))
-	return cells
-
-
-func _add_feature(kind: StringName, center: Vector2, cell_state: TerrainState.CellState,
-		offsets: Array[Vector2i], gates: Array[int], radius: int, reserve_half: Vector2, margin: float) -> void:
-	var marker := feature_centroid(center, offsets)
-	terrain_features.append({
-		kind = kind, center = center, state = cell_state, offsets = offsets, gates = gates, radius = radius, marker = marker,
-	})
-	_reserve(_rect_around(marker, reserve_half, margin))
-	stats.features += 1
-
-
 ## Cortile di partenza: anello con quattro varchi attorno all'origine (D-038).
 func _plan_start_courtyard() -> void:
 	var r := start_courtyard_radius
 	var gates: Array[int] = [0, 1, 2, 3]
-	var half := Vector2.ONE * (r + 0.5) * CELL
-	_add_feature(&"start", Vector2.ZERO, TerrainState.CellState.RAISED, _ring_offsets(r, gates), gates, r, half, 2.0)
 	_add_ring_stroke(&"start", Vector2.ZERO, r * CELL, gates, _ring_points(Vector2.ZERO, r * CELL, gates))
 	# Area di partenza libera da edifici e oggetti.
 	_reserve(_rect_around(Vector2.ZERO, Vector2.ONE * start_clear_radius))
@@ -356,7 +296,7 @@ func _plan_courtyards() -> void:
 					far = false
 					break
 			if far:
-				center = snap_to_cell(candidate)
+				center = _snap_to_step(candidate)
 				break
 		if center == null:
 			continue
@@ -375,7 +315,13 @@ func _plan_courtyards() -> void:
 			&"broken":
 				gates = [0, 1, 2, 3]
 				broken = 0.3
-		var offsets := _ring_offsets(radius, gates, broken)
+		# La pianta in celle riservava il rettangolo dell'anello e, per la variante
+		# "broken", estraeva un numero per ogni cella dell'anello: si fa lo stesso
+		# cosi il quartiere resta identico (D-065).
+		if broken > 0.0:
+			for k in 8 * radius - gates.size():
+				_rng.randf()
+		_reserve(_rect_around(center, half, 4.0))
 		# Generatore proprio per le pennellate mancanti: `_rng` resta com'era e la pianta
 		# del quartiere non cambia (D-065).
 		var stroke_rng := RandomNumberGenerator.new()
@@ -383,14 +329,12 @@ func _plan_courtyards() -> void:
 		var points := _ring_points(center, radius * CELL, gates, broken, stroke_rng)
 		if variant == &"double" and radius >= 4:
 			var inner_gates: Array[int] = [2 if gates.has(0) else 0]
-			offsets.append_array(_ring_offsets(2, inner_gates))
 			points.append_array(_ring_points(center, 2 * CELL, inner_gates))
-		_add_feature(variant, center, TerrainState.CellState.RAISED, offsets, gates, radius, half, 4.0)
 		_add_ring_stroke(variant, center, radius * CELL, gates, points)
 
 
-## Depositi di rottami: blocchi di 2x2 o 3x3 celle Raised. Scavarli produce rottami
-## (un rottame per passo di scavo), come scavare un muro.
+## Depositi di rottami: cumuli di 2 o 3 passi con una vena dentro (spec 5.1), nella
+## stessa posizione dei vecchi blocchi di celle (il cumulo sta al baricentro del blocco).
 func _plan_deposits() -> void:
 	for i in deposit_count:
 		var size := 2 if _rng.randf() < 0.6 else 3
@@ -398,21 +342,16 @@ func _plan_deposits() -> void:
 		var spot: Variant = _find_free_spot(half, 3.0, start_clear_radius + 6.0)
 		if spot == null:
 			continue
-		var center := snap_to_cell(spot)
-		var offsets: Array[Vector2i] = []
-		var lo := -(size / 2)
-		for dy in range(lo, lo + size):
-			for dx in range(lo, lo + size):
-				offsets.append(Vector2i(dx, dy))
-		_add_feature(&"deposit", center, TerrainState.CellState.RAISED, offsets, [], size, half, 3.0)
-		# Cumulo con vena (spec 5.1) al baricentro del vecchio blocco di celle.
-		var heap := feature_centroid(center, offsets)
+		var center := _snap_to_step(spot)
+		# Un blocco di lato pari non ha una cella centrale: il baricentro sta a mezzo passo.
+		var heap := center + (Vector2(-CELL, CELL) * 0.5 if size % 2 == 0 else Vector2.ZERO)
+		_reserve(_rect_around(heap, half, 3.0))
 		var heap_radius := size * CELL * 0.5 + 1.0
 		_add_stroke(&"deposit", heap, heap_radius, DEPOSIT_HEIGHT, DEPOSIT_TINT, 6 + 2 * (size - 2), [], [heap], heap_radius, 0.0)
 
 
-## Trincee: file di celle Lowered gia scavate (canali crollati): rallentano chi le
-## attraversa, e si possono usare come fossati pronti.
+## Trincee: solchi gia scavati (canali crollati) lungo X o Z, fossati pronti; stessa
+## linea delle vecchie file di celle.
 func _plan_trenches() -> void:
 	for i in trench_count:
 		var length := _rng.randi_range(6, 14)
@@ -421,20 +360,24 @@ func _plan_trenches() -> void:
 		var spot: Variant = _find_free_spot(half, 2.0, start_clear_radius + 4.0)
 		if spot == null:
 			continue
-		var center := snap_to_cell(spot)
-		var offsets: Array[Vector2i] = []
+		var center := _snap_to_step(spot)
+		@warning_ignore("integer_division")
 		var lo := -(length / 2)
-		for k in range(lo, lo + length):
-			offsets.append(Vector2i(k, 0) if along_x else Vector2i(0, k))
-		_add_feature(&"trench", center, TerrainState.CellState.LOWERED, offsets, [], length, half, 2.0)
-		# Solco lungo la stessa linea di celle, un punto ogni TRENCH_STEP.
-		var a := center + cell_offset_to_world(offsets[0])
-		var b := center + cell_offset_to_world(offsets[offsets.size() - 1])
+		var hi := lo + length - 1
+		# Assi Unreal della vecchia griglia: x avanti = -Z Godot, y destra = +X Godot.
+		var a := center + (Vector2(0.0, -lo * CELL) if along_x else Vector2(lo * CELL, 0.0))
+		var b := center + (Vector2(0.0, -hi * CELL) if along_x else Vector2(hi * CELL, 0.0))
+		_reserve(_rect_around((a + b) * 0.5, half, 2.0))
 		var steps := maxi(int(a.distance_to(b) / TRENCH_STEP), 1)
 		var points: Array[Vector2] = []
 		for t in steps + 1:
 			points.append(a.lerp(b, float(t) / steps))
 		_add_stroke(&"trench", (a + b) * 0.5, TRENCH_BRUSH, TRENCH_DEPTH, NO_TINT, 0, [], points, TRENCH_BRUSH, a.distance_to(b) / steps)
+
+
+## Punto piu vicino sul passo storico di 2,4 m (la pianta nasce ancora su quel reticolo).
+static func _snap_to_step(p: Vector2) -> Vector2:
+	return Vector2(roundf(p.x / CELL) * CELL, roundf(p.y / CELL) * CELL)
 
 
 # --- Pennellate del terreno continuo -------------------------------------------------------
@@ -445,6 +388,7 @@ func _add_stroke(kind: StringName, center: Vector2, radius: float, height: float
 		kind = kind, center = center, radius = radius, height = height, tint = tint, scrap = scrap,
 		marker = center, gates = gates, points = points, brush = brush, step = step,
 	})
+	stats.strokes += 1
 
 
 func _add_ring_stroke(kind: StringName, center: Vector2, radius_m: float, gates: Array[int], points: Array[Vector2]) -> void:
@@ -484,7 +428,7 @@ func block_rects() -> Array[Rect2]:
 	return _block_rects
 
 
-## Strade dipinte dal suolo: la sola est-ovest a z = 0 (RG_ROAD_HALF in ruins_ground.gdshaderinc).
+## Strade del quartiere: la sola est-ovest a z = 0 (solco nella base e strato d'asfalto).
 func _road_segments() -> Array:
 	return [[Vector2(-half_x(), 0.0), Vector2(half_x(), 0.0)]]
 

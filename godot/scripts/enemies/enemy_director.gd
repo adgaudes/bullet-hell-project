@@ -27,8 +27,7 @@ const ERRAND_REACH := 0.9
 @export var tuning: RunTuning
 @export var player: PlayerCharacter
 @export var path_field: PathField
-@export var grid: TerrainGrid
-## Rilievo continuo (livello 1): se presente sostituisce la griglia per pendenza e spine.
+## Rilievo continuo: pendenza di marcia e spine degli argini.
 @export var terrain_field: TerrainField
 @export var spawning := true
 ## Scala dell'anello di comparsa e della distanza minima (D-078): segue la distanza della
@@ -146,7 +145,6 @@ func spawn_kind(world: Vector3, kind: StringName) -> Enemy:
 			enemy.setup(maxi(ceili(current_enemy_health() * tuning.runner_health_share), 1), _body_mesh, _runner_material, _flash_material)
 		&"hopper":
 			hoppers_spawned += 1
-			enemy.ignores_lowered = true
 			enemy.max_grade = 1.2
 			enemy.floor_max_angle = atan(1.2)
 			enemy.setup(maxi(ceili(current_enemy_health() * tuning.hopper_health_share), 1), _body_mesh, _hopper_material, _flash_material)
@@ -250,7 +248,6 @@ func _move_enemies(delta: float) -> void:
 	if _buckets.size() > 4096:
 		_buckets.clear()
 
-	var penalty := grid.lowered_speed_penalty() if grid != null else 0.0
 	# Copia riusata: un nemico che muore durante il passo esce subito dall'elenco.
 	_step_list.clear()
 	_step_list.append_array(enemies)
@@ -296,8 +293,6 @@ func _move_enemies(delta: float) -> void:
 			# In salita si rallenta in proporzione alla pendenza davanti, fino a uphill_min_speed.
 			var ahead := pos + direction.normalized() * 0.6 if not direction.is_zero_approx() else pos
 			speed *= uphill_speed_scale(enemy, terrain_field.grade_between(pos, ahead))
-		elif grid != null and not enemy.ignores_lowered and grid.cell_state_at(pos) == TerrainState.CellState.LOWERED:
-			speed *= 1.0 - penalty
 		var desired := direction.limit_length(1.0) * speed
 		var planar := Vector3(enemy.velocity.x, 0.0, enemy.velocity.z).move_toward(desired, ACCELERATION * delta)
 		enemy.velocity = Vector3(planar.x, 0.0 if enemy.is_on_floor() else enemy.velocity.y - 9.8 * delta, planar.z)
@@ -349,17 +344,13 @@ func _apply_contacts(enemy: Enemy, in_dark := false) -> void:
 			dark_contacts += 1
 		player.take_damage(damage)
 		enemy.notify_contact()
-	if spike_damage > 0 and enemy.spike_cooldown <= 0.0 and (grid != null or terrain_field != null):
+	if spike_damage > 0 and enemy.spike_cooldown <= 0.0 and terrain_field != null:
 		for i in enemy.get_slide_collision_count():
 			var collider := enemy.get_slide_collision(i).get_collider() as Node
 			if collider == null:
 				continue
 			# Sul rilievo la spina vale solo sugli argini (terreno rialzato), non sul piano.
-			var is_wall := false
-			if terrain_field != null:
-				is_wall = collider == _terrain_collision_body() and terrain_field.delta_at(enemy.global_position) > 0.3
-			else:
-				is_wall = collider.get_parent() == grid
+			var is_wall := collider == _terrain_collision_body() and terrain_field.delta_at(enemy.global_position) > 0.3
 			if is_wall:
 				enemy.spike_cooldown = spike_interval
 				enemy.take_damage(spike_damage)

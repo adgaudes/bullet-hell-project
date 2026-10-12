@@ -5,10 +5,10 @@ extends Enemy
 ## Regola col terreno, leggibile al primo incontro: **i terrapieni lo attirano e lui
 ## li smonta**. Ogni muro smontato lascia a terra un rottame; i **rottamatori**
 ## vicini lo raccolgono e lo portano al **cantiere** (lastra arancione), dove ogni
-## `walls_per_barricade` rottami nasce una **barricata** (cella Raised scura) fra
+## `walls_per_barricade` rottami nasce una **barricata** (cumulo scuro) fra
 ## lui e il giocatore, che ferma i chiodi (D-045).
 ## Soluzioni che il campo offre:
-## - un fossato (celle Lowered) lo rallenta come ogni altro nemico;
+## - una salita lo rallenta come ogni altro nemico;
 ## - un muro a sacrificio lo tiene fermo dove la chiodatrice lo colpisce, ma
 ##   alimenta le sue barricate;
 ## - abbattere un rottamatore carico gli fa cadere il rottame: lo prende chi arriva prima;
@@ -34,7 +34,6 @@ const BLADE_HAMMER_LIFT := 0.35
 ## Colore lineare delle barricate: ferro scuro, distinto dai terrapieni del giocatore.
 const BARRICADE_COLOR := Color(0.07, 0.06, 0.09)
 const SITE_COLOR := Color(1.0, 0.35, 0.08, 0.6)
-const NO_CELL := Vector2i(-1, -1)
 ## Rilievo continuo (D-085): barricata a cumulo, martello che spiana, scavo sotto la base
 ## di una vena. Un argine vale come bersaglio da WALL_MIN_DELTA di sporgenza dalla base.
 const BARRICADE_HEIGHT := 1.5
@@ -101,8 +100,6 @@ const HEAVY_STAGGER_SHAKE_HZ := 6.0
 const BLADE_HAMMER_RATE := 14.0
 
 var player: PlayerCharacter
-var grid: TerrainGrid
-## Rilievo continuo (D-085): con questo la griglia non serve.
 var terrain_field: TerrainField
 var path_field: PathField
 var director: EnemyDirector
@@ -123,8 +120,6 @@ var carrier_scrap_radius := 10.0
 var carrier_recruit_radius := 14.0
 var carrier_timeout := 10.0
 
-## Celle delle barricate ancora in piedi.
-var barricades: Dictionary[Vector2i, bool] = {}
 ## Barricate a cumulo sul rilievo (centro XZ, y = 0).
 var barricade_points: Array[Vector3] = []
 var walls_demolished := 0
@@ -135,22 +130,15 @@ var demolish_point := Vector3.INF
 var _demolish_vein := false
 var _site_point := Vector3.INF
 var _ignored_points: Dictionary[Vector3, float] = {}
-## Cella che sta smontando, (-1, -1) se nessuna.
-var demolish_cell := Vector2i(-1, -1)
 
 var _demolish_left := 0.0
-var _wall_target := Vector2i(-1, -1)
 var _retarget_left := 0.0
 ## Distanza minima raggiunta dal muro scelto e secondi senza avvicinarsi.
 var _wall_best_distance := INF
 var _wall_stall_left := WALL_STALL_SECONDS
-## Muri lasciati perdere: secondi prima di riconsiderarli.
-var _ignored_walls: Dictionary[Vector2i, float] = {}
 var _blade: MeshInstance3D
 ## Rottamatori al lavoro per lui: secondi rimasti prima che lascino la commissione.
 var _crew: Dictionary[Enemy, float] = {}
-## Cella del cantiere dove i rottami vengono portati, NO_CELL se non scelta.
-var _site_cell := NO_CELL
 var _site_scrap := 0
 var _site_marker: MeshInstance3D
 ## Telaio visivo: genitore di scafo e lama, l'unico nodo mosso dal movimento procedurale.
@@ -203,8 +191,6 @@ func setup_demolisher(hp: int, flash_material: Material) -> void:
 
 func _ready() -> void:
 	floor_max_angle = atan(0.8)
-	if grid != null:
-		grid.cell_changed.connect(_on_cell_changed)
 	if terrain_field != null:
 		terrain_field.region_changed.connect(_on_region_changed)
 	died.connect(func(_enemy: Enemy) -> void: _dismiss_crew())
@@ -224,16 +210,11 @@ func death_debris_color() -> Color:
 
 
 func is_demolishing() -> bool:
-	return demolish_cell.x >= 0 or demolish_point != Vector3.INF
+	return demolish_point != Vector3.INF
 
 
 func crew_size() -> int:
 	return _crew.size()
-
-
-## Cella del cantiere, NO_CELL se nessuno.
-func site_cell() -> Vector2i:
-	return _site_cell
 
 
 ## Punto del cantiere sul rilievo, Vector3.INF se nessuno.
@@ -246,23 +227,19 @@ func site_scrap() -> int:
 	return _site_scrap
 
 
-## Centro del cantiere (griglia o rilievo), XZ con y = 0.
+## Centro del cantiere, XZ con y = 0.
 func _site_position() -> Vector3:
-	if terrain_field != null:
-		return _site_point
-	return _cell_center(_site_cell)
+	return _site_point
 
 
-## Centro del bersaglio corrente (griglia o rilievo).
+## Centro del bersaglio corrente.
 func _wall_position() -> Vector3:
-	if terrain_field != null:
-		return wall_point
-	return _cell_center(_wall_target)
+	return wall_point
 
 
 ## Un passo fisico, chiamato dall'EnemyDirector.
 func drive(delta: float) -> void:
-	if player == null or (grid == null and terrain_field == null):
+	if player == null or terrain_field == null:
 		return
 	var pos := global_position
 	var to_player := _planar(player.global_position - pos)
@@ -287,32 +264,16 @@ func drive(delta: float) -> void:
 
 	_tick_ignored_walls(delta)
 	if retarget:
-		if terrain_field != null:
-			var chosen_point := _nearest_wall_point()
-			if chosen_point.distance_to(wall_point) > 0.01:
-				wall_point = chosen_point
-				_wall_best_distance = INF
-				_wall_stall_left = WALL_STALL_SECONDS
-		else:
-			var chosen := _nearest_wall()
-			if chosen != _wall_target:
-				_wall_target = chosen
-				_wall_best_distance = INF
-				_wall_stall_left = WALL_STALL_SECONDS
-	var has_wall := false
-	if terrain_field != null:
-		has_wall = wall_point != Vector3.INF and _point_is_target(wall_point) and _still_stands(wall_point)
-	else:
-		has_wall = _wall_target.x >= 0 and grid.state.get_state(_wall_target) == TerrainState.CellState.RAISED
+		var chosen_point := _nearest_wall_point()
+		if chosen_point.distance_to(wall_point) > 0.01:
+			wall_point = chosen_point
+			_wall_best_distance = INF
+			_wall_stall_left = WALL_STALL_SECONDS
+	var has_wall := wall_point != Vector3.INF and _point_is_target(wall_point) and _still_stands(wall_point)
 	if has_wall and _wall_stalled(delta):
-		if terrain_field != null:
-			_ignored_points[wall_point] = WALL_IGNORE_SECONDS
-			print("PROTOTYPE01_BOSS_WALL_ABANDONED x=%.1f z=%.1f" % [wall_point.x, wall_point.z])
-			wall_point = Vector3.INF
-		else:
-			_ignored_walls[_wall_target] = WALL_IGNORE_SECONDS
-			print("PROTOTYPE01_BOSS_WALL_ABANDONED X=%d Y=%d" % [_wall_target.x, _wall_target.y])
-			_wall_target = NO_CELL
+		_ignored_points[wall_point] = WALL_IGNORE_SECONDS
+		print("PROTOTYPE01_BOSS_WALL_ABANDONED x=%.1f z=%.1f" % [wall_point.x, wall_point.z])
+		wall_point = Vector3.INF
 		has_wall = false
 	var direction := Vector3.ZERO
 	if has_wall:
@@ -326,9 +287,7 @@ func drive(delta: float) -> void:
 			direction = to_player.normalized()
 
 	var current_speed := speed
-	if grid != null and grid.cell_state_at(pos) == TerrainState.CellState.LOWERED:
-		current_speed *= 1.0 - grid.lowered_speed_penalty()
-	if terrain_field != null and not direction.is_zero_approx():
+	if not direction.is_zero_approx():
 		# In salita rallenta in proporzione alla pendenza davanti (come l'orda, Task 7).
 		var grade := terrain_field.grade_between(pos, pos + direction * 0.5)
 		if grade > 0.0:
@@ -341,46 +300,23 @@ func drive(delta: float) -> void:
 		rotation.y = lerp_angle(rotation.y, atan2(-planar.x, -planar.z), minf(delta * 6.0, 1.0))
 
 	# Arrivato al bersaglio scelto, o fermato da un argine qualunque: lo spiana.
-	if terrain_field != null:
-		if has_wall and _planar(wall_point - global_position).length() <= BODY_RADIUS + DEMOLISH_REACH:
-			_start_demolition_at(wall_point)
-			return
-		var terrain_body: StaticBody3D = terrain_field.get_node(^"Collision").body
-		for i in get_slide_collision_count():
-			var collision := get_slide_collision(i)
-			if collision.get_collider() != terrain_body:
-				continue
-			# Fermato da un fianco ripido: la cima piu vicina oltre il punto di contatto.
-			var contact := collision.get_position() - collision.get_normal() * 0.3
-			var bump: Variant = terrain_field.highest_bump(contact, DEMOLISH_REACH, WALL_MIN_DELTA)
-			if bump == null:
-				continue
-			var at := Vector3((bump as Vector3).x, 0.0, (bump as Vector3).z)
-			if _point_is_target(at):
-				_start_demolition_at(at)
-				return
+	if has_wall and _planar(wall_point - global_position).length() <= BODY_RADIUS + DEMOLISH_REACH:
+		_start_demolition_at(wall_point)
 		return
-	if has_wall and _planar(_cell_center(_wall_target) - global_position).length() <= BODY_RADIUS + grid.cell_size_m() * 0.5 + 0.4:
-		_start_demolition(_wall_target)
-		return
+	var terrain_body := terrain_field.collision_body()
 	for i in get_slide_collision_count():
 		var collision := get_slide_collision(i)
-		var collider := collision.get_collider() as Node
-		if collider == null or collider.get_parent() != grid:
+		if collision.get_collider() != terrain_body:
 			continue
-		var cell := grid.cell_at(collision.get_position() - collision.get_normal() * 0.3)
-		if barricades.has(cell):
+		# Fermato da un fianco ripido: la cima piu vicina oltre il punto di contatto.
+		var contact := collision.get_position() - collision.get_normal() * 0.3
+		var bump: Variant = terrain_field.highest_bump(contact, DEMOLISH_REACH, WALL_MIN_DELTA)
+		if bump == null:
 			continue
-		if grid.state.is_valid(cell) and grid.state.get_state(cell) == TerrainState.CellState.RAISED:
-			_start_demolition(cell)
+		var at := Vector3((bump as Vector3).x, 0.0, (bump as Vector3).z)
+		if _point_is_target(at):
+			_start_demolition_at(at)
 			return
-
-
-func _start_demolition(cell: Vector2i) -> void:
-	demolish_cell = cell
-	_demolish_left = demolish_seconds
-	velocity = Vector3.ZERO
-	print("PROTOTYPE01_BOSS_DEMOLISH_START X=%d Y=%d" % [cell.x, cell.y])
 
 
 ## Sul rilievo: il punto sporge ancora dalla base (o ha una vena con rottami).
@@ -461,37 +397,7 @@ func _tick_demolition_at(delta: float) -> void:
 
 
 func _tick_demolition(delta: float) -> void:
-	if terrain_field != null:
-		_tick_demolition_at(delta)
-		return
-	# Il giocatore l'ha scavata prima di lui: niente rottame per il boss.
-	if grid.state.get_state(demolish_cell) != TerrainState.CellState.RAISED:
-		demolish_cell = Vector2i(-1, -1)
-		_blade.position.y = BLADE_REST.y
-		return
-	_demolish_left -= delta
-	# La lama martella: telegraph del colpo.
-	_blade.position.y = BLADE_REST.y + absf(sin(_demolish_left * BLADE_HAMMER_RATE)) * BLADE_HAMMER_LIFT
-	var facing := _planar(_cell_center(demolish_cell) - global_position)
-	if facing.length() > 0.1:
-		rotation.y = lerp_angle(rotation.y, atan2(-facing.x, -facing.z), minf(delta * 8.0, 1.0))
-	if _demolish_left > 0.0:
-		return
-	var cell := demolish_cell
-	var was_barricade := barricades.has(cell)
-	demolish_cell = Vector2i(-1, -1)
-	_blade.position.y = BLADE_REST.y
-	grid.force_cell_state(cell, TerrainState.CellState.NORMAL)
-	if was_barricade:
-		return
-	walls_demolished += 1
-	DebrisBurst.spawn(get_parent(), _cell_center(cell) + Vector3(0.0, 0.6, 0.0), EARTH_COLOR, 14, 5.0, 0.22)
-	print("PROTOTYPE01_BOSS_WALL_DEMOLISHED X=%d Y=%d total=%d" % [cell.x, cell.y, walls_demolished])
-	wall_demolished.emit(_cell_center(cell))
-	# Il rottame resta a terra: lo prende chi arriva prima, compagno o rottamatori (D-045).
-	# Senza ScrapField (scena senza compagno) non nasce nessuna barricata (R-11).
-	if scrap_field != null:
-		scrap_field.spawn_on_cell(cell, TerrainState.CellState.NORMAL)
+	_tick_demolition_at(delta)
 
 
 # --- Rottamatori al lavoro (D-045) ---------------------------------------------------
@@ -500,7 +406,7 @@ func _tick_demolition(delta: float) -> void:
 func _recruit_carriers() -> void:
 	if scrap_field == null or director == null or _crew.size() >= max_carriers:
 		return
-	if barricades.size() >= max_barricades:
+	if barricade_points.size() >= max_barricades:
 		return
 	for scrap in scrap_field.positions_near(global_position, carrier_scrap_radius):
 		if _crew.size() >= max_carriers:
@@ -645,31 +551,19 @@ func _dismiss_crew() -> void:
 
 
 func _site_is_valid() -> bool:
-	if terrain_field != null:
-		return _site_point != Vector3.INF and terrain_field.is_flat(_site_point, BARRICADE_RADIUS, 0.35) \
-				and not terrain_field.is_protected(_site_point)
-	return _site_cell != NO_CELL and grid.state.get_state(_site_cell) == TerrainState.CellState.NORMAL
+	return _site_point != Vector3.INF and terrain_field.is_flat(_site_point, BARRICADE_RADIUS, 0.35) \
+			and not terrain_field.is_protected(_site_point)
 
 
 func _choose_site() -> void:
 	_clear_site(false)
-	if terrain_field != null:
-		_site_point = _pick_barricade_point()
-		if _site_point == Vector3.INF:
-			return
-		_ensure_site_marker(BARRICADE_RADIUS * 0.7)
-		_site_marker.global_transform = Transform3D(Basis(), Vector3(_site_point.x, terrain_field.height_at(_site_point) + 0.05, _site_point.z))
-		_site_marker.visible = true
-		print("PROTOTYPE01_BOSS_SITE x=%.1f z=%.1f" % [_site_point.x, _site_point.z])
+	_site_point = _pick_barricade_point()
+	if _site_point == Vector3.INF:
 		return
-	_site_cell = _pick_barricade_cell()
-	if _site_cell == NO_CELL:
-		return
-	_ensure_site_marker(grid.cell_size_m() * 0.7)
-	var surface := grid.to_global(grid.cell_local_position(_site_cell, TerrainState.CellState.NORMAL))
-	_site_marker.global_transform = Transform3D(Basis(), Vector3(surface.x, surface.y * 2.0 - grid.global_position.y + 0.05, surface.z))
+	_ensure_site_marker(BARRICADE_RADIUS * 0.7)
+	_site_marker.global_transform = Transform3D(Basis(), Vector3(_site_point.x, terrain_field.height_at(_site_point) + 0.05, _site_point.z))
 	_site_marker.visible = true
-	print("PROTOTYPE01_BOSS_SITE X=%d Y=%d" % [_site_cell.x, _site_cell.y])
+	print("PROTOTYPE01_BOSS_SITE x=%.1f z=%.1f" % [_site_point.x, _site_point.z])
 
 
 func _ensure_site_marker(side: float) -> void:
@@ -690,7 +584,6 @@ func _ensure_site_marker(side: float) -> void:
 
 ## I rottami gia consegnati restano del boss: passano al cantiere successivo.
 func _clear_site(forget_scrap := true) -> void:
-	_site_cell = NO_CELL
 	_site_point = Vector3.INF
 	if forget_scrap:
 		_site_scrap = 0
@@ -698,52 +591,21 @@ func _clear_site(forget_scrap := true) -> void:
 		_site_marker.visible = false
 
 
-## Con abbastanza rottami consegnati alza la barricata, appena la cella e libera.
+## Con abbastanza rottami consegnati alza la barricata, appena il punto e libero.
 func _try_build_at_site() -> void:
-	if _site_scrap < walls_per_barricade or barricades.size() + barricade_points.size() >= max_barricades:
+	if _site_scrap < walls_per_barricade or barricade_points.size() >= max_barricades:
 		return
 	if not _site_is_valid():
 		_choose_site()
-	if terrain_field != null:
-		if _site_point != Vector3.INF and not _point_is_free(_site_point):
-			# Occupato (giocatore, compagno, nemici, rottame): un altro cantiere, la scorta resta (R-03).
-			_choose_site()
-		if _site_point == Vector3.INF or not _point_is_free(_site_point):
-			return
-		var point := _site_point
-		_site_scrap -= walls_per_barricade
-		_clear_site(false)
-		_raise_barricade_at(point)
-		return
-	if _site_cell != NO_CELL and not _cell_is_free(_site_cell):
+	if _site_point != Vector3.INF and not _point_is_free(_site_point):
 		# Occupato (giocatore, compagno, nemici, rottame): un altro cantiere, la scorta resta (R-03).
 		_choose_site()
-	if _site_cell == NO_CELL or not _cell_is_free(_site_cell):
+	if _site_point == Vector3.INF or not _point_is_free(_site_point):
 		return
-	var cell := _site_cell
+	var point := _site_point
 	_site_scrap -= walls_per_barricade
 	_clear_site(false)
-	_raise_barricade(cell)
-
-
-## Terrapieno del giocatore piu vicino entro il raggio di attrazione, (-1,-1) se nessuno.
-func _nearest_wall() -> Vector2i:
-	var own := grid.cell_at(global_position)
-	var reach := int(ceil(wall_attraction_radius / grid.cell_size_m()))
-	var best := Vector2i(-1, -1)
-	var best_distance := wall_attraction_radius
-	for dy in range(-reach, reach + 1):
-		for dx in range(-reach, reach + 1):
-			var cell := own + Vector2i(dx, dy)
-			if not grid.state.is_valid(cell) or barricades.has(cell) or _ignored_walls.has(cell):
-				continue
-			if grid.state.get_state(cell) != TerrainState.CellState.RAISED:
-				continue
-			var distance := _planar(_cell_center(cell) - global_position).length()
-			if distance < best_distance:
-				best_distance = distance
-				best = cell
-	return best
+	_raise_barricade_at(point)
 
 
 ## Sul rilievo: la cima piu sporgente dalla base entro il raggio di attrazione, o la vena
@@ -785,14 +647,6 @@ func _wall_stalled(delta: float) -> bool:
 
 
 func _tick_ignored_walls(delta: float) -> void:
-	if not _ignored_walls.is_empty():
-		_to_remove.clear()
-		for cell in _ignored_walls:
-			_ignored_walls[cell] -= delta
-			if _ignored_walls[cell] <= 0.0:
-				_to_remove.append(cell)
-		for cell in _to_remove:
-			_ignored_walls.erase(cell)
 	if not _ignored_points.is_empty():
 		_to_remove.clear()
 		for point in _ignored_points:
@@ -869,74 +723,6 @@ func _on_region_changed(aabb: AABB) -> void:
 			print("PROTOTYPE01_BOSS_BARRICADE_DOWN x=%.1f z=%.1f standing=%d" % [p.x, p.z, barricade_points.size()])
 	if _site_point != Vector3.INF and aabb.has_point(Vector3(_site_point.x, probe_y, _site_point.z)) and not _site_is_valid():
 		_clear_site(false)
-
-
-## Cella per una barricata: a due celle dal boss verso il giocatore (o accanto, se
-## li non si puo). NO_CELL se non ce n'e una libera.
-func _pick_barricade_cell() -> Vector2i:
-	var to_player := _planar(player.global_position - global_position)
-	if to_player.length() < 0.1:
-		return NO_CELL
-	var forward := to_player.normalized()
-	var side := Vector3(-forward.z, 0.0, forward.x)
-	var step := grid.cell_size_m()
-	# Prima a due celle, poi a tre e a una, su cinque posizioni laterali (R-04).
-	for ahead in [2.0, 3.0, 1.0]:
-		for lateral in [0.0, 1.0, -1.0, 2.0, -2.0]:
-			var point: Vector3 = global_position + forward * step * ahead + side * step * lateral
-			var cell := grid.cell_at(point)
-			if not grid.state.is_valid(cell) or grid.state.get_state(cell) != TerrainState.CellState.NORMAL:
-				continue
-			if _cell_is_free(cell):
-				return cell
-	return NO_CELL
-
-
-## Mai sopra giocatore, compagno, nemici o il boss stesso.
-func _cell_is_free(cell: Vector2i) -> bool:
-	var step := grid.cell_size_m()
-	var center := _cell_center(cell)
-	if not grid.can_apply_at(center, TerrainState.ToolMode.RAISE, player):
-		return false
-	if _planar(center - player.global_position).length() < step:
-		return false
-	if companion != null and _planar(center - companion.global_position).length() < step:
-		return false
-	if _planar(center - global_position).length() < BODY_RADIUS + step * 0.75:
-		return false
-	if director != null:
-		for other in director.enemies_near(center, step * 0.75):
-			if other != self:
-				return false
-	# Un rottame a terra non va sepolto (lo sposterebbe ScrapField, ma meglio non costruirci sopra).
-	if scrap_field != null and scrap_field.count_on_cell(cell) > 0:
-		return false
-	return true
-
-
-func _raise_barricade(cell: Vector2i) -> void:
-	barricades[cell] = true
-	grid.set_raised_tint(cell, BARRICADE_COLOR)
-	grid.force_cell_state(cell, TerrainState.CellState.RAISED)
-	DebrisBurst.spawn(get_parent(), _cell_center(cell) + Vector3(0.0, 1.2, 0.0), BARRICADE_COLOR, 12, 4.0, 0.2)
-	print("PROTOTYPE01_BOSS_BARRICADE X=%d Y=%d standing=%d" % [cell.x, cell.y, barricades.size()])
-	barricade_built.emit(cell)
-
-
-## Una barricata scavata dal giocatore (o smontata) crolla: non e piu sua.
-func _on_cell_changed(cell: Vector2i, cell_state: TerrainState.CellState) -> void:
-	# Cantiere scavato o occupato da un terrapieno: se ne sceglie un altro.
-	if cell == _site_cell and cell_state != TerrainState.CellState.NORMAL:
-		_clear_site(false)
-	if barricades.has(cell) and cell_state != TerrainState.CellState.RAISED:
-		barricades.erase(cell)
-		grid.clear_raised_tint(cell)
-		print("PROTOTYPE01_BOSS_BARRICADE_DOWN X=%d Y=%d standing=%d" % [cell.x, cell.y, barricades.size()])
-
-
-func _cell_center(cell: Vector2i) -> Vector3:
-	var p := grid.to_global(grid.cell_local_position(cell, TerrainState.CellState.NORMAL))
-	return Vector3(p.x, 0.0, p.z)
 
 
 static func _planar(v: Vector3) -> Vector3:

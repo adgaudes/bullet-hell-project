@@ -35,7 +35,6 @@ const NEIGHBORS: Array[Vector2i] = [
 ]
 
 @export var target: Node3D
-@export var grid: TerrainGrid
 ## Terreno continuo (D-082): se presente, la calpestabilita viene dalla pendenza e non dalla griglia.
 @export var terrain_field: TerrainField
 ## Pendenza massima percorribile (m/m) con `terrain_field`.
@@ -78,13 +77,8 @@ var _step_mask := PackedByteArray()
 var _dirty_rect := Rect2()
 var _has_dirty_rect := false
 var _slopes_all := true
-## Cella terreno (indice x + y * larghezza) sotto ogni cella del campo, -1 se fuori griglia.
-var _terrain_index := PackedInt32Array()
 ## Chunk -> PackedByteArray(CHUNK * CHUNK) di ostacoli statici.
 var _static_chunks: Dictionary[Vector2i, PackedByteArray] = {}
-## Per chunk: indice della cella terreno sotto ogni cella del campo (-1 se fuori griglia),
-## letto da `grid.cell_at` una volta sola: il ricentro non lo ricalcola (E-02).
-var _terrain_chunks: Dictionary[Vector2i, PackedInt32Array] = {}
 ## Per cella: indice della vicina verso il bersaglio (-1 nessuna), NEXT_UNKNOWN se non
 ## ancora calcolato dall'ultima soluzione (E-03): `next_waypoint` lo legge invece di
 ## scandire gli otto vicini a ogni passo di ogni nemico.
@@ -111,13 +105,8 @@ func _ready() -> void:
 	_slope_blocked.resize(count)
 	_step_mask.resize(count)
 	_step_mask.fill(255)
-	_terrain_index.resize(count)
-	_terrain_index.fill(-1)
 	_next.resize(count)
 	_next.fill(NEXT_UNKNOWN)
-	if grid != null:
-		grid.cell_changed.connect(func(_cell: Vector2i, _state: TerrainState.CellState) -> void: _terrain_dirty = true)
-		grid.rebuilt.connect(_on_grid_rebuilt)
 	if terrain_field != null:
 		terrain_field.region_changed.connect(_on_terrain_region_changed)
 	# Gli ostacoli dell'arena entrano nello spazio fisico dopo un passo.
@@ -191,7 +180,7 @@ func is_walkable(world: Vector3) -> bool:
 		return false
 	if terrain_field != null:
 		return terrain_field.slope_at(world) <= max_grade
-	return grid == null or grid.cell_state_at(world) != TerrainState.CellState.RAISED
+	return true
 
 
 func cost_at(world: Vector3) -> float:
@@ -285,11 +274,6 @@ func _on_terrain_region_changed(aabb: AABB) -> void:
 	_has_dirty_rect = true
 
 
-func _on_grid_rebuilt() -> void:
-	_terrain_chunks.clear()
-	_refresh_terrain()
-
-
 func _needs_recenter(world_cell: Vector2i) -> bool:
 	if columns >= world_columns and columns >= world_rows:
 		return false
@@ -325,10 +309,6 @@ func _fill_window() -> void:
 			if data.is_empty():
 				data = _scan_chunk(chunk)
 				_static_chunks[chunk] = data
-			var terrain: PackedInt32Array = _terrain_chunks.get(chunk, PackedInt32Array())
-			if terrain.is_empty():
-				terrain = _scan_terrain_chunk(chunk)
-				_terrain_chunks[chunk] = terrain
 			var x0 := maxi(cx * CHUNK, origin.x)
 			var x1 := mini(cx * CHUNK + CHUNK, origin.x + columns)
 			var y0 := maxi(cy * CHUNK, origin.y)
@@ -338,26 +318,7 @@ func _fill_window() -> void:
 				var chunk_row := (wy % CHUNK) * CHUNK - cx * CHUNK
 				for wx in range(x0, x1):
 					_static_blocked[row + wx] = data[chunk_row + wx]
-					_terrain_index[row + wx] = terrain[chunk_row + wx]
 	_refresh_blocked()
-
-
-func _scan_terrain_chunk(chunk: Vector2i) -> PackedInt32Array:
-	var data := PackedInt32Array()
-	data.resize(CHUNK * CHUNK)
-	data.fill(-1)
-	if grid == null:
-		return data
-	for y in CHUNK:
-		for x in CHUNK:
-			var wc := chunk * CHUNK + Vector2i(x, y)
-			if not _world_inside(wc):
-				continue
-			var center := Vector3(-half_extent + (wc.x + 0.5) * cell_size, 0.0, -half_z() + (wc.y + 0.5) * cell_size)
-			var terrain_cell := grid.cell_at(center)
-			if grid.state.is_valid(terrain_cell):
-				data[y * CHUNK + x] = terrain_cell.y * grid.state.width + terrain_cell.x
-	return data
 
 
 ## Ostacolo statico in una cella mondo, dal chunk in cache o letto ora.
@@ -393,7 +354,7 @@ func _scan_chunk(chunk: Vector2i) -> PackedByteArray:
 				query.transform = Transform3D(Basis(), center)
 				for hit in space.intersect_shape(query, 8):
 					var collider: Node = hit.collider
-					if (grid == null or collider.get_parent() != grid) and (terrain_field == null or collider != terrain_field.get_node(^"Collision").body):
+					if terrain_field == null or collider != terrain_field.collision_body():
 						blocked = 1
 						break
 			data[y * CHUNK + x] = blocked
@@ -418,13 +379,8 @@ func _refresh_blocked() -> void:
 	_next.fill(NEXT_UNKNOWN)
 	for i in _blocked.size():
 		var blocked := _static_blocked[i]
-		var t := _terrain_index[i]
 		if blocked == 0 and _slope_blocked[i] != 0:
 			blocked = 1
-		if blocked == 0 and t >= 0 and grid != null:
-			var terrain_cell := Vector2i(t % grid.state.width, t / grid.state.width)
-			if grid.state.get_state(terrain_cell) == TerrainState.CellState.RAISED:
-				blocked = 1
 		_blocked[i] = blocked
 	_dirty = true
 

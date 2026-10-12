@@ -110,13 +110,11 @@ func _sculpt_base_details(field: TerrainField) -> void:
 # --- Composizione ----------------------------------------------------------------------
 
 func _compose() -> void:
-	terrain_features.clear()
 	terrain_strokes.clear()
 	_block_rects.clear()
 	_reset_occupancy()
-	stats["features"] = 0
+	stats["strokes"] = 0
 	stats["wagons"] = 0
-	_build_ground()
 	_build_boundary()
 	_reserve_tracks()
 	_plan_start_courtyard()

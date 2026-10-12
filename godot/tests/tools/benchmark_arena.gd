@@ -32,7 +32,6 @@ func _initialize() -> void:
 	root.add_child(scene)
 	var instantiate_usec := Time.get_ticks_usec() - start
 	var district: RuinsDistrict = scene.get_node(^"District")
-	var grid: TerrainGrid = scene.get_node_or_null(^"TerrainGrid")
 	var field: TerrainField = scene.get_node_or_null(^"TerrainField")
 	var director: EnemyDirector = scene.get_node(^"EnemyDirector")
 	var path: PathField = scene.get_node(^"PathField")
@@ -62,18 +61,7 @@ func _initialize() -> void:
 	t = Time.get_ticks_usec()
 	var grid_usec := 0
 	var layout_usec := 0
-	var cells: Array[Vector2i] = []
-	if grid != null:
-		grid.rebuild()
-		grid_usec = Time.get_ticks_usec() - t
-		t = Time.get_ticks_usec()
-		for feature: Dictionary in district.terrain_features:
-			var center := grid.cell_at(Vector3(feature.center.x, 0.0, feature.center.y))
-			for offset: Vector2i in feature.offsets:
-				cells.append(center + offset)
-		grid.set_cell_states(cells, TerrainState.CellState.RAISED)
-		layout_usec = Time.get_ticks_usec() - t
-	elif field != null:
+	if field != null:
 		# Base del rilievo ricalcolata (come senza `base.bin`), poi le pennellate del quartiere.
 		district.apply_base_relief(field)
 		grid_usec = Time.get_ticks_usec() - t
@@ -88,13 +76,9 @@ func _initialize() -> void:
 	path.solve()
 	var solve_usec := Time.get_ticks_usec() - t
 
-	print("PROTOTYPE01_ARENA_BENCH build instantiate_ms=%.1f arena_ms=%.1f grid_ms=%.1f layout_ms=%.1f (%d celle) scan_ms=%.1f (%d chunk) solve_ms=%.2f"
-		% [instantiate_usec / 1000.0, arena_usec / 1000.0, grid_usec / 1000.0, layout_usec / 1000.0, cells.size(),
+	print("PROTOTYPE01_ARENA_BENCH build instantiate_ms=%.1f arena_ms=%.1f base_ms=%.1f layout_ms=%.1f scan_ms=%.1f (%d chunk) solve_ms=%.2f"
+		% [instantiate_usec / 1000.0, arena_usec / 1000.0, grid_usec / 1000.0, layout_usec / 1000.0,
 			scan_usec / 1000.0, path.chunks_scanned, solve_usec / 1000.0])
-	if grid != null:
-		print("PROTOTYPE01_ARENA_BENCH content cells=%d collisions=%d features=%d blocks=%d props=%d trees=%d tufts=%d flowers=%d"
-			% [grid.state.cell_count(), grid.active_collision_count(), district.terrain_features.size(),
-				district.stats.blocks, district.stats.props, district.stats.trees, district.stats.tufts, district.stats.flowers])
 	if field != null:
 		var collision: TerrainCollision = field.get_node(^"Collision")
 		print("PROTOTYPE01_ARENA_BENCH content vertices=%d chunks=%d strokes=%d blocks=%d props=%d trees=%d tufts=%d flowers=%d"

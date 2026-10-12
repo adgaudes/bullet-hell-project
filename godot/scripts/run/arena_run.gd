@@ -52,7 +52,6 @@ const BOSS_DIRECTIONS := [
 @export var district: RuinsDistrict
 @export var player: PlayerCharacter
 @export var companion: Companion
-@export var grid: TerrainGrid
 ## Rilievo continuo del livello (D-085); con questo nodo la griglia non c'e piu.
 @export var terrain_field: TerrainField
 @export var director: EnemyDirector
@@ -108,7 +107,6 @@ var _marker_step := 0
 var _profile: PlayerProfileService
 var _death_scrap_share := 0.0
 ## Fotografia della griglia a inizio livello e conteggi del tool, per la mappa finale (D-052).
-var _initial_terrain := PackedByteArray()
 ## Quote iniziali del rilievo continuo per la mappa di fine livello (Task 13: RunMap.snapshot_heights).
 var _initial_heights := PackedFloat32Array()
 ## Secondi in cui il cortile di partenza resta non scolpibile.
@@ -116,8 +114,6 @@ var _start_protect_left := 0.0
 ## Mappa di fine run catturata alla vittoria, prima che l'orda e il boss siano liberati.
 var _final_map: Image
 var _start_position := Vector3.ZERO
-var cells_dug := 0
-var cells_raised := 0
 ## Rilievo continuo: metri cubi scavati e alzati dal giocatore.
 var volume_dug := 0.0
 var volume_raised := 0.0
@@ -150,10 +146,6 @@ func _ready() -> void:
 	_setup_quake()
 	_setup_extraction()
 	_setup_camera_distance()
-	# La cella protetta (0,0) e un residuo della parita Unreal (smoke test): nel livello
-	# nessuna cella e intoccabile (R-28).
-	if grid != null:
-		grid.set_protected_cell(Vector2i(-1, -1))
 	boss_call_at = _boss_call_from_command_line(tuning.boss_call_seconds)
 
 	player.invulnerability_seconds = tuning.player_invulnerability
@@ -166,8 +158,6 @@ func _ready() -> void:
 	_death_scrap_share = tuning.death_scrap_share
 	_apply_permanent_upgrades()
 	_build_terrain_layout()
-	if grid != null:
-		_initial_terrain = RunMap.snapshot(grid.state)
 	_start_position = player.global_position
 
 	player.health_changed.connect(hud.set_health)
@@ -182,8 +172,6 @@ func _ready() -> void:
 		game_over.workshop_requested.connect(workshop.open)
 		# Tornando dall'Officina il passo successivo e ripartire.
 		workshop.closed.connect(game_over.focus_default.bind(false))
-	if grid != null:
-		grid.command_applied.connect(_on_terrain_command)
 	if terrain_field != null:
 		terrain_field.player_sculpted.connect(_on_player_sculpted)
 	hud.set_health(player.health, player.max_health)
@@ -245,21 +233,7 @@ func _refresh_marker_targets() -> void:
 			elif terrain_field.highest_bump(center, stroke.radius + 2.0, 0.8) == null:
 				continue
 			_add_marker_target(is_deposit, stroke.marker)
-		return
-	for feature: Dictionary in district.terrain_features:
-		if feature.state != TerrainState.CellState.RAISED:
-			continue
-		var center_cell := grid.cell_at(Vector3(feature.center.x, 0.0, feature.center.y))
-		var standing := false
-		for offset: Vector2i in feature.offsets:
-			if grid.state.get_state(center_cell + offset) == TerrainState.CellState.RAISED:
-				standing = true
-				break
-		if not standing:
-			continue
-		# I vagoni sui binari (livello 2) sono depositi di rottami a tutti gli effetti.
-		# Il baricentro vero del blocco (R-29): i depositi 2x2 non hanno una cella centrale.
-		_add_marker_target(feature.kind == &"deposit" or feature.kind == &"wagon", feature.get("marker", feature.center))
+
 
 
 func _scrap_field() -> ScrapField:
@@ -377,7 +351,6 @@ func _make_demolisher() -> Demolisher:
 	var demolisher := Demolisher.new()
 	demolisher.setup_demolisher(tuning.boss_health, director.flash_material())
 	demolisher.player = player
-	demolisher.grid = grid
 	demolisher.terrain_field = terrain_field
 	demolisher.path_field = director.path_field
 	demolisher.director = director
@@ -464,18 +437,10 @@ func _check_scale() -> void:
 	if district != null and terrain_field != null \
 			and (terrain_field.half_extents() - district.half_extents()).length() > 0.5:
 		push_error("Scala incoerente: rilievo %s m di semilati, distretto %s" % [terrain_field.half_extents(), district.half_extents()])
-	if grid == null:
-		return
-	if district != null and not is_equal_approx(grid.cell_size_m(), RuinsDistrict.CELL):
-		push_error("Scala incoerente: griglia %.2f m per cella, distretto %.2f" % [grid.cell_size_m(), RuinsDistrict.CELL])
 	if director.path_field != null and district != null \
 			and not Vector2(director.path_field.half_extent, director.path_field.half_z()).is_equal_approx(district.half_extents()):
 		push_error("Scala incoerente: campo di percorso %.1f x %.1f m, distretto %s"
 			% [director.path_field.half_extent, director.path_field.half_z(), district.half_extents()])
-	# Assi Unreal della griglia: `width` corre lungo X Unreal (Z Godot), `height` lungo Y Unreal (X Godot).
-	var grid_half := Vector2(grid.state.height, grid.state.width) * grid.cell_size_m() * 0.5
-	if district != null and (grid_half - district.half_extents()).length() > grid.cell_size_m():
-		push_error("Scala incoerente: griglia %s m di semilato, distretto %s" % [grid_half, district.half_extents()])
 
 
 ## Mezzi lati dell'area giocabile (X, Z).
@@ -572,8 +537,6 @@ func _apply_permanent_upgrades() -> void:
 		applied.append("%s=%d" % [id, owned])
 		match id:
 			&"tool_reach":
-				if grid != null:
-					player.tool_range_bonus_cm = grid.cell_size_m() * 100.0 * owned
 				player.tool_range_bonus_m = 1.2 * owned
 			&"pack_size":
 				if player.pack != null:
@@ -606,33 +569,11 @@ func _bank(scrap: int, victory: bool) -> int:
 	return _profile.scrap
 
 
-## Disposizione iniziale del terreno: i punti di interesse dell'arena grande,
-## oppure il solo cortile centrale.
+## Disposizione iniziale del terreno: il rilievo del livello con le sue pennellate.
 func _build_terrain_layout() -> void:
-	if district == null:
-		_build_courtyard_walls()
+	if district == null or terrain_field == null:
 		return
-	if terrain_field != null:
-		_build_terrain_relief()
-		return
-	grid.plaza_radius = district.plaza_radius()
-	var raised := 0
-	var lowered := 0
-	for feature: Dictionary in district.terrain_features:
-		var center := grid.cell_at(Vector3(feature.center.x, 0.0, feature.center.y))
-		var cells: Array[Vector2i] = []
-		for offset: Vector2i in feature.offsets:
-			cells.append(center + offset)
-		grid.set_cell_states(cells, feature.state)
-		if feature.has("tint"):
-			for cell in cells:
-				grid.set_raised_tint(cell, feature.tint)
-		if feature.state == TerrainState.CellState.RAISED:
-			raised += cells.size()
-		else:
-			lowered += cells.size()
-	print("PROTOTYPE01_TERRAIN_LAYOUT_READY features=%d raised=%d lowered=%d"
-		% [district.terrain_features.size(), raised, lowered])
+	_build_terrain_relief()
 
 
 ## Rilievo di base cotto del livello (`bake_terrain_base.gd -- --level=<id>`), in LFS.
@@ -666,21 +607,6 @@ func _tick_start_protection(delta: float) -> void:
 	_start_protect_left -= delta
 	if _start_protect_left <= 0.0:
 		terrain_field.set_protected(Vector3.ZERO, terrain_field.tuning.start_protected_radius_m, false)
-
-
-## Mura del cortile: anello di celle Raised con un varco al centro di ogni lato.
-func _build_courtyard_walls() -> void:
-	var radius := tuning.wall_ring_radius
-	if radius <= 0 or grid == null:
-		return
-	var center := Vector2i(grid.state.width / 2, grid.state.height / 2)
-	var cells: Array[Vector2i] = []
-	for dy in range(-radius, radius + 1):
-		for dx in range(-radius, radius + 1):
-			if maxi(absi(dx), absi(dy)) != radius or dx == 0 or dy == 0:
-				continue
-			cells.append(center + Vector2i(dx, dy))
-	grid.set_cell_states(cells, TerrainState.CellState.RAISED)
 
 
 ## Con il velo il gioco resta fermo finche la scena nuova non e caricata (lo sblocca
@@ -736,7 +662,6 @@ func _setup_extraction() -> void:
 	if extraction_pad == null:
 		return
 	extraction_pad.hold_seconds = tuning.extraction_hold_seconds
-	extraction_pad.radius_cells = tuning.extraction_pad_radius
 	extraction_pad.extraction_completed.connect(_on_extraction_completed)
 
 
@@ -769,7 +694,7 @@ func _setup_night() -> void:
 		lamp_field.light_radius = tuning.lamp_light_radius
 		lamp_field.light_field = light_field
 		lamp_field.lamps_changed.connect(func(_count: int) -> void: _refresh_tool_hud())
-		player.terrain_mode_changed.connect(func(_mode: TerrainState.ToolMode) -> void: _refresh_tool_hud())
+		player.terrain_mode_changed.connect(func(_mode: int) -> void: _refresh_tool_hud())
 		_refresh_tool_hud()
 	if day_night == null:
 		return
@@ -870,23 +795,17 @@ func build_run_map() -> Image:
 					var at := (child as StaticBody3D).global_position
 					buildings.append(Rect2(at.x - size.x * 0.5, at.z - size.z * 0.5, size.x, size.z))
 	var boss_position: Variant = boss.global_position if is_instance_valid(boss) else null
-	if terrain_field != null:
-		var barricade_points: Array[Vector3] = []
-		if is_instance_valid(boss) and boss is Demolisher:
-			barricade_points = (boss as Demolisher).barricade_points
-		var lamp_points: Array[Vector3] = []
-		if lamp_field != null:
-			lamp_points = lamp_field.positions()
-		return RunMap.render_heights(terrain_field, _initial_heights, barricade_points, buildings, _start_position, player.global_position, boss_position, lamp_points)
-	var barricades: Dictionary = (boss as Demolisher).barricades if is_instance_valid(boss) and boss is Demolisher else {}
-	var lamps: Array[Vector2i] = lamp_field.cells() if lamp_field != null else []
-	return RunMap.render(grid, _initial_terrain, barricades, buildings, _start_position, player.global_position, boss_position, lamps)
+	var barricade_points: Array[Vector3] = []
+	if is_instance_valid(boss) and boss is Demolisher:
+		barricade_points = (boss as Demolisher).barricade_points
+	var lamp_points: Array[Vector3] = []
+	if lamp_field != null:
+		lamp_points = lamp_field.positions()
+	return RunMap.render_heights(terrain_field, _initial_heights, barricade_points, buildings, _start_position, player.global_position, boss_position, lamp_points)
 
 
 func _show_run_map() -> void:
-	var stats := "Celle scavate %d   rialzate %d" % [cells_dug, cells_raised]
-	if terrain_field != null:
-		stats = "Terra spostata: %d m3   (scavati %d, alzati %d)" % [roundi(terrain_field.volume_moved), roundi(volume_dug), roundi(volume_raised)]
+	var stats := "Terra spostata: %d m3   (scavati %d, alzati %d)" % [roundi(terrain_field.volume_moved), roundi(volume_dug), roundi(volume_raised)]
 	game_over.set_map(_final_map if _final_map != null else build_run_map(), stats, "run_%d" % run_seed)
 
 
@@ -947,7 +866,6 @@ func apply_upgrade(id: StringName, new_level: int) -> void:
 		&"spiked_wall":
 			director.spike_damage = int(UpgradeCatalog.value(id, &"damage"))
 			director.spike_interval = UpgradeCatalog.value(id, &"interval") if new_level == 1 else UpgradeCatalog.value(id, &"interval_level_2")
-			# Sul rilievo la tinta degli argini arriva con TerrainSurface (Task 14).
 			_set_raised_tint(Color(0.85, 0.75, 0.7))
 		&"brush_size":
 			player.brush_radius_bonus_m = UpgradeCatalog.value(id, &"radius_per_level") * new_level
@@ -1025,25 +943,6 @@ func _on_player_sculpted(center: Vector3, radius: float, volume: float, mode: in
 	print("PROTOTYPE01_DIG_BLAST x=%.1f z=%.1f" % [center.x, center.z])
 
 
-## Scavo esplosivo (griglia): ogni passo di scavo colpisce i nemici attorno alla cella.
-func _on_terrain_command(cell: Vector2i, mode: TerrainState.ToolMode, new_state: TerrainState.CellState) -> void:
-	if mode == TerrainState.ToolMode.DIG:
-		cells_dug += 1
-	else:
-		cells_raised += 1
-	var center := grid.to_global(grid.cell_local_position(cell, new_state))
-	# Zolle che saltano a ogni colpo di tool: dalla cima della cella.
-	DebrisBurst.spawn(get_parent(), Vector3(center.x, center.y * 2.0 - grid.global_position.y + 0.1, center.z),
-		Demolisher.EARTH_COLOR, 8, 3.2, 0.16)
-	if mode != TerrainState.ToolMode.DIG or dig_blast_radius <= 0.0:
-		return
-	center.y = 0.1
-	for enemy in director.enemies_near(center, dig_blast_radius):
-		enemy.take_damage(2)
-	_blast_effect(center, dig_blast_radius)
-	print("PROTOTYPE01_DIG_BLAST X=%d Y=%d" % [cell.x, cell.y])
-
-
 func _blast_effect(center: Vector3, radius: float) -> void:
 	var ring := MeshInstance3D.new()
 	var mesh := CylinderMesh.new()
@@ -1066,10 +965,10 @@ func _blast_effect(center: Vector3, radius: float) -> void:
 	tween.chain().tween_callback(ring.queue_free)
 
 
-## Terrapieni spinati: le celle rialzate prendono un colore metallico chiaro.
+## Terrapieni spinati: gli argini alzati dal giocatore prendono un colore metallico chiaro.
 func _set_raised_tint(color: Color) -> void:
-	if grid != null:
-		grid.raised_color_override = color
+	if terrain_field != null and terrain_field.terrain3d() != null:
+		TerrainSurface.set_raised_tint(terrain_field.terrain3d(), color)
 
 
 func _turret_part() -> Node3D:

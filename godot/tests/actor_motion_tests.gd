@@ -411,7 +411,7 @@ func _test_boss() -> void:
 	_check(rig.transform.is_equal_approx(Transform3D.IDENTITY), "fermo: il telaio torna a riposo")
 
 	# Martello: lo scafo carica a tempo con la lama, che resta guidata dal codice di gioco.
-	_boss.demolish_cell = Vector2i(0, 0)
+	_boss.demolish_point = Vector3.ZERO
 	var windup := 0.0
 	for i in 40:
 		_boss._demolish_left = 1.2 - i * step
@@ -425,7 +425,7 @@ func _test_boss() -> void:
 		"martellando lo scafo carica a tempo con la lama, entro WINDUP_PITCH (%.3f rad)" % windup)
 	_check(is_equal_approx(_boss._blade.position.x, Demolisher.BLADE_REST.x) and is_equal_approx(_boss._blade.position.z, Demolisher.BLADE_REST.z),
 		"la posizione locale della lama resta quella del codice di gioco")
-	_boss.demolish_cell = Vector2i(-1, -1)
+	_boss.demolish_point = Vector3.INF
 	_boss._blade.position.y = Demolisher.BLADE_REST.y
 	for i in 30:
 		_boss.tick_visuals(step)

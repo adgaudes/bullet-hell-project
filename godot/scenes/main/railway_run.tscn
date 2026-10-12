@@ -62,7 +62,6 @@ half_extent_z = 61.2
 [node name="ScrapField" type="Node3D" parent="." node_paths=PackedStringArray("terrain_field")]
 script = ExtResource("8_scrap")
 terrain_field = NodePath("../TerrainField")
-bare_ground_yields_scrap = false
 
 [node name="Companion" parent="." node_paths=PackedStringArray("player", "scrap_field", "path_field") instance=ExtResource("7_companion")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.3, 2.5)

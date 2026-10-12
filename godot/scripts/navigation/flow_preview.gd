@@ -33,8 +33,6 @@ const START_NUDGES: Array[float] = [0.0, 1.0, -1.0, 2.0, -2.0, 3.0, -3.0]
 const SOLVE_WAIT_SECONDS := 0.5
 
 @export var path_field: PathField
-## Opzionale: senza griglia `show_now()` funziona, ma niente attivazione automatica.
-@export var grid: TerrainGrid
 ## Rilievo continuo (D-085): le impronte partono dalle pennellate del giocatore e stanno alle quote.
 @export var terrain_field: TerrainField
 ## Mostra le impronte a ogni comando del tool terreno del giocatore.
@@ -128,8 +126,6 @@ func _ready() -> void:
 	_instance.visible = false
 	add_child(_instance)
 	set_process(false)
-	if grid != null:
-		grid.command_applied.connect(_on_command_applied)
 	if terrain_field != null:
 		terrain_field.player_sculpted.connect(_on_player_sculpted)
 	if path_field != null:
@@ -245,10 +241,6 @@ func _fade_at(age: float) -> float:
 
 ## Una pennellata del giocatore sul rilievo (non quelle di boss ed eventi: `sculpt`).
 func _on_player_sculpted(_center: Vector3, _radius: float, _volume: float, _mode: int) -> void:
-	_on_command_applied(Vector2i.ZERO, TerrainState.ToolMode.DIG, TerrainState.CellState.NORMAL)
-
-
-func _on_command_applied(_cell: Vector2i, _mode: TerrainState.ToolMode, _state: TerrainState.CellState) -> void:
 	if not auto_show_on_terrain_change or path_field == null:
 		return
 	# Il campo si ricalcola al suo prossimo passo fisico: le scie si tracciano li.
@@ -400,10 +392,4 @@ func _write_marks(goal: Vector3) -> void:
 
 ## Quota del suolo sotto il punto: rilievo continuo o cima della cella della griglia.
 func _ground_y(pos: Vector3) -> float:
-	if terrain_field != null:
-		return terrain_field.height_at(pos)
-	if grid == null:
-		return 0.0
-	var cell := grid.cell_at(pos)
-	var cell_state := grid.state.get_state(cell) if grid.state.is_valid(cell) else TerrainState.CellState.NORMAL
-	return grid.global_position.y + grid.cell_local_position(cell, cell_state).y * 2.0
+	return terrain_field.height_at(pos) if terrain_field != null else 0.0

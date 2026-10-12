@@ -2,12 +2,11 @@ class_name RunMap
 extends RefCounted
 ## Mappa di fine livello (D-052, idea 7 di FEATURE_IDEAS): l'arena come l'ha
 ## scolpita il giocatore, disegnata dai delta di quota del rilievo continuo (D-085,
-## `render_heights`) o dallo stato della griglia (ferrovia, `render`). Logica pura:
+## `render_heights`). Logica pura:
 ## produce un'immagine, non tocca nodi. Nord (-Z) in alto, est (+X) a destra.
 
-## Lato massimo dell'immagine, in pixel, e pixel minimi per cella.
+## Lato massimo dell'immagine, in pixel.
 const TARGET_SIZE := 340
-const MIN_CELL_PIXELS := 4
 ## Celle di margine attorno a cio che e successo, e lato minimo della vista.
 const PADDING_CELLS := 4
 const MIN_SIDE_CELLS := 25
@@ -34,51 +33,9 @@ const BOSS_MARK := Color(1.0, 0.15, 0.1)
 const LAMP_MARK := Color(1.0, 0.95, 0.6)
 
 
-## Stato di ogni cella, in ordine di indice (Y * width + X): la fotografia da
-## confrontare a fine livello.
-static func snapshot(state: TerrainState) -> PackedByteArray:
-	var result := PackedByteArray()
-	result.resize(state.cell_count())
-	for y in state.height:
-		for x in state.width:
-			result[y * state.width + x] = state.get_state(Vector2i(x, y))
-	return result
-
-
-## Celle il cui stato e diverso dalla fotografia iniziale.
-static func changed_cells(state: TerrainState, initial: PackedByteArray) -> Array[Vector2i]:
-	var result: Array[Vector2i] = []
-	for y in state.height:
-		for x in state.width:
-			var cell := Vector2i(x, y)
-			if state.get_state(cell) != initial[y * state.width + x]:
-				result.append(cell)
-	return result
-
-
 ## Uguali entro l'arrotondamento a 8 bit dell'immagine.
 static func same_color(a: Color, b: Color) -> bool:
 	return absf(a.r - b.r) < 0.01 and absf(a.g - b.g) < 0.01 and absf(a.b - b.b) < 0.01
-
-
-## Colore di una cella sulla mappa.
-static func cell_color(now: TerrainState.CellState, before: TerrainState.CellState, is_barricade: bool) -> Color:
-	if is_barricade:
-		return BARRICADE
-	if now == before:
-		match now:
-			TerrainState.CellState.RAISED:
-				return WALL_INITIAL
-			TerrainState.CellState.LOWERED:
-				return TRENCH_INITIAL
-		return GROUND
-	match now:
-		TerrainState.CellState.RAISED:
-			return WALL_NEW
-		TerrainState.CellState.LOWERED:
-			return TRENCH_NEW
-	# Tornata Normal: era un muro (breccia) oppure un fossato richiuso.
-	return BREACH if before == TerrainState.CellState.RAISED else GROUND
 
 
 ## Rilievo continuo: colore di un punto dal suo dislivello rispetto a inizio livello;
@@ -200,66 +157,6 @@ static func view_rect(size: Vector2i, points: Array[Vector2i]) -> Rect2i:
 		clampi(center.x - side / 2, 0, size.x - side),
 		clampi(center.y - side / 2, 0, size.y - side))
 	return Rect2i(origin, Vector2i(side, side))
-
-
-## Disegna la mappa. [param initial]: fotografia di `snapshot()` a inizio livello;
-## [param barricades]: celle delle barricate del boss; [param buildings]: rettangoli
-## mondo XZ degli edifici; [param start], [param end]: posizioni mondo del giocatore;
-## [param boss]: posizione mondo del boss, o null.
-static func render(grid: TerrainGrid, initial: PackedByteArray, barricades: Dictionary,
-		buildings: Array[Rect2], start: Vector3, end: Vector3, boss: Variant = null, lamps: Array[Vector2i] = []) -> Image:
-	var state := grid.state
-	var size := Vector2i(state.width, state.height)
-	# Un pixel per cella, in coordinate mondo: colonna = X mondo, riga = Z mondo.
-	var full := Image.create(size.x, size.y, false, Image.FORMAT_RGBA8)
-	full.fill(GROUND)
-	var points: Array[Vector2i] = []
-	for y in state.height:
-		for x in state.width:
-			var cell := Vector2i(x, y)
-			var now := state.get_state(cell)
-			var before := initial[y * state.width + x] as TerrainState.CellState
-			var pixel := _pixel_of(grid, cell, size)
-			full.set_pixelv(pixel, cell_color(now, before, barricades.has(cell)))
-			if now != before or barricades.has(cell):
-				points.append(pixel)
-	for rect in buildings:
-		var from := _pixel_at(grid, Vector3(rect.position.x, 0.0, rect.position.y), size)
-		var to := _pixel_at(grid, Vector3(rect.end.x, 0.0, rect.end.y), size)
-		for py in range(mini(from.y, to.y), maxi(from.y, to.y) + 1):
-			for px in range(mini(from.x, to.x), maxi(from.x, to.x) + 1):
-				if same_color(full.get_pixel(px, py), GROUND):
-					full.set_pixel(px, py, BUILDING)
-	var start_pixel := _pixel_at(grid, start, size)
-	var end_pixel := _pixel_at(grid, end, size)
-	points.append(start_pixel)
-	points.append(end_pixel)
-	for lamp in lamps:
-		points.append(_pixel_of(grid, lamp, size))
-	var view := view_rect(size, points)
-	var scale := maxi(TARGET_SIZE / view.size.x, MIN_CELL_PIXELS)
-	var image := full.get_region(view)
-	image.resize(view.size.x * scale, view.size.y * scale, Image.INTERPOLATE_NEAREST)
-	_mark(image, (start_pixel - view.position) * scale, scale, START_MARK, true)
-	if boss != null:
-		_mark(image, (_pixel_at(grid, boss, size) - view.position) * scale, scale, BOSS_MARK, false)
-	for lamp in lamps:
-		_mark(image, (_pixel_of(grid, lamp, size) - view.position) * scale, scale, LAMP_MARK, true)
-	_mark(image, (end_pixel - view.position) * scale, scale, END_MARK, false)
-	return image
-
-
-## Pixel (colonna, riga) della cella: colonna cresce verso est, riga verso sud.
-static func _pixel_of(grid: TerrainGrid, cell: Vector2i, size: Vector2i) -> Vector2i:
-	return _pixel_at(grid, grid.to_global(grid.cell_local_position(cell, TerrainState.CellState.NORMAL)), size)
-
-
-static func _pixel_at(grid: TerrainGrid, world: Vector3, size: Vector2i) -> Vector2i:
-	var local := grid.to_local(world)
-	var step := grid.cell_size_m()
-	return Vector2i(
-		clampi(roundi(local.x / step + (size.x - 1) * 0.5), 0, size.x - 1),
-		clampi(roundi(local.z / step + (size.y - 1) * 0.5), 0, size.y - 1))
 
 
 ## Segno quadrato pieno, o solo il bordo, centrato sulla cella.

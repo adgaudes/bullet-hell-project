@@ -31,7 +31,7 @@ func _initialize() -> void:
 	var companion: Companion = _scene.get_node(^"Companion")
 	var director: EnemyDirector = _scene.get_node(^"EnemyDirector")
 	var weapon: AutoWeapon = _scene.get_node(^"PlayerWeapon")
-	var grid: TerrainGrid = _scene.get_node(^"TerrainGrid")
+	var field: TerrainField = _scene.get_node(^"TerrainField")
 	director.spawning = false
 	weapon.fired.connect(func(_count: int) -> void: _player.kick(-weapon.last_fire_direction))
 	await _steps(20)
@@ -144,10 +144,8 @@ func _initialize() -> void:
 	await _sequence("gameplay_boss", _player, 4, 0.0, 0.0, 0.0)
 	_closeup.make_current()
 	boss.wall_attraction_radius = attraction
-	# La griglia va cambiata dentro un passo fisico (interpolazione dei MultiMesh).
 	await physics_frame
-	var wall := grid.cell_at(boss.global_position - boss.global_basis.z * 3.0)
-	grid.force_cell_state(wall, TerrainState.CellState.RAISED)
+	field.sculpt(boss.global_position - boss.global_basis.z * 3.0, 2.0, 1.4)
 	for i in 900:
 		_keep_player_alive()
 		await physics_frame

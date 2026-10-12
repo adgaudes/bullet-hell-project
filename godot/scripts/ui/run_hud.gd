@@ -334,12 +334,12 @@ func set_health(health: int, max_health: int) -> void:
 
 ## Modalita del tool: visibile solo in LAMP, con costo e contatore (specifica, sezione 9).
 func set_tool_mode(mode: int, lamps: int, max_lamps: int, cost: int) -> void:
-	if mode != TerrainField.ToolMode.LAMP and mode != TerrainState.ToolMode.LAMP:
+	if mode != TerrainField.ToolMode.LAMP:
 		_tool_label.hide()
 		_tool_icon.hide()
 		return
 	_tool_label.text = "LAMPIONE  %d rottami  %d/%d" % [cost, lamps, max_lamps]
-	_tool_label.add_theme_color_override(&"font_color", TerrainGrid.LAMP_PREVIEW_COLOR.linear_to_srgb())
+	_tool_label.add_theme_color_override(&"font_color", BrushPreview.LAMP_COLOR.linear_to_srgb())
 	_tool_label.show()
 	_tool_icon.show()
 

@@ -382,9 +382,9 @@ func _test_hud() -> void:
 	_check(hud.icon_before(hud._kills_label) != null and hud.icon_before(hud._kills_label).kind == &"skull", "teschio prima dei rottamati")
 	_check(hud.icon_before(hud._time_label) != null and hud.icon_before(hud._time_label).kind == &"clock", "orologio prima del tempo")
 	_check(hud.icon_before(hud._health_row) != null and hud.icon_before(hud._health_row).kind == &"bolt", "bullone prima della vita")
-	hud.set_tool_mode(TerrainState.ToolMode.LAMP, 1, 4, 3)
+	hud.set_tool_mode(TerrainField.ToolMode.LAMP, 1, 4, 3)
 	_check(hud._tool_label.visible and hud.icon_before(hud._tool_label) != null and hud.icon_before(hud._tool_label).kind == &"lamp" and hud.icon_before(hud._tool_label).visible, "modo lampione con l'icona")
-	hud.set_tool_mode(TerrainState.ToolMode.DIG, 0, 4, 3)
+	hud.set_tool_mode(TerrainField.ToolMode.DIG, 0, 4, 3)
 	_check(not hud._tool_label.visible and not hud.icon_before(hud._tool_label).visible, "fuori dal modo lampione icona e testo spariscono")
 	_check(not hud._warning_plate.has_theme_stylebox_override(&"panel"), "targa degli avvisi dal tema (cuoio e rivetti)")
 	var boss_fill := hud._boss_bar.get_theme_stylebox(&"fill") as StyleBoxTexture

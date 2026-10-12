@@ -12,7 +12,6 @@ extends Node3D
 ## Il piano del suolo e a y = 0 nello spazio locale; il nodo va lasciato in origine
 ## perche gli shader lavorano in coordinate mondo.
 
-const GROUND_SHADER := preload("res://resources/materials/ruins_ground.gdshader")
 const RUIN_SHADER := preload("res://resources/materials/ruin_overgrown.gdshader")
 const RUST_SHADER := preload("res://resources/materials/rusted_metal.gdshader")
 const FOLIAGE_SHADER := preload("res://resources/materials/foliage.gdshader")
@@ -177,7 +176,6 @@ func rebuild() -> void:
 ## Composizione della piazza (48x48 m). Le sottoclassi (RuinsDistrict) la sostituiscono.
 func _compose() -> void:
 	_reset_ruin_details()
-	_build_ground()
 	_build_boundary()
 	_build_north()
 	_build_skyline()
@@ -192,7 +190,6 @@ func _compose() -> void:
 
 
 ## Raggio della piazza del suolo: oltre, la natura prevale sul costruito.
-## Lo stesso valore va in TerrainGrid.plaza_radius per le celle in modalita naturale.
 func plaza_radius() -> float:
 	return play_half_extent * 0.85
 
@@ -773,22 +770,6 @@ func _barrier(base: Vector3, yaw_deg: float) -> void:
 
 # --- Composizione ----------------------------------------------------------------
 
-func _build_ground() -> void:
-	# Col rilievo continuo il suolo e Terrain3D: nessuna lastra e nessuna collisione piatta.
-	if terrain_field != null:
-		return
-	var size := Vector3(ground_size(), 0.4, ground_size())
-	var body := _static_body("Ground", Transform3D(Basis(), Vector3(0.0, -0.2, 0.0)))
-	var material := ShaderMaterial.new()
-	material.shader = GROUND_SHADER
-	material.set_shader_parameter(&"plaza_radius", plaza_radius())
-	TerrainGrid.apply_ground_tiles(material)
-	var plane := PlaneMesh.new()
-	plane.size = Vector2(size.x, size.z)
-	_mesh_child(body, plane, material, Transform3D(Basis(), Vector3(0.0, 0.2, 0.0)))
-	_box_shape_child(body, size)
-
-
 ## Muri invisibili sul perimetro giocabile.
 func _build_boundary() -> void:
 	var h := 6.0
@@ -910,7 +891,7 @@ func _build_ring_props() -> void:
 
 # --- Copertura vegetale ----------------------------------------------------------
 
-## Stessa formula del suolo (ruins_ground.gdshader): i ciuffi crescono dove il suolo e verde.
+## Formula del verde del suolo: i ciuffi crescono dove il suolo e verde.
 func ground_cover_at(p: Vector2) -> float:
 	var radius := plaza_radius()
 	var edge := smoothstep(radius * 0.55, radius * 1.25, p.length())

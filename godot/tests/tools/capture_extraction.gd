@@ -17,13 +17,12 @@ func _initialize() -> void:
 	root.add_child(scene)
 	var run: ArenaRun = scene.get_node(^"Run")
 	var pad: ExtractionPad = scene.get_node(^"ExtractionPad")
-	var grid: TerrainGrid = scene.get_node(^"TerrainGrid")
+	var field: TerrainField = scene.get_node(^"TerrainField")
 	var player: PlayerCharacter = scene.get_node(^"Player")
 	var director: EnemyDirector = scene.get_node(^"EnemyDirector")
 	director.spawning = false
 	for i in 10:
 		await physics_frame
-	var center := grid.cell_at(Vector3.ZERO)
 	player.global_position = Vector3(0.0, 0.88, 0.0)
 	player.velocity = Vector3.ZERO
 	run.call_boss()
@@ -34,8 +33,10 @@ func _initialize() -> void:
 		quit()
 		return
 	pad.hold_seconds = 6.0
-	var wall := center + Vector2i(1, 1)
-	grid.set_cell_states([wall], TerrainState.CellState.RAISED)
+	var wall := Vector3(2.4, 0.0, 2.4)
+	run._start_protect_left = 0.0
+	field.set_protected(Vector3.ZERO, field.tuning.start_protected_radius_m, false)
+	field.sculpt(wall, 2.0, 1.4)
 	run.boss.global_position = Vector3(9.0, run.boss.global_position.y, 4.0)
 	run.boss.take_damage(run.boss.health)
 	for i in 6:
@@ -43,7 +44,7 @@ func _initialize() -> void:
 	for i in 40:
 		await physics_frame
 	await _save("broken")
-	grid.set_cell_states([wall], TerrainState.CellState.NORMAL)
+	field.level(wall, 2.4, field.base_height_at(wall), 1.0)
 	for i in 150:
 		await physics_frame
 	await _save("holding")

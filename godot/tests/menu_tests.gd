@@ -4,9 +4,6 @@ extends SceneTree
 
 const MenuScene := preload("res://scenes/main/main_menu.tscn")
 const RunScene := preload("res://scenes/main/arena_run.tscn")
-const LOWERED := TerrainState.CellState.LOWERED
-const NORMAL := TerrainState.CellState.NORMAL
-const RAISED := TerrainState.CellState.RAISED
 
 var _failures := 0
 
@@ -125,13 +122,12 @@ func _test_menu() -> void:
 
 func _test_map_rules() -> void:
 	print("map rules")
-	_check(RunMap.cell_color(NORMAL, NORMAL, false) == RunMap.GROUND, "terreno intatto")
-	_check(RunMap.cell_color(RAISED, RAISED, false) == RunMap.WALL_INITIAL, "muro che c'era gia")
-	_check(RunMap.cell_color(RAISED, NORMAL, false) == RunMap.WALL_NEW, "terrapieno nuovo")
-	_check(RunMap.cell_color(LOWERED, NORMAL, false) == RunMap.TRENCH_NEW, "fossato nuovo")
-	_check(RunMap.cell_color(NORMAL, RAISED, false) == RunMap.BREACH, "breccia in un muro")
-	_check(RunMap.cell_color(LOWERED, LOWERED, false) == RunMap.TRENCH_INITIAL, "trincea che c'era gia")
-	_check(RunMap.cell_color(RAISED, NORMAL, true) == RunMap.BARRICADE, "barricata del boss")
+	_check(RunMap.height_color(0.0, false) == RunMap.GROUND, "terreno intatto")
+	_check(RunMap.height_color(0.0, false, 1.4) == RunMap.WALL_INITIAL, "argine che c'era gia")
+	_check(RunMap.height_color(1.0, false) == RunMap.WALL_NEW, "argine nuovo")
+	_check(RunMap.height_color(-0.8, false) == RunMap.TRENCH_NEW, "fossato nuovo")
+	_check(RunMap.height_color(0.0, false, -0.8) == RunMap.TRENCH_INITIAL, "trincea che c'era gia")
+	_check(RunMap.height_color(1.0, true) == RunMap.BARRICADE, "barricata del boss")
 	var size := Vector2i(85, 85)
 	var small := RunMap.view_rect(size, [Vector2i(42, 42)])
 	_check(small.size == Vector2i(RunMap.MIN_SIDE_CELLS, RunMap.MIN_SIDE_CELLS) and small.has_point(Vector2i(42, 42)), "vista minima attorno a un solo punto")
@@ -140,12 +136,6 @@ func _test_map_rules() -> void:
 	var wide := RunMap.view_rect(size, [Vector2i(5, 40), Vector2i(80, 44)])
 	_check(wide.size.x == wide.size.y and wide.size.x >= 84 and wide.end.x <= 85 and wide.end.y <= 85
 		and wide.has_point(Vector2i(5, 40)) and wide.has_point(Vector2i(80, 44)), "vista quadrata che contiene tutto, dentro la mappa")
-	var state := TerrainState.new()
-	state.resize(5, 5)
-	var before := RunMap.snapshot(state)
-	_check(before.size() == 25 and RunMap.changed_cells(state, before).is_empty(), "fotografia iniziale: nessuna cella cambiata")
-	state.apply(Vector2i(3, 1), TerrainState.ToolMode.DIG)
-	_check(RunMap.changed_cells(state, before) == [Vector2i(3, 1)], "una cella scavata risulta cambiata")
 
 
 ## Mappa sui delta di quota (rilievo continuo, D-085): logica pura su un campo di 48 m.

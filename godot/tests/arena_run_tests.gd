@@ -212,7 +212,7 @@ func _test_wall_blocks_line_of_fire() -> void:
 	print("line of fire")
 	_clear_enemies()
 	# Un punto dell'argine in diagonale, lontano dai varchi.
-	var direction := RuinsDistrict.cell_offset_to_world(Vector2i(_run.tuning.wall_ring_radius, 2)).normalized()
+	var direction := Vector2(2.0 * RuinsDistrict.CELL, -_run.tuning.wall_ring_radius * RuinsDistrict.CELL).normalized()
 	var outward := Vector3(direction.x, 0.0, direction.y)
 	var wall := outward * _ring_radius()
 	_place_player(wall - outward * 3.0)

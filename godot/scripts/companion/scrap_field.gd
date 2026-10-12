@@ -18,13 +18,8 @@ const SCRAP_PER_M3 := 0.8
 ## Sopra questo dislivello fra la quota di posa e il suolo nuovo il rottame rotola.
 const ROLL_RISE_M := 0.5
 
-@export var grid: TerrainGrid
-## Rilievo continuo (D-085): con questo i rottami poggiano sulle quote e vengono dalle vene.
+## Rilievo continuo (D-085): i rottami poggiano sulle quote e vengono solo dalle vene (D-056).
 @export var terrain_field: TerrainField
-## Anche scavare terreno nudo (Normal -> Lowered) produce un rottame. Vero nelle
-## scene del Companion Slice; falso nel livello (D-056): li i rottami vengono solo
-## dallo smontare una cella rialzata (mura, depositi, barricate), che sono finite.
-@export var bare_ground_yields_scrap := true
 
 ## Quante volte il tetto `MAX_SCRAPS` ha fatto riciclare un rottame (per i test).
 var capped_count := 0
@@ -49,9 +44,6 @@ func _ready() -> void:
 	_material.emission_energy_multiplier = 0.6
 	# Il bob gira solo quando c'e almeno un rottame (P-04).
 	set_process(false)
-	if grid != null:
-		grid.command_applied.connect(_on_command_applied)
-		grid.cell_changed.connect(_on_cell_changed)
 	if terrain_field != null:
 		terrain_field.player_sculpted.connect(_on_player_sculpted)
 		terrain_field.region_changed.connect(_on_region_changed)
@@ -81,15 +73,6 @@ func spawn(world_position: Vector3) -> void:
 	scrap_spawned.emit(world_position)
 
 
-## Rottami sopra la cella (piano XZ).
-func count_on_cell(cell: Vector2i) -> int:
-	var count := 0
-	for scrap in _scraps:
-		if grid.cell_at(scrap.global_position) == cell:
-			count += 1
-	return count
-
-
 ## Rottame piu vicino a [param origin] entro [param radius] (piano XZ), o null.
 func nearest(origin: Vector3, radius: float) -> Variant:
 	var best: Variant = null
@@ -111,24 +94,11 @@ func positions_near(origin: Vector3, radius: float) -> Array[Vector3]:
 	return result
 
 
-## Rottame sopra la cella, alla quota della sua superficie.
-func spawn_on_cell(cell: Vector2i, cell_state: TerrainState.CellState) -> void:
-	# cell_local_position e il centro a meta altezza: la superficie e al doppio.
-	var local := grid.cell_local_position(cell, cell_state)
-	local.y = local.y * 2.0 + SCRAP_SIZE
-	spawn(grid.to_global(local))
-
-
 ## Rottame lasciato cadere in un punto qualunque: resta li, alla quota del terreno sotto.
 func spawn_on_ground(world: Vector3) -> void:
-	if terrain_field != null:
-		var ground := terrain_field.height_at(world)
-		spawn(Vector3(world.x, ground + SCRAP_SIZE, world.z))
-		_rest_heights[_scraps.back()] = ground
-		return
-	var cell := grid.cell_at(world)
-	var surface := grid.to_global(grid.cell_local_position(cell, grid.cell_state_at(world)))
-	spawn(Vector3(world.x, surface.y * 2.0 - grid.global_position.y + SCRAP_SIZE, world.z))
+	var ground := terrain_field.height_at(world) if terrain_field != null else 0.0
+	spawn(Vector3(world.x, ground + SCRAP_SIZE, world.z))
+	_rest_heights[_scraps.back()] = ground
 
 
 ## Rimuove fino a [param max_count] rottami entro [param radius]; restituisce quanti.
@@ -170,34 +140,6 @@ func _process(delta: float) -> void:
 		var base_y: float = scrap.get_meta(&"base_y")
 		scrap.position.y = base_y + sin(_time * BOB_SPEED + scrap.position.x) * BOB_HEIGHT
 		scrap.rotation.y += delta
-
-
-## Uno scavo produce un rottame sopra la cella (vedi `bare_ground_yields_scrap`).
-func _on_command_applied(cell: Vector2i, mode: TerrainState.ToolMode, new_state: TerrainState.CellState) -> void:
-	if mode != TerrainState.ToolMode.DIG:
-		return
-	if not bare_ground_yields_scrap and new_state != TerrainState.CellState.NORMAL:
-		return
-	spawn_on_cell(cell, new_state)
-
-
-## Una cella che diventa Raised (terrapieno del giocatore, barricata del boss) non deve
-## seppellire un rottame: lo sposta sulla vicina Normal piu vicina, o in cima.
-func _on_cell_changed(cell: Vector2i, new_state: TerrainState.CellState) -> void:
-	if new_state != TerrainState.CellState.RAISED:
-		return
-	var moved := false
-	for scrap in _scraps:
-		if grid.cell_at(scrap.global_position) != cell:
-			continue
-		var target := _free_neighbor(cell)
-		var local := grid.cell_local_position(target, grid.state.get_state(target))
-		local.y = local.y * 2.0 + SCRAP_SIZE
-		scrap.global_position = grid.to_global(local)
-		scrap.set_meta(&"base_y", scrap.position.y)
-		moved = true
-	if moved:
-		print("PROTOTYPE01_SCRAP_UNBURIED X=%d Y=%d" % [cell.x, cell.y])
 
 
 # --- Vene di rottami sul rilievo continuo (spec 5.1) --------------------------------------
@@ -307,16 +249,6 @@ func _on_region_changed(aabb: AABB) -> void:
 			scrap.global_position = Vector3(p.x, ground + SCRAP_SIZE, p.z)
 		_rest_heights[scrap] = ground
 		scrap.set_meta(&"base_y", scrap.position.y)
-
-
-# Vicina Normal piu vicina (prima i lati, poi le diagonali); la cella stessa se non ce n'e.
-func _free_neighbor(cell: Vector2i) -> Vector2i:
-	for offset in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1),
-			Vector2i(1, 1), Vector2i(1, -1), Vector2i(-1, 1), Vector2i(-1, -1)]:
-		var neighbor: Vector2i = cell + offset
-		if grid.state.is_valid(neighbor) and grid.state.get_state(neighbor) == TerrainState.CellState.NORMAL:
-			return neighbor
-	return cell
 
 
 static func _planar_distance(a: Vector3, b: Vector3) -> float:

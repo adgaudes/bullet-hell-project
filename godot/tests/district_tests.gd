@@ -4,9 +4,6 @@ extends SceneTree
 ##   godot_console --headless --path godot --fixed-fps 60 --script res://tests/district_tests.gd
 
 const RunScene := preload("res://scenes/main/arena_run.tscn")
-const RAISED := TerrainState.CellState.RAISED
-const LOWERED := TerrainState.CellState.LOWERED
-const NORMAL := TerrainState.CellState.NORMAL
 
 var _failures := 0
 var _scene: Node3D
@@ -74,18 +71,18 @@ func _test_scale() -> void:
 
 func _test_features() -> void:
 	print("features")
-	var features := _district.terrain_features
+	var strokes := _district.terrain_strokes
 	var kinds := {}
-	for f: Dictionary in features:
-		kinds[f.kind] = kinds.get(f.kind, 0) + 1
+	for s: Dictionary in strokes:
+		kinds[s.kind] = kinds.get(s.kind, 0) + 1
 	_check(kinds.get(&"start", 0) == 1, "un cortile di partenza")
-	var courtyards := features.filter(func(f: Dictionary) -> bool: return f.state == RAISED and not f.gates.is_empty())
+	var courtyards := strokes.filter(func(s: Dictionary) -> bool: return s.height > 0.0 and not s.gates.is_empty())
 	_check(courtyards.size() >= 4, "almeno quattro cortili con varchi (%d)" % courtyards.size())
 	_check(kinds.get(&"deposit", 0) >= 6, "almeno sei depositi di rottami (%d)" % kinds.get(&"deposit", 0))
 	_check(kinds.get(&"trench", 0) >= 2, "almeno due trincee (%d)" % kinds.get(&"trench", 0))
-	var start: Dictionary = features[0]
-	_check(start.kind == &"start" and start.center == Vector2.ZERO and start.offsets.size() == 28 and start.gates.size() == 4,
-		"partenza: 28 celle di mura e quattro varchi all'origine")
+	var start: Dictionary = strokes[0]
+	_check(start.kind == &"start" and start.center == Vector2.ZERO and start.gates.size() == 4 and start.points.size() >= 20,
+		"partenza: anello di pennellate con quattro varchi all'origine (%d punti)" % start.points.size())
 
 	var far_apart := true
 	var away_from_start := true
@@ -104,15 +101,12 @@ func _test_features() -> void:
 	_check(variants.size() >= 3, "almeno tre varianti di cortile %s" % [variants.keys()])
 
 	var all_inside := true
-	var snapped := true
-	var half := _field.half_extent()
-	for f: Dictionary in features:
-		snapped = snapped and f.center.is_equal_approx(RuinsDistrict.snap_to_cell(f.center))
-		for offset: Vector2i in f.offsets:
-			var p: Vector2 = f.center + RuinsDistrict.cell_offset_to_world(offset)
-			all_inside = all_inside and absf(p.x) <= half and absf(p.y) <= half
-	_check(snapped, "centri dei punti di interesse al centro di una cella")
-	_check(all_inside, "tutte le celle dei punti di interesse sono dentro il rilievo")
+	var half := _field.half_extents()
+	for s: Dictionary in strokes:
+		for p: Vector2 in s.points:
+			all_inside = all_inside and absf(p.x) <= half.x and absf(p.y) <= half.y
+	_check(all_inside, "tutte le pennellate dei punti di interesse sono dentro il rilievo")
+	_check(int(_district.stats.get("strokes", 0)) == strokes.size(), "le statistiche contano le pennellate (%d)" % strokes.size())
 
 
 ## I punti di interesse sono pennellate sul rilievo: argini alti, cumuli con vena,
@@ -146,11 +140,9 @@ func _test_strokes_applied_to_field() -> void:
 
 func _test_determinism() -> void:
 	print("determinism")
-	var before := _district.terrain_features.duplicate(true)
 	var strokes_before := _district.terrain_strokes.duplicate(true)
 	var stats_before: Dictionary = _district.stats.duplicate()
 	_district.rebuild()
-	_check(_district.terrain_features == before, "stessi punti di interesse dopo la ricostruzione")
 	_check(_district.terrain_strokes == strokes_before, "stesse pennellate dopo la ricostruzione (%d)" % _district.terrain_strokes.size())
 	_check(_district.stats == stats_before, "stesse statistiche dopo la ricostruzione %s" % [_district.stats])
 	var other := RuinsDistrict.new()
@@ -158,7 +150,7 @@ func _test_determinism() -> void:
 	other.grass_tufts = 0
 	other.flowers = 0
 	root.add_child(other)
-	_check(other.terrain_features != before and other.terrain_features.size() >= 10, "un altro seme produce un altro quartiere")
+	_check(other.terrain_strokes != strokes_before and other.terrain_strokes.size() >= 10, "un altro seme produce un altro quartiere")
 	other.queue_free()
 
 
@@ -263,20 +255,6 @@ func _test_markers() -> void:
 	for m: Dictionary in run.current_markers():
 		still = still or (m.text == "ROTTAMI" and absf(m.distance - nearest) < 0.1)
 	_check(not still, "un deposito esaurito non e piu indicato")
-	# R-29: il marker di un deposito 2x2 sta al centro del blocco, a mezza cella dalla cella di ancoraggio.
-	var even_ok := true
-	var even_found := false
-	for f: Dictionary in _district.terrain_features:
-		if f.kind != &"deposit":
-			continue
-		var centroid := RuinsDistrict.feature_centroid(f.center, f.offsets)
-		even_ok = even_ok and (f.marker as Vector2).is_equal_approx(centroid)
-		if f.offsets.size() == 4:
-			even_found = true
-			even_ok = even_ok and absf((f.marker as Vector2).distance_to(f.center) - RuinsDistrict.CELL * sqrt(2.0) * 0.5) < 0.01
-	_check(even_found and even_ok, "i depositi 2x2 hanno il marker al centro del blocco (R-29)")
-
-
 func _test_window_follows_player() -> void:
 	print("window")
 	var recenters := _path.recenter_count

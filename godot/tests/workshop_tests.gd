@@ -141,7 +141,7 @@ func _test_new_profile_changes_nothing() -> void:
 	var run: ArenaRun = scene.get_node(^"Run")
 	var player: PlayerCharacter = scene.get_node(^"Player")
 	var companion: Companion = scene.get_node(^"Companion")
-	_check(player.max_health == run.tuning.player_max_health and is_zero_approx(player.tool_range_bonus_cm), "vita e portata del tool come da tuning")
+	_check(player.max_health == run.tuning.player_max_health and is_zero_approx(player.tool_range_bonus_m), "vita e portata del tool come da tuning")
 	_check(companion.capacity == companion.tuning.capacity and companion.carried == companion.tuning.starting_scrap, "cassone come da tuning")
 	_check(run.companion_weapon == null and run.progression.level_of(&"companion_turret") == 0, "nessuna torretta")
 	await _end_run(scene)

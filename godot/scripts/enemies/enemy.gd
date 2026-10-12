@@ -61,8 +61,6 @@ var self_driven := false
 var speed_scale := 1.0
 ## Tipo (scavenger, runner, hopper): per test, simulazioni e log.
 var kind: StringName = &"scavenger"
-## I saltatori (D-066) non vengono rallentati dalle celle Lowered.
-var ignores_lowered := false
 ## Pendenza massima percorribile (rilievo continuo); `floor_max_angle` ne deriva.
 var max_grade := 0.8
 ## Secondi fermo contro il terreno e stato del rosicchio.

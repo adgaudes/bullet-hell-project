@@ -6,8 +6,8 @@ extends SceneTree
 ##   godot_console --headless --path godot --fixed-fps 60 --script res://tests/economy_tests.gd
 
 const RunScene := preload("res://scenes/main/arena_run.tscn")
-const DIG := TerrainState.ToolMode.DIG
-const RAISE := TerrainState.ToolMode.RAISE
+const DIG := TerrainField.ToolMode.DIG
+const RAISE := TerrainField.ToolMode.RAISE
 
 var _failures := 0
 var _scene: Node3D
@@ -106,7 +106,6 @@ func _test_catalog_and_fillers() -> void:
 
 func _test_scrap_sources() -> void:
 	print("scrap sources")
-	_check(not _scrap.bare_ground_yields_scrap, "nel livello il terreno nudo non rende rottami")
 	_check(_scrap.terrain_field != null and not _scrap.veins().is_empty(), "il livello registra le vene dei depositi (%d)" % _scrap.veins().size())
 
 
@@ -120,7 +119,6 @@ func _setup_vein_field() -> void:
 	root.add_child(_field)
 	_vein_scrap = ScrapField.new()
 	_vein_scrap.terrain_field = _field
-	_vein_scrap.bare_ground_yields_scrap = false
 	_field.add_child(_vein_scrap)
 
 

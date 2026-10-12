@@ -26,9 +26,9 @@ func _initialize() -> void:
 		await physics_frame
 	# Il giocatore accanto al vagone piu vicino alla partenza, fuori dalla fascia.
 	var wagon_x := 40.0
-	for f: Dictionary in district.terrain_features:
-		if f.kind == &"wagon" and absf(f.center.x) < absf(wagon_x):
-			wagon_x = f.center.x
+	for s: Dictionary in district.terrain_strokes:
+		if s.kind == &"wagon" and absf(s.center.x) < absf(wagon_x):
+			wagon_x = s.center.x
 	player.global_position = Vector3(wagon_x - 6.0, 0.88, 7.0)
 	player.velocity = Vector3.ZERO
 	for i in 6:

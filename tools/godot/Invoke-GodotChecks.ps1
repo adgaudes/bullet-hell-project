@@ -31,8 +31,7 @@ $expectedMarkers = @(
     "PROTOTYPE01_INPUT_READY",
     "PROTOTYPE01_EXPOSURE_READY",
     "PROTOTYPE01_ARENA_READY",
-    # Alternative separate da "|": basta una (griglia della ferrovia o rilievo continuo del quartiere).
-    "PROTOTYPE01_TERRAIN_GRID_READY|PROTOTYPE01_TERRAIN_FIELD_READY",
+    "PROTOTYPE01_TERRAIN_FIELD_READY",
     "PROTOTYPE01_CHARACTER_READY",
     "PROTOTYPE01_TERRAIN_MODE Dig",
     "PROTOTYPE01_CAMERA_READY",
@@ -44,8 +43,9 @@ $expectedMarkers = @(
 # Righe di errore runtime di Godot che non fanno fallire il gate. Ogni voce e un
 # errore noto e spiegato; aggiungerne una solo con il motivo accanto.
 $allowedErrorPatterns = @(
-    # P-09 (review 9 ottobre 2026): il renderer fittizio di --headless stampa
-    # `ERROR: Parameter "material" is null` quando TerrainGrid libera la scena.
+    # P-09 (review 9 ottobre 2026), riverificato il 12 ottobre 2026 senza la griglia: il
+    # renderer fittizio di --headless stampa `ERROR: Parameter "material" is null` quando
+    # una suite cambia preset grafico (settings_tests) su mesh generate senza materiale.
     # Non e un bug del progetto: con finestra reale non compare.
     'Parameter "material" is null'
 )

@@ -24,12 +24,14 @@ func _initialize() -> void:
 		await physics_frame
 	var player: PlayerCharacter = scene.get_node(^"Player")
 	# Un po' di campo scolpito per la mappa: fossato a nord, muro a est, una breccia.
-	var grid: TerrainGrid = scene.get_node(^"TerrainGrid")
+	var field: TerrainField = scene.get_node(^"TerrainField")
+	(scene.get_node(^"Run") as ArenaRun)._start_protect_left = 0.0
+	field.set_protected(Vector3.ZERO, field.tuning.start_protected_radius_m, false)
 	for x in [-2.4, 0.0, 2.4]:
-		grid.apply_command_at(Vector3(x, 0.0, -12.0), TerrainState.ToolMode.DIG, player)
+		field.player_sculpt(Vector3(x, 0.0, -12.0), 2.4, -0.8, TerrainField.ToolMode.DIG)
 	for z in [-2.4, 0.0, 2.4]:
-		grid.apply_command_at(Vector3(4.8, 0.0, z), TerrainState.ToolMode.RAISE, player)
-	grid.apply_command_at(Vector3(-9.6, 0.0, 2.4), TerrainState.ToolMode.DIG, player)
+		field.player_sculpt(Vector3(4.8, 0.0, z), 2.4, 1.4, TerrainField.ToolMode.RAISE)
+	field.player_sculpt(Vector3(-9.6, 0.0, 2.4), 2.4, -0.8, TerrainField.ToolMode.DIG)
 	player._invulnerable_left = 0.0
 	player.take_damage(player.health)
 	for i in 70:
