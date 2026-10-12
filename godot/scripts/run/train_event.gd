@@ -1,10 +1,10 @@
 class_name TrainEvent
 extends Node3D
-## Il treno della ferrovia (D-066, docs/RAILWAY_LEVEL_SPEC.md sezione 3): a intervalli
-## regolari un convoglio attraversa tutta l'arena lungo uno dei due binari e
-## **spiana la fascia** (le tre righe di celle attorno a z = 0): terrapieni, barricate
-## e vagoni tornano Normal senza lasciare rottami, le trincee si riempiono, i
-## rottami a terra e i lampioni spariscono. Chi sta sulla fascia viene travolto:
+## Il treno della ferrovia (D-066, D-087, docs/RAILWAY_LEVEL_SPEC.md sezione 3): a
+## intervalli regolari un convoglio attraversa tutta l'arena lungo uno dei due binari e
+## **riporta la fascia alla base** (7,2 m attorno a z = 0): argini, barricate e vagoni
+## spariscono senza lasciare rottami (le vene dei vagoni si azzerano), i solchi si
+## riempiono, i rottami a terra e i lampioni spariscono. Chi sta sulla fascia viene travolto:
 ## i rottamatori muoiono (e contano come abbattuti dal giocatore), il giocatore
 ## subisce danno e viene spinto fuori, il compagno viene solo spinto, il boss
 ## subisce `boss_damage` e viene spinto.
@@ -15,7 +15,7 @@ extends Node3D
 
 signal train_warned(direction: Vector3, seconds: float)
 signal train_passing(direction: Vector3)
-## Qualcosa e stato travolto: "cell", "enemy", "player", "companion", "boss", "lamp", "scrap".
+## Qualcosa e stato travolto: "terrain", "wagon", "enemy", "player", "companion", "boss", "lamp", "scrap".
 signal train_hit(what: StringName)
 signal train_passed(passes: int)
 
@@ -31,13 +31,15 @@ const CARRIAGE_PAINTS: Array[Color] = [
 ]
 ## Chi viene spinto fuori finisce a questa distanza oltre il bordo della fascia.
 const PUSH_MARGIN := 0.8
-## Celle provate, allontanandosi dalla fascia, per far atterrare chi e spinto fuori (F-01).
-const PUSH_LANDING_CELLS := 4
-## Terra delle celle spianate, per i frammenti.
+## Passi di PUSH_STEP_M provati oltre il bordo per far atterrare chi e spinto fuori (F-01).
+const PUSH_LANDING_STEPS := 6
+const PUSH_STEP_M := 1.2
+## Terra spianata, per i frammenti: una zolla ogni DEBRIS_PER_M3, al piu DEBRIS_PER_STEP a passo.
 const EARTH_COLOR := Color(0.44, 0.33, 0.21)
+const DEBRIS_PER_M3 := 2.0
+const DEBRIS_PER_STEP := 4
 const DIRECTION_NAMES: Dictionary[int, String] = {-1: "EST", 1: "OVEST"}
 
-@export var grid: TerrainGrid
 @export var terrain_field: TerrainField
 @export var district: RailwayDistrict
 @export var player: PlayerCharacter
@@ -66,14 +68,16 @@ var next_at := 0.0
 var heading := -1
 var track_z := 0.0
 var passes := 0
-## Celle spianate, nemici travolti e colpi al giocatore nell'ultimo passaggio.
-var cells_flattened := 0
+## Terra spostata (m3), vagoni azzerati, nemici travolti e colpi al giocatore nell'ultimo passaggio.
+var volume_flattened := 0.0
+var wagons_swept := 0
 var enemies_hit := 0
 var player_hits := 0
 var _train: Node3D
-## Posizione X del muso e ultima colonna di celle gia spazzata.
+## Posizione X del muso e ultimo X gia spazzato.
 var _head_x := 0.0
-var _swept_column := -1
+var _swept_x := 0.0
+var _debris_budget := 0.0
 var _hit: Dictionary[Node, bool] = {}
 var _first_warning := true
 
@@ -83,7 +87,7 @@ func _ready() -> void:
 
 
 func is_enabled() -> bool:
-	return first_seconds > 0.0 and district != null and grid != null
+	return first_seconds > 0.0 and district != null and terrain_field != null
 
 
 func is_passing() -> bool:
@@ -152,13 +156,15 @@ func _tick_warning(elapsed: float) -> void:
 
 func _start_passing() -> void:
 	state = State.PASSING
-	cells_flattened = 0
+	volume_flattened = 0.0
+	wagons_swept = 0
 	enemies_hit = 0
 	player_hits = 0
+	_debris_budget = 0.0
 	_hit.clear()
-	_swept_column = -1
 	# Parte oltre il portale, tutto fuori dall'arena.
 	_head_x = -heading * (district.half_x() + RailwayDistrict.PORTAL_DEPTH + 4.0)
+	_swept_x = _head_x
 	_build_train()
 	if hud != null:
 		hud.clear_event_warning()
@@ -169,7 +175,7 @@ func _start_passing() -> void:
 func _tick_passing(delta: float) -> void:
 	_head_x += heading * speed * delta
 	_place_train()
-	_sweep_cells()
+	_sweep_band()
 	_sweep_actors()
 	var tail_x := _head_x - heading * train_length()
 	if heading * tail_x > district.half_x() + RailwayDistrict.PORTAL_DEPTH + 4.0:
@@ -183,42 +189,46 @@ func _finish_pass() -> void:
 	if _train != null:
 		_train.queue_free()
 		_train = null
-	print("PROTOTYPE01_TRAIN_PASSED passes=%d cells=%d enemies=%d player_hits=%d" % [passes, cells_flattened, enemies_hit, player_hits])
+	print("PROTOTYPE01_TRAIN_PASSED passes=%d volume=%.1f wagons=%d enemies=%d player_hits=%d" % [passes, volume_flattened, wagons_swept, enemies_hit, player_hits])
 	train_passed.emit(passes)
 
 
 # --- Effetti sul mondo ----------------------------------------------------------------
 
-## Il muso entra in una colonna di celle: tutta la fascia in quella colonna torna Normal,
-## senza rottami (a differenza del Demolitore), e cio che c'e sopra sparisce.
-func _sweep_cells() -> void:
-	var head_cell := grid.cell_at(Vector3(_head_x, 0.0, 0.0))
-	var column := head_cell.y
-	if column < 0 or column >= grid.state.height:
+## Il tratto percorso dal muso in questo passo torna alla base per tutta la larghezza
+## della fascia: argini, barricate e vagoni spariscono senza rottami (a differenza del
+## Demolitore), i solchi si riempiono e cio che c'e sopra sparisce.
+func _sweep_band() -> void:
+	var lo := minf(_swept_x, _head_x) - 0.6
+	var hi := maxf(_swept_x, _head_x) + 0.6
+	_swept_x = _head_x
+	lo = maxf(lo, -district.half_x())
+	hi = minf(hi, district.half_x())
+	if hi <= lo:
 		return
-	if _swept_column < 0:
-		_swept_column = column - heading
-	var center_row := grid.cell_at(Vector3.ZERO).x
-	while _swept_column != column:
-		_swept_column += heading
-		for dx in range(-1, 2):  # tre righe di celle attorno a z = 0 (ponte fino al Task 4)
-			var cell := Vector2i(center_row + dx, _swept_column)
-			if not grid.state.is_valid(cell):
-				continue
-			var at := grid.to_global(grid.cell_local_position(cell, TerrainState.CellState.NORMAL))
-			at.y = 0.0
-			var was := grid.state.get_state(cell)
-			if was != TerrainState.CellState.NORMAL and grid.force_cell_state(cell, TerrainState.CellState.NORMAL):
-				# Anche la tinta propria (i vagoni): rialzata dopo, la cella e terra come le altre (F-07).
-				grid.clear_raised_tint(cell)
-				cells_flattened += 1
-				if was == TerrainState.CellState.RAISED:
-					DebrisBurst.spawn(get_parent(), at + Vector3(0.0, 0.8, 0.0), EARTH_COLOR, 12, 5.0, 0.2)
-				train_hit.emit(&"cell")
-			if lamp_field != null and lamp_field.knock_down_near(at, grid.cell_size_m() * 0.6) > 0:
-				train_hit.emit(&"lamp")
-			if scrap_field != null and scrap_field.take_near(at, grid.cell_size_m() * 0.75, 16) > 0:
-				train_hit.emit(&"scrap")
+	var center := Vector3((lo + hi) * 0.5, 0.0, 0.0)
+	var half := Vector2((hi - lo) * 0.5, RailwayDistrict.TRACK_HALF_WIDTH)
+	var volume := terrain_field.reset_to_base(center, half)
+	if volume > 0.01:
+		volume_flattened += volume
+		_debris_budget += volume
+		var bursts := 0
+		while _debris_budget >= DEBRIS_PER_M3 and bursts < DEBRIS_PER_STEP:
+			_debris_budget -= DEBRIS_PER_M3
+			bursts += 1
+			var at := Vector3(rng.randf_range(lo, hi), 0.0, rng.randf_range(-half.y, half.y))
+			DebrisBurst.spawn(get_parent(), at + Vector3(0.0, 0.8, 0.0), EARTH_COLOR, 12, 5.0, 0.2)
+		train_hit.emit(&"terrain")
+	var rect := Rect2(lo, -half.y, hi - lo, half.y * 2.0)
+	if scrap_field != null:
+		var swept := scrap_field.exhaust_veins_in_rect(rect)
+		if swept > 0:
+			wagons_swept += swept
+			train_hit.emit(&"wagon")
+		if scrap_field.take_in_rect(rect, 16) > 0:
+			train_hit.emit(&"scrap")
+	if lamp_field != null and lamp_field.knock_down_in_rect(rect) > 0:
+		train_hit.emit(&"lamp")
 
 
 ## Chi sta sulla fascia fra coda e muso viene travolto, una volta per passaggio.
@@ -238,7 +248,7 @@ func _sweep_actors() -> void:
 	if director == null:
 		return
 	for enemy in director.enemies.duplicate():
-		if enemy.is_dead or _hit.has(enemy) or not _covers(enemy.global_position, tail_x):
+		if not is_instance_valid(enemy) or enemy.is_dead or _hit.has(enemy) or not _covers(enemy.global_position, tail_x):
 			continue
 		_hit[enemy] = true
 		if enemy == boss or enemy.self_driven:
@@ -260,25 +270,28 @@ func _covers(at: Vector3, tail_x: float) -> bool:
 
 
 ## Spinto fuori dalla fascia dal lato dove gia pende (a z = 0 verso sud, dove sta la camera),
-## sulla prima cella che non e un terrapieno (F-01): prima allontanandosi su quel lato, poi
-## sull'altro; se tutto e murato resta il punto piu vicino.
+## sul primo punto calpestabile (niente argini, niente pendii ripidi) allontanandosi dal
+## bordo (F-01); poi sull'altro lato; se tutto e murato resta il bordo della fascia.
 func _push_out(body: Node3D) -> void:
 	var at := body.global_position
+	var lift := clampf(at.y - terrain_field.height_at(at), 0.3, 1.5)
 	var side := 1.0 if at.z >= 0.0 else -1.0
-	var nearest := side * (RailwayDistrict.track_half_width() + PUSH_MARGIN)
-	at.z = nearest
+	var edge := RailwayDistrict.TRACK_HALF_WIDTH + PUSH_MARGIN
+	var chosen := Vector3(at.x, 0.0, side * edge)
+	var found := false
 	for candidate: float in [side, -side]:
-		var found := false
-		for step in PUSH_LANDING_CELLS:
-			var z: float = candidate * (RailwayDistrict.track_half_width() + PUSH_MARGIN + step * grid.cell_size_m())
-			var probe := Vector3(at.x, 0.0, z)
-			if grid.state.is_valid(grid.cell_at(probe)) and grid.cell_state_at(probe) != TerrainState.CellState.RAISED:
-				at.z = z
+		for step in PUSH_LANDING_STEPS:
+			var probe := Vector3(at.x, 0.0, candidate * (edge + step * PUSH_STEP_M))
+			if absf(probe.z) > district.half_z() - 1.0:
+				break
+			if terrain_field.delta_at(probe) < 0.5 and terrain_field.slope_at(probe) <= terrain_field.tuning.max_grade:
+				chosen = probe
 				found = true
 				break
 		if found:
 			break
-	body.global_position = at
+	chosen.y = terrain_field.height_at(chosen) + lift
+	body.global_position = chosen
 	if body is CharacterBody3D:
 		(body as CharacterBody3D).velocity = Vector3.ZERO
 	body.reset_physics_interpolation()
