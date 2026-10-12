@@ -18,6 +18,8 @@ func _initialize() -> void:
 	_test_sculpt_volume_and_bell()
 	_test_sculpt_across_region_border()
 	_test_level()
+	_test_reset_to_base()
+	_test_bump_along()
 	_test_grade_and_can_step()
 	_test_protected()
 	_test_base_delta_and_bump()
@@ -173,6 +175,46 @@ func _test_level() -> void:
 	var moved := _field.level(Vector3(20, 0, -20), 3.0, 0.0, 1.0)
 	_check(absf(_field.height_at(Vector3(20, 0, -20))) < 0.05, "livella porta il centro alla quota data")
 	_check(moved < 0.0, "livellare un cumulo restituisce volume negativo (terra tolta)")
+
+
+## Il treno riporta la fascia alla base (spec tappa B, sezione 4): rettangolo a cavallo del
+## confine delle regioni e di piu chunk, aree protette comprese, volume assoluto.
+func _test_reset_to_base() -> void:
+	print("reset to base")
+	var collision: TerrainCollision = _field.get_node(^"Collision")
+	_field.sculpt(Vector3(0.0, 0.0, 0.0), 2.4, 1.0)
+	_field.sculpt(Vector3(4.0, 0.0, 1.0), 2.0, -0.8)
+	_field.sculpt(Vector3(14.0, 0.0, 0.0), 2.0, 1.0)
+	_field.set_protected(Vector3(-3.0, 0.0, 0.0), 1.5, true)
+	_field.sculpt(Vector3(-3.0, 0.0, 0.0), 1.5, 0.5)
+	_check(is_zero_approx(_field.height_at(Vector3(-3.0, 0.0, 0.0))), "la pennellata protetta non alza nulla (setup)")
+	_field._protected.fill(0)
+	_field.sculpt(Vector3(-3.0, 0.0, 0.0), 1.5, 0.5)
+	_field.set_protected(Vector3(-3.0, 0.0, 0.0), 1.5, true)
+	var before := collision.refreshed_count()
+	var volume := _field.reset_to_base(Vector3(0.0, 0.0, 0.0), Vector2(8.0, 3.6))
+	_check(volume > 2.0, "volume assoluto spostato (%.2f m3)" % volume)
+	_check(is_zero_approx(_field.height_at(Vector3.ZERO)) and is_zero_approx(_field.height_at(Vector3(4.0, 0.0, 1.0))),
+		"argine e solco nel rettangolo tornano alla base")
+	_check(is_zero_approx(_field.height_at(Vector3(-3.0, 0.0, 0.0))), "anche il pixel protetto torna alla base")
+	_check(absf(_field.height_at(Vector3(14.0, 0.0, 0.0)) - 1.0) < 0.01, "fuori dal rettangolo nulla cambia")
+	_check(collision.refreshed_count() - before >= 2, "i chunk toccati sono stati rigenerati (%d)" % (collision.refreshed_count() - before))
+	_field._protected.fill(0)
+	_field.sculpt(Vector3(14.0, 0.0, 0.0), 2.0, -1.0)
+	_check(_field.collision_body() == collision.body, "collision_body espone il corpo del terreno")
+
+
+## Primo argine lungo un segmento (Trivella): punto con quota, o null.
+func _test_bump_along() -> void:
+	print("bump along")
+	_field.sculpt(Vector3(6.0, 0.0, 0.0), 2.0, 1.2)
+	var hit: Variant = _field.bump_along(Vector3(0.0, 0.0, 0.0), Vector3(12.0, 0.0, 0.0), 0.8)
+	_check(hit != null and absf((hit as Vector3).x - 6.0) < 2.0 and (hit as Vector3).y >= 0.8, "argine trovato lungo la rotta (%s)" % str(hit))
+	_check(_field.bump_along(Vector3(0.0, 0.0, 0.0), Vector3(-12.0, 0.0, 0.0), 0.8) == null, "nessun argine dall'altra parte")
+	_field.sculpt(Vector3(6.0, 0.0, 0.0), 2.0, -1.2)
+	_field.tint_rect(Vector3.ZERO, Vector2(10.0, 3.6), Color.RED, 1.0)
+	_field.paint_layer_rect(Vector3.ZERO, Vector2(10.0, 3.6), 2)
+	_check(true, "tint_rect e paint_layer_rect non fanno nulla in headless")
 
 
 func _test_grade_and_can_step() -> void:

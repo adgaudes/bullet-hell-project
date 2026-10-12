@@ -75,6 +75,10 @@ func terrain3d() -> Terrain3D:
 	return _terrain if _terrain_ready else null
 
 
+func collision_body() -> StaticBody3D:
+	return _collision.body
+
+
 # --- Letture ---------------------------------------------------------------------------
 
 func height_at(p: Vector3) -> float:
@@ -148,6 +152,18 @@ func highest_bump(center: Vector3, radius: float, min_delta: float) -> Variant:
 	return best
 
 
+## Primo punto lungo il segmento (campionato ogni SPACING) che sporge dalla base di
+## almeno [param min_delta]: Vector3 con la quota, o null. Serve alla Trivella.
+func bump_along(from: Vector3, to: Vector3, min_delta: float) -> Variant:
+	var run := Vector2(to.x - from.x, to.z - from.z).length()
+	var steps := maxi(int(ceil(run / SPACING)), 1)
+	for i in range(0, steps + 1):
+		var p := from.lerp(to, float(i) / steps)
+		if delta_at(p) >= min_delta:
+			return Vector3(p.x, height_at(p), p.z)
+	return null
+
+
 func is_protected(p: Vector3) -> bool:
 	var i := _index_of(p)
 	return i >= 0 and _protected[i] != 0
@@ -171,6 +187,23 @@ func sculpt(center: Vector3, radius: float, amount: float) -> float:
 func level(center: Vector3, radius: float, target: float, strength: float) -> float:
 	return _brush(center, radius, func(h: float, falloff: float) -> float:
 		return h + (target - h) * clampf(strength * falloff, 0.0, 1.0))
+
+
+## Riporta alla base i vertici del rettangolo XZ (centro e semilati), anche se protetti:
+## e la pennellata del treno. Ritorna il volume assoluto spostato (m3).
+func reset_to_base(center: Vector3, half_size: Vector2) -> float:
+	var r := _rect_indices(center, half_size)
+	if r[2] < r[0] or r[3] < r[1]:
+		return 0.0
+	var volume := 0.0
+	for iz in range(r[1], r[3] + 1):
+		for ix in range(r[0], r[2] + 1):
+			var i := iz * resolution_x + ix
+			volume += absf(_heights[i] - _base[i]) * SPACING * SPACING
+			_heights[i] = _base[i]
+	_mirror_rect(r[0], r[1], r[2], r[3])
+	_emit_rect_changed(r[0], r[1], r[2], r[3])
+	return volume
 
 
 func player_sculpt(center: Vector3, radius: float, amount: float, mode: int) -> float:
@@ -241,6 +274,20 @@ func paint_layer(center: Vector3, radius: float, layer: int) -> void:
 	data.update_maps(Terrain3DRegion.TYPE_CONTROL, false)
 
 
+## Strato di tile su un rettangolo XZ (la fascia dei binari); niente in headless.
+func paint_layer_rect(center: Vector3, half_size: Vector2, layer: int) -> void:
+	if not _terrain_ready:
+		return
+	var data := _terrain.data
+	var pixel := Color(Terrain3DUtil.as_float(Terrain3DUtil.enc_base(layer)), 0.0, 0.0, 0.0)
+	var r := _rect_indices(center, half_size)
+	for iz in range(r[1], r[3] + 1):
+		for ix in range(r[0], r[2] + 1):
+			data.set_pixel(Terrain3DRegion.TYPE_CONTROL, _vertex_world(iz * resolution_x + ix), pixel)
+	_mark_rect_regions(r)
+	data.update_maps(Terrain3DRegion.TYPE_CONTROL, false)
+
+
 ## Pittura sul color map di Terrain3D (strade, piazza, cumuli, barricate); niente in headless.
 func tint(center: Vector3, radius: float, color: Color, strength: float) -> void:
 	if not _terrain_ready:
@@ -256,6 +303,23 @@ func tint_points(points: Array[Vector3], radius: float, color: Color, strength: 
 	for center in points:
 		_tint_disc(center, radius, color, strength)
 	_terrain.data.update_maps(Terrain3DRegion.TYPE_COLOR, false)
+
+
+## Tinta uniforme su un rettangolo XZ; strength 0 la toglie (torna al bianco).
+func tint_rect(center: Vector3, half_size: Vector2, color: Color, strength: float) -> void:
+	if not _terrain_ready:
+		return
+	var data := _terrain.data
+	var r := _rect_indices(center, half_size)
+	var target := Color.WHITE if strength <= 0.0 else color
+	var w := 1.0 if strength <= 0.0 else clampf(strength, 0.0, 1.0)
+	for iz in range(r[1], r[3] + 1):
+		for ix in range(r[0], r[2] + 1):
+			var world := _vertex_world(iz * resolution_x + ix)
+			var old: Color = data.get_pixel(Terrain3DRegion.TYPE_COLOR, world)
+			data.set_pixel(Terrain3DRegion.TYPE_COLOR, world, old.lerp(Color(target.r, target.g, target.b, old.a), w))
+	_mark_rect_regions(r)
+	data.update_maps(Terrain3DRegion.TYPE_COLOR, false)
 
 
 func _tint_disc(center: Vector3, radius: float, color: Color, strength: float) -> void:
