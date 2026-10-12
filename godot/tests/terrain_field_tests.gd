@@ -1,0 +1,172 @@
+extends SceneTree
+## Suite del rilievo continuo (D-082, D-085): quote, pennello, livella, pendenza,
+## aree protette, base, bump, salvataggio. Headless: Terrain3D viene rispecchiato
+## solo quando esiste (`terrain3d()` puo essere null).
+##   godot_console --headless --path godot --fixed-fps 60 --script res://tests/terrain_field_tests.gd
+
+var _failures := 0
+var _field: TerrainField
+
+
+func _initialize() -> void:
+	Engine.physics_ticks_per_second = 60
+	await _open()
+	_test_flat_start()
+	_test_sculpt_volume_and_bell()
+	_test_sculpt_across_region_border()
+	_test_level()
+	_test_grade_and_can_step()
+	_test_protected()
+	_test_base_delta_and_bump()
+	_test_is_flat()
+	_test_save_load_base()
+	await _test_player_sculpt_signals()
+	await _frames(2)
+	print("PROTOTYPE01_TESTS %s failures=%d" % ["PASS" if _failures == 0 else "FAIL", _failures])
+	quit(1 if _failures > 0 else 0)
+
+
+func _open() -> void:
+	_field = TerrainField.new()
+	_field.size_m = 64.0
+	_field.tuning = TerrainTuning.new()
+	root.add_child(_field)
+	await _frames(3)
+
+
+func _test_flat_start() -> void:
+	print("flat start")
+	_check(_field.resolution == 129, "64 m a passo 0,5 = 129 vertici per lato (%d)" % _field.resolution)
+	_check(is_zero_approx(_field.height_at(Vector3(3.3, 0, -7.1))), "quota zero all'inizio")
+	_check(_field.normal_at(Vector3.ZERO).is_equal_approx(Vector3.UP), "normale verticale su un piano")
+
+
+func _test_sculpt_volume_and_bell() -> void:
+	print("sculpt")
+	var volume := _field.sculpt(Vector3(10, 0, 10), 2.4, 1.0)
+	_check(absf(_field.height_at(Vector3(10, 0, 10)) - 1.0) < 0.02, "al centro sale di 1 m (%.2f)" % _field.height_at(Vector3(10, 0, 10)))
+	_check(_field.height_at(Vector3(11.2, 0, 10)) > 0.2 and _field.height_at(Vector3(11.2, 0, 10)) < 0.8, "a meta raggio sale a campana")
+	_check(is_zero_approx(_field.height_at(Vector3(13, 0, 10))), "fuori dal raggio non cambia")
+	# Volume della campana (1-d^2)^2 su un disco: pi * r^2 / 3 = 6,03 m3 per 1 m al centro.
+	_check(absf(volume - 6.03) < 0.5, "volume firmato circa pi r^2 / 3 (%.2f)" % volume)
+	var dug := _field.sculpt(Vector3(10, 0, 10), 2.4, -1.0)
+	_check(absf(dug + volume) < 0.05 and absf(_field.height_at(Vector3(10, 0, 10))) < 0.02, "scavare la stessa quantita riporta a zero")
+	_field.sculpt(Vector3(-20, 0, -20), 2.4, 10.0)
+	_check(absf(_field.height_at(Vector3(-20, 0, -20)) - TerrainField.MAX_HEIGHT) < 0.01, "clamp alla quota massima")
+	_field.sculpt(Vector3(-20, 0, 20), 2.4, -10.0)
+	_check(absf(_field.height_at(Vector3(-20, 0, 20)) - TerrainField.MIN_HEIGHT) < 0.01, "clamp alla quota minima")
+
+
+func _test_sculpt_across_region_border() -> void:
+	print("sculpt across border")
+	var aabb_seen: Array[AABB] = []
+	var handler := func(aabb: AABB) -> void: aabb_seen.append(aabb)
+	_field.region_changed.connect(handler)
+	_field.sculpt(Vector3(0, 0, 0), 2.4, 0.8)
+	_field.region_changed.disconnect(handler)
+	_check(aabb_seen.size() == 1, "una pennellata = un solo region_changed")
+	_check(aabb_seen[0].has_point(Vector3(-2.3, 0, -2.3)) and aabb_seen[0].has_point(Vector3(2.3, 0, 2.3)), "l'AABB copre tutto il pennello")
+	_check(absf(_field.height_at(Vector3(-0.25, 0, -0.25)) - _field.height_at(Vector3(0.25, 0, 0.25))) < 0.05, "nessuna cucitura sul confine")
+	_field.sculpt(Vector3(0, 0, 0), 2.4, -0.8)
+
+
+func _test_level() -> void:
+	print("level")
+	_field.sculpt(Vector3(20, 0, -20), 2.4, 1.5)
+	var moved := _field.level(Vector3(20, 0, -20), 3.0, 0.0, 1.0)
+	_check(absf(_field.height_at(Vector3(20, 0, -20))) < 0.05, "livella porta il centro alla quota data")
+	_check(moved < 0.0, "livellare un cumulo restituisce volume negativo (terra tolta)")
+
+
+func _test_grade_and_can_step() -> void:
+	print("grade")
+	_field.sculpt(Vector3(-10, 0, 0), 2.4, 1.6)
+	var foot := Vector3(-13.0, 0, 0)
+	var top := Vector3(-10.0, 0, 0)
+	_check(_field.grade_between(foot, top) > 0.4, "salita positiva verso il cumulo (%.2f)" % _field.grade_between(foot, top))
+	_check(_field.grade_between(top, foot) < 0.0, "discesa negativa")
+	_check(_field.can_step(top, foot, 0.8), "in discesa si passa sempre")
+	_check(not _field.can_step(Vector3(-11.2, 0, 0), Vector3(-10.4, 0, 0), 0.3), "salita ripida oltre la soglia bloccata")
+	_check(_field.can_step(Vector3(-11.2, 0, 0), Vector3(-10.4, 0, 0), 3.0), "con soglia alta si passa")
+	_check(_field.slope_at(Vector3(-11.2, 0, 0)) > 0.3, "pendenza locale sul fianco")
+	_field.sculpt(Vector3(-10, 0, 0), 2.4, -1.6)
+
+
+func _test_protected() -> void:
+	print("protected")
+	_field.set_protected(Vector3(5, 0, -5), 1.5, true)
+	_check(_field.is_protected(Vector3(5.5, 0, -5)), "dentro il disco protetto")
+	_check(not _field.is_protected(Vector3(8, 0, -5)), "fuori dal disco")
+	var volume := _field.sculpt(Vector3(5, 0, -5), 2.4, 1.0)
+	_check(is_zero_approx(_field.height_at(Vector3(5, 0, -5))), "i pixel protetti non cambiano")
+	_check(_field.height_at(Vector3(7.0, 0, -5)) > 0.05, "i pixel liberi dello stesso pennello cambiano")
+	_check(volume > 0.0 and volume < 6.0, "il volume conta solo i pixel scritti")
+	_field.set_protected(Vector3(5, 0, -5), 1.5, false)
+	_field.level(Vector3(5, 0, -5), 3.0, 0.0, 1.0)
+
+
+func _test_base_delta_and_bump() -> void:
+	print("base and bump")
+	_field.sculpt(Vector3(0, 0, 15), 3.0, 0.6)
+	_field.commit_base()
+	_check(absf(_field.base_height_at(Vector3(0, 0, 15)) - 0.6) < 0.02, "commit_base fissa la quota di base")
+	_check(is_zero_approx(_field.delta_at(Vector3(0, 0, 15))), "delta zero subito dopo il commit")
+	_field.sculpt(Vector3(4, 0, 15), 2.4, 1.2)
+	_check(absf(_field.delta_at(Vector3(4, 0, 15)) - 1.2) < 0.02, "delta = attuale - base")
+	var bump: Variant = _field.highest_bump(Vector3(0, 0, 15), 10.0, 0.8)
+	_check(bump != null and Vector2((bump as Vector3).x - 4.0, (bump as Vector3).z - 15.0).length() < 0.8 and absf((bump as Vector3).y - _field.height_at(bump)) < 0.01, "highest_bump trova la cima alzata dal giocatore")
+	_check(_field.highest_bump(Vector3(-20, 0, 0), 5.0, 0.8) == null, "nessun bump dove non c'e nulla")
+	_field.sculpt(Vector3(4, 0, 15), 2.4, -1.2)
+
+
+func _test_is_flat() -> void:
+	print("is_flat")
+	_check(_field.is_flat(Vector3(-25, 0, 25), 3.0, 0.35), "piano dove e piano")
+	_field.sculpt(Vector3(-25, 0, 25), 2.4, 0.5)
+	_check(not _field.is_flat(Vector3(-25, 0, 25), 3.0, 0.35), "non piano con un cumulo di 0,5 m")
+	_field.sculpt(Vector3(-25, 0, 25), 2.4, -0.5)
+
+
+func _test_save_load_base() -> void:
+	print("save/load")
+	var path := "user://terrain_field_test_%d.bin" % OS.get_process_id()
+	_field.sculpt(Vector3(12, 0, -12), 2.4, 0.9)
+	_field.commit_base()
+	var bytes := _field.save_base(path)
+	_check(bytes > 0, "salvataggio scritto (%d byte)" % bytes)
+	var other := TerrainField.new()
+	other.size_m = 64.0
+	other.tuning = TerrainTuning.new()
+	root.add_child(other)
+	_check(other.load_base(path), "caricamento riuscito")
+	_check(absf(other.height_at(Vector3(12, 0, -12)) - 0.9) < 0.02, "le quote caricate coincidono")
+	_check(absf(other.base_height_at(Vector3(12, 0, -12)) - 0.9) < 0.02, "la base caricata coincide")
+	other.queue_free()
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
+	_field.sculpt(Vector3(12, 0, -12), 2.4, -0.9)
+	_field.commit_base()
+
+
+func _test_player_sculpt_signals() -> void:
+	print("player signals")
+	var got: Array = []
+	var handler := func(center: Vector3, radius: float, volume: float, mode: int) -> void: got.append([center, radius, volume, mode])
+	_field.player_sculpted.connect(handler)
+	var v := _field.player_sculpt(Vector3(0, 0, -20), 2.4, -0.3, TerrainField.ToolMode.DIG)
+	_field.player_sculpted.disconnect(handler)
+	_check(got.size() == 1 and got[0][3] == TerrainField.ToolMode.DIG and absf(got[0][2] - v) < 0.001, "player_sculpt emette player_sculpted con volume e modo")
+	_check(absf(_field.volume_moved - absf(v)) < 0.001, "volume_moved accumula il valore assoluto")
+	await _frames(1)
+
+
+func _check(condition: bool, label: String) -> void:
+	if condition:
+		print("  ok   %s" % label)
+	else:
+		_failures += 1
+		print("  FAIL %s" % label)
+
+
+func _frames(n: int) -> void:
+	for i in n:
+		await physics_frame
