@@ -3,20 +3,21 @@ extends Enemy
 ## Secondo boss, la Trivella (D-066, docs/RAILWAY_LEVEL_SPEC.md sezione 5).
 ##
 ## Regola col terreno, leggibile al primo incontro: **carica in linea retta e scava un
-## solco; un terrapieno la ferma**. Ciclo: mira (telegraph: la punta accelera e una
+## solco; un argine la ferma**. Ciclo: mira (telegraph: la punta accelera e una
 ## striscia a terra mostra la linea), carica (fino a `charge_length` metri a
-## `charge_speed`, ignorando il campo di percorso; ogni cella Normal sotto la punta
-## diventa Lowered), poi riposo. Se la punta incontra una cella Raised la smonta
-## (la cella torna Normal e lascia un rottame) e la Trivella resta **stordita**
-## `stun_seconds`: in quel tempo subisce danno moltiplicato. I fossati non la
-## rallentano; non costruisce nulla. Chi sta sulla linea viene colpito e spinto di lato.
+## `charge_speed`, ignorando il campo di percorso; la punta porta il terreno a
+## `furrow_depth_m` sotto la base, mai oltre), poi riposo. Se la punta incontra un
+## argine (`delta_at >= wall_min_delta_m`) lo apre fino alla base (niente rottami: solo
+## una vena sotto ne rende) e la Trivella resta **stordita** `stun_seconds`: in quel
+## tempo subisce danno moltiplicato. I solchi non la rallentano; non costruisce nulla.
+## Chi sta sulla linea viene colpito e spinto di lato.
 ## E un Enemy registrato nell'EnemyDirector e si guida da solo (`self_driven`).
 
 signal charge_started(target: Vector3)
 ## reason: "length" (fine corsa), "wall" (terrapieno), "blocked" (rovina o bordo).
 signal charge_ended(reason: StringName)
-signal cell_drilled(cell: Vector2i)
-signal wall_broken(cell: Vector2i)
+signal furrowed(point: Vector3)
+signal wall_broken(point: Vector3)
 signal stunned(seconds: float)
 
 enum Phase { REST, AIM, CHARGE, STUN }
@@ -30,11 +31,14 @@ const BODY_COLOR := Color(0.5, 0.1, 0.06)
 const EARTH_COLOR := Color(0.44, 0.33, 0.21)
 ## Innesto della punta: davanti al collare, a meta altezza della capsula (origine al centro).
 const BIT_REST := Vector3(0.0, -0.2, -1.3)
-## Distanza dal centro alla punta: li si legge la cella da scavare.
+## Distanza dal centro alla punta: li si legge il terreno da scavare.
 const BIT_REACH := BODY_RADIUS + 1.4
 const BIT_SPIN_MAX := 28.0
 const BIT_SPIN_RATE := 24.0
-const NO_CELL := Vector2i(-1, -1)
+const NO_WALL := Vector3.INF
+## Raggio del solco e del varco aperto in un argine.
+const FURROW_RADIUS := 1.2
+const BREACH_RADIUS := 2.4
 const ACCELERATION := 30.0
 const TURN_RATE := 3.0
 ## Colore della striscia di mira e sua larghezza.
@@ -42,8 +46,8 @@ const AIM_COLOR := Color(1.0, 0.2, 0.1, 0.45)
 const AIM_WIDTH := 1.8
 ## Spinta laterale per chi viene colpito in carica.
 const SIDE_PUSH := 2.6
-## Lungo la linea di mira, un ostacolo che non e una cella Raised entro questa distanza
-## fa preferire il campo di percorso (non si carica contro una rovina).
+## Lungo la linea di mira, un ostacolo che non e un argine entro questa distanza fa
+## preferire il campo di percorso (non si carica contro una rovina).
 const AIM_PROBE_METERS: Array[float] = [3.0, 6.0, 9.0]
 
 # --- Movimento procedurale (ActorMotion): solo sul telaio visivo `_rig`.
@@ -60,7 +64,7 @@ const HEAVY_STAGGER_BACK := 0.08
 const HEAVY_STAGGER_PITCH := 0.03
 
 var player: PlayerCharacter
-var grid: TerrainGrid
+var terrain_field: TerrainField
 var path_field: PathField
 var director: EnemyDirector
 var lamp_field: LampField
@@ -72,6 +76,9 @@ var aim_seconds := 2.0
 var rest_seconds := 3.0
 var stun_seconds := 3.0
 var stun_damage_multiplier := 2.0
+## Profondita del solco sotto la base e sporgenza minima di un argine che la ferma.
+var furrow_depth_m := 0.8
+var wall_min_delta_m := 0.8
 var contact_damage := 2
 var contact_radius := 1.5
 
@@ -80,10 +87,11 @@ var phase_left := 0.0
 var charge_direction := Vector3.FORWARD
 var charge_start := Vector3.ZERO
 var charges := 0
-var cells_drilled := 0
+## Metri di solco scavati e argini aperti.
+var furrow_length_m := 0.0
 var walls_broken := 0
-## Cella appena smontata dall'ultima carica, NO_CELL se nessuna.
-var last_wall := NO_CELL
+## Punto dell'argine appena aperto dall'ultima carica, NO_WALL se nessuno.
+var last_wall := NO_WALL
 
 var _bit: MeshInstance3D
 var _rig: Node3D
@@ -98,7 +106,9 @@ func setup_driller(hp: int, flash_material: Material) -> void:
 	name = "Driller"
 	kind = &"driller"
 	self_driven = true
-	ignores_lowered = true
+	# Nessun rallentamento in salita: cio che sporge lo sfonda; il corpo sale come gli altri.
+	max_grade = 10.0
+	floor_max_angle = atan(0.8)
 	hit_radius_bonus = BODY_RADIUS - RADIUS
 	health = hp
 	max_health = hp
@@ -177,7 +187,7 @@ func take_damage(amount: int) -> bool:
 
 ## Un passo fisico, chiamato dall'EnemyDirector.
 func drive(delta: float) -> void:
-	if player == null or grid == null:
+	if player == null or terrain_field == null:
 		return
 	var pos := global_position
 	var to_player := _planar(player.global_position - pos)
@@ -228,8 +238,8 @@ func _start_aim() -> void:
 	_update_aim_strip()
 
 
-## Dritto verso il giocatore; se nei primi metri c'e una rovina (non un terrapieno,
-## quello lo vuole) segue il campo di percorso.
+## Dritto verso il giocatore; se nei primi metri c'e una rovina (non un argine, quello
+## lo vuole e lo sfonda) segue il campo di percorso.
 func _aim_direction() -> Vector3:
 	var pos := global_position
 	var direct := _planar(player.global_position - pos)
@@ -240,7 +250,7 @@ func _aim_direction() -> Vector3:
 		return direct
 	for meters in AIM_PROBE_METERS:
 		var probe := pos + direct * meters
-		if not path_field.is_walkable(probe) and grid.cell_state_at(probe) != TerrainState.CellState.RAISED:
+		if not path_field.is_walkable(probe) and terrain_field.delta_at(probe) < wall_min_delta_m:
 			var waypoint: Variant = path_field.next_waypoint(pos)
 			if waypoint != null:
 				var via := _planar(waypoint - pos)
@@ -253,7 +263,7 @@ func _aim_direction() -> Vector3:
 func _update_aim_strip() -> void:
 	var from := global_position
 	# Sopra rotaie e massicciata del livello 2 (0,36 m): la striscia si vede anche sui binari.
-	from.y = 0.4
+	from.y = terrain_field.height_at(from) + 0.4
 	var to := from + charge_direction * charge_length
 	var mid := (from + to) * 0.5
 	var basis := Basis(Vector3.UP, atan2(-charge_direction.x, -charge_direction.z))
@@ -265,7 +275,7 @@ func _start_charge() -> void:
 	phase_left = INF
 	charges += 1
 	charge_start = global_position
-	last_wall = NO_CELL
+	last_wall = NO_WALL
 	_hit_this_charge.clear()
 	_aim_strip.visible = false
 	var target := charge_start + charge_direction * charge_length
@@ -279,30 +289,33 @@ func _tick_charge(delta: float) -> void:
 	velocity = Vector3(planar.x, 0.0 if is_on_floor() else velocity.y - 9.8 * delta, planar.z)
 	move_and_slide()
 	var pos := global_position
-	# La punta scava la cella che ha davanti.
 	var tip := pos + charge_direction * BIT_REACH
-	var cell := grid.cell_at(tip)
-	if grid.state.is_valid(cell):
-		match grid.state.get_state(cell):
-			TerrainState.CellState.RAISED:
-				_break_wall(cell)
-				return
-			TerrainState.CellState.NORMAL:
-				if grid.force_cell_state(cell, TerrainState.CellState.LOWERED):
-					cells_drilled += 1
-					DebrisBurst.spawn(get_parent(), _cell_center(cell) + Vector3(0.0, 0.3, 0.0), EARTH_COLOR, 6, 3.0, 0.16)
-					cell_drilled.emit(cell)
+	# L'argine si cerca davanti al pennello del solco, altrimenti il solco lo eroderebbe
+	# prima che la punta lo tocchi.
+	var wall: Variant = terrain_field.bump_along(pos + charge_direction * BODY_RADIUS,
+		tip + charge_direction * (FURROW_RADIUS + 0.6), wall_min_delta_m)
+	if wall != null:
+		_break_wall(Vector3((wall as Vector3).x, 0.0, (wall as Vector3).z))
+		return
+	# Solco: la punta porta il terreno a furrow_depth_m sotto la base, mai oltre.
+	var floor_h := terrain_field.base_height_at(tip) - furrow_depth_m
+	if terrain_field.height_at(tip) > floor_h + 0.05:
+		var volume := terrain_field.level(Vector3(tip.x, 0.0, tip.z), FURROW_RADIUS, floor_h, 1.0)
+		if volume < -0.01:
+			furrow_length_m += Vector2(velocity.x, velocity.z).length() * delta
+			DebrisBurst.spawn(get_parent(), Vector3(tip.x, terrain_field.height_at(tip) + 0.3, tip.z), EARTH_COLOR, 6, 3.0, 0.16)
+			furrowed.emit(Vector3(tip.x, 0.0, tip.z))
 	_hit_in_the_way(player, true)
 	if companion != null:
 		_hit_in_the_way(companion, false)
-	# Fermata contro una rovina o il bordo (mai contro una cella della griglia: quella la scava).
+	# Fermata contro una rovina o il bordo (mai contro il terreno: quello lo scava).
 	for i in get_slide_collision_count():
 		var collision := get_slide_collision(i)
 		# Il pavimento non conta: solo pareti (normale quasi orizzontale) che non sono celle.
 		if collision.get_normal().y > 0.5:
 			continue
 		var collider := collision.get_collider() as Node
-		if collider != null and collider.get_parent() != grid:
+		if collider != null and collider != terrain_field.collision_body():
 			_end_charge(&"blocked")
 			return
 	if _planar(pos - charge_start).length() >= charge_length:
@@ -328,17 +341,20 @@ func _hit_in_the_way(body: Node3D, damages: bool) -> void:
 	body.reset_physics_interpolation()
 
 
-## Un terrapieno ferma la carica: la cella torna Normal, lascia un rottame, e la
-## Trivella resta stordita con la punta scoperta.
-func _break_wall(cell: Vector2i) -> void:
-	grid.force_cell_state(cell, TerrainState.CellState.NORMAL)
+## Un argine ferma la carica: il varco torna alla base (la terra si polverizza, niente
+## rottami salvo quelli di una vena sotto), la Trivella resta stordita con la punta scoperta.
+func _break_wall(hit: Vector3) -> void:
+	# Il varco si apre sulla cima dell'argine, non sul fianco dove la punta lo ha toccato.
+	var crest: Variant = terrain_field.highest_bump(hit + charge_direction * 1.0, BREACH_RADIUS, 0.0)
+	var point := Vector3((crest as Vector3).x, 0.0, (crest as Vector3).z) if crest != null else hit
+	var volume := terrain_field.level(point, BREACH_RADIUS, terrain_field.base_height_at(point), 1.0)
 	walls_broken += 1
-	last_wall = cell
-	DebrisBurst.spawn(get_parent(), _cell_center(cell) + Vector3(0.0, 0.6, 0.0), EARTH_COLOR, 14, 5.0, 0.22)
-	if scrap_field != null:
-		scrap_field.spawn_on_cell(cell, TerrainState.CellState.NORMAL)
-	print("PROTOTYPE01_DRILLER_WALL X=%d Y=%d total=%d" % [cell.x, cell.y, walls_broken])
-	wall_broken.emit(cell)
+	last_wall = point
+	DebrisBurst.spawn(get_parent(), point + Vector3(0.0, 0.6, 0.0), EARTH_COLOR, 14, 5.0, 0.22)
+	if scrap_field != null and volume < 0.0:
+		scrap_field.extract_from_veins(point, BREACH_RADIUS, -volume)
+	print("PROTOTYPE01_DRILLER_WALL x=%.1f z=%.1f total=%d" % [point.x, point.z, walls_broken])
+	wall_broken.emit(point)
 	_end_charge(&"wall")
 	phase = Phase.STUN
 	phase_left = stun_seconds
@@ -350,13 +366,8 @@ func _end_charge(reason: StringName) -> void:
 	velocity = Vector3.ZERO
 	phase = Phase.REST
 	phase_left = rest_seconds
-	print("PROTOTYPE01_DRILLER_CHARGE_END reason=%s cells=%d" % [reason, cells_drilled])
+	print("PROTOTYPE01_DRILLER_CHARGE_END reason=%s furrow_m=%.1f" % [reason, furrow_length_m])
 	charge_ended.emit(reason)
-
-
-func _cell_center(cell: Vector2i) -> Vector3:
-	var p := grid.to_global(grid.cell_local_position(cell, TerrainState.CellState.NORMAL))
-	return Vector3(p.x, 0.0, p.z)
 
 
 # --- Movimento procedurale -------------------------------------------------------------

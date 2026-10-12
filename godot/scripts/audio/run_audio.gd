@@ -276,5 +276,5 @@ func _on_boss_spawned(boss: Enemy) -> void:
 		# La Trivella (D-066): carica annunciata, terrapieno sfondato, stordimento.
 		var driller := boss as Driller
 		driller.charge_started.connect(func(_target: Vector3) -> void: play(&"driller_charge"))
-		driller.wall_broken.connect(func(_cell: Vector2i) -> void: play(&"boss_demolish"))
+		driller.wall_broken.connect(func(_at: Vector3) -> void: play(&"boss_demolish"))
 		driller.stunned.connect(func(_seconds: float) -> void: play(&"boss_barricade"))

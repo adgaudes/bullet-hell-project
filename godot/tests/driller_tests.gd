@@ -1,16 +1,15 @@
 extends SceneTree
-## Test del secondo boss, la Trivella (D-066), nel livello della ferrovia. Eseguire con:
+## Test del secondo boss, la Trivella, sul rilievo continuo (tappa B): carica dritta con
+## solco idempotente, argine che la ferma senza rottami, vena sotto l'argine, rialzo basso
+## superato, rovina aggirata, treno che la colpisce, sconfitta che chiude il livello.
 ##   godot_console --headless --path godot --fixed-fps 60 --script res://tests/driller_tests.gd
 
 const RunScene := preload("res://scenes/main/railway_run.tscn")
-const RAISED := TerrainState.CellState.RAISED
-const NORMAL := TerrainState.CellState.NORMAL
-const LOWERED := TerrainState.CellState.LOWERED
 
 var _failures := 0
 var _scene: Node3D
 var _run: ArenaRun
-var _grid: TerrainGrid
+var _field: TerrainField
 var _player: PlayerCharacter
 var _companion: Companion
 var _director: EnemyDirector
@@ -28,7 +27,7 @@ func _initialize() -> void:
 	_scene = RunScene.instantiate()
 	root.add_child(_scene)
 	_run = _scene.get_node(^"Run")
-	_grid = _scene.get_node(^"TerrainGrid")
+	_field = _scene.get_node(^"TerrainField")
 	_player = _scene.get_node(^"Player")
 	_companion = _scene.get_node(^"Companion")
 	_director = _scene.get_node(^"EnemyDirector")
@@ -46,6 +45,9 @@ func _initialize() -> void:
 	await _test_call_and_arrival()
 	await _test_aim_and_charge()
 	await _test_wall_stops_and_stuns()
+	await _test_wall_over_vein_gives_scrap()
+	await _test_low_mound_does_not_stop()
+	await _test_furrow_is_idempotent()
 	await _test_charge_length_and_trench()
 	await _test_blocked_by_ruin_uses_path()
 	await _test_train_hits_boss()
@@ -71,30 +73,34 @@ func _frames(n: int) -> void:
 
 
 func _place_player(at: Vector3) -> void:
-	_player.global_position = Vector3(at.x, 0.88, at.z)
+	_player.global_position = Vector3(at.x, _field.height_at(at) + 0.88, at.z)
 	_player.velocity = Vector3.ZERO
 	_player._invulnerable_left = 0.0
 	_path.solve()
 
 
 func _place_boss(at: Vector3, phase: Driller.Phase, left: float) -> void:
-	_boss.global_position = Vector3(at.x, Driller.boss_spawn_height(), at.z)
+	_boss.global_position = Vector3(at.x, _field.height_at(at) + Driller.boss_spawn_height(), at.z)
 	_boss.velocity = Vector3.ZERO
 	_boss.phase = phase
 	_boss.phase_left = left
 	_boss.reset_physics_interpolation()
 
 
-func _cell_world(cell: Vector2i) -> Vector3:
-	var p := _grid.to_global(_grid.cell_local_position(cell, NORMAL))
-	return Vector3(p.x, 0.0, p.z)
-
-
 func _planar(v: Vector3) -> Vector2:
 	return Vector2(v.x, v.z)
 
 
-## Aspetta che la Trivella cominci (o finisca) una carica, al massimo [param frames].
+## La fascia dei binari e l'unico corridoio garantito libero da rovine: i test di
+## carica si fanno li, con i vagoni gia spianati e il cortile di partenza non protetto.
+func _clear_tracks() -> void:
+	_field.reset_to_base(Vector3.ZERO, Vector2(_run.district.half_x(), RailwayDistrict.TRACK_HALF_WIDTH))
+	_run._start_protect_left = 0.0
+	_field.set_protected(Vector3.ZERO, _field.tuning.start_protected_radius_m, false)
+	_path.solve()
+
+
+## Aspetta che la Trivella entri nella fase, al massimo [param frames].
 func _wait_phase(phase: Driller.Phase, frames: int) -> bool:
 	for i in frames:
 		if _boss.phase == phase:
@@ -123,12 +129,6 @@ func _test_call_and_arrival() -> void:
 	_check(_audio.play_count(&"boss_spawn") >= 1, "suono d'ingresso")
 
 
-## La fascia dei binari e l'unico corridoio garantito libero da rovine: i test di
-## carica si fanno li, con i vagoni gia spianati.
-func _clear_tracks() -> void:
-	_grid.set_cell_states(RailwayDistrict.track_cells(_grid), NORMAL)
-
-
 ## Dopo il riposo mira al giocatore (striscia a terra), poi carica dritta scavando un solco;
 ## il giocatore sulla linea viene colpito una volta e spinto di lato.
 func _test_aim_and_charge() -> void:
@@ -149,41 +149,41 @@ func _test_aim_and_charge() -> void:
 	_check(moved.x < -3.0 and absf(moved.z) < 0.5, "avanza dritta verso ovest (%.1f m)" % -moved.x)
 	var speed := _planar(_boss.velocity).length()
 	_check(absf(speed - _boss.charge_speed) < 0.5, "a %.1f m/s" % speed)
-	_check(_boss.cells_drilled >= 2, "lascia celle Lowered dietro di se (%d)" % _boss.cells_drilled)
-	var behind := _grid.cell_state_at(start + Vector3(-1.5, 0.0, 0.0))
-	_check(behind == LOWERED, "la cella attraversata e un solco")
-	# Arriva sul giocatore.
+	_check(_boss.furrow_length_m >= 2.0, "lascia un solco dietro di se (%.1f m)" % _boss.furrow_length_m)
+	# La punta sta 2,3 m davanti al corpo: il solco comincia da li.
+	var behind := Vector3(start.x - 4.0, 0.0, 0.0)
+	_check(_field.delta_at(behind) < -0.6, "il punto attraversato e 0,8 m sotto la base (%.2f)" % _field.delta_at(behind))
 	_check(await _wait_phase(Driller.Phase.REST, 400), "la carica finisce in riposo")
 	_check(_player.health == health_before - _boss.contact_damage, "giocatore colpito una volta (%d -> %d)" % [health_before, _player.health])
 	_check(absf(_player.global_position.z) >= Driller.SIDE_PUSH - 0.5, "e spinto di lato (z=%.1f)" % _player.global_position.z)
-	_check(_boss.charges == 1 and _boss.walls_broken == 0, "una carica, nessun muro")
+	_check(_boss.charges == 1 and _boss.walls_broken == 0, "una carica, nessun argine")
 
 
-## Un terrapieno sulla linea ferma la carica, torna Normal lasciando un rottame, e la
+## Un argine sulla linea ferma la carica: il varco torna alla base senza rottami e la
 ## Trivella resta stordita con danno doppio; poi riposa e mira di nuovo.
 func _test_wall_stops_and_stuns() -> void:
 	print("wall")
 	_clear_tracks()
 	_place_player(Vector3(-24.0, 0.0, 0.0))
 	_place_boss(Vector3(2.0, 0.0, 0.0), Driller.Phase.REST, 0.05)
-	var wall := _grid.cell_at(Vector3(-9.6, 0.0, 0.0))
-	_grid.set_cell_states([wall], RAISED)
+	var wall := Vector3(-9.6, 0.0, 0.0)
+	_field.sculpt(wall, 2.0, 1.4)
 	var scrap_before := _scrap.count()
-	_check(await _wait_phase(Driller.Phase.CHARGE, 200), "carica verso il muro")
+	_check(await _wait_phase(Driller.Phase.CHARGE, 200), "carica verso l'argine")
 	var stunned := false
 	for i in 240:
 		await physics_frame
 		if _boss.phase == Driller.Phase.STUN:
 			stunned = true
 			break
-	_check(stunned and _boss.walls_broken == 1 and _boss.last_wall == wall, "il terrapieno la ferma e la stordisce")
-	_check(_grid.state.get_state(wall) == NORMAL, "il terrapieno e smontato (Normal)")
-	_check(_scrap.count() == scrap_before + 1, "lascia un rottame a terra")
+	_check(stunned and _boss.walls_broken == 1 and _boss.last_wall.distance_to(wall) < 2.5, "l'argine la ferma e la stordisce (%s)" % _boss.last_wall)
+	_check(_field.delta_at(wall) < 0.3, "il varco e aperto (delta %.2f)" % _field.delta_at(wall))
+	_check(_scrap.count() == scrap_before, "nessun rottame dal varco")
 	_check(_planar(_boss.velocity).length() < 0.3, "ferma")
 	var health := _boss.health
 	_boss.take_damage(5)
 	_check(_boss.health == health - int(ceil(5 * _boss.stun_damage_multiplier)), "stordita subisce danno x%.0f (%d -> %d)" % [_boss.stun_damage_multiplier, health, _boss.health])
-	_check(_audio.play_count(&"boss_demolish") >= 1, "suono del muro sfondato")
+	_check(_audio.play_count(&"boss_demolish") >= 1, "suono dell'argine sfondato")
 	_boss.phase_left = 0.05
 	await _frames(6)
 	_check(_boss.phase == Driller.Phase.REST, "finito lo stordimento riposa")
@@ -192,16 +192,71 @@ func _test_wall_stops_and_stuns() -> void:
 	_check(_boss.health == health - 5, "fuori dallo stordimento danno normale")
 
 
-## La carica finisce dopo `charge_length` metri; i fossati non la rallentano.
+## Un argine con una vena sotto rende i rottami della vena (non del terreno).
+func _test_wall_over_vein_gives_scrap() -> void:
+	print("vein under wall")
+	_clear_tracks()
+	_place_player(Vector3(-24.0, 0.0, 0.0))
+	_place_boss(Vector3(2.0, 0.0, 0.0), Driller.Phase.REST, 0.05)
+	var wall := Vector3(-9.6, 0.0, 0.0)
+	_field.sculpt(wall, 2.4, 1.5)
+	_scrap.add_vein(wall, 2.4, 4, _field.base_height_at(wall) + 1.0)
+	var before := _scrap.count()
+	_check(await _wait_phase(Driller.Phase.CHARGE, 200), "carica")
+	for i in 240:
+		await physics_frame
+		if _boss.phase == Driller.Phase.STUN:
+			break
+	_check(_boss.phase == Driller.Phase.STUN and _scrap.count() > before, "sfondando il cumulo con la vena escono rottami (%d)" % (_scrap.count() - before))
+	_scrap._veins.clear()
+	_boss.phase_left = 0.05
+	await _frames(6)
+
+
+## Review Focus 3: un rialzo basso (< 0,8 m) non la ferma.
+func _test_low_mound_does_not_stop() -> void:
+	print("low mound")
+	_clear_tracks()
+	_place_player(Vector3(-30.0, 0.0, 0.0))
+	_place_boss(Vector3(2.0, 0.0, 0.0), Driller.Phase.REST, 0.05)
+	_field.sculpt(Vector3(-9.6, 0.0, 0.0), 2.0, 0.5)
+	var walls_before := _boss.walls_broken
+	_check(await _wait_phase(Driller.Phase.CHARGE, 200), "carica")
+	var stunned := false
+	for i in 400:
+		await physics_frame
+		if _boss.phase == Driller.Phase.STUN:
+			stunned = true
+		if _boss.phase == Driller.Phase.REST:
+			break
+	_check(not stunned and _boss.walls_broken == walls_before and _boss.global_position.x < -12.0, "supera il rialzo basso senza stordirsi (x=%.1f, argini %d)" % [_boss.global_position.x, _boss.walls_broken - walls_before])
+
+
+## Review Focus 4: una seconda carica sullo stesso solco non scava oltre.
+func _test_furrow_is_idempotent() -> void:
+	print("furrow idempotent")
+	_clear_tracks()
+	_place_player(Vector3(-100.0, 0.0, 0.0))
+	_place_boss(Vector3(0.0, 0.0, 0.0), Driller.Phase.REST, 0.05)
+	_check(await _wait_phase(Driller.Phase.CHARGE, 200), "prima carica")
+	_check(await _wait_phase(Driller.Phase.REST, 700), "si ferma da sola")
+	var probe := Vector3(-10.0, 0.0, 0.0)
+	var first := _field.delta_at(probe)
+	_check(first < -0.6 and first > -1.0, "solco a %.2f m" % first)
+	_place_boss(Vector3(0.0, 0.0, 0.0), Driller.Phase.REST, 0.05)
+	_check(await _wait_phase(Driller.Phase.CHARGE, 200), "seconda carica sulla stessa linea")
+	_check(await _wait_phase(Driller.Phase.REST, 700), "si ferma di nuovo")
+	_check(absf(_field.delta_at(probe) - first) < 0.08, "il solco resta a %.2f m (era %.2f)" % [_field.delta_at(probe), first])
+
+
+## La carica finisce dopo `charge_length` metri; un solco non la rallenta.
 func _test_charge_length_and_trench() -> void:
 	print("length and trench")
 	_clear_tracks()
 	_place_player(Vector3(-100.0, 0.0, 0.0))
 	_place_boss(Vector3(0.0, 0.0, 0.0), Driller.Phase.REST, 0.05)
-	var cells: Array[Vector2i] = []
 	for k in 6:
-		cells.append(_grid.cell_at(Vector3(-8.0 - k * 2.4, 0.0, 0.0)))
-	_grid.set_cell_states(cells, LOWERED)
+		_field.sculpt(Vector3(-8.0 - k * 2.4, 0.0, 0.0), 2.0, -0.8)
 	_check(await _wait_phase(Driller.Phase.CHARGE, 200), "carica verso ovest")
 	var start := _boss.global_position
 	var in_trench_speed := 0.0
@@ -209,19 +264,18 @@ func _test_charge_length_and_trench() -> void:
 		await physics_frame
 		if _boss.phase != Driller.Phase.CHARGE:
 			break
-		if _grid.cell_state_at(_boss.global_position) == LOWERED:
+		if _field.delta_at(_boss.global_position) < -0.4:
 			in_trench_speed = maxf(in_trench_speed, _planar(_boss.velocity).length())
 	var travelled := _planar(_boss.global_position - start).length()
 	_check(_boss.phase == Driller.Phase.REST, "si ferma da sola")
 	_check(absf(travelled - _boss.charge_length) < 2.0, "dopo %.1f m (limite %.0f)" % [travelled, _boss.charge_length])
-	_check(in_trench_speed > _boss.charge_speed - 0.5, "nel fossato va a piena velocita (%.1f m/s)" % in_trench_speed)
+	_check(in_trench_speed > _boss.charge_speed - 0.5, "nel solco va a piena velocita (%.1f m/s)" % in_trench_speed)
 
 
 ## Con una rovina sulla linea diretta mira lungo il campo di percorso invece di
-## incastrarsi; fermata contro un ostacolo che non e una cella.
+## incastrarsi; fermata contro un ostacolo che non e il terreno.
 func _test_blocked_by_ruin_uses_path() -> void:
 	print("ruin")
-	# Trova una rovina bassa e mette la Trivella dietro di essa rispetto al giocatore.
 	var district: RuinsDistrict = _run.district
 	var block: StaticBody3D = null
 	for child in district.get_children():

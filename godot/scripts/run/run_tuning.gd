@@ -155,6 +155,9 @@ extends Resource
 @export var driller_rest_seconds := 3.0
 @export var driller_stun_seconds := 3.0
 @export var driller_stun_damage_multiplier := 2.0
+## Profondita del solco sotto la base e sporgenza minima di un argine che la ferma (metri).
+@export var driller_furrow_depth_m := 0.8
+@export var driller_wall_min_delta_m := 0.8
 
 @export_group("Runners")
 ## Rottamatori veloci (D-056): compaiono da `runner_start_seconds` e crescono fino a

@@ -402,7 +402,7 @@ func _make_driller() -> Driller:
 	var driller := Driller.new()
 	driller.setup_driller(tuning.driller_health, director.flash_material())
 	driller.player = player
-	driller.grid = grid
+	driller.terrain_field = terrain_field
 	driller.path_field = director.path_field
 	driller.director = director
 	driller.companion = companion
@@ -416,6 +416,8 @@ func _make_driller() -> Driller:
 	driller.rest_seconds = tuning.driller_rest_seconds
 	driller.stun_seconds = tuning.driller_stun_seconds
 	driller.stun_damage_multiplier = tuning.driller_stun_damage_multiplier
+	driller.furrow_depth_m = tuning.driller_furrow_depth_m
+	driller.wall_min_delta_m = tuning.driller_wall_min_delta_m
 	return driller
 
 

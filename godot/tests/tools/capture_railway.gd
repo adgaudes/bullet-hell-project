@@ -83,8 +83,8 @@ func _initialize() -> void:
 	# Giocatore e terrapieno esattamente sulla linea della Trivella, che mira dritta.
 	player.global_position = Vector3(boss.global_position.x - 11.0, 0.88, boss.global_position.z)
 	player.velocity = Vector3.ZERO
-	var grid: TerrainGrid = scene.get_node(^"TerrainGrid")
-	grid.set_cell_states([grid.cell_at(boss.global_position + Vector3(-7.2, 0.0, 0.0))], TerrainState.CellState.RAISED)
+	var field: TerrainField = scene.get_node(^"TerrainField")
+	field.sculpt(boss.global_position + Vector3(-7.2, 0.0, 0.0), 2.0, 1.4)
 	boss.phase_left = 0.05
 	while boss.phase != Driller.Phase.STUN:
 		await physics_frame
