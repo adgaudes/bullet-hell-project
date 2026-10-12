@@ -3,7 +3,7 @@ extends SceneTree
 ## costo per frame con l'orda al massimo. In --headless misura solo CPU
 ## (script e fisica); con finestra anche il frame completo e le draw call:
 ##   godot_console --path godot --resolution 1280x800 --script res://tests/tools/benchmark_arena.gd -- --enemies=70
-## `--enemies=N` (default: max_alive del tuning) per isolare il costo dell'orda.
+## `--enemies=N` (default: max_alive del tuning) per isolare il costo dell'orda; `--level=railway` misura il livello 2.
 ## `--no-motion` spegne il movimento procedurale degli attori (ActorMotion) per confronto;
 ## `--motion-ab` misura nello stesso processo il passo del direttore con e senza (riga `motion_ab`).
 ## `--preset=deck|low|medium|high|max` (restyling 2026-10-11) applica il preset grafico prima di
@@ -27,8 +27,12 @@ func _initialize() -> void:
 			settings.set_preset(PRESET_ARGS.get(preset_name, GameSettingsService.Preset.HIGH))
 	# Il limite di fps (default 60) coprirebbe il costo reale del frame.
 	Engine.max_fps = 0
+	var level_id := &"district"
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--level="):
+			level_id = StringName(arg.trim_prefix("--level="))
 	var start := Time.get_ticks_usec()
-	var scene: Node3D = preload("res://scenes/main/arena_run.tscn").instantiate()
+	var scene: Node3D = (load(LevelCatalog.scene_of(level_id)) as PackedScene).instantiate()
 	root.add_child(scene)
 	var instantiate_usec := Time.get_ticks_usec() - start
 	var district: RuinsDistrict = scene.get_node(^"District")

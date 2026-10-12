@@ -450,6 +450,9 @@ func _brush(center: Vector3, radius: float, shape: Callable) -> float:
 	var volume := 0.0
 	var r2 := radius * radius
 	var r := _rect_indices(center, Vector2(radius, radius))
+	# Pennellata tutta fuori dal campo: niente da scrivere e nessun AABB vuoto da emettere.
+	if r[2] < r[0] or r[3] < r[1]:
+		return 0.0
 	for iz in range(r[1], r[3] + 1):
 		var wz := iz * SPACING - _half.y
 		for ix in range(r[0], r[2] + 1):

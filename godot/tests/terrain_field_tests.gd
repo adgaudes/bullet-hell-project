@@ -18,6 +18,7 @@ func _initialize() -> void:
 	_test_sculpt_volume_and_bell()
 	_test_sculpt_across_region_border()
 	_test_level()
+	_test_brush_outside_field()
 	_test_reset_to_base()
 	_test_bump_along()
 	_test_grade_and_can_step()
@@ -175,6 +176,21 @@ func _test_level() -> void:
 	var moved := _field.level(Vector3(20, 0, -20), 3.0, 0.0, 1.0)
 	_check(absf(_field.height_at(Vector3(20, 0, -20))) < 0.05, "livella porta il centro alla quota data")
 	_check(moved < 0.0, "livellare un cumulo restituisce volume negativo (terra tolta)")
+
+
+## Una pennellata del tutto fuori dal campo non tocca nulla e non emette `region_changed`
+## (un AABB vuoto darebbe un Rect2 negativo al campo di percorso).
+func _test_brush_outside_field() -> void:
+	print("brush outside")
+	var emitted := [0]
+	var watcher := func(_aabb: AABB) -> void: emitted[0] += 1
+	_field.region_changed.connect(watcher)
+	var volume := _field.sculpt(Vector3(90.0, 0.0, 0.0), 2.4, 1.0)
+	var levelled := _field.level(Vector3(0.0, 0.0, -95.0), 2.4, 1.0, 1.0)
+	var reset := _field.reset_to_base(Vector3(90.0, 0.0, 90.0), Vector2(3.0, 3.0))
+	_field.region_changed.disconnect(watcher)
+	_check(is_zero_approx(volume) and is_zero_approx(levelled) and is_zero_approx(reset), "fuori dal campo il volume e zero")
+	_check(emitted[0] == 0, "fuori dal campo nessun region_changed (%d)" % emitted[0])
 
 
 ## Il treno riporta la fascia alla base (spec tappa B, sezione 4): rettangolo a cavallo del

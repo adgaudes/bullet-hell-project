@@ -250,7 +250,9 @@ func _aim_direction() -> Vector3:
 		return direct
 	for meters in AIM_PROBE_METERS:
 		var probe := pos + direct * meters
-		if not path_field.is_walkable(probe) and terrain_field.delta_at(probe) < wall_min_delta_m:
+		# Il fianco di un argine non e percorribile ma non e una rovina: se attorno alla sonda
+		# sporge un argine, la linea resta dritta e lo sfonda.
+		if not path_field.is_walkable(probe) and terrain_field.highest_bump(probe, BREACH_RADIUS, wall_min_delta_m) == null:
 			var waypoint: Variant = path_field.next_waypoint(pos)
 			if waypoint != null:
 				var via := _planar(waypoint - pos)

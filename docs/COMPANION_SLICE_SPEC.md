@@ -1,6 +1,6 @@
 # Companion Slice — specifica del primo compagno macchina
 
-**Stato:** provvisoria, proposta dall'agente il 3 ottobre 2026 (D-032). Il proprietario valuta il prototipo e decide se continuare, modificare o scartare.
+**Stato:** storica. Proposta dall'agente il 3 ottobre 2026 (D-032); la scena `companion_slice.tscn`, la sfera hazard e l'aiuto del compagno contro il pericolo sono stati eliminati il 12 ottobre 2026 con la griglia a celle (D-087). Il compagno resta nel gioco: segue il giocatore, raccoglie i rottami delle vene e paga i lampioni.
 
 ## Perche
 

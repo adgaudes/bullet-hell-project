@@ -4,7 +4,7 @@
 
 - Pilastro centrale del concept, approvato come direzione modificabile.
 - **Implementazione tecnica scelta e fatta per il quartiere (tappa A, 12 ottobre 2026, D-085): strategia D ibrida con rilievo continuo** (campo di quote a 0,5 m, Terrain3D per la resa, collisione a chunk nostra, Jolt), pennello continuo con zainetto di terra, pendenza massima di marcia; dettagli nella sezione "Rilievo continuo" qui sotto, spec in `docs/superpowers/specs/2026-10-12-continuous-terrain-design.md`.
-- La griglia a celle (strategia A) resta nella ferrovia e nelle scene minori fino alla tappa B.
+- **Dal 12 ottobre 2026 (tappa B, D-087) il rilievo continuo e l'unico sistema**: anche la ferrovia e le scene minori stanno su `TerrainField`; `TerrainGrid` e `TerrainState` non esistono piu.
 - Il prototipo deve dimostrare profondita sistemica prima di adottare tecnologia voxel.
 
 ## Promessa

@@ -44,6 +44,7 @@ func _initialize() -> void:
 	_weapon.set_physics_process(false)
 	await _test_call_and_arrival()
 	await _test_aim_and_charge()
+	await _test_aims_through_rampart()
 	await _test_wall_stops_and_stuns()
 	await _test_wall_over_vein_gives_scrap()
 	await _test_low_mound_does_not_stop()
@@ -157,6 +158,21 @@ func _test_aim_and_charge() -> void:
 	_check(_player.health == health_before - _boss.contact_damage, "giocatore colpito una volta (%d -> %d)" % [health_before, _player.health])
 	_check(absf(_player.global_position.z) >= Driller.SIDE_PUSH - 0.5, "e spinto di lato (z=%.1f)" % _player.global_position.z)
 	_check(_boss.charges == 1 and _boss.walls_broken == 0, "una carica, nessun argine")
+
+
+## Un argine del giocatore sulla linea non e una rovina: la Trivella lo vuole e mira dritta,
+## anche se la sonda di mira cade sul suo fianco (pendenza alta, delta sotto 0,8).
+func _test_aims_through_rampart() -> void:
+	print("aim through rampart")
+	_clear_tracks()
+	_place_player(Vector3(-24.0, 0.0, 0.0))
+	_place_boss(Vector3(2.0, 0.0, 0.0), Driller.Phase.REST, 0.05)
+	_field.sculpt(Vector3(-5.2, 0.0, 0.0), 2.0, 1.4)
+	_check(await _wait_phase(Driller.Phase.AIM, 30), "mira")
+	_check(_boss.charge_direction.dot(Vector3(-1.0, 0.0, 0.0)) > 0.95, "mira dritta attraverso l'argine (%.2f, %.2f)" % [_boss.charge_direction.x, _boss.charge_direction.z])
+	_field.level(Vector3(-5.2, 0.0, 0.0), 2.4, _field.base_height_at(Vector3(-5.2, 0.0, 0.0)), 1.0)
+	_boss.phase = Driller.Phase.REST
+	_boss.phase_left = 60.0
 
 
 ## Un argine sulla linea ferma la carica: il varco torna alla base senza rottami e la

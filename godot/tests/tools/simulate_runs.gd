@@ -465,6 +465,22 @@ func _tick_relief_brush(step: float) -> void:
 	if _nearest_enemy_distance() < BRUSH_SAFE_M or _player.pack == null:
 		_player.tool_held = false
 		return
+	# Ferrovia (D-087): con un treno annunciato o in corsa non si scava sulla fascia; durante
+	# la mira della Trivella si alza un argine sulla sua rotta, se non ce n'e gia uno.
+	if _run.train_event != null and _run.train_event.state != TrainEvent.State.IDLE 			and RailwayDistrict.is_on_tracks(_planar(_player.terrain_target)):
+		_player.tool_held = false
+		return
+	if _run.boss is Driller and (_run.boss as Driller).is_aiming() and _player.pack.amount >= 8.0:
+		var boss := _run.boss as Driller
+		var route_end := boss.global_position + boss.charge_direction * 12.0
+		var spot := boss.global_position + boss.charge_direction * 8.0
+		var here_xz := _planar(_player.global_position)
+		var reach := _planar(_player.terrain_target).distance_to(here_xz)
+		if _field.bump_along(boss.global_position, route_end, 0.8) == null 				and _planar(spot).distance_to(here_xz) <= reach + 1.0 and not _field.is_protected(spot):
+			_aim = (_planar(spot) - here_xz).normalized()
+			_rampart_left = RAMPART_HOLD_SECONDS
+			_hold_brush(TerrainField.ToolMode.RAISE)
+			return
 	if not _rampart_done and _run.elapsed >= RAMPART_AT_SECONDS and not _player.pack.is_empty() 			and _nearest_enemy_distance() > VEIN_WALK_SAFE_M:
 		_rampart_done = true
 		_rampart_left = RAMPART_HOLD_SECONDS

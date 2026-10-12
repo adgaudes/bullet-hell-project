@@ -1,5 +1,7 @@
 # Mappa per la migrazione del terreno: dalle celle al rilievo continuo
 
+> **Documento storico (12 ottobre 2026, sera):** la migrazione e finita con le tappe A (D-086) e B (D-087); la griglia a celle, le sue suite e le sue scene non esistono piu. Le API e i consumatori elencati sotto descrivono il codice com'era al commit `0297fb5`.
+
 > Rilevazione del 12 ottobre 2026 (agente di esplorazione, letto e conservato da Claude) a supporto della spec di migrazione decisa in D-082. Non e un piano: elenca cio che esiste, chi dipende dalla griglia a celle e con quali concetti. Numeri di riga validi al commit `0297fb5`; verificarli prima di usarli.
 
 **Sintesi.** Ogni sistema di gioco fuori da `scripts/terrain/` lavora in coordinate di cella, attraverso una quindicina di chiamate alla griglia e tre segnali. Solo le celle Raised hanno fisica; il pavimento calpestabile e un unico box statico a y = 0. Lo spike non ha nessuno dei concetti di gioco su cui si regge il livello vero: niente collisione fisica, niente ostacoli statici, niente eventi o segnali per modifica, niente stati discreti o protetti.

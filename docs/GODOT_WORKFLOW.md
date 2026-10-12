@@ -70,9 +70,6 @@ Trappola verificata (9 ottobre 2026): in headless la finestra e 64x64 con stretc
 
 ```bash
 godot_console --headless --path godot --fixed-fps 60 --script res://tests/player_tests.gd
-godot_console --headless --path godot --fixed-fps 60 --script res://tests/terrain_tests.gd
-godot_console --headless --path godot --fixed-fps 60 --script res://tests/terrain_tool_tests.gd
-godot_console --headless --path godot --fixed-fps 60 --script res://tests/slice_b_tests.gd
 godot_console --headless --path godot --fixed-fps 60 --script res://tests/live_rebuild_tests.gd
 godot_console --headless --path godot --fixed-fps 60 --script res://tests/input_events_tests.gd
 godot_console --headless --path godot --fixed-fps 60 --script res://tests/companion_tests.gd
@@ -94,7 +91,7 @@ godot_console --headless --path godot --fixed-fps 60 --script res://tests/drille
 godot_console --headless --path godot --fixed-fps 60 --script res://tests/campaign_tests.gd
 ```
 
-Al 9 ottobre 2026 (sera) le suite in `godot/tests/` sono 30 (le altre: boss, district, ruins_arena, settings, button_prompts, character_animator, addons, player, terrain, terrain_tool, slice_b, live_rebuild); il gate le trova da solo. Dal 9 ottobre il gate **fallisce anche se una suite stampa `SCRIPT ERROR` o `ERROR:`** (allowlist esplicita in `Invoke-GodotChecks.ps1` per l'errore noto del renderer fittizio): un errore runtime provocato apposta da un test va stampato come marker, non con `push_error`. Regola dal 9 ottobre 2026 (T-12): una suite che ha fatto `queue_free()` di una scena attende due `physics_frame` prima di `quit()`, altrimenti il motore segnala istanze ObjectDB perse all'uscita.
+Al 12 ottobre 2026 (sera) le suite in `godot/tests/` sono 36 (il gate le trova da solo; `terrain_tests`, `terrain_tool_tests` e `slice_b_tests` sono sparite con la griglia, D-087). Dal 9 ottobre il gate **fallisce anche se una suite stampa `SCRIPT ERROR` o `ERROR:`** (allowlist in `Invoke-GodotChecks.ps1`, vuota dal 12 ottobre 2026: l'errore `Parameter "material" is null` era della griglia): un errore runtime provocato apposta da un test va stampato come marker, non con `push_error`. Regola dal 9 ottobre 2026 (T-12): una suite che ha fatto `queue_free()` di una scena attende due `physics_frame` prima di `quit()`, altrimenti il motore segnala istanze ObjectDB perse all'uscita.
 
 Piu semplice: `tools/godot/Invoke-GodotChecks.ps1` esegue tutte le suite presenti in `godot/tests/`.
 
@@ -203,9 +200,9 @@ Trappole verificate (11 ottobre 2026, interfaccia):
 
 ### Terreno continuo (D-085, tappa A, 12 ottobre 2026)
 
-Il quartiere (`arena_run.tscn`) sta su `TerrainField` (campo di quote a 0,5 m, 204 m, sorgente di verita anche in headless) con Terrain3D 1.0.2 per la resa e `TerrainCollision` (196 `HeightMapShape3D` da 16 m, layer 1) per la fisica, con Jolt. La griglia a celle (`TerrainGrid`) resta solo nella ferrovia e nelle scene minori fino alla tappa B. Comandi:
+Il quartiere (`arena_run.tscn`) sta su `TerrainField` (campo di quote a 0,5 m, 204 m, sorgente di verita anche in headless) con Terrain3D 1.0.2 per la resa e `TerrainCollision` (196 `HeightMapShape3D` da 16 m, layer 1) per la fisica, con Jolt. Dalla tappa B (D-087) anche la ferrovia (`railway_run.tscn`, campo 319,2 x 122,4 m) e le scene minori (`smoke_test`, `ruins_arena`, campo da 128 m) stanno sul rilievo: la griglia a celle non esiste piu. Comandi:
 
-- rilievo di base cotto: `godot_console --headless --path godot --script res://tests/tools/bake_terrain_base.gd` scrive `levels/district/base.bin` (LFS); se manca, `RuinsDistrict.apply_base_relief` lo ricalcola all'avvio (circa 0,6 s);
+- rilievo di base cotto: `godot_console --headless --path godot --script res://tests/tools/bake_terrain_base.gd -- --level=<id>` scrive `levels/<id>/base.bin` (LFS, versione 3 con le due dimensioni; `district` senza argomento, `railway` per la ferrovia); se manca o non combacia (seme, dimensioni), `apply_base_relief` lo ricalcola all'avvio (circa 0,6 s);
 - tile per Terrain3D: `godot_console --headless --path godot --script res://tests/tools/pack_terrain_tiles.gd` ricava da `assets/textures/surfaces/ground_*.png` i cinque strati `assets/textures/terrain/<nome>_{albedo_height,normal_rough}.png` a 1024 px con gli `.import` VRAM, poi `--editor --quit`;
 - shader del rilievo: `resources/materials/terrain_relief.gdshader` e la copia dello shader generato da Terrain3D piu il blocco "Rilievo"; dopo un aggiornamento di Terrain3D si rigenera la copia con `godot_console --path godot --resolution 320x200 --script res://tests/tools/dump_terrain_shader.gd -- --out=<file>` (serve una finestra) e si riporta il blocco;
 - catture: `godot_console --path godot --resolution 1280x800 --fixed-fps 60 --quit-after 4000 --script res://tests/tools/capture_terrain.gd -- --out=../output/terrain` (argine, solco, vena a meta, barricata, zainetto vuoto e pieno, vista dall'alto); `capture_district.gd` e `capture_night.gd` funzionano come prima;
