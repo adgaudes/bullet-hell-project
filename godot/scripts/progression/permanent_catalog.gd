@@ -8,7 +8,9 @@ extends RefCounted
 static func all() -> Array[Dictionary]:
 	return [
 		{id = &"tool_reach", name = "Prolunga", costs = [6, 14],
-			text = "Il tool arriva una cella piu lontano."},
+			text = "Il tool arriva 1,2 metri piu lontano."},
+		{id = &"pack_size", name = "Zainetto largo", costs = [12, 20, 30],
+			text = "Lo zainetto porta 20 metri cubi di terra in piu."},
 		{id = &"base_health", name = "Telaio rinforzato", costs = [4, 8, 14],
 			text = "Un punto vita in piu a ogni livello."},
 		{id = &"reflexes", name = "Riflessi da officina", costs = [5, 10],

@@ -151,17 +151,18 @@ func _test_permanent_upgrades_apply() -> void:
 	print("permanent upgrades")
 	var profile := _profile()
 	profile.reset()
-	profile.levels = {&"tool_reach": 1, &"base_health": 2, &"reflexes": 1, &"cargo": 1, &"stock": 1, &"fixed_turret": 1, &"salvage": 1}
+	profile.levels = {&"tool_reach": 1, &"base_health": 2, &"reflexes": 1, &"cargo": 1, &"stock": 1, &"fixed_turret": 1, &"salvage": 1, &"pack_size": 1}
 	var scene := _start_run()
 	await _frames(3)
 	var run: ArenaRun = scene.get_node(^"Run")
 	var player: PlayerCharacter = scene.get_node(^"Player")
 	var companion: Companion = scene.get_node(^"Companion")
-	var grid: TerrainGrid = scene.get_node(^"TerrainGrid")
+	var field: TerrainField = scene.get_node(^"TerrainField")
 	_check(player.max_health == run.tuning.player_max_health + 2 and player.health == player.max_health, "Telaio rinforzato 2: vita %d" % player.max_health)
 	_check(is_equal_approx(player.invulnerability_seconds, run.tuning.player_invulnerability + 0.2), "Riflessi: invulnerabilita %.1f s" % player.invulnerability_seconds)
 	var reach := Vector2(player.terrain_target.x - player.global_position.x, player.terrain_target.z - player.global_position.z).length()
-	_check(is_equal_approx(reach, 4.8 + grid.cell_size_m()), "Prolunga: il tool arriva a %.1f m" % reach)
+	_check(is_equal_approx(player.tool_range_bonus_m, 1.2) and absf(reach - (field.tuning.tool_range_m + 1.2)) < 0.05, "Prolunga: il tool arriva a %.1f m" % reach)
+	_check(is_equal_approx(player.pack.capacity, field.tuning.pack_capacity_m3 + 20.0), "Zainetto largo: capacita %.0f m3" % player.pack.capacity)
 	_check(companion.capacity == companion.tuning.capacity + 2, "Cassone saldato: capacita %d" % companion.capacity)
 	_check(companion.carried == companion.tuning.starting_scrap + 2, "Scorta: parte con %d rottami" % companion.carried)
 	_check(run.companion_weapon != null and run.companion_weapon.is_inside_tree() and companion.has_node(^"TurretPart"),

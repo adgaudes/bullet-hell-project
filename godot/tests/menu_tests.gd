@@ -16,6 +16,7 @@ func _initialize() -> void:
 	_test_autostart_arguments()
 	await _test_menu()
 	_test_map_rules()
+	_test_run_map_heights()
 	await _test_run_map()
 	# T-12: i nodi messi in coda con queue_free vanno liberati prima di uscire, o
 	# il motore segnala istanze ObjectDB perse all'uscita.
@@ -147,6 +148,30 @@ func _test_map_rules() -> void:
 	_check(RunMap.changed_cells(state, before) == [Vector2i(3, 1)], "una cella scavata risulta cambiata")
 
 
+## Mappa sui delta di quota (rilievo continuo, D-085): logica pura su un campo di 48 m.
+func _test_run_map_heights() -> void:
+	print("run map heights")
+	var field := TerrainField.new()
+	field.size_m = 48.0
+	field.tuning = TerrainTuning.new()
+	field.render = false
+	root.add_child(field)
+	var initial := RunMap.snapshot_heights(field)
+	_check(initial.size() == 41 * 41, "fotografia a passo 1,2 m su 48 m: 41 x 41 (%d)" % initial.size())
+	field.sculpt(Vector3(6, 0, 6), 2.4, 1.0)
+	field.sculpt(Vector3(-6, 0, -6), 2.4, -1.0)
+	var image := RunMap.render_heights(field, initial, [Vector3(0, 0, 10)], [], Vector3.ZERO, Vector3(2, 0, 2))
+	_check(RunMap.same_color(RunMap.height_color(0.9, false), RunMap.WALL_NEW), "alzato = rame")
+	_check(RunMap.same_color(RunMap.height_color(-0.9, false), RunMap.TRENCH_NEW), "scavato = blu")
+	_check(RunMap.same_color(RunMap.height_color(0.1, false), RunMap.GROUND), "sotto 0,4 m = suolo")
+	_check(RunMap.same_color(RunMap.height_color(0.1, true), RunMap.BARRICADE), "barricata del boss")
+	_check(RunMap.same_color(RunMap.height_color(0.1, false, 1.2), RunMap.WALL_INITIAL), "argine che c'era gia")
+	_check(image.get_width() >= 100 and image.get_width() == image.get_height(), "immagine quadrata prodotta (%d px)" % image.get_width())
+	_check(_centroid(image, RunMap.WALL_NEW).z > 0.0 and _centroid(image, RunMap.TRENCH_NEW).z > 0.0 and _centroid(image, RunMap.BARRICADE).z > 0.0,
+		"cumulo, scavo e barricata sulla mappa")
+	field.queue_free()
+
+
 func _test_run_map() -> void:
 	print("run map")
 	var scene: Node3D = RunScene.instantiate()
@@ -155,25 +180,28 @@ func _test_run_map() -> void:
 	await _frames(3)
 	var run: ArenaRun = scene.get_node(^"Run")
 	var player: PlayerCharacter = scene.get_node(^"Player")
-	var grid: TerrainGrid = scene.get_node(^"TerrainGrid")
+	var field: TerrainField = scene.get_node(^"TerrainField")
 	var panel: GameOverPanel = scene.get_node(^"GameOverPanel")
-	# Un fossato a nord e un terrapieno a est del giocatore.
-	_check(grid.apply_command_at(Vector3(0.0, 0.0, -7.2), TerrainState.ToolMode.DIG, player), "scavo a nord")
-	_check(grid.apply_command_at(Vector3(4.8, 0.0, 0.0), TerrainState.ToolMode.RAISE, player), "rialzo a est")
-	_check(run.cells_dug == 1 and run.cells_raised == 1, "conteggi del tool: 1 scavata, 1 rialzata")
+	# Il disco di partenza e protetto nei primi 10 s: qui si toglie per scolpire subito.
+	run._start_protect_left = 0.0
+	field.set_protected(Vector3.ZERO, field.tuning.start_protected_radius_m, false)
+	# Uno scavo a nord e un cumulo a est del giocatore, col pennello del giocatore.
+	field.player_sculpt(Vector3(0.0, 0.0, -7.2), 2.4, -1.0, TerrainField.ToolMode.DIG)
+	field.player_sculpt(Vector3(4.8, 0.0, 0.0), 2.4, 1.0, TerrainField.ToolMode.RAISE)
+	_check(run.volume_dug > 1.0 and run.volume_raised > 1.0, "conteggi del tool: %.1f m3 scavati, %.1f m3 alzati" % [run.volume_dug, run.volume_raised])
 	_check(not panel.has_map(), "nessuna mappa prima della fine")
 	player._invulnerable_left = 0.0
 	player.take_damage(player.health)
 	await _frames(2)
 	_check(panel.is_open and panel.has_map(), "a fine livello la schermata ha la mappa")
-	_check((panel._map_caption.text as String).contains("Celle scavate 1   rialzate 1"), "sotto la mappa i conteggi")
+	_check((panel._map_caption.text as String).contains("Terra spostata"), "sotto la mappa la terra spostata: %s" % (panel._map_caption.text as String).get_slice("\n", 0))
 	var image := panel._map_image
 	_check(image.get_width() == image.get_height() and image.get_width() >= 100 and image.get_width() <= 400,
 		"mappa quadrata di %d px" % image.get_width())
 	var trench := _centroid(image, RunMap.TRENCH_NEW)
 	var wall := _centroid(image, RunMap.WALL_NEW)
 	_check(trench.z > 0.0 and wall.z > 0.0, "fossato e terrapieno nuovi sono sulla mappa")
-	_check(_centroid(image, RunMap.WALL_INITIAL).z > 0.0, "le mura del cortile ci sono, in un altro colore")
+	_check(_centroid(image, RunMap.WALL_INITIAL).z > 0.0, "gli argini del cortile ci sono, in un altro colore")
 	_check(trench.y < wall.y and wall.x > trench.x, "nord in alto, est a destra")
 	_check(_centroid(image, RunMap.BREACH).z == 0.0 and _centroid(image, RunMap.BARRICADE).z == 0.0, "nessuna breccia e nessuna barricata inventata")
 	var path := panel.save_map()

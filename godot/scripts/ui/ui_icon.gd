@@ -43,7 +43,7 @@ static func for_category(category: StringName) -> StringName:
 
 static func for_permanent(id: StringName) -> StringName:
 	match id:
-		&"tool_reach":
+		&"tool_reach", &"pack_size":
 			return &"shovel"
 		&"base_health":
 			return &"bolt"

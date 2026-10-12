@@ -119,6 +119,12 @@ var _final_map: Image
 var _start_position := Vector3.ZERO
 var cells_dug := 0
 var cells_raised := 0
+## Rilievo continuo: metri cubi scavati e alzati dal giocatore.
+var volume_dug := 0.0
+var volume_raised := 0.0
+## Secondi di scavo continuo accumulati per lo scavo esplosivo (scatta ogni `every_seconds`).
+var _blast_charge := 0.0
+var _last_sculpt_msec := 0
 
 
 func _ready() -> void:
@@ -175,6 +181,8 @@ func _ready() -> void:
 		workshop.closed.connect(game_over.focus_default.bind(false))
 	if grid != null:
 		grid.command_applied.connect(_on_terrain_command)
+	if terrain_field != null:
+		terrain_field.player_sculpted.connect(_on_player_sculpted)
 	hud.set_health(player.health, player.max_health)
 	_refresh_xp()
 	var title := LevelCatalog.title_of(level_id)
@@ -561,6 +569,10 @@ func _apply_permanent_upgrades() -> void:
 			&"tool_reach":
 				if grid != null:
 					player.tool_range_bonus_cm = grid.cell_size_m() * 100.0 * owned
+				player.tool_range_bonus_m = 1.2 * owned
+			&"pack_size":
+				if player.pack != null:
+					player.pack.add_capacity(20.0 * owned)
 			&"base_health":
 				player.set_max_health(tuning.player_max_health + owned)
 			&"reflexes":
@@ -631,6 +643,7 @@ func _build_terrain_relief() -> void:
 		terrain_field.set_protected(Vector3(center.x, 0.0, center.y), rect.size.length() * 0.5 + margin, true)
 	_start_protect_left = terrain_field.tuning.start_protected_seconds
 	terrain_field.set_protected(Vector3.ZERO, terrain_field.tuning.start_protected_radius_m, true)
+	_initial_heights = RunMap.snapshot_heights(terrain_field)
 	print("PROTOTYPE01_TERRAIN_LAYOUT_READY strokes=%d" % district.terrain_strokes.size())
 
 
@@ -833,11 +846,6 @@ func abandon_run() -> void:
 
 ## Mappa del campo come l'ha lasciato il giocatore, per la schermata di fine livello.
 func build_run_map() -> Image:
-	if grid == null:
-		# Rilievo continuo: la mappa delle quote arriva col Task 13 (RunMap.render_heights).
-		var placeholder := Image.create_empty(64, 64, false, Image.FORMAT_RGB8)
-		placeholder.fill(Color(0.12, 0.1, 0.08))
-		return placeholder
 	var buildings: Array[Rect2] = []
 	if district != null:
 		for child in district.get_children():
@@ -848,14 +856,25 @@ func build_run_map() -> Image:
 					var size := ((part as CollisionShape3D).shape as BoxShape3D).size
 					var at := (child as StaticBody3D).global_position
 					buildings.append(Rect2(at.x - size.x * 0.5, at.z - size.z * 0.5, size.x, size.z))
-	var barricades: Dictionary = (boss as Demolisher).barricades if is_instance_valid(boss) and boss is Demolisher else {}
 	var boss_position: Variant = boss.global_position if is_instance_valid(boss) else null
+	if terrain_field != null:
+		var barricade_points: Array[Vector3] = []
+		if is_instance_valid(boss) and boss is Demolisher:
+			barricade_points = (boss as Demolisher).barricade_points
+		var lamp_points: Array[Vector3] = []
+		if lamp_field != null:
+			lamp_points = lamp_field.positions()
+		return RunMap.render_heights(terrain_field, _initial_heights, barricade_points, buildings, _start_position, player.global_position, boss_position, lamp_points)
+	var barricades: Dictionary = (boss as Demolisher).barricades if is_instance_valid(boss) and boss is Demolisher else {}
 	var lamps: Array[Vector2i] = lamp_field.cells() if lamp_field != null else []
 	return RunMap.render(grid, _initial_terrain, barricades, buildings, _start_position, player.global_position, boss_position, lamps)
 
 
 func _show_run_map() -> void:
-	game_over.set_map(_final_map if _final_map != null else build_run_map(), "Celle scavate %d   rialzate %d" % [cells_dug, cells_raised], "run_%d" % run_seed)
+	var stats := "Celle scavate %d   rialzate %d" % [cells_dug, cells_raised]
+	if terrain_field != null:
+		stats = "Terra spostata: %d m3   (scavati %d, alzati %d)" % [roundi(terrain_field.volume_moved), roundi(volume_dug), roundi(volume_raised)]
+	game_over.set_map(_final_map if _final_map != null else build_run_map(), stats, "run_%d" % run_seed)
 
 
 func _on_enemy_killed(world_position: Vector3, total: int) -> void:
@@ -915,7 +934,10 @@ func apply_upgrade(id: StringName, new_level: int) -> void:
 		&"spiked_wall":
 			director.spike_damage = int(UpgradeCatalog.value(id, &"damage"))
 			director.spike_interval = UpgradeCatalog.value(id, &"interval") if new_level == 1 else UpgradeCatalog.value(id, &"interval_level_2")
+			# Sul rilievo la tinta degli argini arriva con TerrainSurface (Task 14).
 			_set_raised_tint(Color(0.85, 0.75, 0.7))
+		&"brush_size":
+			player.brush_radius_bonus_m = UpgradeCatalog.value(id, &"radius_per_level") * new_level
 		&"boots":
 			player.speed_bonus *= 1.0 + UpgradeCatalog.value(id, &"speed_percent") / 100.0
 		&"patch":
@@ -962,7 +984,33 @@ func _upgrade_companion_turret(new_level: int) -> void:
 	print("PROTOTYPE01_COMPANION_TURRET level=%d" % new_level)
 
 
-## Scavo esplosivo: ogni passo di scavo colpisce i nemici attorno alla cella.
+## Rilievo continuo: contatori in metri cubi, zolle e scavo esplosivo a tempo (scatta
+## ogni `every_seconds` di scavo continuo, non a ogni passo).
+func _on_player_sculpted(center: Vector3, radius: float, volume: float, mode: int) -> void:
+	volume_dug += maxf(-volume, 0.0)
+	volume_raised += maxf(volume, 0.0)
+	var now := Time.get_ticks_msec()
+	var since := (now - _last_sculpt_msec) * 0.001 if _last_sculpt_msec > 0 else 0.0
+	_last_sculpt_msec = now
+	var top := Vector3(center.x, terrain_field.height_at(center) + 0.1, center.z)
+	if absf(volume) > 0.05:
+		DebrisBurst.spawn(get_parent(), top, Demolisher.EARTH_COLOR, 4, 2.6, 0.12)
+	if mode != TerrainField.ToolMode.DIG or dig_blast_radius <= 0.0 or volume >= 0.0:
+		_blast_charge = 0.0
+		return
+	# Un buco di oltre mezzo secondo fra due passi vuol dire che lo scavo era fermo.
+	_blast_charge += since if since < 0.5 else 0.0
+	var every := UpgradeCatalog.value(&"dig_blast", &"every_seconds", 0.5)
+	if _blast_charge < every:
+		return
+	_blast_charge -= every
+	for enemy in director.enemies_near(top, dig_blast_radius + radius * 0.5):
+		enemy.take_damage(int(UpgradeCatalog.value(&"dig_blast", &"damage", 2.0)))
+	_blast_effect(top, dig_blast_radius)
+	print("PROTOTYPE01_DIG_BLAST x=%.1f z=%.1f" % [center.x, center.z])
+
+
+## Scavo esplosivo (griglia): ogni passo di scavo colpisce i nemici attorno alla cella.
 func _on_terrain_command(cell: Vector2i, mode: TerrainState.ToolMode, new_state: TerrainState.CellState) -> void:
 	if mode == TerrainState.ToolMode.DIG:
 		cells_dug += 1
