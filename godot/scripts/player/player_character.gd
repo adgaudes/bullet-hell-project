@@ -57,6 +57,7 @@ var pack: SoilPack
 var brush_radius_bonus_m := 0.0
 var tool_range_bonus_m := 0.0
 var _preview: BrushPreview
+var _brush_was_blocked := false
 ## Punto mondo bersaglio del tool, aggiornato a ogni passo fisico.
 var terrain_target := Vector3.ZERO
 ## Compagno macchina (Companion Slice): se presente, rialzare costa un rottame
@@ -215,6 +216,7 @@ func _notification(what: int) -> void:
 	if what == NOTIFICATION_UNPAUSED:
 		_held_actions.clear()
 		_pending_actions.clear()
+		tool_held = false
 		_left_stick = Vector2.ZERO
 
 
@@ -269,6 +271,8 @@ func _physics_process(delta: float) -> void:
 	_update_terrain_target()
 	if terrain_field != null and tool_held:
 		_apply_brush(delta)
+	else:
+		_brush_was_blocked = false
 	_update_motion(delta)
 
 
@@ -358,6 +362,7 @@ func brush_radius() -> float:
 
 ## DIG -> RAISE -> LEVEL -> (LAMP se il LampField conosce il rilievo) -> DIG.
 func _toggle_field_mode() -> void:
+	# Ponte provvisorio fino al Task 11 del terreno continuo (LampField avra un export terrain_field).
 	var lamp_ok := lamp_field != null and lamp_field.get("terrain_field") != null
 	match terrain_tool_mode:
 		TerrainField.ToolMode.DIG:
@@ -411,8 +416,12 @@ func _mouse_ground_point() -> Variant:
 ## Una pennellata per passo fisico finche il tasto e premuto (spec sezione 3).
 func _apply_brush(delta: float) -> void:
 	if _brush_blocked():
-		terrain_tool_rejected.emit()
+		# Un solo rifiuto per ostacolo, non uno a ogni passo fisico.
+		if not _brush_was_blocked:
+			terrain_tool_rejected.emit()
+		_brush_was_blocked = true
 		return
+	_brush_was_blocked = false
 	var radius := brush_radius()
 	var rate := terrain_field.tuning.sculpt_rate_m_s * delta
 	match terrain_tool_mode:
@@ -446,6 +455,7 @@ func _brush_blocked() -> bool:
 		TerrainField.ToolMode.RAISE:
 			return pack.is_empty()
 		TerrainField.ToolMode.LAMP:
+			# Ponte provvisorio fino al Task 11 del terreno continuo (can_place(point: Vector3)).
 			return lamp_field == null or not lamp_field.call(&"can_place", terrain_target) or not lamp_field.can_afford(terrain_target)
 	return false
 
@@ -650,6 +660,7 @@ func take_damage(amount: int) -> bool:
 	if health == 0:
 		if _animator != null:
 			_animator.play_death()
+		tool_held = false
 		died.emit()
 	return true
 
