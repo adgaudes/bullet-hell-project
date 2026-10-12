@@ -47,7 +47,7 @@ TILES = {
         ("bark", (0.40, 0.30, 0.20), (0.24, 0.18, 0.12), 2.0, 22.0, 0.9),
     ],
     "plants": [
-        ("grass_tufts", (0.30, 0.52, 0.14), (0.70, 0.78, 0.28), 1.0, 8.0, 0.9),
+        ("grass_tufts", (0.30, 0.44, 0.15), (0.64, 0.70, 0.30), 1.0, 8.0, 0.9),
         ("leaf_cards", (0.26, 0.48, 0.14), (0.62, 0.72, 0.24), 1.0, 6.0, 0.9),
     ],
 }
@@ -171,14 +171,17 @@ def plant_graph(mat, image, spec):
     if name == "grass_tufts":
         column_u = math_node(nodes, links, "FRACT", math_node(nodes, links, "MULTIPLY", u, 3.0))
         wobble = math_node(nodes, links, "MULTIPLY_ADD", noise(nodes, links, coords, 4.0, 1.0, 0.5, w), 0.08, -0.04)
+        # Prato basso (D-083, 12 ottobre 2026): nove fili sottili e quasi paralleli per
+        # colonna, al posto delle cinque lame larghe a punta che il proprietario ha scartato.
         phase = math_node(nodes, links, "FRACT",
-                          math_node(nodes, links, "MULTIPLY", math_node(nodes, links, "ADD", column_u, wobble), 5.0))
-        # Lama larga alla base e appuntita: semi-larghezza = 0.45 * (1 - v)^1.6.
-        taper = math_node(nodes, links, "POWER", math_node(nodes, links, "SUBTRACT", 1.0, v), 1.6)
-        half = math_node(nodes, links, "MULTIPLY", taper, 0.45)
+                          math_node(nodes, links, "MULTIPLY", math_node(nodes, links, "ADD", column_u, wobble), 9.0))
+        # Filo stretto che si assottiglia poco: semi-larghezza = 0.38 * (1 - v)^1.15 (punta sottile).
+        taper = math_node(nodes, links, "POWER", math_node(nodes, links, "SUBTRACT", 1.0, v), 1.15)
+        half = math_node(nodes, links, "MULTIPLY", taper, 0.38)
         distance = math_node(nodes, links, "ABSOLUTE", math_node(nodes, links, "SUBTRACT", phase, 0.5))
         inside = math_node(nodes, links, "LESS_THAN", distance, half)
-        tip_line = math_node(nodes, links, "MULTIPLY_ADD", noise(nodes, links, coords, 3.0, 1.0, 0.5, w), 0.35, 0.62)
+        # Altezza diversa filo per filo (rumore fitto), fra il 55 % e il 95 % della tile.
+        tip_line = math_node(nodes, links, "MULTIPLY_ADD", noise(nodes, links, coords, 7.0, 1.0, 0.5, w), 0.40, 0.55)
         inside = math_node(nodes, links, "MULTIPLY", inside, math_node(nodes, links, "LESS_THAN", v, tip_line))
     else:
         # Chiazze di foglie: rumore a soglia dentro un'ellisse morbida, con buchi.

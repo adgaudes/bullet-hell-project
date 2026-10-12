@@ -1,28 +1,29 @@
 shader_type spatial;
 render_mode cull_disabled;
-// Vegetazione: colore per vertice o per istanza (MultiMesh), tinta per istanza,
-// leggero ondeggiare dal vento proporzionale all'altezza locale del vertice.
+// Vegetazione: colore per vertice o per istanza (MultiMesh), tinta per istanza, vento
+// dal campo condiviso di wind.gdshaderinc (D-083: cespugli e chiome si piegano alle
+// stesse raffiche del prato; prima un'oscillazione per istanza).
 // Con `textured` (restyling 2026-10-11) la superficie e una cartella di foglie dipinte:
 // lo strato `leaf_layer` dell'array `plants`, ritagliato con alpha scissor (cespugli,
 // chiome). Senza, resta il colore pieno (fiori, rampicanti).
 
-#include "res://resources/materials/noise.gdshaderinc"
+#include "res://resources/materials/wind.gdshaderinc"
 
 instance uniform vec4 tint : source_color = vec4(1.0);
 uniform sampler2DArray plants_albedo : source_color, filter_linear_mipmap, repeat_disable;
 uniform bool textured = false;
 uniform float leaf_layer = 1.0;
-uniform float sway = 0.06;
-uniform float sway_speed = 1.4;
+// Ampiezza massima dello spostamento in unita locali della mesh.
+uniform float wind_strength = 0.12;
+// Altezza locale della mesh (per normalizzare VERTEX.y): 2 per le cartelle dei cespugli.
+uniform float plant_height = 2.0;
 
 varying vec3 world_pos;
 
 void vertex() {
 	vec3 origin = (MODEL_MATRIX * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
-	float phase = TIME * sway_speed + origin.x * 0.35 + origin.z * 0.27;
-	float bend = max(VERTEX.y, 0.0) * sway;
-	VERTEX.x += sin(phase) * bend;
-	VERTEX.z += cos(phase * 0.8) * bend * 0.6;
+	float seed = fract(origin.x * 0.731 + origin.z * 0.417);
+	VERTEX += wind_offset(origin.xz, VERTEX.y / plant_height, wind_strength, seed, TIME);
 	world_pos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 }
 

@@ -115,7 +115,7 @@ var _unit_box: BoxMesh
 func _init() -> void:
 	play_half_extent = 102.0
 	clear_half_extent = 0.0
-	grass_tufts = 32000
+	grass_tufts = 90000
 	flowers = 4000
 
 

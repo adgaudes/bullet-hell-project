@@ -33,7 +33,7 @@ script = ExtResource("2_arena")
 play_half_extent = 159.6
 play_half_extent_z = 61.2
 clear_half_extent = 0.0
-grass_tufts = 32000
+grass_tufts = 90000
 flowers = 4000
 
 [node name="TerrainGrid" type="Node3D" parent="."]

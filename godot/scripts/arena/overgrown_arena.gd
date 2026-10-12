@@ -55,7 +55,7 @@ const WORLD_STATIC_LAYER := 1
 	set(value):
 		clear_half_extent = value
 		_queue_rebuild()
-@export_range(0, 60000, 100) var grass_tufts := 9000:
+@export_range(0, 150000, 100) var grass_tufts := 24000:
 	set(value):
 		grass_tufts = value
 		_queue_rebuild()
@@ -285,16 +285,18 @@ func _make_materials() -> void:
 	_bush_material.shader = FOLIAGE_SHADER
 	_bush_material.set_shader_parameter(&"textured", true)
 	_set_surface_texture(_bush_material, &"plants_albedo", PLANTS_ALBEDO_PATH)
-	# Le chiome alte oscillano poco: lo spostamento cresce con la quota locale.
+	# Le chiome alte oscillano poco; cespugli ed erba leggono lo stesso campo di vento
+	# (wind.gdshaderinc, D-083), cosi le raffiche attraversano insieme prato e fronde.
 	_canopy_material = ShaderMaterial.new()
 	_canopy_material.shader = FOLIAGE_SHADER
-	_canopy_material.set_shader_parameter(&"sway", 0.012)
+	_canopy_material.set_shader_parameter(&"wind_strength", 0.05)
 	_canopy_material.set_shader_parameter(&"textured", true)
 	_set_surface_texture(_canopy_material, &"plants_albedo", PLANTS_ALBEDO_PATH)
 	_grass_material = ShaderMaterial.new()
 	_grass_material.shader = GRASS_SHADER
 	_set_surface_texture(_grass_material, &"plants_albedo", PLANTS_ALBEDO_PATH)
-	_grass_material.set_shader_parameter(&"sway", 0.05)
+	_grass_material.set_shader_parameter(&"wind_strength", 0.14)
+	_grass_material.set_shader_parameter(&"blade_height", TUFT_HEIGHT)
 	_litter_material = StandardMaterial3D.new()
 	_litter_material.vertex_color_use_as_albedo = true
 	_litter_material.roughness = 0.95
@@ -925,7 +927,9 @@ func _build_ground_cover() -> void:
 	var flower_target := int(flowers * density)
 	var litter_target := int(litter * density)
 	var wanted := tuft_target + flower_target + litter_target
-	var side := int(ceil(sqrt(float(wanted) * 2.0)))
+	# Candidati 3,5 volte i posti (erano 2): con il prato fitto (D-083) le zone verdi
+	# esaurivano i candidati prima del numero richiesto.
+	var side := int(ceil(sqrt(float(wanted) * 3.5)))
 	var total := side * side
 	var pitch := limit * 2.0 / maxf(float(side), 1.0)
 	var pitch_z := limit_z * 2.0 / maxf(float(side), 1.0)
@@ -966,9 +970,10 @@ func _build_ground_cover() -> void:
 			_write_instance(flower_buffer, flower_count, yaw, Vector3(s, s, s), Vector3(p.x, height, p.y), _pick(FLOWER_COLORS))
 			flower_count += 1
 		elif tuft_count < tuft_target:
-			var s := _rng.randf_range(0.7, 1.5)
-			_write_instance(tufts, tuft_count, yaw, Vector3(s, s * _rng.randf_range(0.8, 1.4), s), Vector3(p.x, height, p.y),
-				_pick(LEAF_TINTS) * _rng.randf_range(1.05, 1.45))
+			# Prato basso (D-083): ciuffi piccoli e fitti, poco variati, tinta sobria.
+			var s := _rng.randf_range(0.8, 1.25)
+			_write_instance(tufts, tuft_count, yaw, Vector3(s, s * _rng.randf_range(0.8, 1.2), s), Vector3(p.x, height, p.y),
+				_pick(LEAF_TINTS) * _rng.randf_range(0.95, 1.2))
 			tuft_count += 1
 	tufts.resize(tuft_count * 16)
 	flower_buffer.resize(flower_count * 16)
@@ -1025,25 +1030,34 @@ func _add_multimesh(node_name: String, mesh: Mesh, buffer: PackedFloat32Array, c
 
 ## Ciuffo (D-068): tre quad incrociati a 60 gradi con la texture delle lame; la
 ## scala per istanza li porta a 0,3-0,65 m. UV.y = 0 in punta, 1 al piede.
-const TUFT_HALF_WIDTH := 0.2
-const TUFT_HEIGHT := 0.44
+const TUFT_HALF_WIDTH := 0.20
+const TUFT_HEIGHT := 0.40
+# Raggio della chiazza: tre coppie di quad attorno al centro del ciuffo.
+const TUFT_PATCH_RADIUS := 0.26
 
 
 func _tuft_mesh() -> ArrayMesh:
+	# Chiazza di prato (D-083): tre coppie di quad incrociati, sfalsate attorno al
+	# centro, per dodici triangoli. Una chiazza copre circa mezzo metro, cosi il prato
+	# si chiude con meno istanze di quante ne servirebbero a ciuffi singoli.
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	for k in 3:
-		var a := TAU * float(k) / 3.0 * 0.5
-		var side := Vector3(cos(a), 0.0, sin(a)) * TUFT_HALF_WIDTH
-		var lean := Vector3(-sin(a), 0.0, cos(a)) * 0.05
-		var corners: Array[Vector3] = [-side, side, side + Vector3(0.0, TUFT_HEIGHT, 0.0) + lean,
-			-side + Vector3(0.0, TUFT_HEIGHT, 0.0) + lean]
-		var uvs: Array[Vector2] = [Vector2(0.0, 1.0), Vector2(1.0, 1.0), Vector2(1.0, 0.0), Vector2(0.0, 0.0)]
-		for index in [0, 1, 2, 0, 2, 3]:
-			st.set_normal(Vector3.UP)
-			st.set_color(Color.WHITE)
-			st.set_uv(uvs[index])
-			st.add_vertex(corners[index])
+	var uvs: Array[Vector2] = [Vector2(0.0, 1.0), Vector2(1.0, 1.0), Vector2(1.0, 0.0), Vector2(0.0, 0.0)]
+	for pair in 3:
+		var around := TAU * float(pair) / 3.0
+		var center := Vector3(cos(around), 0.0, sin(around)) * TUFT_PATCH_RADIUS * (0.0 if pair == 0 else 1.0)
+		var height := TUFT_HEIGHT * (1.0 if pair == 0 else 0.85)
+		for k in 2:
+			var a := PI * 0.5 * float(k) + around * 0.5
+			var side := Vector3(cos(a), 0.0, sin(a)) * TUFT_HALF_WIDTH
+			var lean := Vector3(-sin(a), 0.0, cos(a)) * 0.03
+			var corners: Array[Vector3] = [center - side, center + side,
+				center + side + Vector3(0.0, height, 0.0) + lean, center - side + Vector3(0.0, height, 0.0) + lean]
+			for index in [0, 1, 2, 0, 2, 3]:
+				st.set_normal(Vector3.UP)
+				st.set_color(Color.WHITE)
+				st.set_uv(uvs[index])
+				st.add_vertex(corners[index])
 	return st.commit()
 
 

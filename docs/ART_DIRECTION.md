@@ -134,7 +134,7 @@ Le classi come meccanica non esistono ancora: si costruisce prima l'Ingegnere (p
 
 ### Ambiente: ricetta della fetta visiva
 
-Tile dipinte e ripetibili per suolo (terra, lastre, asfalto, terra scavata, fango, erba), muri (intonaco scrostato con mattoni, muschio, corteccia) e piante (ciuffi, cartelle di foglie); maschera mondo condivisa fra piano e celle del terreno; rovine generate per impronta e dipinte in triplanare; erba e cespugli a cartelle; prop con albedo, normal e ORM cotte; cielo a gradiente dipinto, sole caldo basso con ambiente freddo (ombre blu-viola), ACES, glow in soft light, contrasto 1,12 e saturazione 1,22; rim light su attori e prop; notte blu-violacea.
+Tile dipinte e ripetibili per suolo (terra, lastre, asfalto, terra scavata, fango, erba), muri (intonaco scrostato con mattoni, muschio, corteccia) e piante (ciuffi, cartelle di foglie); maschera mondo condivisa fra piano e celle del terreno; rovine generate per impronta e dipinte in triplanare; prato basso a chiazze di fili sottili e cespugli a cartelle, mossi dallo stesso campo di vento (`wind.gdshaderinc`, D-083); prop con albedo, normal e ORM cotte; cielo a gradiente dipinto, sole caldo basso con ambiente freddo (ombre blu-viola), ACES, glow in soft light, contrasto 1,12 e saturazione 1,22; rim light su attori e prop; notte blu-violacea.
 
 ## Questioni aperte prima dell'Art Lock
 

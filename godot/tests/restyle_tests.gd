@@ -96,6 +96,10 @@ func _test_vegetation_and_props() -> void:
 	var tufts: MultiMeshInstance3D = district.find_child("GrassTufts", true, false)
 	var grass_material := tufts.material_override as ShaderMaterial if tufts != null else null
 	_check(grass_material != null and grass_material.get_shader_parameter(&"plants_albedo") is TextureLayered, "l'erba usa l'array plants_albedo")
+	# Prato basso al vento (D-083): due quad per ciuffo, vento dal campo condiviso.
+	_check(tufts != null and tufts.multimesh.mesh.get_faces().size() == 36, "ogni chiazza di prato e fatta di sei quad (dodici triangoli)")
+	_check(grass_material != null and float(grass_material.get_shader_parameter(&"wind_strength")) > 0.0, "l'erba ha una forza di vento maggiore di zero")
+	_check(grass_material != null and grass_material.shader.code.contains("wind.gdshaderinc"), "l'erba usa il campo di vento condiviso")
 	var bush := district.find_child("Bush", true, false)
 	var cards: Array[Node] = bush.find_children("*", "MeshInstance3D", true, false) if bush != null else []
 	var card: MeshInstance3D = cards[0] as MeshInstance3D if cards.size() > 0 else null
@@ -103,6 +107,7 @@ func _test_vegetation_and_props() -> void:
 	_check(card != null and card_uv != null and (card_uv as PackedVector2Array).size() > 0, "i cespugli sono cartelle con UV")
 	var bush_material := card.material_override as ShaderMaterial if card != null else null
 	_check(bush_material != null and bush_material.get_shader_parameter(&"textured") == true and bush_material.get_shader_parameter(&"plants_albedo") is TextureLayered, "i cespugli usano le cartelle di foglie dipinte")
+	_check(bush_material != null and bush_material.shader.code.contains("wind.gdshaderinc"), "i cespugli si muovono con lo stesso campo di vento del prato")
 	var car := district.find_child("WreckedCar", true, false)
 	var meshes: Array[Node] = car.find_children("*", "MeshInstance3D", true, false) if car != null else []
 	var found_maps := false
