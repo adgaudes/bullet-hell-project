@@ -30,8 +30,8 @@ void fragment() {
 	albedo *= 0.92 + 0.16 * value_noise(world_pos.xz * 0.35);
 	ALBEDO = albedo;
 	NORMAL_MAP = normal_ts * 0.5 + 0.5;
-	NORMAL_MAP_DEPTH = 0.6;
+	NORMAL_MAP_DEPTH = 1.4;
 	ROUGHNESS = mix(0.7, 1.0, orm.g);
 	AO = orm.r;
-	AO_LIGHT_AFFECT = 0.3;
+	AO_LIGHT_AFFECT = 0.6;
 }

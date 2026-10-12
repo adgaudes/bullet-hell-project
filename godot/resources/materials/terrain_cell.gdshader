@@ -58,7 +58,7 @@ void fragment() {
 			base = sample_ground_with_grass(uv, layer, grass_amount, road, normal_ts, orm);
 			base *= 0.92 + 0.16 * value_noise(world_pos.xz * 0.35);
 			NORMAL_MAP = normal_ts * 0.5 + 0.5;
-			NORMAL_MAP_DEPTH = 0.8;
+			NORMAL_MAP_DEPTH = 1.6;
 		} else {
 			// Fianchi: terra scavata triplanare, a strati, piu scura verso il piede.
 			base = sample_ground_triplanar(world_pos, n, TILE_DUG, orm);
@@ -79,7 +79,7 @@ void fragment() {
 		col = mix(base, tinted, tint_amount);
 		rough = lowered ? 0.35 : mix(0.7, 1.0, orm.g);
 		AO = orm.r;
-		AO_LIGHT_AFFECT = 0.3;
+		AO_LIGHT_AFFECT = 0.6;
 	}
 	ALBEDO = col;
 	ROUGHNESS = rough;

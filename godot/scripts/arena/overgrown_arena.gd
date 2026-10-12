@@ -64,7 +64,7 @@ const WORLD_STATIC_LAYER := 1
 		flowers = value
 		_queue_rebuild()
 ## Detriti a terra: sassi e foglie secche (D-069), un MultiMesh.
-@export_range(0, 20000, 100) var litter := 2500:
+@export_range(0, 40000, 100) var litter := 9000:
 	set(value):
 		litter = value
 		_queue_rebuild()
