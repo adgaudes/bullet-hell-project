@@ -269,9 +269,9 @@ func _on_boss_spawned(boss: Enemy) -> void:
 	play(&"boss_spawn")
 	if boss is Demolisher:
 		var demolisher := boss as Demolisher
-		demolisher.wall_demolished.connect(func(_cell: Vector2i) -> void: play(&"boss_demolish"))
+		demolisher.wall_demolished.connect(func(_at: Vector3) -> void: play(&"boss_demolish"))
 		demolisher.scrap_taken.connect(play.bind(&"carrier_pickup", 0.0))
-		demolisher.barricade_built.connect(func(_cell: Vector2i) -> void: play(&"boss_barricade"))
+		demolisher.barricade_built.connect(func(_at: Vector3) -> void: play(&"boss_barricade"))
 	elif boss is Driller:
 		# La Trivella (D-066): carica annunciata, terrapieno sfondato, stordimento.
 		var driller := boss as Driller

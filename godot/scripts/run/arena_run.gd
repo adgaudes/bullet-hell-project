@@ -367,6 +367,7 @@ func _make_demolisher() -> Demolisher:
 	demolisher.setup_demolisher(tuning.boss_health, director.flash_material())
 	demolisher.player = player
 	demolisher.grid = grid
+	demolisher.terrain_field = terrain_field
 	demolisher.path_field = director.path_field
 	demolisher.director = director
 	demolisher.companion = companion
