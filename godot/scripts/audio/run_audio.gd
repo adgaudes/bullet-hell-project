@@ -74,6 +74,8 @@ var _next_allowed: Dictionary[StringName, float] = {}
 var _rng := RandomNumberGenerator.new()
 var _last_health := 0
 var _last_carried := 0
+@export var terrain_field: TerrainField
+var _sculpt_sound_left := 0.0
 
 
 func _ready() -> void:
@@ -89,10 +91,13 @@ func _ready() -> void:
 		_players.append(stream_player)
 		_player_ids.append(&"")
 	_connect_signals()
+	if terrain_field != null:
+		terrain_field.player_sculpted.connect(_on_player_sculpted)
 
 
 func _process(delta: float) -> void:
 	_clock += delta
+	_sculpt_sound_left = maxf(_sculpt_sound_left - delta, 0.0)
 
 
 ## Riproduce il suono [param id]; [param volume_db] si somma al volume di base.
@@ -221,6 +226,13 @@ func _on_enemy_killed(_world_position: Vector3, _total: int) -> void:
 
 func _on_terrain_command(_cell: Vector2i, mode: TerrainState.ToolMode, _state: TerrainState.CellState) -> void:
 	play(&"terrain_raise" if mode == TerrainState.ToolMode.RAISE else &"terrain_dig")
+
+
+func _on_player_sculpted(_center: Vector3, _radius: float, volume: float, mode: int) -> void:
+	if _sculpt_sound_left > 0.0:
+		return
+	_sculpt_sound_left = 0.25
+	play(&"terrain_raise" if mode == TerrainField.ToolMode.RAISE else &"terrain_dig", -6.0 + 6.0 * clampf(absf(volume) / 0.2, 0.0, 1.0))
 
 
 func _on_xp_collected(_amount: int) -> void:

@@ -15,7 +15,7 @@ signal health_changed(health: int, max_health: int)
 signal died
 ## Lo strumento terreno non ha potuto agire: cella non valida o niente rottami.
 signal terrain_tool_rejected
-signal terrain_mode_changed(mode: TerrainState.ToolMode)
+signal terrain_mode_changed(mode: int)
 
 enum AimDevice { GAMEPAD, MOUSE }
 
@@ -35,6 +35,8 @@ const HIT_FLASH_SECONDS := 0.3
 @export var tuning: PlayerTuning
 ## Griglia su cui agisce il tool (SetTerrainGrid in Unreal). Opzionale.
 @export var terrain_grid: TerrainGrid
+## Rilievo continuo (D-082): se presente sostituisce la griglia per il tool.
+@export var terrain_field: TerrainField
 ## Lampioni (D-058, tappa 2): senza, il tool cicla solo fra scavo e rialzo.
 @export var lamp_field: LampField
 ## Opzionale: nodo col segnale `fired` (la chiodatrice). Se presente ogni colpo da un
@@ -47,8 +49,14 @@ var speed_multiplier := 1.0
 var aim_device := AimDevice.GAMEPAD
 var is_dashing := false
 var is_dash_on_cooldown := false
-var terrain_tool_mode := TerrainState.ToolMode.DIG
-const TOOL_MODE_NAMES: Array[String] = ["Dig", "Raise", "Lamp"]
+var terrain_tool_mode: int = TerrainField.ToolMode.DIG
+const TOOL_MODE_NAMES: Array[String] = ["Dig", "Raise", "Level", "Lamp"]
+## Pennello continuo (D-082): vero finche il tasto del tool e premuto.
+var tool_held := false
+var pack: SoilPack
+var brush_radius_bonus_m := 0.0
+var tool_range_bonus_m := 0.0
+var _preview: BrushPreview
 ## Punto mondo bersaglio del tool, aggiornato a ogni passo fisico.
 var terrain_target := Vector3.ZERO
 ## Compagno macchina (Companion Slice): se presente, rialzare costa un rottame
@@ -138,8 +146,16 @@ func _ready() -> void:
 	if recoil_source != null and recoil_source.has_signal(&"fired"):
 		recoil_source.connect(&"fired", _on_recoil_source_fired)
 
+	if terrain_field != null:
+		pack = SoilPack.new(terrain_field.tuning.pack_capacity_m3, terrain_field.tuning.pack_start_m3)
+		_preview = BrushPreview.new()
+		_preview.name = "BrushPreview"
+		add_child(_preview)
+		_preview.top_level = true
+		floor_max_angle = atan(terrain_field.tuning.max_grade)
+
 	print("PROTOTYPE01_CHARACTER_READY")
-	if terrain_grid != null:
+	if terrain_grid != null or terrain_field != null:
 		_update_terrain_target()
 		print("PROTOTYPE01_TERRAIN_MODE Dig")
 
@@ -183,9 +199,14 @@ func _unhandled_input(event: InputEvent) -> void:
 		if event.is_action_pressed(action):
 			sources[source] = true
 			if not was_held:
-				_pending_actions.append(action)
+				if action == &"terrain_tool" and terrain_field != null:
+					tool_held = true
+				else:
+					_pending_actions.append(action)
 		else:
 			sources.erase(source)
+			if action == &"terrain_tool" and terrain_field != null and sources.is_empty():
+				tool_held = false
 
 
 ## Un rilascio avvenuto in pausa non arriva mai: alla ripresa nessuna azione e
@@ -246,18 +267,27 @@ func _physics_process(delta: float) -> void:
 	_update_hit_flash(delta)
 	_invulnerable_left = maxf(_invulnerable_left - delta, 0.0)
 	_update_terrain_target()
+	if terrain_field != null and tool_held:
+		_apply_brush(delta)
 	_update_motion(delta)
 
 
 ## Sopra una cella Lowered la velocita massima perde la penalita della griglia.
 func _update_terrain_speed_modifier() -> void:
 	speed_multiplier = speed_bonus
+	if terrain_field != null:
+		var planar := Vector3(velocity.x, 0.0, velocity.z)
+		if not planar.is_zero_approx():
+			var g := terrain_field.grade_between(global_position, global_position + planar.normalized() * 0.5)
+			if g > 0.0:
+				speed_multiplier *= lerpf(1.0, 0.5, clampf(g / terrain_field.tuning.max_grade, 0.0, 1.0))
+		return
 	if terrain_grid != null and terrain_grid.cell_state_at(global_position) == TerrainState.CellState.LOWERED:
 		speed_multiplier *= 1.0 - terrain_grid.lowered_speed_penalty()
 
 
 func _use_terrain_tool() -> void:
-	if terrain_grid == null:
+	if terrain_field != null or terrain_grid == null:
 		return
 	_update_terrain_target()
 	if terrain_tool_mode == TerrainState.ToolMode.LAMP:
@@ -285,6 +315,9 @@ func _use_terrain_tool() -> void:
 
 ## DIG -> RAISE -> LAMP -> DIG (LAMP solo se esiste un LampField, D-058).
 func _toggle_terrain_mode() -> void:
+	if terrain_field != null:
+		_toggle_field_mode()
+		return
 	match terrain_tool_mode:
 		TerrainState.ToolMode.DIG:
 			terrain_tool_mode = TerrainState.ToolMode.RAISE
@@ -299,6 +332,9 @@ func _toggle_terrain_mode() -> void:
 
 ## Bersaglio a distanza fissa lungo il forward planare, con anteprima sulla griglia.
 func _update_terrain_target() -> void:
+	if terrain_field != null:
+		_update_field_target()
+		return
 	if terrain_grid == null:
 		return
 	var forward := -global_basis.z
@@ -314,6 +350,117 @@ func _update_terrain_target() -> void:
 		blocked = lamp_field == null or not lamp_field.can_place(terrain_grid.cell_at(terrain_target)) \
 			or not lamp_field.can_afford(terrain_target)
 	terrain_grid.update_preview(terrain_target, terrain_tool_mode, self, blocked)
+
+
+func brush_radius() -> float:
+	return terrain_field.tuning.brush_radius_m + brush_radius_bonus_m
+
+
+## DIG -> RAISE -> LEVEL -> (LAMP se il LampField conosce il rilievo) -> DIG.
+func _toggle_field_mode() -> void:
+	var lamp_ok := lamp_field != null and lamp_field.get("terrain_field") != null
+	match terrain_tool_mode:
+		TerrainField.ToolMode.DIG:
+			terrain_tool_mode = TerrainField.ToolMode.RAISE
+		TerrainField.ToolMode.RAISE:
+			terrain_tool_mode = TerrainField.ToolMode.LEVEL
+		TerrainField.ToolMode.LEVEL:
+			terrain_tool_mode = TerrainField.ToolMode.LAMP if lamp_ok else TerrainField.ToolMode.DIG
+		_:
+			terrain_tool_mode = TerrainField.ToolMode.DIG
+	print("PROTOTYPE01_TERRAIN_MODE %s" % TOOL_MODE_NAMES[terrain_tool_mode])
+	terrain_mode_changed.emit(terrain_tool_mode)
+	_update_terrain_target()
+
+
+func _update_field_target() -> void:
+	var forward := -global_basis.z
+	forward.y = 0.0
+	if forward.is_zero_approx():
+		_preview.hide_ring()
+		return
+	var reach := terrain_field.tuning.tool_range_m + tool_range_bonus_m
+	terrain_target = global_position + forward.normalized() * reach
+	terrain_target.y = terrain_field.height_at(terrain_target)
+	if aim_device == AimDevice.MOUSE:
+		var mouse_point: Variant = _mouse_ground_point()
+		if mouse_point != null:
+			var point: Vector3 = mouse_point
+			var planar := Vector3(point.x - global_position.x, 0.0, point.z - global_position.z)
+			terrain_target = global_position + planar.limit_length(reach * 2.2)
+			terrain_target.y = terrain_field.height_at(terrain_target)
+	_preview.show_ring(terrain_target + Vector3(0.0, 1.0, 0.0), brush_radius(), _preview_color())
+
+
+## Punto del cursore sul piano orizzontale alla quota del terreno sotto il giocatore (null senza camera).
+func _mouse_ground_point() -> Variant:
+	var camera := get_viewport().get_camera_3d()
+	if camera == null:
+		return null
+	var screen := get_viewport().get_mouse_position()
+	var origin := camera.project_ray_origin(screen)
+	var ray := camera.project_ray_normal(screen)
+	if is_zero_approx(ray.y):
+		return null
+	var t := (terrain_field.height_at(global_position) - origin.y) / ray.y
+	if t < 0.0:
+		return null
+	return origin + ray * t
+
+
+## Una pennellata per passo fisico finche il tasto e premuto (spec sezione 3).
+func _apply_brush(delta: float) -> void:
+	if _brush_blocked():
+		terrain_tool_rejected.emit()
+		return
+	var radius := brush_radius()
+	var rate := terrain_field.tuning.sculpt_rate_m_s * delta
+	match terrain_tool_mode:
+		TerrainField.ToolMode.DIG:
+			var volume := terrain_field.player_sculpt(terrain_target, radius, -rate, terrain_tool_mode)
+			pack.give(-volume)
+		TerrainField.ToolMode.RAISE:
+			# Chiede allo zaino la terra della pennellata intera (pi r^2 / 3 * rate); se ne ha meno, alza di meno.
+			var wanted := PI * radius * radius / 3.0 * rate
+			var got := pack.take(wanted)
+			if got > 0.0:
+				terrain_field.player_sculpt(terrain_target, radius, rate * got / wanted, terrain_tool_mode)
+		TerrainField.ToolMode.LEVEL:
+			var volume := terrain_field.player_level(terrain_target, radius, terrain_field.tuning.level_rate * delta)
+			if volume < 0.0:
+				pack.give(-volume)
+			else:
+				pack.take(volume)
+		TerrainField.ToolMode.LAMP:
+			tool_held = false
+			if lamp_field == null or not lamp_field.place_at(terrain_target):
+				terrain_tool_rejected.emit()
+	if _animator != null:
+		_animator.play_dig()
+
+
+func _brush_blocked() -> bool:
+	if terrain_field.is_protected(terrain_target):
+		return true
+	match terrain_tool_mode:
+		TerrainField.ToolMode.RAISE:
+			return pack.is_empty()
+		TerrainField.ToolMode.LAMP:
+			return lamp_field == null or not lamp_field.call(&"can_place", terrain_target) or not lamp_field.can_afford(terrain_target)
+	return false
+
+
+func _preview_color() -> Color:
+	if _brush_blocked():
+		return BrushPreview.INVALID_COLOR
+	match terrain_tool_mode:
+		TerrainField.ToolMode.DIG:
+			return BrushPreview.DIG_COLOR
+		TerrainField.ToolMode.RAISE:
+			return BrushPreview.RAISE_COLOR
+		TerrainField.ToolMode.LEVEL:
+			return BrushPreview.LEVEL_COLOR
+	return BrushPreview.LAMP_COLOR
 
 
 ## Sostituisce il tuning a caldo (preset di feel). Lo stato del dash in corso resta valido.

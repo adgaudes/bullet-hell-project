@@ -24,6 +24,7 @@ var _day_label: Label
 var _day_dial: DayDial
 var _dusk_total := -1.0
 var _tool_label: Label
+var _pack_label: Label
 var _tool_icon: UiIcon
 var _kills_label: Label
 var _day_phase_shown := -1
@@ -119,6 +120,13 @@ func _ready() -> void:
 	_tool_label.add_theme_font_size_override(&"font_size", 18)
 	_tool_label.hide()
 	tool_row.add_child(_tool_label)
+	_pack_label = Label.new()
+	_pack_label.name = "PackLabel"
+	_pack_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_pack_label.theme_type_variation = &"HudLabel"
+	_pack_label.add_theme_font_size_override(&"font_size", 18)
+	_pack_label.hide()
+	tool_row.add_child(_pack_label)
 
 	# Annuncio del boss: scritta sotto la riga superiore e freccia verso la direzione di arrivo.
 	_warning_plate = PanelContainer.new()
@@ -326,7 +334,7 @@ func set_health(health: int, max_health: int) -> void:
 
 ## Modalita del tool: visibile solo in LAMP, con costo e contatore (specifica, sezione 9).
 func set_tool_mode(mode: int, lamps: int, max_lamps: int, cost: int) -> void:
-	if mode != TerrainState.ToolMode.LAMP:
+	if mode != TerrainField.ToolMode.LAMP and mode != TerrainState.ToolMode.LAMP:
 		_tool_label.hide()
 		_tool_icon.hide()
 		return
@@ -334,6 +342,12 @@ func set_tool_mode(mode: int, lamps: int, max_lamps: int, cost: int) -> void:
 	_tool_label.add_theme_color_override(&"font_color", TerrainGrid.LAMP_PREVIEW_COLOR.linear_to_srgb())
 	_tool_label.show()
 	_tool_icon.show()
+
+
+## Zainetto di terra del rilievo continuo: "quanta/capacita m3".
+func set_pack(amount: float, capacity: float) -> void:
+	_pack_label.text = "%d/%d m3" % [roundi(amount), roundi(capacity)]
+	_pack_label.show()
 
 
 ## Indicatore sole/luna nella riga superiore: tempo al tramonto di giorno, poi la fase.

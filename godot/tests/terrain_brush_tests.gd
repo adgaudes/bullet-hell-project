@@ -1,0 +1,131 @@
+extends SceneTree
+## Tool del giocatore sul rilievo continuo (spec sezione 3): pennello continuo, modi,
+## zainetto, anteprima a decal, aree protette.
+##   godot_console --headless --path godot --fixed-fps 60 --script res://tests/terrain_brush_tests.gd
+
+const PlayerScene := preload("res://scenes/player/player.tscn")
+
+var _failures := 0
+var _field: TerrainField
+var _player: PlayerCharacter
+
+
+func _initialize() -> void:
+	Engine.physics_ticks_per_second = 60
+	_field = TerrainField.new()
+	_field.size_m = 64.0
+	_field.tuning = TerrainTuning.new()
+	root.add_child(_field)
+	_player = PlayerScene.instantiate()
+	_player.terrain_field = _field
+	root.add_child(_player)
+	_player.global_position = Vector3(0, 0.9, 0)
+	await _frames(3)
+	await _test_mode_cycle()
+	await _test_continuous_dig_fills_pack()
+	await _test_raise_with_empty_pack()
+	await _test_dig_with_full_pack()
+	await _test_level_mode()
+	await _test_protected_is_red()
+	await _frames(2)
+	print("PROTOTYPE01_TESTS %s failures=%d" % ["PASS" if _failures == 0 else "FAIL", _failures])
+	quit(1 if _failures > 0 else 0)
+
+
+func _hold(seconds: float) -> void:
+	_player.tool_held = true
+	for i in int(seconds * 60.0):
+		await physics_frame
+	_player.tool_held = false
+	await physics_frame
+
+
+func _test_mode_cycle() -> void:
+	print("mode cycle")
+	_check(_player.terrain_tool_mode == TerrainField.ToolMode.DIG, "parte in Scava")
+	_player._toggle_terrain_mode()
+	_check(_player.terrain_tool_mode == TerrainField.ToolMode.RAISE, "poi Alza")
+	_player._toggle_terrain_mode()
+	_check(_player.terrain_tool_mode == TerrainField.ToolMode.LEVEL, "poi Livella")
+	_player._toggle_terrain_mode()
+	_check(_player.terrain_tool_mode == TerrainField.ToolMode.DIG, "senza LampField torna a Scava")
+	await _frames(1)
+
+
+func _test_continuous_dig_fills_pack() -> void:
+	print("continuous dig")
+	var target := _player.terrain_target
+	var before := _player.pack.amount
+	await _hold(0.5)
+	_check(_field.height_at(target) < -0.3, "mezzo secondo di scavo abbassa il centro (%.2f)" % _field.height_at(target))
+	_check(_player.pack.amount > before + 1.0, "lo zaino si riempie con la terra scavata (%.1f -> %.1f)" % [before, _player.pack.amount])
+	_check(_player._preview.last_color == BrushPreview.DIG_COLOR, "anello ciano in Scava")
+
+
+func _test_raise_with_empty_pack() -> void:
+	print("raise with empty pack")
+	_player.pack.take(999.0)
+	_player._toggle_terrain_mode()  # RAISE
+	var target := _player.terrain_target
+	var h0 := _field.height_at(target)
+	var rejected := [0]
+	var handler := func() -> void: rejected[0] += 1
+	_player.terrain_tool_rejected.connect(handler)
+	await _hold(0.3)
+	_player.terrain_tool_rejected.disconnect(handler)
+	_check(absf(_field.height_at(target) - h0) < 0.001, "a zaino vuoto alzare non cambia il terreno")
+	_check(_player._preview.last_color == BrushPreview.INVALID_COLOR, "anello rosso a zaino vuoto")
+	_check(rejected[0] > 0, "emesso terrain_tool_rejected")
+	_player.pack.give(10.0)
+	await _hold(0.3)
+	_check(_field.height_at(target) > h0 + 0.2, "con terra nello zaino alza")
+	_check(_player.pack.amount < 10.0, "alzare consuma lo zaino (%.1f)" % _player.pack.amount)
+
+
+func _test_dig_with_full_pack() -> void:
+	print("dig with full pack")
+	_player._toggle_terrain_mode()  # LEVEL
+	_player._toggle_terrain_mode()  # DIG
+	_player.pack.give(999.0)
+	var target := _player.terrain_target
+	var h0 := _field.height_at(target)
+	await _hold(0.3)
+	_check(_field.height_at(target) < h0 - 0.1, "a zaino pieno si scava lo stesso")
+	_check(absf(_player.pack.fill_ratio() - 1.0) < 0.001, "lo zaino resta pieno: la terra in eccesso si perde")
+
+
+func _test_level_mode() -> void:
+	print("level mode")
+	_player._toggle_terrain_mode()  # RAISE
+	_player._toggle_terrain_mode()  # LEVEL
+	var target := _player.terrain_target
+	_field.sculpt(target + Vector3(1.0, 0, 0), 1.5, 0.8)
+	var bump := _field.height_at(target + Vector3(1.0, 0, 0))
+	await _hold(0.6)
+	_check(_field.height_at(target + Vector3(1.0, 0, 0)) < bump - 0.3, "livella abbassa il cumulo accanto al centro")
+	_check(_player._preview.last_color == BrushPreview.LEVEL_COLOR, "anello bianco in Livella")
+
+
+func _test_protected_is_red() -> void:
+	print("protected")
+	_player._toggle_terrain_mode()  # DIG
+	_field.set_protected(_player.terrain_target, 3.0, true)
+	await _frames(2)
+	_check(_player._preview.last_color == BrushPreview.INVALID_COLOR, "anello rosso su area protetta")
+	var h0 := _field.height_at(_player.terrain_target)
+	await _hold(0.2)
+	_check(absf(_field.height_at(_player.terrain_target) - h0) < 0.001, "non scava sull'area protetta")
+	_field.set_protected(_player.terrain_target, 3.0, false)
+
+
+func _check(condition: bool, label: String) -> void:
+	if condition:
+		print("  ok   %s" % label)
+	else:
+		_failures += 1
+		print("  FAIL %s" % label)
+
+
+func _frames(n: int) -> void:
+	for i in n:
+		await physics_frame
