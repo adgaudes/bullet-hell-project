@@ -118,6 +118,15 @@ func current_hopper_share() -> float:
 	return tuning.hopper_share_max * t
 
 
+## Fattore di velocita in salita (spec tappa A, 2.5): 1 in piano e in discesa, giu fino a
+## `uphill_min_speed` quando la pendenza raggiunge la massima del nemico (i saltatori,
+## con 1,2, rallentano meno dei rottamatori sulla stessa salita).
+func uphill_speed_scale(enemy: Enemy, grade: float) -> float:
+	if grade <= 0.0:
+		return 1.0
+	return lerpf(1.0, tuning.uphill_min_speed, clampf(grade / enemy.max_grade, 0.0, 1.0))
+
+
 ## Crea un nemico in un punto preciso (test, eventi scriptati). [param runner]:
 ## rottamatore veloce, con meno vita.
 func spawn_at(world: Vector3, runner := false) -> Enemy:
@@ -286,9 +295,7 @@ func _move_enemies(delta: float) -> void:
 		if terrain_field != null:
 			# In salita si rallenta in proporzione alla pendenza davanti, fino a uphill_min_speed.
 			var ahead := pos + direction.normalized() * 0.6 if not direction.is_zero_approx() else pos
-			var g := terrain_field.grade_between(pos, ahead)
-			if g > 0.0:
-				speed *= lerpf(1.0, tuning.uphill_min_speed, clampf(g / enemy.max_grade, 0.0, 1.0))
+			speed *= uphill_speed_scale(enemy, terrain_field.grade_between(pos, ahead))
 		elif grid != null and not enemy.ignores_lowered and grid.cell_state_at(pos) == TerrainState.CellState.LOWERED:
 			speed *= 1.0 - penalty
 		var desired := direction.limit_length(1.0) * speed

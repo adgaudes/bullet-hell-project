@@ -210,6 +210,33 @@ func veins() -> Array[Dictionary]:
 	return _veins
 
 
+## Vene con il centro nel rettangolo XZ: azzerate senza rottami (il treno spazza i
+## vagoni). Ritorna quante ne ha azzerate.
+func exhaust_veins_in_rect(rect: Rect2) -> int:
+	var count := 0
+	for vein in _veins:
+		if vein.scrap_left > 0 and rect.has_point(Vector2(vein.center.x, vein.center.z)):
+			vein.scrap_left = 0
+			vein.dug_m3 = 0.0
+			if terrain_field != null:
+				terrain_field.tint(vein.center, vein.radius, Color.WHITE, 1.0)
+			count += 1
+	return count
+
+
+## Rimuove fino a [param max_count] rottami con la base nel rettangolo XZ; ritorna quanti.
+func take_in_rect(rect: Rect2, max_count: int) -> int:
+	var taken := 0
+	for i in range(_scraps.size() - 1, -1, -1):
+		if taken >= max_count:
+			break
+		var p := _scraps[i].global_position
+		if rect.has_point(Vector2(p.x, p.z)):
+			_remove_at(i)
+			taken += 1
+	return taken
+
+
 ## Rottami ancora sepolti nella vena centrata entro 0,5 m da [param center]; 0 se non c'e.
 func vein_scrap_left(center: Vector3) -> int:
 	for vein in _veins:

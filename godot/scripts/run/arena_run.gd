@@ -237,7 +237,7 @@ func _refresh_marker_targets() -> void:
 			if stroke.height <= 0.0:
 				continue
 			var center := Vector3(stroke.center.x, 0.0, stroke.center.y)
-			var is_deposit: bool = stroke.kind == &"deposit"
+			var is_deposit: bool = stroke.scrap > 0
 			if is_deposit and _scrap_field() != null:
 				# Un deposito vale finche la sua vena ha rottami, anche se il cumulo e spianato.
 				if _scrap_field().vein_scrap_left(center) <= 0:

@@ -1,20 +1,19 @@
 extends SceneTree
-## Test del livello 2, la ferrovia (D-066): pianta rettangolare, fascia dei binari
-## libera, vagoni sui binari, cortile a cavallo della linea. Eseguire con:
+## Test del livello 2, la ferrovia, sul rilievo continuo (tappa B): pianta rettangolare,
+## fascia dei binari piatta e libera, cortile a cavallo, vagoni come cumuli con vena,
+## depositi e trincee fuori fascia, saltatori per pendenza. Eseguire con:
 ##   godot_console --headless --path godot --fixed-fps 60 --script res://tests/railway_tests.gd
 
 const RunScene := preload("res://scenes/main/railway_run.tscn")
-const RAISED := TerrainState.CellState.RAISED
-const LOWERED := TerrainState.CellState.LOWERED
-const NORMAL := TerrainState.CellState.NORMAL
 
 var _failures := 0
 var _scene: Node3D
 var _district: RailwayDistrict
-var _grid: TerrainGrid
+var _field: TerrainField
 var _path: PathField
 var _player: PlayerCharacter
 var _director: EnemyDirector
+var _scrap: ScrapField
 var _run: ArenaRun
 
 
@@ -23,10 +22,11 @@ func _initialize() -> void:
 	_scene = RunScene.instantiate()
 	root.add_child(_scene)
 	_district = _scene.get_node(^"District")
-	_grid = _scene.get_node(^"TerrainGrid")
+	_field = _scene.get_node(^"TerrainField")
 	_path = _scene.get_node(^"PathField")
 	_player = _scene.get_node(^"Player")
 	_director = _scene.get_node(^"EnemyDirector")
+	_scrap = _scene.get_node(^"ScrapField")
 	_run = _scene.get_node(^"Run")
 	_director.spawning = false
 	await _frames(5)
@@ -60,138 +60,116 @@ func _frames(n: int) -> void:
 		await physics_frame
 
 
-func _cell_world(cell: Vector2i) -> Vector3:
-	var p := _grid.to_global(_grid.cell_local_position(cell, NORMAL))
-	return Vector3(p.x, 0.0, p.z)
+func _strokes(kind: StringName) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	for s: Dictionary in _district.terrain_strokes:
+		if s.kind == kind:
+			out.append(s)
+	return out
 
 
 func _test_scale() -> void:
 	print("scale")
 	_check(_district.half_x() > _district.half_z() * 2.0, "corridoio lungo in X (%.0f x %.0f m)" % [_district.half_x() * 2.0, _district.half_z() * 2.0])
-	_check(_grid.state.width == 51 and _grid.state.height == 133, "griglia 51 x 133 (%d x %d)" % [_grid.state.width, _grid.state.height])
-	var grid_x := _grid.state.height * _grid.cell_size_m()
-	var grid_z := _grid.state.width * _grid.cell_size_m()
-	_check(absf(grid_x - _district.half_x() * 2.0) <= 2.4 and absf(grid_z - _district.half_z() * 2.0) <= 2.4,
-		"la griglia copre l'arena (%.1f x %.1f m)" % [grid_x, grid_z])
-	_check(is_equal_approx(_path.half_extent, _district.half_x()) and is_equal_approx(_path.half_z(), _district.half_z()),
-		"campo di percorso esteso all'arena rettangolare")
+	_check((_field.half_extents() - _district.half_extents()).length() < 0.3, "il rilievo copre l'arena a meno di mezzo vertice (%s)" % _field.half_extents())
+	_check(_field.resolution_x == 639 and _field.resolution_z == 246, "campo 639 x 246 vertici (%d x %d)" % [_field.resolution_x, _field.resolution_z])
+	var collision: TerrainCollision = _field.get_node(^"Collision")
+	_check(collision.chunk_count() == 21 * 9, "chunk di collisione 21 x 9 (%d)" % collision.chunk_count())
+	_check(is_equal_approx(_path.half_extent, _district.half_x()) and is_equal_approx(_path.half_z(), _district.half_z()), "campo di percorso esteso all'arena rettangolare")
 	_check(_path.world_columns == 266 and _path.world_rows == 102, "campo di 266 x 102 celle (%d x %d)" % [_path.world_columns, _path.world_rows])
-	var cell_world := _cell_world(Vector2i(25, 66))
-	_check(Vector2(cell_world.x, cell_world.z).is_zero_approx(), "cella (25,66) all'origine")
 	_check(_district.get_node_or_null(^"Tracks") != null, "binari costruiti")
-	# F-08 (review del 10 ottobre 2026): corone e tondini delle rovine anche nel livello 2.
-	_check(_district.get_node_or_null(^"RuinCrowns") != null and _district.get_node_or_null(^"RuinRebar") != null,
-		"corone e tondini delle rovine costruiti")
-	_check(int(_district.stats.get("crown_pieces", 0)) > 0 and int(_district.stats.get("rebar", 0)) > 0,
-		"corone (%d) e tondini (%d) presenti" % [_district.stats.get("crown_pieces", 0), _district.stats.get("rebar", 0)])
+	_check(_district.get_node_or_null(^"RuinCrowns") != null and _district.get_node_or_null(^"RuinRebar") != null, "corone e tondini delle rovine costruiti")
 
 
-## La fascia dei binari e Normal ovunque, salvo i vagoni; e percorribile e libera da ostacoli.
+## La fascia e piatta a quota zero nella base, senza bump, e libera da ostacoli statici.
 func _test_track_strip() -> void:
 	print("track strip")
-	var cells := RailwayDistrict.track_cells(_grid)
-	_check(cells.size() == 133 * 3, "fascia di %d celle (3 righe per 133)" % cells.size())
-	var wagon_cells := {}
-	for f: Dictionary in _district.terrain_features:
-		if f.kind != &"wagon":
-			continue
-		var center := _grid.cell_at(Vector3(f.center.x, 0.0, f.center.y))
-		for offset: Vector2i in f.offsets:
-			wagon_cells[center + offset] = true
-	var normal := true
-	var on_strip := true
-	for cell in cells:
-		if wagon_cells.has(cell):
-			continue
-		normal = normal and _grid.state.get_state(cell) == NORMAL
-		on_strip = on_strip and RailwayDistrict.is_on_tracks(Vector2(_cell_world(cell).x, _cell_world(cell).z))
-	_check(normal, "fuori dai vagoni la fascia e tutta Normal")
-	_check(on_strip, "ogni cella della fascia sta entro %.1f m da z = 0" % RailwayDistrict.track_half_width())
-	_check(not RailwayDistrict.is_on_tracks(Vector2(0.0, 4.0)) and RailwayDistrict.is_on_tracks(Vector2(100.0, -3.5)),
-		"is_on_tracks distingue dentro e fuori la fascia")
-	# Nessun ostacolo statico (rovine, oggetti) sulla fascia: solo celle della griglia.
+	var rect := _district.track_rect()
+	_check(is_equal_approx(rect.position.y, -RailwayDistrict.TRACK_HALF_WIDTH) and is_equal_approx(rect.size.y, RailwayDistrict.TRACK_HALF_WIDTH * 2.0) and is_equal_approx(rect.size.x, _district.half_x() * 2.0),
+		"track_rect copre tutta la lunghezza, 7,2 m di larghezza")
+	_check(not RailwayDistrict.is_on_tracks(Vector2(0.0, 4.0)) and RailwayDistrict.is_on_tracks(Vector2(100.0, -3.5)), "is_on_tracks distingue dentro e fuori la fascia")
+	var flat := true
+	var no_bump := true
+	var x := -_district.half_x() + 2.0
+	while x < _district.half_x() - 2.0:
+		for z: float in [-3.0, 0.0, 3.0]:
+			var p := Vector3(x, 0.0, z)
+			if absf(_field.base_height_at(p)) > 0.05:
+				flat = false
+			# I vagoni sporgono dalla base: fuori dai loro cumuli nessun bump.
+			var near_wagon := false
+			for w in _strokes(&"wagon"):
+				if absf(w.center.x - x) < w.radius + 0.5:
+					near_wagon = true
+			if not near_wagon and _field.delta_at(p) > 0.05:
+				no_bump = false
+		x += 1.5
+	_check(flat, "la base della fascia e a quota zero per tutta la lunghezza")
+	_check(no_bump, "fuori dai vagoni la fascia non sporge dalla base")
+	_check(absf(_field.base_height_at(Vector3(40.0, 0.0, 6.5))) < 1.3 and absf(_field.base_height_at(Vector3(40.0, 0.0, 20.0))) < 2.5, "oltre il raccordo il rilievo riprende")
 	var space := _district.get_world_3d().direct_space_state
 	var shape := BoxShape3D.new()
-	shape.size = Vector3(_district.half_x() * 2.0 - 2.0, 2.0, RailwayDistrict.track_half_width() * 2.0 - 0.2)
+	shape.size = Vector3(_district.half_x() * 2.0 - 2.0, 2.0, RailwayDistrict.TRACK_HALF_WIDTH * 2.0 - 0.2)
 	var query := PhysicsShapeQueryParameters3D.new()
 	query.shape = shape
-	# Da 0,2 m in su: il piano del suolo (fino a y = 0) non conta.
 	query.transform = Transform3D(Basis(), Vector3(0.0, 1.2, 0.0))
 	query.collision_mask = 1
 	var foreign := 0
 	for hit in space.intersect_shape(query, 128):
-		var collider: Node = hit.collider
-		if collider.get_parent() != _grid:
+		if hit.collider != _field.collision_body():
 			foreign += 1
 	_check(foreign == 0, "nessun ostacolo statico sulla fascia dei binari (%d)" % foreign)
 
 
 func _test_start_courtyard_straddles_tracks() -> void:
 	print("start courtyard")
-	var start: Dictionary = {}
-	for f: Dictionary in _district.terrain_features:
-		if f.kind == &"start":
-			start = f
-	_check(not start.is_empty() and start.center == Vector2.ZERO, "cortile di partenza all'origine")
+	var start := _strokes(&"start")
+	_check(start.size() == 1 and start[0].center == Vector2.ZERO, "cortile di partenza all'origine")
 	if start.is_empty():
 		return
 	var on_strip := 0
-	for offset: Vector2i in start.offsets:
-		if absi(offset.x) <= RailwayDistrict.TRACK_HALF_ROWS:
+	for p: Vector2 in start[0].points:
+		if absf(p.y) <= RailwayDistrict.TRACK_HALF_WIDTH + 1.0:
 			on_strip += 1
-	_check(on_strip == 0, "nessuna cella del cortile sulla fascia dei binari")
-	_check(start.offsets.size() == 28 - 4, "anello con i varchi est e ovest larghi quanto la fascia (%d celle)" % start.offsets.size())
-	var center := _grid.cell_at(Vector3.ZERO)
-	var r: int = start.radius
-	_check(_grid.state.get_state(center + Vector2i(r, 0)) == NORMAL and _grid.state.get_state(center + Vector2i(-r, 0)) == NORMAL,
-		"i varchi nord e sud restano aperti")
-	_check(_grid.state.get_state(center + Vector2i(r, 1)) == RAISED and _grid.state.get_state(center + Vector2i(1, r)) == NORMAL,
-		"muro a nord in piedi, varco est aperto anche sulla riga del binario")
+	_check(on_strip == 0, "nessuna pennellata dell'anello sulla fascia")
+	var r: float = start[0].radius
+	# A nord e a sud ci sono i varchi: l'argine si sonda a 30 gradi dal varco.
+	var beside := Vector2(sin(PI / 6.0), cos(PI / 6.0)) * r
+	_check(_field.delta_at(Vector3(beside.x, 0.0, -beside.y)) > 0.9 and _field.delta_at(Vector3(beside.x, 0.0, beside.y)) > 0.9, "argini a nord e a sud in piedi")
+	_check(_field.delta_at(Vector3(r, 0.0, 0.0)) < 0.2 and _field.delta_at(Vector3(-r, 0.0, 2.4)) < 0.2, "varchi est e ovest aperti sulla fascia")
 
 
 func _test_wagons() -> void:
 	print("wagons")
-	var wagons := _district.terrain_features.filter(func(f: Dictionary) -> bool: return f.kind == &"wagon")
+	var wagons := _strokes(&"wagon")
 	_check(wagons.size() >= 3, "almeno tre vagoni sui binari (%d)" % wagons.size())
-	var on_tracks := true
-	var raised := true
-	var far := true
-	var spaced := true
-	var tinted := true
+	var ok := true
 	for i in wagons.size():
-		var f: Dictionary = wagons[i]
-		on_tracks = on_tracks and RailwayDistrict.is_on_tracks(f.center) and f.offsets.size() == 6
-		far = far and absf(f.center.x) >= _district.start_clear_radius + 6.0
-		var center := _grid.cell_at(Vector3(f.center.x, 0.0, f.center.y))
-		for offset: Vector2i in f.offsets:
-			raised = raised and _grid.state.get_state(center + offset) == RAISED
-			on_tracks = on_tracks and absi(offset.x) <= RailwayDistrict.TRACK_HALF_ROWS
-		tinted = tinted and f.has("tint")
+		var w: Dictionary = wagons[i]
+		ok = ok and RailwayDistrict.is_on_tracks(w.center) and w.scrap == RailwayDistrict.WAGON_SCRAP and w.tint == RailwayDistrict.WAGON_TINT
+		ok = ok and absf(w.center.x) >= _district.start_clear_radius + 6.0
+		ok = ok and _field.delta_at(Vector3(w.center.x, 0.0, w.center.y)) > 1.2
+		ok = ok and _scrap.vein_scrap_left(Vector3(w.center.x, 0.0, w.center.y)) == RailwayDistrict.WAGON_SCRAP
 		for j in i:
-			spaced = spaced and absf(wagons[j].center.x - f.center.x) >= _district.wagon_spacing - 0.01
-	_check(on_tracks, "ogni vagone occupa 6 celle della fascia")
-	_check(raised, "le celle dei vagoni sono Raised")
-	_check(far, "vagoni lontani dalla partenza")
-	_check(spaced, "vagoni ad almeno %.0f m l'uno dall'altro" % _district.wagon_spacing)
-	_check(tinted, "i vagoni hanno il colore della ruggine")
+			ok = ok and absf(wagons[j].center.x - w.center.x) >= _district.wagon_spacing - 0.01
+	_check(ok, "ogni vagone e un cumulo sulla fascia con vena da %d, lontano dalla partenza e dagli altri" % RailwayDistrict.WAGON_SCRAP)
 
 
-## Cortili, depositi normali e trincee stanno fuori dalla fascia; le trincee sono parallele ai binari.
 func _test_features_off_tracks() -> void:
 	print("features")
 	var kinds := {}
 	var off := true
 	var parallel := true
-	for f: Dictionary in _district.terrain_features:
-		kinds[f.kind] = kinds.get(f.kind, 0) + 1
-		if f.kind == &"wagon" or f.kind == &"start":
+	for s: Dictionary in _district.terrain_strokes:
+		kinds[s.kind] = kinds.get(s.kind, 0) + 1
+		if s.kind == &"wagon" or s.kind == &"start":
 			continue
-		var center := _grid.cell_at(Vector3(f.center.x, 0.0, f.center.y))
-		for offset: Vector2i in f.offsets:
-			var p := _cell_world(center + offset)
-			off = off and not RailwayDistrict.is_on_tracks(Vector2(p.x, p.z))
-			if f.kind == &"trench":
-				parallel = parallel and offset.x == 0
+		for p: Vector2 in s.points:
+			off = off and not RailwayDistrict.is_on_tracks(p)
+		if s.kind == &"trench":
+			var a: Vector2 = s.points[0]
+			var b: Vector2 = s.points[s.points.size() - 1]
+			parallel = parallel and absf(a.y - b.y) < 0.01
 	_check(kinds.get(&"deposit", 0) >= 4, "almeno quattro depositi fuori dai binari (%d)" % kinds.get(&"deposit", 0))
 	_check(kinds.get(&"trench", 0) >= 2, "almeno due trincee (%d)" % kinds.get(&"trench", 0))
 	var courtyards := 0
@@ -222,7 +200,7 @@ func _test_blocks_inside_and_off_tracks() -> void:
 				size = ((part as CollisionShape3D).shape as BoxShape3D).size
 		low = low and size.y > 0.0 and size.y <= 4.5
 		inside = inside and absf(body.position.x) + size.x * 0.5 <= ex and absf(body.position.z) + size.z * 0.5 <= ez
-		off = off and absf(body.position.z) - size.z * 0.5 >= RailwayDistrict.track_half_width()
+		off = off and absf(body.position.z) - size.z * 0.5 >= RailwayDistrict.TRACK_HALF_WIDTH
 	_check(blocks >= 20, "almeno 20 rovine basse (%d)" % blocks)
 	_check(low, "nessuna rovina interna piu alta di 4,5 m")
 	_check(inside, "tutte le rovine dentro il rettangolo giocabile")
@@ -231,18 +209,16 @@ func _test_blocks_inside_and_off_tracks() -> void:
 
 func _test_determinism() -> void:
 	print("determinism")
-	var before := _district.terrain_features.duplicate(true)
+	var before := _district.terrain_strokes.duplicate(true)
 	var stats_before := _district.stats.duplicate()
 	_district.rebuild()
-	_check(_district.terrain_features == before, "stessi punti di interesse dopo la ricostruzione")
+	_check(_district.terrain_strokes == before, "stesse pennellate dopo la ricostruzione")
 	_check(_district.stats == stats_before, "stesse statistiche dopo la ricostruzione %s" % [_district.stats])
 
 
-## Lungo il corridoio il campo segue il giocatore e i nemici trovano la strada;
-## al bordo stretto la comparsa resta dentro l'arena.
 func _test_spawn_and_path_in_corridor() -> void:
 	print("corridor")
-	_player.global_position = Vector3(100.0, 0.88, 0.0)
+	_player.global_position = Vector3(100.0, _field.height_at(Vector3(100.0, 0.0, 0.0)) + 0.88, 0.0)
 	_player.velocity = Vector3.ZERO
 	await _frames(4)
 	_check(_path.is_inside(_path.cell_of(_player.global_position)), "finestra ricentrata a 100 m lungo i binari")
@@ -259,7 +235,7 @@ func _test_spawn_and_path_in_corridor() -> void:
 			reachable += 1
 	_check(inside, "punti di comparsa dentro il rettangolo")
 	_check(reachable >= 15, "quasi tutti i punti di comparsa raggiungono il giocatore (%d/20)" % reachable)
-	_player.global_position = Vector3(100.0, 0.88, 55.0)
+	_player.global_position = Vector3(100.0, _field.height_at(Vector3(100.0, 0.0, 55.0)) + 0.88, 55.0)
 	await _frames(4)
 	var clamped := true
 	for i in 20:
@@ -279,20 +255,25 @@ func _test_markers_include_wagons() -> void:
 	var deposits := markers.filter(func(m: Dictionary) -> bool: return m.text == "ROTTAMI")
 	_check(deposits.size() == 2, "due depositi indicati (%d)" % deposits.size())
 	_check(hud.marker_count() == markers.size(), "l'HUD mostra gli stessi indicatori (%d)" % hud.marker_count())
-	# Il vagone piu vicino alla partenza e fra i candidati: se e il piu vicino in assoluto, e indicato.
 	var nearest := INF
 	var nearest_kind: StringName = &""
-	for f: Dictionary in _district.terrain_features:
-		var marker: Vector2 = f.marker
-		if (f.kind == &"deposit" or f.kind == &"wagon") and marker.length() >= ArenaRun.MARKER_MIN_DISTANCE and marker.length() < nearest:
+	for s: Dictionary in _district.terrain_strokes:
+		var marker: Vector2 = s.marker
+		if s.scrap > 0 and marker.length() >= ArenaRun.MARKER_MIN_DISTANCE and marker.length() < nearest:
 			nearest = marker.length()
-			nearest_kind = f.kind
+			nearest_kind = s.kind
 	var first: Dictionary = deposits[0] if not deposits.is_empty() else {}
 	_check(not first.is_empty() and absf(first.distance - nearest) < 0.1, "il primo indicato e il piu vicino (%s a %.0f m)" % [nearest_kind, nearest])
+	# Vena azzerata: il marker del vagone sparisce.
+	var wagon: Dictionary = _strokes(&"wagon")[0]
+	_scrap.exhaust_veins_in_rect(Rect2(wagon.center - Vector2(4.0, 4.0), Vector2(8.0, 8.0)))
+	await _frames(70)
+	var left := _run.current_markers().filter(func(m: Dictionary) -> bool: return m.text == "ROTTAMI" and absf(m.distance - wagon.center.length()) < 0.5)
+	_check(_scrap.vein_scrap_left(Vector3(wagon.center.x, 0.0, wagon.center.y)) == 0 and left.is_empty(), "a vena azzerata il vagone non e piu indicato")
 
 
-## Saltatori (D-066): dal tuning del livello 2, con meno vita, di un altro colore,
-## non rallentati dai fossati; nel livello 1 non esistono.
+## Saltatori (D-066, tappa B): dal tuning del livello 2, con meno vita e un altro colore,
+## pendenza massima 1,2 e rallentamento in salita minore dei rottamatori.
 func _test_hoppers() -> void:
 	print("hoppers")
 	var tuning := _director.tuning
@@ -303,28 +284,14 @@ func _test_hoppers() -> void:
 	_director.elapsed = tuning.hopper_start_seconds + tuning.hopper_ramp_seconds * 3.0
 	_check(is_equal_approx(_director.current_hopper_share(), tuning.hopper_share_max), "a rampa finita la quota massima (%.0f%%)" % (tuning.hopper_share_max * 100.0))
 	_director.elapsed = elapsed
-	# Un fossato di 6 celle lungo i binari, a sud della fascia: un rottamatore e un saltatore lo attraversano.
-	var center := _grid.cell_at(Vector3.ZERO)
-	var cells: Array[Vector2i] = []
-	for k in range(-3, 3):
-		cells.append(Vector2i(center.x - 5, center.y + 12 + k))
-	_grid.set_cell_states(cells, LOWERED)
-	_player.global_position = Vector3(0.0, 0.88, 12.0)
-	_player.velocity = Vector3.ZERO
-	await _frames(3)
-	var walker := _director.spawn_at(_cell_world(Vector2i(center.x - 5, center.y + 12)))
-	var hopper := _director.spawn_kind(_cell_world(Vector2i(center.x - 5, center.y + 13)), &"hopper")
-	_check(hopper.kind == &"hopper" and hopper.ignores_lowered and not walker.ignores_lowered, "il saltatore ignora le celle Lowered")
+	var walker := _director.spawn_at(Vector3(-12.0, 0.0, 12.0))
+	var hopper := _director.spawn_kind(Vector3(-12.0, 0.0, 14.0), &"hopper")
+	_check(hopper.kind == &"hopper" and is_equal_approx(hopper.max_grade, 1.2) and is_equal_approx(walker.max_grade, 0.8), "il saltatore sale fino a 1,2 m/m")
 	_check(hopper.health == maxi(ceili(walker.health * tuning.hopper_health_share), 1), "meno vita (%d contro %d)" % [hopper.health, walker.health])
 	_check(hopper.paint_material() != walker.paint_material(), "e di un altro colore")
-	await _frames(40)
-	var walker_speed := Vector2(walker.velocity.x, walker.velocity.z).length()
-	var hopper_speed := Vector2(hopper.velocity.x, hopper.velocity.z).length()
-	_check(_grid.cell_state_at(walker.global_position) == LOWERED and _grid.cell_state_at(hopper.global_position) == LOWERED,
-		"entrambi ancora nel fossato")
-	_check(absf(walker_speed - tuning.enemy_speed * (1.0 - _grid.lowered_speed_penalty())) < 0.4, "il rottamatore nel fossato va a %.1f m/s" % walker_speed)
-	_check(absf(hopper_speed - tuning.enemy_speed) < 0.4, "il saltatore nel fossato va a %.1f m/s, piena velocita" % hopper_speed)
+	_check(is_equal_approx(_director.uphill_speed_scale(walker, 0.8), tuning.uphill_min_speed), "il rottamatore a 0,8 m/m va al minimo")
+	_check(_director.uphill_speed_scale(hopper, 0.8) > _director.uphill_speed_scale(walker, 0.8) + 0.1, "il saltatore sulla stessa salita va piu forte")
+	_check(is_equal_approx(_director.uphill_speed_scale(hopper, -0.5), 1.0), "in discesa velocita piena")
 	for enemy: Enemy in [walker, hopper]:
 		enemy.queue_free()
 	_director.enemies.clear()
-	_grid.set_cell_states(cells, NORMAL)

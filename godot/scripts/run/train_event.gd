@@ -38,6 +38,7 @@ const EARTH_COLOR := Color(0.44, 0.33, 0.21)
 const DIRECTION_NAMES: Dictionary[int, String] = {-1: "EST", 1: "OVEST"}
 
 @export var grid: TerrainGrid
+@export var terrain_field: TerrainField
 @export var district: RailwayDistrict
 @export var player: PlayerCharacter
 @export var companion: Companion
@@ -200,7 +201,7 @@ func _sweep_cells() -> void:
 	var center_row := grid.cell_at(Vector3.ZERO).x
 	while _swept_column != column:
 		_swept_column += heading
-		for dx in range(-RailwayDistrict.TRACK_HALF_ROWS, RailwayDistrict.TRACK_HALF_ROWS + 1):
+		for dx in range(-1, 2):  # tre righe di celle attorno a z = 0 (ponte fino al Task 4)
 			var cell := Vector2i(center_row + dx, _swept_column)
 			if not grid.state.is_valid(cell):
 				continue

@@ -161,6 +161,17 @@ func knock_down_near(world: Vector3, radius: float) -> int:
 	return hit_cells.size() + hit_posts
 
 
+## Abbatte i lampioni con la base nel rettangolo XZ (il treno); ritorna quanti.
+func knock_down_in_rect(rect: Rect2) -> int:
+	var hit := 0
+	for i in range(_posts.size() - 1, -1, -1):
+		var p: Vector3 = _posts[i].position
+		if rect.has_point(Vector2(p.x, p.z)):
+			_remove_post(i, &"demolisher")
+			hit += 1
+	return hit
+
+
 ## Toglie tutti i lampioni (ricostruzioni, test).
 func remove_all(reason: StringName) -> void:
 	for cell in cells():

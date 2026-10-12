@@ -510,8 +510,16 @@ static func line_overlap(step: float, brush: float) -> float:
 
 ## Rilievo di base del quartiere (spec 6.1): rumore a tre ottave attenuato nella piazza,
 ## cumuli di macerie attorno alle rovine e solchi lungo le strade; poi `commit_base()`.
-## Deterministico per `layout_seed`, indipendente dall'ordine di costruzione.
+## Deterministico per `layout_seed`, indipendente dall'ordine di costruzione. In tre passi,
+## cosi la ferrovia puo spianare la fascia dei binari prima di fissare la base.
 func apply_base_relief(field: TerrainField) -> void:
+	_write_base_noise(field)
+	_sculpt_base_details(field)
+	_finish_base(field)
+
+
+## Rumore a tre ottave attenuato (piazza, cortile e, nella ferrovia, fascia dei binari).
+func _write_base_noise(field: TerrainField) -> void:
 	var noise := FastNoiseLite.new()
 	noise.seed = layout_seed
 	noise.frequency = 0.025
@@ -522,6 +530,10 @@ func apply_base_relief(field: TerrainField) -> void:
 			var z := iz * TerrainField.SPACING - half.y
 			var h := noise.get_noise_2d(x, z) * 1.2 + noise.get_noise_2d(x * 2.8, z * 2.8) * 0.5 + noise.get_noise_2d(x * 6.5, z * 6.5) * 0.25
 			field._heights[iz * field.resolution_x + ix] = h * _relief_calm(Vector2(x, z))
+
+
+## Cumuli di macerie attorno alle rovine e solchi lungo le strade.
+func _sculpt_base_details(field: TerrainField) -> void:
 	var rubble := RandomNumberGenerator.new()
 	rubble.seed = layout_seed + 7
 	for block in block_rects():
@@ -538,6 +550,9 @@ func apply_base_relief(field: TerrainField) -> void:
 		for t in int(length / 1.5) + 1:
 			var p: Vector2 = from.lerp(to, minf(t * 1.5 / length, 1.0))
 			field.sculpt(Vector3(p.x, 0, p.y), 2.0, furrow * _relief_calm(p))
+
+
+func _finish_base(field: TerrainField) -> void:
 	field.commit_base()
 	field._mirror_all()
 	# Le quote del rumore sono scritte senza pennello: collisione e percorso vanno avvisati.
@@ -553,7 +568,7 @@ func apply_strokes(field: TerrainField, scrap_field: ScrapField = null) -> void:
 		for p: Vector2 in stroke.points:
 			field.sculpt(Vector3(p.x, 0.0, p.y), stroke.brush, amount)
 		var center := Vector3(stroke.center.x, 0.0, stroke.center.y)
-		if stroke.kind == &"deposit" and scrap_field != null:
+		if stroke.scrap > 0 and scrap_field != null:
 			scrap_field.add_vein(center, stroke.radius, stroke.scrap, field.base_height_at(center))
 	paint_surface(field)
 
