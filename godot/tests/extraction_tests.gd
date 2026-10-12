@@ -1,18 +1,17 @@
 extends SceneTree
-## Suite della piazzola di estrazione (D-076): battuto il boss il livello continua, la
-## piazzola 3x3 attorno al giocatore deve essere piana e tenuta per `hold_seconds`;
-## un muro dentro la rompe e azzera il conto; senza il nodo la vittoria e immediata.
+## Suite della piazzola di estrazione (D-076) sul rilievo continuo (D-085): battuto il
+## boss il livello continua, il disco di 3 m attorno al giocatore deve essere piano e
+## tenuto per `hold_seconds`; un cumulo dentro lo rompe e azzera il conto; senza il nodo
+## la vittoria e immediata.
 ##   godot_console --headless --path godot --script res://tests/extraction_tests.gd
 
 const RunScene := preload("res://scenes/main/arena_run.tscn")
-const NORMAL := TerrainState.CellState.NORMAL
-const RAISED := TerrainState.CellState.RAISED
 
 var _failures := 0
 var _scene: Node3D
 var _run: ArenaRun
 var _pad: ExtractionPad
-var _grid: TerrainGrid
+var _field: TerrainField
 var _player: PlayerCharacter
 var _director: EnemyDirector
 var _weapon: AutoWeapon
@@ -37,7 +36,7 @@ func _open_scene() -> void:
 	root.add_child(_scene)
 	_run = _scene.get_node(^"Run")
 	_pad = _scene.get_node(^"ExtractionPad")
-	_grid = _scene.get_node(^"TerrainGrid")
+	_field = _scene.get_node(^"TerrainField")
 	_player = _scene.get_node(^"Player")
 	_director = _scene.get_node(^"EnemyDirector")
 	_weapon = _scene.get_node(^"PlayerWeapon")
@@ -46,6 +45,9 @@ func _open_scene() -> void:
 	_director.spawning = false
 	await _frames(5)
 	_weapon.set_physics_process(false)
+	# Il disco di partenza e protetto nei primi 10 s: qui si toglie, per scolpire subito.
+	_run._start_protect_left = 0.0
+	_field.set_protected(Vector3.ZERO, _field.tuning.start_protected_radius_m, false)
 
 
 func _close_scene() -> void:
@@ -68,13 +70,8 @@ func _frames(n: int) -> void:
 		await physics_frame
 
 
-func _cell_world(cell: Vector2i) -> Vector3:
-	var p := _grid.to_global(_grid.cell_local_position(cell, NORMAL))
-	return Vector3(p.x, 0.0, p.z)
-
-
 func _place_player(at: Vector3) -> void:
-	_player.global_position = Vector3(at.x, 0.88, at.z)
+	_player.global_position = Vector3(at.x, _field.height_at(at) + 0.88, at.z)
 	_player.velocity = Vector3.ZERO
 	_player.reset_physics_interpolation()
 
@@ -94,19 +91,18 @@ func _kill_boss() -> void:
 func _test_setup() -> void:
 	print("setup")
 	_check(_run.extraction_pad == _pad and not _pad.is_active(), "la piazzola e collegata alla regia e spenta")
-	_check(is_equal_approx(_pad.hold_seconds, _run.tuning.extraction_hold_seconds) and _pad.radius_cells == 1,
-		"tenuta di %.0f s su un 3x3" % _pad.hold_seconds)
+	_check(is_equal_approx(_pad.hold_seconds, _run.tuning.extraction_hold_seconds) and is_equal_approx(_pad.radius_m, 3.0),
+		"tenuta di %.0f s su un disco piano di %.0f m" % [_pad.hold_seconds, _pad.radius_m])
 
 
 func _test_boss_death_calls_extraction() -> void:
 	print("boss death")
 	_pad.hold_seconds = 1.0
-	# Il giocatore al centro del cortile di partenza: 3x3 piano attorno.
-	var center := _grid.cell_at(Vector3.ZERO)
-	_place_player(_cell_world(center))
-	_check(_pad.is_flat(center), "il centro del cortile e un 3x3 piano")
+	# Il giocatore al centro del cortile di partenza: disco piano attorno.
+	_place_player(Vector3.ZERO)
+	_check(_pad.is_flat_at(Vector3.ZERO), "il centro del cortile e un disco piano")
 	var plays := _audio.play_count(&"boss_warning")
-	var witness := _director.spawn_at(_cell_world(center) + Vector3(14.0, 0.0, 0.0))
+	var witness := _director.spawn_at(Vector3(14.0, 0.0, 0.0))
 	witness.speed_scale = 0.0
 	await _kill_boss()
 	_check(not _run.is_over and _run.boss_phase == ArenaRun.BossPhase.EXTRACTION, "boss abbattuto: il livello continua con l'estrazione")
@@ -118,17 +114,18 @@ func _test_boss_death_calls_extraction() -> void:
 
 func _test_pad_broken_and_held() -> void:
 	print("pad")
-	var center := _grid.cell_at(_player.global_position)
 	await _frames(20)
 	var held_before := _pad.held
 	_check(held_before > 0.2, "il conto sale mentre la piazzola e integra (%.2f s)" % held_before)
-	var wall := center + Vector2i(1, 1)
-	_grid.set_cell_states([wall], RAISED)
+	var mound := _player.global_position + Vector3(1.5, 0.0, 0.0)
+	mound.y = 0.0
+	_field.sculpt(mound, 2.0, 0.6)
 	await _frames(2)
-	_check(not _pad.intact and is_zero_approx(_pad.held), "un muro nel 3x3 rompe la piazzola e azzera il conto")
+	_check(not _pad.intact and is_zero_approx(_pad.held), "un cumulo nel disco rompe la piazzola e azzera il conto")
 	_check(_hud.event_warning_text().begins_with("ESTRAZIONE: SPIANA"), "annuncio: %s" % _hud.event_warning_text())
 	_check(not _run.is_over, "il livello non finisce")
-	_grid.set_cell_states([wall], NORMAL)
+	_field.level(mound, 3.0, _field.base_height_at(mound), 1.0)
+	_field.level(mound, 3.0, _field.base_height_at(mound), 1.0)
 	await _frames(2)
 	_check(_pad.intact, "spianato, la piazzola torna integra")
 	var completed := [false]

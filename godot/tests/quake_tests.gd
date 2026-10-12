@@ -1,21 +1,18 @@
 extends SceneTree
-## Suite del terremoto del quartiere (D-075): programmazione, preavviso con faglia vicina
-## al giocatore, scossa che rialza le celle Normal e riempie le trincee risparmiando
-## giocatore e compagno, rottamatori travolti, lampioni caduti, rottami riportati in
-## superficie, intervallo successivo, opzione di avvio.
+## Suite del terremoto del quartiere (D-075) sul rilievo continuo (D-085): programmazione,
+## preavviso con faglia vicina al giocatore, scossa che alza una cresta di pennellate con
+## un solco a fianco risparmiando giocatore, compagno e boss, rottamatori travolti,
+## lampioni caduti, rottami che rotolano, intervallo successivo, opzione di avvio.
 ##   godot_console --headless --path godot --script res://tests/quake_tests.gd
 
 const RunScene := preload("res://scenes/main/arena_run.tscn")
 const RailwayScene := preload("res://scenes/main/railway_run.tscn")
-const NORMAL := TerrainState.CellState.NORMAL
-const RAISED := TerrainState.CellState.RAISED
-const LOWERED := TerrainState.CellState.LOWERED
 
 var _failures := 0
 var _scene: Node3D
 var _run: ArenaRun
 var _quake: QuakeEvent
-var _grid: TerrainGrid
+var _field: TerrainField
 var _player: PlayerCharacter
 var _companion: Companion
 var _director: EnemyDirector
@@ -32,7 +29,7 @@ func _initialize() -> void:
 	root.add_child(_scene)
 	_run = _scene.get_node(^"Run")
 	_quake = _scene.get_node(^"QuakeEvent")
-	_grid = _scene.get_node(^"TerrainGrid")
+	_field = _scene.get_node(^"TerrainField")
 	_player = _scene.get_node(^"Player")
 	_companion = _scene.get_node(^"Companion")
 	_director = _scene.get_node(^"EnemyDirector")
@@ -67,13 +64,8 @@ func _frames(n: int) -> void:
 		await physics_frame
 
 
-func _cell_world(cell: Vector2i) -> Vector3:
-	var p := _grid.to_global(_grid.cell_local_position(cell, NORMAL))
-	return Vector3(p.x, 0.0, p.z)
-
-
 func _place(body: Node3D, at: Vector3, y: float) -> void:
-	body.global_position = Vector3(at.x, y, at.z)
+	body.global_position = Vector3(at.x, _field.height_at(at) + y, at.z)
 	if body is CharacterBody3D:
 		(body as CharacterBody3D).velocity = Vector3.ZERO
 	body.reset_physics_interpolation()
@@ -90,97 +82,100 @@ func _test_setup() -> void:
 func _test_warning() -> void:
 	print("warning")
 	_place(_player, Vector3(0.0, 0.0, 0.0), 0.88)
+	# Il disco di partenza e protetto nei primi 10 s: qui lo si toglie subito, cosi la
+	# faglia ha tutte le sue pennellate.
+	_run._start_protect_left = 0.0
+	_field.set_protected(Vector3.ZERO, _field.tuning.start_protected_radius_m, false)
 	# Faglia deterministica: il seme della run e casuale, quello dell'evento qui no.
 	_quake.rng.seed = 20261010
 	_quake.warning_seconds = 3.0
 	_quake.next_at = _run.elapsed + 3.5
 	await _frames(40)
 	_check(_quake.state == QuakeEvent.State.WARNING, "entro il preavviso il terremoto e annunciato")
-	var cells := _quake.fault_cells.size()
-	_check(cells >= _quake.length_cells - 3 and cells <= _quake.length_cells, "faglia di %d celle" % cells)
+	var points := _quake.fault_points.size()
+	_check(points == _quake.length_cells, "faglia di %d pennellate" % points)
 	var distance := Vector2(_quake.fault_center.x, _quake.fault_center.z).length()
 	_check(distance >= _quake.distance_min - 0.01 and distance <= _quake.distance_max + 0.01,
 		"centro della faglia a %.1f m dal giocatore" % distance)
-	var all_valid := true
-	for cell in _quake.fault_cells:
-		all_valid = all_valid and _grid.state.is_valid(cell)
-	_check(all_valid, "tutte le celle della faglia sono nella griglia")
+	var all_inside := true
+	var spaced := true
+	for i in _quake.fault_points.size():
+		var p: Vector3 = _quake.fault_points[i]
+		all_inside = all_inside and absf(p.x) <= _field.half_extent() and absf(p.z) <= _field.half_extent()
+		if i > 0:
+			spaced = spaced and absf(p.distance_to(_quake.fault_points[i - 1]) - QuakeEvent.FAULT_STEP) < 0.01
+	_check(all_inside and spaced, "pennellate dentro il rilievo, a passo di %.1f m" % QuakeEvent.FAULT_STEP)
 	_check(_hud.is_boss_warning_visible() and _hud.event_warning_text().begins_with("TERREMOTO"), "annuncio a schermo: %s" % _hud.event_warning_text())
 	_check(_audio.play_count(&"quake_rumble") >= 1, "brontolio al preavviso")
 
 
 func _test_shake() -> void:
 	print("shake")
-	var fault := _quake.fault_cells
-	# Sulla faglia: una trincea, un lampione, un rottame, un rottamatore, il giocatore, il compagno.
-	# Il compagno segue il giocatore: tutti e due in fondo alla faglia, lontani dal
-	# rottamatore, cosi il compagno non finisce sulla sua cella (che verrebbe risparmiata).
-	var trench := fault[0]
-	var enemy_cell := fault[2]
-	var lamp_cell := fault[4]
-	var scrap_cell := fault[6]
-	var player_cell := fault[fault.size() - 2]
-	var companion_cell := fault[fault.size() - 1]
-	_grid.set_cell_states([trench], LOWERED)
+	var fault := _quake.fault_points
+	# Sulla faglia: un lampione, un rottame, un rottamatore, il giocatore, il compagno.
+	# Giocatore e compagno in fondo alla faglia, lontani dal rottamatore.
+	var enemy_point: Vector3 = fault[2]
+	var scrap_point: Vector3 = fault[6]
+	var player_point: Vector3 = fault[fault.size() - 2]
+	var companion_point: Vector3 = fault[fault.size() - 1]
+	# Una pennellata su suolo gia piano (la faglia puo attraversare l'argine del cortile).
+	var crest_point: Vector3 = fault[9]
+	for i in range(6, fault.size() - 3):
+		var candidate: Vector3 = fault[i]
+		if absf(_field.delta_at(candidate)) < 0.2 and absf(_field.delta_at(candidate + _quake.fault_side() * QuakeEvent.FAULT_STEP)) < 0.2:
+			crest_point = candidate
+			break
 	_companion.add_capacity(0, 3)
-	_place(_companion, _cell_world(lamp_cell) + Vector3(1.0, 0.0, 1.0), 0.3)
-	if not _lamps.place_at(_cell_world(lamp_cell)):
-		lamp_cell = fault[5]
-		_lamps.place_at(_cell_world(lamp_cell))
+	var lamp_point := Vector3.INF
+	for i in [4, 5, 3]:
+		var candidate: Vector3 = fault[i]
+		_place(_companion, candidate + Vector3(1.0, 0.0, 1.0), 0.3)
+		if _lamps.place_at(candidate):
+			lamp_point = candidate
+			break
 	_check(_lamps.count() == 1, "lampione piazzato sulla faglia")
-	_scrap.spawn_on_ground(_cell_world(scrap_cell))
+	_scrap.spawn_on_ground(scrap_point)
 	var scrap_before := _scrap.count()
 	# Rottamatori fermi (speed_scale 0): il test misura la scossa, non la camminata.
-	var enemy := _director.spawn_at(_cell_world(enemy_cell))
+	var enemy := _director.spawn_at(enemy_point)
 	enemy.speed_scale = 0.0
 	var kills_before := _director.kills
 	var far := _quake.fault_center + Vector3(25.0, 0.0, 0.0)
-	if fault.has(_grid.cell_at(far)):
-		far = _quake.fault_center + Vector3(0.0, 0.0, 25.0)
 	var bystander := _director.spawn_at(far)
 	bystander.speed_scale = 0.0
-	# Celle della faglia che erano Normal (le mura del cortile sono gia Raised).
-	var normal_before: Array[Vector2i] = []
-	for cell in fault:
-		if _grid.state.get_state(cell) == NORMAL:
-			normal_before.append(cell)
-	_place(_player, _cell_world(player_cell), 0.88)
+	_place(_player, player_point, 0.88)
 	_player._invulnerable_left = 0.0
 	var health_before := _player.health
-	_place(_companion, _cell_world(companion_cell), 0.3)
+	_place(_companion, companion_point, 0.3)
 	var next_before := _quake.next_at
 	var started := [false]
 	_quake.quake_started.connect(func(_center: Vector3) -> void: started[0] = true)
-	# Preavviso restante (circa 3 s) piu scossa (16 celle a 14 al secondo): fino a 10 s.
+	# Preavviso restante (circa 3 s) piu scossa (18 pennellate a 14 al secondo): fino a 10 s.
 	for i in 600:
 		await physics_frame
 		if _quake.quakes == 1:
 			break
 	_check(started[0] and _quake.quakes == 1 and _quake.state == QuakeEvent.State.IDLE, "la scossa e avvenuta e finita")
 	_check(not _hud.is_boss_warning_visible(), "annuncio tolto alla scossa")
-	_check(_grid.state.get_state(trench) == NORMAL and _quake.cells_filled >= 1, "la trincea sulla faglia si e riempita")
-	var raised := 0
-	for cell in normal_before:
-		if _grid.state.get_state(cell) == RAISED:
-			raised += 1
-	# Giocatore e compagno (che lo segue) risparmiano la propria cella e quelle a meno di
-	# una cella da loro: fino a quattro celle non rialzate.
-	var most := normal_before.size() - 1
-	_check(raised >= most - 3 and raised <= most and _quake.cells_raised == raised,
-		"celle rialzate lungo la faglia: %d su %d Normal" % [raised, normal_before.size()])
-	_check(_grid.state.get_state(player_cell) == NORMAL, "la cella del giocatore e risparmiata")
+	_check(_field.delta_at(crest_point) > 0.8, "cresta alzata sulla faglia (%.2f)" % _field.delta_at(crest_point))
+	var furrow := crest_point + _quake.fault_side() * 2.4
+	_check(_field.delta_at(furrow) < -0.2, "solco a fianco della cresta (%.2f)" % _field.delta_at(furrow))
+	_check(_quake.volume_moved > 20.0, "volume spostato contato (%.1f m3)" % _quake.volume_moved)
+	# Giocatore e compagno risparmiano la propria pennellata: fino a quattro non alzate.
+	var most := fault.size() - 1
+	_check(_quake.cells_raised >= most - 3 and _quake.cells_raised <= most, "pennellate alzate lungo la faglia: %d su %d" % [_quake.cells_raised, fault.size()])
+	_check(_field.delta_at(player_point) < 0.5, "il punto del giocatore e risparmiato (%.2f)" % _field.delta_at(player_point))
 	_check(_player.health == health_before - _run.tuning.quake_player_damage and _quake.player_hits == 1,
 		"giocatore sulla faglia colpito: %d -> %d" % [health_before, _player.health])
-	_check(_grid.state.get_state(_grid.cell_at(_companion.global_position)) != RAISED, "la cella del compagno e risparmiata")
+	_check(_field.delta_at(_companion.global_position) < 0.5, "il punto del compagno e risparmiato")
 	_check((not is_instance_valid(enemy) or enemy.is_dead) and _director.kills == kills_before + 1 and _quake.enemies_hit == 1,
 		"rottamatore sulla faglia travolto e contato")
 	_check(is_instance_valid(bystander) and not bystander.is_dead, "rottamatore lontano illeso")
 	_check(_lamps.count() == 0, "lampione sulla faglia caduto")
-	var buried := 0
-	for position in _scrap.positions_near(_cell_world(scrap_cell), 6.0):
-		if _grid.state.get_state(_grid.cell_at(position)) == RAISED:
-			buried += 1
-	_check(_scrap.count() >= scrap_before and buried == 0, "rottami in superficie, nessuno sepolto (%d)" % _scrap.count())
+	var resting := true
+	for position in _scrap.positions_near(scrap_point, 8.0):
+		resting = resting and absf(position.y - (_field.height_at(position) + ScrapField.SCRAP_SIZE)) < 0.1
+	_check(_scrap.count() >= scrap_before and resting, "rottami in superficie, nessuno sepolto (%d)" % _scrap.count())
 	_check(is_equal_approx(_quake.next_at, next_before + _quake.interval_seconds), "prossimo terremoto fra %.0f s" % _quake.interval_seconds)
 	_check(_audio.play_count(&"quake_rumble") >= 2, "brontolio anche alla scossa")
 

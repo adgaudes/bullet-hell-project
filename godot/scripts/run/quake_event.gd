@@ -3,11 +3,12 @@ extends Node3D
 ## Il terremoto del quartiere (D-075, idea 2 di FEATURE_IDEAS.md): a intervalli regolari
 ## una **faglia** annunciata attraversa il campo vicino al giocatore. Dopo il preavviso
 ## (freccia e conto alla rovescia nell'HUD, polvere lungo la linea) il fronte corre da un
-## capo all'altro della faglia: le celle Normal si **rialzano** in terrapieno, le trincee
-## si **riempiono**, i terrapieni restano. Chi sta su una cella della faglia: i rottamatori
-## vengono travolti (contano come abbattuti), il giocatore subisce `player_damage` e la
-## sua cella viene risparmiata, compagno e boss sono risparmiati. I lampioni sulla linea
-## cadono; i rottami a terra vengono riportati in superficie da ScrapField.
+## capo all'altro della faglia. Sul rilievo continuo (D-085) ogni pennellata alza una
+## **cresta** e scava un **solco** a fianco; sulla griglia (ferrovia) le celle Normal si
+## rialzano e le trincee si riempiono. Chi sta sulla faglia: i rottamatori vengono
+## travolti (contano come abbattuti), il giocatore subisce `player_damage` e il suo punto
+## viene risparmiato, compagno e boss sono risparmiati. I lampioni sulla linea cadono; i
+## rottami a terra rotolano o vengono riportati in superficie da ScrapField.
 ##
 ## Come il treno non ha un passo fisico proprio: `ArenaRun` lo fa avanzare con il tempo di
 ## livello. Alla fine chiede alle impronte dell'orda (FlowPreview) di mostrarsi: il
@@ -26,8 +27,19 @@ const DUST_COLOR := Color(0.6, 0.5, 0.36)
 ## Polvere sulla faglia durante il preavviso: ogni quanti secondi e su quante celle.
 const DUST_INTERVAL := 0.35
 const DUST_CELLS := 3
+## Rilievo continuo: cresta e solco di ogni pennellata, passo fra le pennellate, raggio in
+## cui un corpo e colpito o risparmiato.
+const CREST_HEIGHT := 1.2
+const FURROW_DEPTH := 0.6
+const FAULT_STEP := 2.4
+const CREST_RADIUS := 2.4
+const FURROW_RADIUS := 1.8
+const HIT_RADIUS := 1.2
+const BOSS_SPARE_RADIUS := 3.0
 
 @export var grid: TerrainGrid
+## Rilievo continuo (D-085): con questo la faglia e una fila di pennellate.
+@export var terrain_field: TerrainField
 @export var player: PlayerCharacter
 @export var companion: Companion
 @export var director: EnemyDirector
@@ -56,7 +68,12 @@ var next_at := 0.0
 var quakes := 0
 ## Celle della faglia, da un capo all'altro, e il suo centro nel mondo.
 var fault_cells: Array[Vector2i] = []
+## Pennellate della faglia sul rilievo (XZ, y = 0), da un capo all'altro.
+var fault_points: Array[Vector3] = []
 var fault_center := Vector3.ZERO
+## Metri cubi spostati dall'ultimo terremoto (cresta piu solco, in valore assoluto).
+var volume_moved := 0.0
+var _fault_side := Vector3.RIGHT
 ## Esito dell'ultimo terremoto.
 var cells_raised := 0
 var cells_filled := 0
@@ -72,7 +89,16 @@ func _ready() -> void:
 
 
 func is_enabled() -> bool:
-	return first_seconds > 0.0 and grid != null
+	return first_seconds > 0.0 and (grid != null or terrain_field != null)
+
+
+## Perpendicolare alla faglia (XZ): da che lato sta il solco.
+func fault_side() -> Vector3:
+	return _fault_side
+
+
+func _fault_size() -> int:
+	return fault_points.size() if terrain_field != null else fault_cells.size()
 
 
 func is_shaking() -> bool:
@@ -116,7 +142,7 @@ func _start_warning() -> void:
 	_choose_fault()
 	_dust_left = 0.0
 	print("PROTOTYPE01_QUAKE_WARNING cells=%d center=(%.1f, %.1f) at=%.1f"
-		% [fault_cells.size(), fault_center.x, fault_center.z, next_at])
+		% [_fault_size(), fault_center.x, fault_center.z, next_at])
 	quake_warned.emit(fault_direction(), warning_seconds)
 
 
@@ -124,13 +150,24 @@ func _start_warning() -> void:
 ## fra `distance_min` e `distance_max` metri dal giocatore in una direzione a caso.
 func _choose_fault() -> void:
 	fault_cells.clear()
+	fault_points.clear()
 	var origin := player.global_position if player != null else Vector3.ZERO
 	var toward := rng.randf_range(0.0, TAU)
 	var distance := rng.randf_range(distance_min, distance_max)
 	fault_center = Vector3(origin.x + cos(toward) * distance, 0.0, origin.z + sin(toward) * distance)
 	var along := rng.randf_range(0.0, TAU)
-	var step := Vector3(cos(along), 0.0, sin(along)) * grid.cell_size_m()
+	var direction := Vector3(cos(along), 0.0, sin(along))
+	_fault_side = Vector3(-direction.z, 0.0, direction.x)
 	var half := length_cells * 0.5
+	if terrain_field != null:
+		var limit := terrain_field.half_extent() - CREST_RADIUS
+		for i in length_cells:
+			var p := fault_center + direction * FAULT_STEP * (i - half + 0.5)
+			if absf(p.x) > limit or absf(p.z) > limit or terrain_field.is_protected(p):
+				continue
+			fault_points.append(p)
+		return
+	var step := direction * grid.cell_size_m()
 	for i in length_cells:
 		var cell := grid.cell_at(fault_center + step * (i - half + 0.5))
 		if grid.state.is_valid(cell) and not fault_cells.has(cell):
@@ -142,11 +179,11 @@ func _tick_warning(elapsed: float, delta: float) -> void:
 	if hud != null:
 		hud.set_event_warning("TERREMOTO", fault_direction(), left, RunHud.QUAKE_COLOR)
 	_dust_left -= delta
-	if _dust_left <= 0.0 and not fault_cells.is_empty():
+	if _dust_left <= 0.0 and _fault_size() > 0:
 		_dust_left = DUST_INTERVAL
 		for i in DUST_CELLS:
-			var cell := fault_cells[rng.randi_range(0, fault_cells.size() - 1)]
-			DebrisBurst.spawn(get_parent(), _cell_center(cell) + Vector3(0.0, 0.15, 0.0), DUST_COLOR, 3, 1.2, 0.08)
+			var at := _fault_position(rng.randi_range(0, _fault_size() - 1))
+			DebrisBurst.spawn(get_parent(), at + Vector3(0.0, 0.15, 0.0), DUST_COLOR, 3, 1.2, 0.08)
 	if left <= 0.0:
 		_start_shaking()
 
@@ -161,19 +198,78 @@ func _start_shaking() -> void:
 	player_hits = 0
 	_front = 0
 	_front_progress = 0.0
+	volume_moved = 0.0
 	if hud != null:
 		hud.clear_event_warning()
-	print("PROTOTYPE01_QUAKE_START cells=%d" % fault_cells.size())
+	print("PROTOTYPE01_QUAKE_START cells=%d" % _fault_size())
 	quake_started.emit(fault_center)
 
 
 func _tick_shaking(delta: float) -> void:
 	_front_progress += delta * cells_per_second
-	while _front < fault_cells.size() and float(_front) < _front_progress:
-		_shake_cell(fault_cells[_front])
+	while _front < _fault_size() and float(_front) < _front_progress:
+		if terrain_field != null:
+			_shake_point(fault_points[_front])
+		else:
+			_shake_cell(fault_cells[_front])
 		_front += 1
-	if _front >= fault_cells.size():
+	if _front >= _fault_size():
 		_finish()
+
+
+## Posizione nel mondo (XZ) della pennellata o della cella [param index] della faglia.
+func _fault_position(index: int) -> Vector3:
+	if terrain_field != null:
+		var p := fault_points[index]
+		return Vector3(p.x, terrain_field.height_at(p), p.z)
+	return _cell_center(fault_cells[index])
+
+
+## Una pennellata della faglia sul rilievo: cresta nel punto, solco a fianco. Il punto
+## del giocatore (colpito) e quelli di compagno e boss sono risparmiati; i rottamatori
+## entro HIT_RADIUS sono travolti, quelli appena fuori vengono riappoggiati sulla nuova
+## quota (un rialzo secco sotto un corpo lo incastrerebbe nel rilievo).
+func _shake_point(p: Vector3) -> void:
+	if terrain_field.is_protected(p):
+		return
+	var at := Vector3(p.x, terrain_field.height_at(p), p.z)
+	if _near(player, at):
+		player.take_damage(player_damage)
+		player_hits += 1
+		quake_hit.emit(&"player")
+		print("PROTOTYPE01_QUAKE_HIT what=player")
+		return
+	if _near(companion, at):
+		return
+	if boss != null and not boss.is_dead and _planar_distance(boss.global_position, at) < BOSS_SPARE_RADIUS:
+		return
+	if director != null:
+		for enemy in director.enemies.duplicate():
+			if enemy.is_dead or enemy == boss:
+				continue
+			if _planar_distance(enemy.global_position, at) < HIT_RADIUS:
+				enemies_hit += 1
+				enemy.take_damage(enemy.health)
+				quake_hit.emit(&"enemy")
+	volume_moved += absf(terrain_field.sculpt(p, CREST_RADIUS, CREST_HEIGHT))
+	volume_moved += absf(terrain_field.sculpt(p + _fault_side * FAULT_STEP, FURROW_RADIUS, -FURROW_DEPTH))
+	cells_raised += 1
+	_lift_bodies(p, CREST_RADIUS)
+	DebrisBurst.spawn(get_parent(), Vector3(p.x, terrain_field.height_at(p) + 0.3, p.z), EARTH_COLOR, 10, 4.0, 0.18)
+	quake_hit.emit(&"cell")
+	if lamp_field != null and lamp_field.knock_down_near(at, 1.5) > 0:
+		quake_hit.emit(&"lamp")
+
+
+## Riappoggia sulla nuova quota i nemici vivi entro [param radius] dalla pennellata.
+func _lift_bodies(p: Vector3, radius: float) -> void:
+	if director == null:
+		return
+	for enemy in director.enemies:
+		if enemy.is_dead or _planar_distance(enemy.global_position, p) > radius:
+			continue
+		var ground := terrain_field.height_at(enemy.global_position)
+		enemy.global_position.y = maxf(enemy.global_position.y, ground + enemy.spawn_center_height())
 
 
 func _shake_cell(cell: Vector2i) -> void:
@@ -216,16 +312,20 @@ func _shake_cell(cell: Vector2i) -> void:
 func _near(body: Node3D, at: Vector3) -> bool:
 	if body == null:
 		return false
-	var p := body.global_position
-	return Vector2(p.x - at.x, p.z - at.z).length() < grid.cell_size_m() * 0.9
+	var reach := HIT_RADIUS if terrain_field != null else grid.cell_size_m() * 0.9
+	return _planar_distance(body.global_position, at) < reach
+
+
+static func _planar_distance(a: Vector3, b: Vector3) -> float:
+	return Vector2(a.x - b.x, a.z - b.z).length()
 
 
 func _finish() -> void:
 	state = State.IDLE
 	quakes += 1
 	next_at += interval_seconds
-	print("PROTOTYPE01_QUAKE_DONE n=%d raised=%d filled=%d enemies=%d player_hits=%d"
-		% [quakes, cells_raised, cells_filled, enemies_hit, player_hits])
+	print("PROTOTYPE01_QUAKE_DONE n=%d raised=%d filled=%d enemies=%d player_hits=%d volume=%.1f"
+		% [quakes, cells_raised, cells_filled, enemies_hit, player_hits, volume_moved])
 	if flow_preview != null:
 		flow_preview.show_now()
 	quake_done.emit(quakes)

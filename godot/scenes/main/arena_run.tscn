@@ -104,8 +104,9 @@ script = ExtResource("19_workshop")
 script = ExtResource("20_day_night")
 district = NodePath("../District")
 
-[node name="QuakeEvent" type="Node3D" parent="." node_paths=PackedStringArray("player", "companion", "director", "lamp_field", "hud", "flow_preview")]
+[node name="QuakeEvent" type="Node3D" parent="." node_paths=PackedStringArray("terrain_field", "player", "companion", "director", "lamp_field", "hud", "flow_preview")]
 script = ExtResource("23_quake")
+terrain_field = NodePath("../TerrainField")
 player = NodePath("../Player")
 companion = NodePath("../Companion")
 director = NodePath("../EnemyDirector")
@@ -113,8 +114,9 @@ lamp_field = NodePath("../LampField")
 hud = NodePath("../RunHud")
 flow_preview = NodePath("../FlowPreview")
 
-[node name="ExtractionPad" type="Node3D" parent="." node_paths=PackedStringArray("player", "hud")]
+[node name="ExtractionPad" type="Node3D" parent="." node_paths=PackedStringArray("terrain_field", "player", "hud")]
 script = ExtResource("24_extraction")
+terrain_field = NodePath("../TerrainField")
 player = NodePath("../Player")
 hud = NodePath("../RunHud")
 
