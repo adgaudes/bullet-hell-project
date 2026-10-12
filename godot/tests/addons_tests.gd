@@ -11,6 +11,7 @@ func _initialize() -> void:
 	_test_controller_icons()
 	_test_debug_draw()
 	_test_grass_disabled()
+	_test_terrain3d_and_jolt()
 	print("PROTOTYPE01_TESTS %s failures=%d" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -57,3 +58,12 @@ func _test_grass_disabled() -> void:
 	print("simple grass textured")
 	_check(FileAccess.file_exists("res://addons/simplegrasstextured/plugin.cfg"), "addon installato")
 	_check(root.get_node_or_null("SimpleGrass") == null, "plugin non attivo: nessun autoload SimpleGrass")
+
+
+func _test_terrain3d_and_jolt() -> void:
+	print("terrain3d and jolt")
+	_check(FileAccess.file_exists("res://addons/terrain_3d/plugin.cfg"), "Terrain3D installato")
+	_check(FileAccess.file_exists("res://addons/terrain_3d/bin/libterrain.windows.release.x86_64.dll"), "binario Windows presente")
+	_check(FileAccess.file_exists("res://addons/terrain_3d/bin/libterrain.linux.release.x86_64.so"), "binario Linux presente")
+	_check(ClassDB.class_exists("Terrain3D"), "estensione caricata (classe Terrain3D)")
+	_check(ProjectSettings.get_setting("physics/3d/physics_engine", "") == "Jolt Physics", "motore fisico Jolt")
