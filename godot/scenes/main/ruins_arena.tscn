@@ -1,13 +1,11 @@
-[gd_scene load_steps=16 format=3]
+[gd_scene load_steps=14 format=3]
 
 [ext_resource type="Script" path="res://scripts/services/skeleton_probe.gd" id="1_probe"]
 [ext_resource type="Script" path="res://scripts/arena/overgrown_arena.gd" id="2_arena"]
 [ext_resource type="Script" path="res://scripts/camera/isometric_camera_rig.gd" id="3_camera"]
 [ext_resource type="PackedScene" path="res://scenes/player/player.tscn" id="4_player"]
-[ext_resource type="Script" path="res://scripts/terrain/terrain_grid.gd" id="5_terrain"]
+[ext_resource type="Script" path="res://scripts/terrain/terrain_field.gd" id="5_terrain"]
 [ext_resource type="Resource" path="res://resources/tuning/terrain_arena.tres" id="6_terrain_tuning"]
-[ext_resource type="Script" path="res://scripts/terrain/terrain_hazard.gd" id="7_hazard"]
-[ext_resource type="Resource" path="res://resources/tuning/hazard_default.tres" id="8_hazard_tuning"]
 [ext_resource type="Script" path="res://scripts/services/tuning_switcher.gd" id="9_switcher"]
 [ext_resource type="Resource" path="res://resources/tuning/player_default.tres" id="10_feel_unreal"]
 [ext_resource type="Resource" path="res://resources/tuning/player_presets/snappy.tres" id="11_feel_snappy"]
@@ -19,23 +17,18 @@
 [node name="RuinsArena" type="Node3D"]
 script = ExtResource("1_probe")
 
-[node name="OvergrownArena" type="Node3D" parent="."]
+[node name="OvergrownArena" type="Node3D" parent="." node_paths=PackedStringArray("terrain_field")]
 script = ExtResource("2_arena")
+terrain_field = NodePath("../TerrainField")
 
-[node name="TerrainGrid" type="Node3D" parent="."]
+[node name="TerrainField" type="Node3D" parent="."]
 script = ExtResource("5_terrain")
+size_m = Vector2(128, 128)
 tuning = ExtResource("6_terrain_tuning")
-natural_ground = true
 
-[node name="TerrainHazard" type="Node3D" parent="." node_paths=PackedStringArray("terrain_grid")]
-script = ExtResource("7_hazard")
-tuning = ExtResource("8_hazard_tuning")
-terrain_grid = NodePath("../TerrainGrid")
-hits_player = true
-
-[node name="Player" parent="." node_paths=PackedStringArray("terrain_grid") instance=ExtResource("4_player")]
+[node name="Player" parent="." node_paths=PackedStringArray("terrain_field") instance=ExtResource("4_player")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.88, 0)
-terrain_grid = NodePath("../TerrainGrid")
+terrain_field = NodePath("../TerrainField")
 
 [node name="CameraRig" type="Node3D" parent="." node_paths=PackedStringArray("target")]
 script = ExtResource("3_camera")
@@ -46,13 +39,11 @@ script = ExtResource("9_switcher")
 player = NodePath("../Player")
 presets = [ExtResource("11_feel_snappy"), ExtResource("10_feel_unreal"), ExtResource("12_feel_heavy"), ExtResource("13_feel_dash")]
 
-[node name="ScrapField" type="Node3D" parent="." node_paths=PackedStringArray("grid")]
+[node name="ScrapField" type="Node3D" parent="." node_paths=PackedStringArray("terrain_field")]
 script = ExtResource("15_scrap")
-grid = NodePath("../TerrainGrid")
+terrain_field = NodePath("../TerrainField")
 
-[node name="Companion" parent="." node_paths=PackedStringArray("player", "grid", "hazard", "scrap_field") instance=ExtResource("14_companion")]
+[node name="Companion" parent="." node_paths=PackedStringArray("player", "scrap_field") instance=ExtResource("14_companion")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.3, 2.5)
 player = NodePath("../Player")
-grid = NodePath("../TerrainGrid")
-hazard = NodePath("../TerrainHazard")
 scrap_field = NodePath("../ScrapField")

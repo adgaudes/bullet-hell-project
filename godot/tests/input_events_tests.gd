@@ -9,7 +9,7 @@ const LEFT_X := JOY_AXIS_LEFT_X
 
 var _failures := 0
 var _player: PlayerCharacter
-var _grid: TerrainGrid
+var _field: TerrainField
 
 
 func _initialize() -> void:
@@ -17,7 +17,7 @@ func _initialize() -> void:
 	Engine.physics_ticks_per_second = 60
 	await _load_scene()
 	_test_ui_actions_have_joypad()
-	await _test_trigger_fires_once_per_pull()
+	await _test_trigger_holds_brush()
 	await _reload_scene()
 	await _test_actions_ignore_modifiers()
 	await _reload_scene()
@@ -46,28 +46,24 @@ func _check(condition: bool, label: String) -> void:
 		print("  FAIL %s" % label)
 
 
-## Un grilletto analogico invia un evento a ogni variazione: il tool deve
-## scattare una sola volta per pressione, come il trigger Started di Unreal.
-func _test_trigger_fires_once_per_pull() -> void:
+## Grilletto analogico: finche e premuto il pennello lavora a ogni passo; al rilascio si
+## ferma; una nuova pressione riparte (tappa A: azione continua, non un colpo per pressione).
+func _test_trigger_holds_brush() -> void:
 	print("right trigger")
-	# Cella bersaglio (5,3) Lowered e modalita Raise: una pressione ripetuta
-	# la porterebbe a Raised in due passi, una corretta solo a Normal.
-	var cell := Vector2i(5, 3)
-	_grid.apply_command_at(_player.terrain_target, TerrainState.ToolMode.DIG)
-	_player.terrain_tool_mode = TerrainState.ToolMode.RAISE
-	var changes := [0]
-	_grid.cell_changed.connect(func(_c, _s): changes[0] += 1)
+	var strokes := [0]
+	_field.player_sculpted.connect(func(_c: Vector3, _r: float, _v: float, _m: int) -> void: strokes[0] += 1)
 	for value in [0.3, 0.6, 0.8, 1.0, 0.9]:
 		_joy_motion(TRIGGER_RIGHT, value)
 		await _frames(1)
-	_check(changes[0] == 1, "una pressione del grilletto = un comando (got %d)" % changes[0])
-	_check(_grid.state.get_state(cell) == TerrainState.CellState.NORMAL, "Lowered -> Normal, un solo passo")
+	_check(_player.tool_held and strokes[0] >= 2, "grilletto tirato: pennello continuo (%d pennellate)" % strokes[0])
 	_joy_motion(TRIGGER_RIGHT, 0.2)
-	await _frames(1)
+	await _frames(2)
+	var after_release: int = strokes[0]
+	await _frames(3)
+	_check(not _player.tool_held and strokes[0] == after_release, "sotto la soglia il pennello si ferma")
 	_joy_motion(TRIGGER_RIGHT, 1.0)
 	await _frames(2)
-	_check(changes[0] == 2 and _grid.state.get_state(cell) == TerrainState.CellState.RAISED,
-		"rilascio e nuova pressione: secondo passo (got %d)" % changes[0])
+	_check(strokes[0] > after_release, "nuova pressione: riparte")
 	_joy_motion(TRIGGER_RIGHT, 0.0)
 	await _frames(1)
 
@@ -107,7 +103,7 @@ func _test_actions_ignore_modifiers() -> void:
 	shoulder.pressed = true
 	Input.parse_input_event(shoulder)
 	await _frames(2)
-	_check(_player.terrain_tool_mode == TerrainState.ToolMode.RAISE, "dorsale sinistro cambia modalita")
+	_check(_player.terrain_tool_mode == TerrainField.ToolMode.RAISE, "dorsale sinistro cambia modalita")
 	shoulder = shoulder.duplicate()
 	shoulder.pressed = false
 	Input.parse_input_event(shoulder)
@@ -117,7 +113,7 @@ func _test_actions_ignore_modifiers() -> void:
 	back.pressed = true
 	Input.parse_input_event(back)
 	await _frames(2)
-	_check(_player.terrain_tool_mode == TerrainState.ToolMode.RAISE, "il tasto Back non cambia modalita")
+	_check(_player.terrain_tool_mode == TerrainField.ToolMode.RAISE, "il tasto Back non cambia modalita")
 	back = back.duplicate()
 	back.pressed = false
 	Input.parse_input_event(back)
@@ -129,7 +125,8 @@ func _test_actions_ignore_modifiers() -> void:
 	click.pressed = true
 	Input.parse_input_event(click)
 	await _frames(2)
-	_check(_player.terrain_tool_mode == TerrainState.ToolMode.DIG, "Ctrl+clic destro cambia modalita (torna a Dig)")
+	# Sul rilievo il ciclo e Scava -> Alza -> Livella (-> Lampione se c'e il campo).
+	_check(_player.terrain_tool_mode == TerrainField.ToolMode.LEVEL, "Ctrl+clic destro cambia modalita (Alza -> Livella)")
 	click = click.duplicate()
 	click.pressed = false
 	Input.parse_input_event(click)
@@ -191,34 +188,24 @@ func _test_tuning_switcher() -> void:
 ## tirato, clic rilasciato, grilletto che varia: un solo comando dello strumento.
 func _test_hold_per_source() -> void:
 	print("hold per source")
-	var cell := Vector2i(5, 3)
-	_grid.apply_command_at(_player.terrain_target, TerrainState.ToolMode.DIG)
-	_player.terrain_tool_mode = TerrainState.ToolMode.RAISE
-	var changes := [0]
-	_grid.cell_changed.connect(func(_c, _s): changes[0] += 1)
 	_mouse_button(MOUSE_BUTTON_LEFT, true)
 	await _frames(2)
-	_check(changes[0] == 1, "il clic comanda (got %d)" % changes[0])
+	_check(_player.tool_held, "il clic tiene il pennello")
 	_joy_motion(TRIGGER_RIGHT, 0.6)
 	await _frames(1)
 	_joy_motion(TRIGGER_RIGHT, 1.0)
 	await _frames(1)
 	_mouse_button(MOUSE_BUTTON_LEFT, false)
 	await _frames(1)
-	_joy_motion(TRIGGER_RIGHT, 0.8)
-	await _frames(1)
-	_joy_motion(TRIGGER_RIGHT, 1.0)
-	await _frames(2)
-	_check(changes[0] == 1 and _grid.state.get_state(cell) == TerrainState.CellState.NORMAL,
-		"grilletto tirato, clic rilasciato, grilletto che varia: nessun comando in piu (got %d)" % changes[0])
+	_check(_player.tool_held, "clic rilasciato ma grilletto tirato: resta premuto")
 	_joy_motion(TRIGGER_RIGHT, 0.0)
-	await _frames(1)
+	await _frames(2)
+	_check(not _player.tool_held, "rilasciato tutto: si ferma")
 	_mouse_button(MOUSE_BUTTON_LEFT, true)
 	await _frames(2)
+	_check(_player.tool_held, "una nuova pressione riparte")
 	_mouse_button(MOUSE_BUTTON_LEFT, false)
 	await _frames(1)
-	_check(changes[0] == 2 and _grid.state.get_state(cell) == TerrainState.CellState.RAISED,
-		"rilasciato tutto, una nuova pressione comanda di nuovo (got %d)" % changes[0])
 
 
 ## P-01: la mira passa al mouse solo con uno spostamento cumulativo di 6 px entro
@@ -287,7 +274,7 @@ func _load_scene() -> void:
 	scene.name = "Scene"
 	root.add_child(scene)
 	_player = scene.get_node("Player")
-	_grid = scene.get_node("TerrainGrid")
+	_field = scene.get_node("TerrainField")
 	await _frames(2)
 
 

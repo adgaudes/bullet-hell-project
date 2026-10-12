@@ -8,7 +8,7 @@ const WORLD_STATIC := 1
 var _failures := 0
 var _scene: Node3D
 var _arena: OvergrownArena
-var _grid: TerrainGrid
+var _field: TerrainField
 var _player: PlayerCharacter
 
 
@@ -17,15 +17,14 @@ func _initialize() -> void:
 	_scene = ArenaScene.instantiate()
 	root.add_child(_scene)
 	_arena = _scene.get_node(^"OvergrownArena")
-	_grid = _scene.get_node(^"TerrainGrid")
+	_field = _scene.get_node(^"TerrainField")
 	_player = _scene.get_node(^"Player")
-	_scene.get_node(^"TerrainHazard").set_physics_process(false)
 	await _frames(3)
 	_test_build_is_deterministic()
 	_test_clear_zone_is_free()
 	_test_boundary_is_closed()
 	await _test_player_stays_inside()
-	_test_cells_use_natural_ground()
+	_test_relief_present()
 	# T-12: i nodi messi in coda con queue_free vanno liberati prima di uscire, o
 	# il motore segnala istanze ObjectDB perse all'uscita.
 	await _frames(2)
@@ -79,7 +78,7 @@ func _test_clear_zone_is_free() -> void:
 	var intruders: Array[String] = []
 	for hit in space.intersect_shape(query, 64):
 		var collider: Node = hit.collider
-		if collider.get_parent() != _grid:
+		if collider != _field.collision_body():
 			intruders.append(str(collider.name))
 	_check(intruders.is_empty(), "quadrato centrale libero (intrusi: %s)" % [intruders])
 
@@ -111,12 +110,9 @@ func _test_player_stays_inside() -> void:
 	_check(z < _arena.play_half_extent + 0.1, "il muro sud ferma il giocatore (z=%.2f)" % z)
 
 
-func _test_cells_use_natural_ground() -> void:
-	print("natural cells")
-	# In --headless il renderer fittizio non conserva colori e dati custom dei
-	# MultiMesh (GODOT_WORKFLOW.md): si verifica la configurazione, non i valori.
-	var batch: MultiMeshInstance3D = _grid.get_node(^"CellsFlat")
-	_check(_grid.natural_ground, "griglia in modalita naturale")
-	_check(batch.multimesh.use_colors and batch.multimesh.use_custom_data, "il lotto porta colore e dati custom per cella")
-	_check(bool(batch.material_override.get_shader_parameter(&"batched")), "il lotto legge il colore dal MultiMesh")
-	_check(_grid.presented_cell_count() == _grid.state.cell_count(), "tutte le celle presentate")
+## L'arena in rovina sta su un campo da 128 m (tappa B): niente pavimento piatto.
+func _test_relief_present() -> void:
+	print("relief")
+	_check(_field.resolution_x == 257 and _field.half_extents().is_equal_approx(Vector2(64.0, 64.0)), "campo da 128 m (%d vertici)" % _field.resolution_x)
+	_check(_arena.terrain_field == _field and _arena._relief_ready(), "l'arena conosce il rilievo")
+	_check(_arena.get_node_or_null(^"Ground") == null, "nessun pavimento piatto: il suolo e il rilievo")

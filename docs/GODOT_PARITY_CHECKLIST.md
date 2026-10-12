@@ -1,5 +1,7 @@
 # Checklist di parita Unreal → Godot (Fase 9)
 
+> **Nota del 12 ottobre 2026 (tappa B del terreno continuo, D-087):** la griglia a celle, la Slice B (penalita delle celle Lowered, corsia del pericolo `TerrainHazard`) e il Companion Slice non esistono piu: il terreno e un rilievo continuo (`TerrainField`) in ogni scena. Le righe sotto che citano celle, hazard o Slice B sono storiche: valgono come prova della parita raggiunta il 3 ottobre 2026, non come descrizione del codice attuale.
+
 Verifica funzione per funzione della sezione 2 di `GODOT_MIGRATION_ANALYSIS.md`. Data: 3 ottobre 2026. Build di riferimento Godot: export Windows di `feature/godot-migration-foundation`.
 
 Legenda evidenza: **T** test automatico (`godot/tests/`), **C** cattura visiva ispezionata, **S** smoke test con marker, **P** playtest del proprietario. "Da fare" significa che quella evidenza manca ancora.

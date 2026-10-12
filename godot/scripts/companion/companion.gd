@@ -1,9 +1,9 @@
 class_name Companion
 extends CharacterBody3D
-## Primo compagno macchina (Companion Slice, D-032; specifica in
-## docs/COMPANION_SLICE_SPEC.md). Autonomo e non pilotabile: segue il giocatore,
-## raccoglie i rottami prodotti scavando, li fornisce per i rialzi e, quando la
-## sfera hazard punta verso il giocatore, alza da solo una cella sulla corsia.
+## Primo compagno macchina (D-032; specifica storica in docs/COMPANION_SLICE_SPEC.md).
+## Autonomo e non pilotabile: segue il giocatore, raccoglie i rottami che escono dalle
+## vene e li fornisce per i lampioni. L'assistenza contro il pericolo della Slice B e
+## stata tolta con quelle scene (tappa B del terreno continuo, D-087).
 
 signal carried_changed(carried: int)
 
@@ -49,8 +49,6 @@ const CARGO_WOBBLE_TWIST := 0.3
 
 @export var tuning: CompanionTuning
 @export var player: PlayerCharacter
-@export var grid: TerrainGrid
-@export var hazard: TerrainHazard
 @export var scrap_field: ScrapField
 ## Opzionale: per raggiungere il giocatore aggirando mura e terrapieni (D-038).
 @export var path_field: PathField
@@ -142,7 +140,6 @@ func _physics_process(delta: float) -> void:
 		rotation.y = lerp_angle(rotation.y, atan2(-planar.x, -planar.z), minf(delta * 10.0, 1.0))
 
 	_collect_scrap()
-	_assist_against_hazard()
 	_update_motion(delta)
 
 
@@ -192,52 +189,6 @@ func _collect_scrap() -> void:
 		carried += taken
 		_refresh_cargo()
 		print("PROTOTYPE01_SCRAP_COLLECTED carried=%d" % carried)
-
-
-## Se la sfera e diretta verso il giocatore, alza la prima cella Normal della
-## corsia nella fascia davanti alla sfera, a portata del compagno.
-func _assist_against_hazard() -> void:
-	if hazard == null or grid == null or hazard.is_resting or carried <= 0 or _assist_cooldown > 0.0:
-		return
-	var direction := hazard.lane_direction
-	var to_player := player.global_position - hazard.global_position
-	to_player.y = 0.0
-	var ahead := to_player.dot(direction)
-	var lateral := (to_player - direction * ahead).length()
-	if ahead <= 0.0 or ahead > tuning.threat_distance or lateral > tuning.lane_half_width:
-		return
-
-	var step := 0.4
-	# Se un terrapieno sulla corsia protegge gia il giocatore, non spende nulla.
-	var probe := 0.5
-	while probe < ahead - 0.5:
-		var probe_cell := grid.cell_at(hazard.global_position + direction * probe)
-		probe += step
-		if grid.state.is_valid(probe_cell) and grid.state.get_state(probe_cell) == TerrainState.CellState.RAISED:
-			return
-
-	var distance := tuning.block_min_ahead
-	var limit := minf(tuning.block_max_ahead, ahead - 1.0)
-	var own_cell := grid.cell_at(global_position)
-	while distance <= limit:
-		var point := hazard.global_position + direction * distance
-		distance += step
-		var cell := grid.cell_at(point)
-		if not grid.state.is_valid(cell) or cell == own_cell:
-			continue
-		if grid.state.get_state(cell) != TerrainState.CellState.NORMAL:
-			continue
-		var center := grid.to_global(grid.cell_local_position(cell, TerrainState.CellState.NORMAL))
-		# La cella intera deve stare davanti alla sfera, non sopra di essa.
-		if (center - hazard.global_position).dot(direction) < tuning.block_min_ahead:
-			continue
-		if _planar_distance(global_position, center) > tuning.action_radius:
-			continue
-		if grid.apply_command_at(center, TerrainState.ToolMode.RAISE, player):
-			print("PROTOTYPE01_COMPANION_RAISE X=%d Y=%d" % [cell.x, cell.y])
-			spend()
-			_assist_cooldown = tuning.assist_cooldown
-			return
 
 
 func _build_visuals() -> void:

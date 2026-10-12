@@ -205,10 +205,12 @@ func _test_player_in_scene() -> void:
 	await _frames(2)
 	paused = false
 	await _frames(3)
-	_check(player.terrain_tool_mode != mode_before, "ripresa dopo il rilascio in pausa: nessun comando ripetuto")
+	var mode_after_first := player.terrain_tool_mode
+	_check(mode_after_first != mode_before, "ripresa dopo il rilascio in pausa: nessun comando ripetuto")
 	_send_key(KEY_Q, true)
 	await _frames(2)
-	_check(player.terrain_tool_mode == mode_before, "la pressione successiva non viene scartata")
+	# Sul rilievo il ciclo ha tre modi (Scava, Alza, Livella): conta che il modo sia cambiato ancora.
+	_check(player.terrain_tool_mode != mode_after_first, "la pressione successiva non viene scartata")
 	_send_key(KEY_Q, false)
 	await _frames(1)
 
