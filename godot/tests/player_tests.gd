@@ -7,6 +7,7 @@ extends SceneTree
 const DT := 1.0 / 60.0
 const PlanarMovementScript := preload("res://scripts/player/planar_movement.gd")
 const SmokeTestScene := preload("res://scenes/main/smoke_test.tscn")
+const PlayerScene := preload("res://scenes/player/player.tscn")
 
 var _failures := 0
 
@@ -16,11 +17,36 @@ func _initialize() -> void:
 	Engine.physics_ticks_per_second = 60
 	_test_movement_model()
 	await _test_player_in_scene()
+	await _test_pack_gauge()
 	# T-12: i nodi messi in coda con queue_free vanno liberati prima di uscire, o
 	# il motore segnala istanze ObjectDB perse all'uscita.
 	await _frames(2)
 	print("PROTOTYPE01_TESTS %s failures=%d" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
+
+
+## Zainetto di terra sul modello (spec sezione 3): la striscia sul fianco segue il riempimento.
+func _test_pack_gauge() -> void:
+	print("pack gauge")
+	var field := TerrainField.new()
+	field.size_m = 32.0
+	field.tuning = TerrainTuning.new()
+	field.render = false
+	root.add_child(field)
+	var player: PlayerCharacter = PlayerScene.instantiate()
+	player.terrain_field = field
+	root.add_child(player)
+	await _frames(2)
+	var material := player.pack_gauge_material()
+	_check(material != null and absf(float(material.get_shader_parameter(&"pack_fill")) - 20.0 / 60.0) < 0.01, "pack_fill parte da 20/60")
+	var sack := player.find_child("PackSack", true, false) as Node3D
+	_check(sack != null, "la sacca esiste nel modello")
+	_check(sack != null and is_equal_approx(sack.scale.x, 1.0), "a zaino mezzo vuoto la sacca e normale")
+	player.pack.give(40.0)
+	_check(material != null and absf(float(material.get_shader_parameter(&"pack_fill")) - 1.0) < 0.01, "zaino pieno = pack_fill 1")
+	_check(sack != null and sack.scale.x > 1.1, "a zaino pieno la sacca si gonfia")
+	player.queue_free()
+	field.queue_free()
 
 
 func _check(condition: bool, label: String) -> void:

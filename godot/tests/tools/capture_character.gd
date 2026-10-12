@@ -17,6 +17,8 @@ const SPACING := 1.6
 var _out := "../output/character"
 var _model := "res://assets/models/player_engineer.glb"
 var _camera: Camera3D
+## Riempimenti dello zainetto da mostrare (`--pack=0,0.5,1`): una copia in riposo per valore.
+var _pack_fills: Array[float] = []
 
 
 func _initialize() -> void:
@@ -25,6 +27,9 @@ func _initialize() -> void:
 			_out = arg.trim_prefix("--out=")
 		elif arg.begins_with("--model="):
 			_model = arg.trim_prefix("--model=")
+		elif arg.begins_with("--pack="):
+			for value in arg.trim_prefix("--pack=").split(","):
+				_pack_fills.append(value.to_float())
 		elif arg.begins_with("--poses="):
 			POSES.clear()
 			for pose in arg.trim_prefix("--poses=").split(","):
@@ -62,6 +67,8 @@ func _initialize() -> void:
 	suit.vertex_color_use_as_albedo = true
 	suit.roughness = 0.8
 	suit.albedo_color = SUIT_COLOR_LINEAR.linear_to_srgb()
+	for fill in _pack_fills:
+		POSES.append(["", fill])
 	for i in POSES.size():
 		var model: Node3D = scene.instantiate()
 		world.add_child(model)
@@ -70,6 +77,9 @@ func _initialize() -> void:
 			"suit": suit,
 			"detail": ActorModel.paint_material(Color.WHITE, 2.5),
 		})
+		if i >= POSES.size() - _pack_fills.size():
+			_set_pack_fill(model, POSES[i][1])
+			continue
 		var player: AnimationPlayer = model.find_children("*", "AnimationPlayer", true, false)[0]
 		if i == 0:
 			var lengths := PackedStringArray()
@@ -93,6 +103,21 @@ func _initialize() -> void:
 	await _shot("row_side", center + Vector3(-width * 0.25, 0.0, 0.0), width * 0.7, 215.0, 15.0)
 	await _shot("row_side_b", center + Vector3(width * 0.25, 0.0, 0.0), width * 0.7, 145.0, 15.0)
 	quit()
+
+
+## Zainetto di terra (spec sezione 3): striscia e sacca come le mostra PlayerCharacter.
+func _set_pack_fill(model: Node3D, fill: float) -> void:
+	var sack := model.find_child("PackSack", true, false) as MeshInstance3D
+	if sack == null or sack.mesh == null:
+		return
+	var material := ShaderMaterial.new()
+	material.shader = PlayerCharacter.PACK_GAUGE_SHADER
+	material.set_shader_parameter(&"pack_fill", fill)
+	for surface in sack.mesh.get_surface_count():
+		var source := sack.mesh.surface_get_material(surface)
+		if source != null and source.resource_name == "pack_gauge":
+			sack.set_surface_override_material(surface, material)
+	sack.scale = Vector3.ONE * (PlayerCharacter.PACK_FULL_SCALE if fill > 0.9 else 1.0)
 
 
 func _shot(name: String, target: Vector3, distance: float, yaw_deg: float, pitch_deg: float) -> void:

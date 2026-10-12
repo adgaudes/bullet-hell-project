@@ -19,11 +19,18 @@ static func mesh_of(scene: PackedScene) -> Mesh:
 	return mesh
 
 
+## Il corpo del modello: fra i MeshInstance3D quello con piu superfici (gli accessori
+## come lo zainetto di terra ne hanno meno), a parita il primo.
 static func mesh_instance_of(model: Node) -> MeshInstance3D:
 	if model is MeshInstance3D:
 		return model
-	var found := model.find_children("*", "MeshInstance3D", true, false)
-	return found[0] as MeshInstance3D if not found.is_empty() else null
+	var best: MeshInstance3D = null
+	for node in model.find_children("*", "MeshInstance3D", true, false):
+		var instance := node as MeshInstance3D
+		var surfaces := instance.mesh.get_surface_count() if instance.mesh != null else 0
+		if best == null or surfaces > (best.mesh.get_surface_count() if best.mesh != null else 0):
+			best = instance
+	return best
 
 
 ## Materiale a colori di vertice. [param tint_linear] colora le facce "vernice".

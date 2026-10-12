@@ -116,6 +116,11 @@ var _motion_at_rest := true
 @onready var _model: Node3D = $Model
 ## Animazioni dello scheletro (corsa, mira, scavo, schivata, colpo, morte); null se il modello non ne ha.
 @onready var _animator: CharacterAnimator = CharacterAnimator.attach($Model)
+## Zainetto di terra sul modello (spec sezione 3): sacca e striscia indicatore.
+const PACK_GAUGE_SHADER := preload("res://resources/materials/pack_gauge.gdshader")
+const PACK_FULL_SCALE := 1.12
+var _pack_sack: MeshInstance3D
+var _pack_gauge_material: ShaderMaterial
 
 
 func _ready() -> void:
@@ -144,11 +149,14 @@ func _ready() -> void:
 	_base_body_scale = _body.scale
 	_set_body_color(BODY_COLOR_LINEAR)
 	_model_rest = _model.transform
+	_setup_pack_sack()
 	if recoil_source != null and recoil_source.has_signal(&"fired"):
 		recoil_source.connect(&"fired", _on_recoil_source_fired)
 
 	if terrain_field != null:
 		pack = SoilPack.new(terrain_field.tuning.pack_capacity_m3, terrain_field.tuning.pack_start_m3)
+		pack.changed.connect(_on_pack_changed)
+		_on_pack_changed(pack.amount, pack.capacity)
 		_preview = BrushPreview.new()
 		_preview.name = "BrushPreview"
 		add_child(_preview)
@@ -354,6 +362,33 @@ func _update_terrain_target() -> void:
 		blocked = lamp_field == null or not lamp_field.can_place(terrain_grid.cell_at(terrain_target)) \
 			or not lamp_field.can_afford(terrain_target)
 	terrain_grid.update_preview(terrain_target, terrain_tool_mode, self, blocked)
+
+
+## Materiale della striscia dello zainetto (null senza sacca nel modello).
+func pack_gauge_material() -> ShaderMaterial:
+	return _pack_gauge_material
+
+
+## La sacca `PackSack` del modello: la striscia prende lo shader del riempimento.
+func _setup_pack_sack() -> void:
+	_pack_sack = _model.find_child("PackSack", true, false) as MeshInstance3D
+	if _pack_sack == null or _pack_sack.mesh == null:
+		return
+	_pack_gauge_material = ShaderMaterial.new()
+	_pack_gauge_material.shader = PACK_GAUGE_SHADER
+	for surface in _pack_sack.mesh.get_surface_count():
+		var source := _pack_sack.mesh.surface_get_material(surface)
+		if source != null and source.resource_name == "pack_gauge":
+			_pack_sack.set_surface_override_material(surface, _pack_gauge_material)
+	ActorModel.outline_remaining_surfaces(_pack_sack)
+
+
+func _on_pack_changed(amount: float, capacity: float) -> void:
+	var ratio := amount / capacity if capacity > 0.0 else 0.0
+	if _pack_gauge_material != null:
+		_pack_gauge_material.set_shader_parameter(&"pack_fill", ratio)
+	if _pack_sack != null:
+		_pack_sack.scale = Vector3.ONE * (PACK_FULL_SCALE if ratio > 0.9 else 1.0)
 
 
 func brush_radius() -> float:

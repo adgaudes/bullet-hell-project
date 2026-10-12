@@ -55,6 +55,10 @@ CORAL = (0.85, 0.1, 0.16)
 COPPER = (0.6, 0.22, 0.06)
 CYAN_LIGHT = (0.0, 0.8, 1.0)
 
+## Zainetto di terra (spec terreno continuo, sezione 3): tela della sacca e striscia indicatore.
+PACK_SACK = (0.5, 0.36, 0.16)
+PACK_GAUGE = (0.95, 0.9, 0.8)
+
 HIPS = "DEF-hips"
 SPINE = "DEF-spine.001"
 CHEST = "DEF-spine.003"
@@ -394,7 +398,54 @@ class Builder:
         return obj
 
 
-def export(skeleton, obj, asset_name, root_name, vertex_color="ACTIVE"):
+def build_pack_sack(skeleton, pack_z):
+    """Zainetto di terra (spec sezione 3): sacca di tela appesa sotto lo zaino-officina e
+    striscia indicatore sul fianco destro, come oggetto a parte `PackSack` con due materiali
+    propri (colore base, nessuna cottura): Godot lo trova con `find_child`, sostituisce il
+    materiale della striscia con `pack_gauge.gdshader` e scala la sacca. UV della striscia:
+    V = 0 in basso, 1 in alto (l'export glTF la ribalta: in Godot UV.y = 1 in basso)."""
+    sack_mat = bpy.data.materials.new("pack_sack")
+    gauge_mat = bpy.data.materials.new("pack_gauge")
+    for mat, color in ((sack_mat, PACK_SACK), (gauge_mat, PACK_GAUGE)):
+        mat.use_nodes = True
+        bsdf = mat.node_tree.nodes.get("Principled BSDF")
+        bsdf.inputs["Base Color"].default_value = (color[0], color[1], color[2], 1.0)
+        bsdf.inputs["Roughness"].default_value = 0.85
+    bm = bmesh.new()
+    uv = bm.loops.layers.uv.new("UVMap")
+
+    def add_box(size, center, material_index):
+        verts = bmesh.ops.create_cube(bm, size=1.0)["verts"]
+        for v in verts:
+            v.co = Vector((v.co.x * size[0], v.co.y * size[1], v.co.z * size[2]))
+        bmesh.ops.translate(bm, verts=verts, vec=Vector(center))
+        z0, z1 = center[2] - size[2] * 0.5, center[2] + size[2] * 0.5
+        faces = {face for v in verts for face in v.link_faces}
+        for face in faces:
+            face.material_index = material_index
+            face.smooth = False
+            for loop in face.loops:
+                loop[uv].uv = (0.5, (loop.vert.co.z - z0) / (z1 - z0))
+
+    sack_center = (0.0, 0.3, pack_z - 0.56)
+    add_box((0.38, 0.24, 0.22), sack_center, 0)
+    add_box((0.03, 0.2, 0.18), (-0.2, 0.3, pack_z - 0.56), 1)
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    mesh = bpy.data.meshes.new("PackSack")
+    bm.to_mesh(mesh)
+    bm.free()
+    mesh.materials.append(sack_mat)
+    mesh.materials.append(gauge_mat)
+    obj = bpy.data.objects.new("PackSack", mesh)
+    bpy.context.collection.objects.link(obj)
+    group = obj.vertex_groups.new(name=CHEST)
+    group.add(list(range(len(mesh.vertices))), 1.0, "REPLACE")
+    obj.parent = skeleton.obj
+    obj.modifiers.new("Armature", "ARMATURE").object = skeleton.obj
+    return obj
+
+
+def export(skeleton, obj, asset_name, root_name, vertex_color="ACTIVE", extras=()):
     root = bpy.data.objects.new(root_name, None)
     bpy.context.collection.objects.link(root)
     # L'export ignora la rotazione dell'oggetto armatura: la porta un nodo intermedio.
@@ -406,7 +457,7 @@ def export(skeleton, obj, asset_name, root_name, vertex_color="ACTIVE"):
     os.makedirs(OUT_DIR, exist_ok=True)
     path = os.path.join(OUT_DIR, asset_name + ".glb")
     bpy.ops.object.select_all(action="DESELECT")
-    for item in (root, facing, skeleton.obj, obj):
+    for item in (root, facing, skeleton.obj, obj, *extras):
         item.select_set(True)
     bpy.context.view_layer.objects.active = skeleton.obj
     bpy.ops.export_scene.gltf(
@@ -643,7 +694,9 @@ def build_player_engineer_refined():
         blends.append(("DEF-upper_arm" + side, "DEF-forearm" + side, s.head("DEF-forearm" + side), (sign, 0.0, 0.0), 0.06))
         blends.append(("DEF-forearm" + side, "DEF-hand" + side, s.head("DEF-hand" + side), (sign, 0.0, 0.0), 0.04))
     obj = b.to_object("PlayerEngineerMesh", s, blends)
-    return s, obj, "PlayerEngineer"
+    # Zainetto di terra come oggetto a parte, dopo il corpo (Godot prende il primo mesh come corpo).
+    sack = build_pack_sack(s, pack_z)
+    return s, obj, "PlayerEngineer", [sack]
 
 
 # Nome dell'asset -> (costruttore, colore di vertice nell'export). Il modello rifinito ha
@@ -660,8 +713,10 @@ def main():
     for name in names:
         bpy.ops.wm.read_factory_settings(use_empty=True)
         builder, vertex_color = ASSETS[name]
-        skeleton, obj, root_name = builder()
-        export(skeleton, obj, name, root_name, vertex_color)
+        built = builder()
+        skeleton, obj, root_name = built[0], built[1], built[2]
+        extras = built[3] if len(built) > 3 else []
+        export(skeleton, obj, name, root_name, vertex_color, extras)
 
 
 main()
