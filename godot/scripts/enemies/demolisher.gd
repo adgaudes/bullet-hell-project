@@ -174,6 +174,7 @@ func setup_demolisher(hp: int, flash_material: Material) -> void:
 
 
 func _ready() -> void:
+	floor_max_angle = atan(0.8)
 	if grid != null:
 		grid.cell_changed.connect(_on_cell_changed)
 	died.connect(func(_enemy: Enemy) -> void: _dismiss_crew())

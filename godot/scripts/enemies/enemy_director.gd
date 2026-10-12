@@ -28,6 +28,8 @@ const ERRAND_REACH := 0.9
 @export var player: PlayerCharacter
 @export var path_field: PathField
 @export var grid: TerrainGrid
+## Rilievo continuo (livello 1): se presente sostituisce la griglia per pendenza e spine.
+@export var terrain_field: TerrainField
 @export var spawning := true
 ## Scala dell'anello di comparsa e della distanza minima (D-078): segue la distanza della
 ## camera (braccio / 15 m), cosi con la camera lontana i nemici non appaiono in vista.
@@ -37,6 +39,9 @@ var enemies: Array[Enemy] = []
 var kills := 0
 ## Nemici riportati sull'anello di comparsa perche troppo lontani.
 var leashed := 0
+## Argini rosicchiati dai rottamatori bloccati.
+var gnaws := 0
+var _terrain_body: StaticBody3D
 var elapsed := 0.0
 ## Danno da contatto con le celle Raised (upgrade Terrapieni spinati); 0 = spento.
 ## Notte (D-058): al buio, fuori dalle luci di `light_field`, i rottamatori corrono di piu
@@ -133,6 +138,8 @@ func spawn_kind(world: Vector3, kind: StringName) -> Enemy:
 		&"hopper":
 			hoppers_spawned += 1
 			enemy.ignores_lowered = true
+			enemy.max_grade = 1.2
+			enemy.floor_max_angle = atan(1.2)
 			enemy.setup(maxi(ceili(current_enemy_health() * tuning.hopper_health_share), 1), _body_mesh, _hopper_material, _flash_material)
 		_:
 			enemy.setup(current_enemy_health(), _body_mesh, _base_material, _flash_material)
@@ -272,12 +279,20 @@ func _move_enemies(delta: float) -> void:
 		# I nemici in commissione (portatori del boss) restano come sono (specifica, sezione 5).
 		if in_dark and not enemy.has_errand:
 			speed *= tuning.night_dark_speed_scale
-		if grid != null and not enemy.ignores_lowered and grid.cell_state_at(pos) == TerrainState.CellState.LOWERED:
+		if terrain_field != null:
+			# In salita si rallenta in proporzione alla pendenza davanti, fino a uphill_min_speed.
+			var ahead := pos + direction.normalized() * 0.6 if not direction.is_zero_approx() else pos
+			var g := terrain_field.grade_between(pos, ahead)
+			if g > 0.0:
+				speed *= lerpf(1.0, tuning.uphill_min_speed, clampf(g / enemy.max_grade, 0.0, 1.0))
+		elif grid != null and not enemy.ignores_lowered and grid.cell_state_at(pos) == TerrainState.CellState.LOWERED:
 			speed *= 1.0 - penalty
 		var desired := direction.limit_length(1.0) * speed
 		var planar := Vector3(enemy.velocity.x, 0.0, enemy.velocity.z).move_toward(desired, ACCELERATION * delta)
 		enemy.velocity = Vector3(planar.x, 0.0 if enemy.is_on_floor() else enemy.velocity.y - 9.8 * delta, planar.z)
 		enemy.move_and_slide()
+		if terrain_field != null:
+			_tick_gnaw(enemy, direction, _planar(enemy.global_position - pos).length(), delta)
 		if planar.length() > 0.2:
 			enemy.rotation.y = atan2(-planar.x, -planar.z)
 		_apply_contacts(enemy, in_dark)
@@ -322,13 +337,53 @@ func _apply_contacts(enemy: Enemy, in_dark := false) -> void:
 			dark_contacts += 1
 		player.take_damage(damage)
 		enemy.notify_contact()
-	if spike_damage > 0 and enemy.spike_cooldown <= 0.0 and grid != null:
+	if spike_damage > 0 and enemy.spike_cooldown <= 0.0 and (grid != null or terrain_field != null):
 		for i in enemy.get_slide_collision_count():
 			var collider := enemy.get_slide_collision(i).get_collider() as Node
-			if collider != null and collider.get_parent() == grid:
+			if collider == null:
+				continue
+			# Sul rilievo la spina vale solo sugli argini (terreno rialzato), non sul piano.
+			var is_wall := false
+			if terrain_field != null:
+				is_wall = collider == _terrain_collision_body() and terrain_field.delta_at(enemy.global_position) > 0.3
+			else:
+				is_wall = collider.get_parent() == grid
+			if is_wall:
 				enemy.spike_cooldown = spike_interval
 				enemy.take_damage(spike_damage)
 				break
+
+
+func _terrain_collision_body() -> StaticBody3D:
+	if _terrain_body == null and terrain_field != null:
+		_terrain_body = (terrain_field.get_node(^"Collision") as TerrainCollision).body
+	return _terrain_body
+
+
+## Fermo contro il terreno da piu di gnaw_delay_s: rosicchia l'argine davanti a se.
+## Solo scavo, mai rialzo: alzare sotto un corpo in piedi lo incastrerebbe nel campo.
+func _tick_gnaw(enemy: Enemy, direction: Vector3, moved: float, delta: float) -> void:
+	var against_terrain := false
+	for i in enemy.get_slide_collision_count():
+		if enemy.get_slide_collision(i).get_collider() == _terrain_collision_body():
+			against_terrain = true
+			break
+	if against_terrain and moved < 0.2 * delta and not direction.is_zero_approx():
+		enemy.stuck_seconds += delta
+	else:
+		enemy.stuck_seconds = 0.0
+		enemy.is_gnawing = false
+	if enemy.stuck_seconds < tuning.gnaw_delay_s:
+		return
+	enemy.is_gnawing = true
+	enemy.gnaw_left -= delta
+	if enemy.gnaw_left > 0.0:
+		return
+	enemy.gnaw_left = 1.0
+	var point := enemy.global_position + direction.normalized() * 1.0
+	terrain_field.sculpt(point, tuning.gnaw_radius_m, -tuning.gnaw_depth_m)
+	gnaws += 1
+	print("PROTOTYPE01_ENEMY_GNAW total=%d" % gnaws)
 
 
 func _separation(enemy: Enemy) -> Vector3:

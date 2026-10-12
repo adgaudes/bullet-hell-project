@@ -84,6 +84,7 @@ var _motion_at_rest := true
 
 
 func _ready() -> void:
+	floor_max_angle = atan(0.8)
 	if tuning == null:
 		tuning = CompanionTuning.new()
 	capacity = tuning.capacity

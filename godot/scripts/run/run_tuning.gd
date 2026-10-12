@@ -176,6 +176,14 @@ extends Resource
 @export_range(0.0, 1.0) var hopper_share_max := 0.0
 @export_range(0.1, 1.0) var hopper_health_share := 0.5
 
+@export_group("Terrain")
+## Rilievo continuo: un rottamatore fermo contro il terreno per questi secondi rosicchia l'argine.
+@export var gnaw_delay_s := 2.0
+@export var gnaw_depth_m := 0.6
+@export var gnaw_radius_m := 1.2
+## Frazione di velocita rimasta sulla pendenza massima del nemico.
+@export var uphill_min_speed := 0.5
+
 @export_group("Courtyard")
 ## Mura iniziali del cortile: anello di celle Raised a questa distanza dal centro
 ## della griglia, con un varco al centro di ogni lato. 0 = nessuna mura.

@@ -63,6 +63,12 @@ var speed_scale := 1.0
 var kind: StringName = &"scavenger"
 ## I saltatori (D-066) non vengono rallentati dalle celle Lowered.
 var ignores_lowered := false
+## Pendenza massima percorribile (rilievo continuo); `floor_max_angle` ne deriva.
+var max_grade := 0.8
+## Secondi fermo contro il terreno e stato del rosicchio.
+var stuck_seconds := 0.0
+var gnaw_left := 0.0
+var is_gnawing := false
 ## Raggio in piu rispetto a un rottamatore, per i colpi (corpi grandi).
 var hit_radius_bonus := 0.0
 ## Commissione (D-045): il direttore lo porta a `errand_point` invece che dal giocatore.
@@ -92,6 +98,7 @@ func setup(hp: int, body_mesh: Mesh, base_material: Material, flash_material: Ma
 	max_health = hp
 	collision_layer = 16
 	collision_mask = 1
+	floor_max_angle = atan(max_grade)
 	var shape := CapsuleShape3D.new()
 	shape.radius = RADIUS
 	shape.height = HEIGHT
