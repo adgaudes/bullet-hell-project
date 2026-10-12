@@ -6,6 +6,8 @@ extends Node3D
 ## Terrain3D: tutto passa da qui. Scrive solo `sculpt`/`level`; chi vuole reagire a un
 ## cambio si collega a `region_changed`. `player_sculpted` e per cio che dipende dal
 ## tool del giocatore (rottami, suoni, impronte, contatori).
+## Il campo e rettangolare (tappa B): `size_m` (X, Z), regioni Terrain3D e chunk di
+## collisione per asse; l'indice dei vertici e `iz * resolution_x + ix`.
 
 signal region_changed(aabb: AABB)
 ## Terrain3D e pronto per colori e strati (solo con finestra, un fotogramma dopo `_ready`).
@@ -19,17 +21,19 @@ const MIN_HEIGHT := -2.5
 const MAX_HEIGHT := 4.0
 const REGION_SIZE := 256
 const SAVE_MAGIC := "TFLD"
-const SAVE_VERSION := 2
+const SAVE_VERSION := 3
 const TOOL_MODE_NAMES: Array[String] = ["Dig", "Raise", "Level", "Lamp"]
 
-@export var size_m := 204.0
+## Lato lungo X e lungo Z, metri.
+@export var size_m := Vector2(204.0, 204.0)
 @export var tuning: TerrainTuning
 ## Senza resa (test headless, benchmark) il nodo Terrain3D non viene creato.
 @export var render := true
 
-var resolution := 0
+var resolution_x := 0
+var resolution_z := 0
 var volume_moved := 0.0
-var _half := 0.0
+var _half := Vector2.ZERO
 var _heights := PackedFloat32Array()
 var _base := PackedFloat32Array()
 var _protected := PackedByteArray()
@@ -41,12 +45,13 @@ var _collision: TerrainCollision
 func _ready() -> void:
 	if tuning == null:
 		tuning = TerrainTuning.new()
-	resolution = int(round(size_m / SPACING)) + 1
-	_half = (resolution - 1) * SPACING * 0.5
-	_heights.resize(resolution * resolution)
+	resolution_x = int(round(size_m.x / SPACING)) + 1
+	resolution_z = int(round(size_m.y / SPACING)) + 1
+	_half = Vector2((resolution_x - 1) * SPACING * 0.5, (resolution_z - 1) * SPACING * 0.5)
+	_heights.resize(resolution_x * resolution_z)
 	_heights.fill(0.0)
 	_base = _heights.duplicate()
-	_protected.resize(resolution * resolution)
+	_protected.resize(resolution_x * resolution_z)
 	_protected.fill(0)
 	_collision = TerrainCollision.new()
 	_collision.name = "Collision"
@@ -54,10 +59,15 @@ func _ready() -> void:
 	_collision.setup(self)
 	if render and not DisplayServer.get_name() == "headless":
 		_build_terrain3d()
-	print("PROTOTYPE01_TERRAIN_FIELD_READY resolution=%d size_m=%.0f" % [resolution, size_m])
+	print("PROTOTYPE01_TERRAIN_FIELD_READY resolution=%dx%d size_m=%.0fx%.0f" % [resolution_x, resolution_z, size_m.x, size_m.y])
 
 
+## Semilato lungo X (comodita per i chiamanti quadrati); per le scale usare `half_extents()`.
 func half_extent() -> float:
+	return _half.x
+
+
+func half_extents() -> Vector2:
 	return _half
 
 
@@ -194,18 +204,15 @@ func player_level_budget(center: Vector3, radius: float, strength: float, max_ra
 func _raise_volume(center: Vector3, radius: float, target: float, strength: float) -> float:
 	var raised := 0.0
 	var r2 := radius * radius
-	var x0 := maxi(int(floor((center.x - radius + _half) / SPACING)), 0)
-	var x1 := mini(int(ceil((center.x + radius + _half) / SPACING)), resolution - 1)
-	var z0 := maxi(int(floor((center.z - radius + _half) / SPACING)), 0)
-	var z1 := mini(int(ceil((center.z + radius + _half) / SPACING)), resolution - 1)
-	for iz in range(z0, z1 + 1):
-		var wz := iz * SPACING - _half
-		for ix in range(x0, x1 + 1):
-			var wx := ix * SPACING - _half
+	var r := _rect_indices(center, Vector2(radius, radius))
+	for iz in range(r[1], r[3] + 1):
+		var wz := iz * SPACING - _half.y
+		for ix in range(r[0], r[2] + 1):
+			var wx := ix * SPACING - _half.x
 			var d2 := ((wx - center.x) * (wx - center.x) + (wz - center.z) * (wz - center.z)) / r2
 			if d2 >= 1.0:
 				continue
-			var i := iz * resolution + ix
+			var i := iz * resolution_x + ix
 			if _protected[i] != 0:
 				continue
 			var falloff := (1.0 - d2) * (1.0 - d2)
@@ -219,7 +226,7 @@ func _raise_volume(center: Vector3, radius: float, target: float, strength: floa
 func commit_base() -> void:
 	_base = _heights.duplicate()
 	if _terrain_ready:
-		TerrainSurface.update_base(_terrain, _base, resolution, _half)
+		TerrainSurface.update_base(_terrain, _base, resolution_x, resolution_z, _half)
 
 
 ## Strato di tile (TerrainSurface.LAYER_*) sul control map di Terrain3D in un disco; niente in headless.
@@ -273,8 +280,10 @@ func save_base(path: String, layout_seed := 0) -> int:
 		return 0
 	file.store_buffer(SAVE_MAGIC.to_ascii_buffer())
 	file.store_32(SAVE_VERSION)
-	file.store_32(resolution)
-	file.store_float(size_m)
+	file.store_32(resolution_x)
+	file.store_32(resolution_z)
+	file.store_float(size_m.x)
+	file.store_float(size_m.y)
 	file.store_32(layout_seed)
 	var raw := _heights.to_byte_array()
 	var packed := raw.compress(FileAccess.COMPRESSION_ZSTD)
@@ -283,7 +292,7 @@ func save_base(path: String, layout_seed := 0) -> int:
 	file.store_buffer(packed)
 	file.close()
 	DirAccess.rename_absolute(ProjectSettings.globalize_path(path + ".tmp"), ProjectSettings.globalize_path(path))
-	return 20 + packed.size()
+	return 32 + packed.size()
 
 
 func load_base(path: String, layout_seed := 0) -> bool:
@@ -292,83 +301,99 @@ func load_base(path: String, layout_seed := 0) -> bool:
 		return false
 	if file.get_buffer(4).get_string_from_ascii() != SAVE_MAGIC or file.get_32() != SAVE_VERSION:
 		return false
-	if file.get_32() != resolution or not is_equal_approx(file.get_float(), size_m):
+	if file.get_32() != resolution_x or file.get_32() != resolution_z:
+		return false
+	if not is_equal_approx(file.get_float(), size_m.x) or not is_equal_approx(file.get_float(), size_m.y):
 		return false
 	if file.get_32() != layout_seed:
 		return false
 	var raw_size := file.get_32()
 	var packed_size := file.get_32()
 	var raw := file.get_buffer(packed_size).decompress(raw_size, FileAccess.COMPRESSION_ZSTD)
-	if raw.size() != resolution * resolution * 4:
+	if raw.size() != resolution_x * resolution_z * 4:
 		return false
 	_heights = raw.to_float32_array()
 	_base = _heights.duplicate()
 	_mirror_all()
-	region_changed.emit(AABB(Vector3(-_half, MIN_HEIGHT, -_half), Vector3(_half * 2.0, MAX_HEIGHT - MIN_HEIGHT, _half * 2.0)))
+	region_changed.emit(_full_aabb())
 	return true
 
 
 # --- Interni ---------------------------------------------------------------------------
 
 func _index_of(p: Vector3) -> int:
-	var ix := int(round((p.x + _half) / SPACING))
-	var iz := int(round((p.z + _half) / SPACING))
-	if ix < 0 or iz < 0 or ix >= resolution or iz >= resolution:
+	var ix := int(round((p.x + _half.x) / SPACING))
+	var iz := int(round((p.z + _half.y) / SPACING))
+	if ix < 0 or iz < 0 or ix >= resolution_x or iz >= resolution_z:
 		return -1
-	return iz * resolution + ix
+	return iz * resolution_x + ix
 
 
 func _vertex_world(i: int) -> Vector3:
-	var ix := i % resolution
-	var iz := i / resolution
-	return Vector3(ix * SPACING - _half, _heights[i], iz * SPACING - _half)
+	var ix := i % resolution_x
+	var iz := i / resolution_x
+	return Vector3(ix * SPACING - _half.x, _heights[i], iz * SPACING - _half.y)
 
 
 func _sample(array: PackedFloat32Array, p: Vector3) -> float:
-	var fx := clampf((p.x + _half) / SPACING, 0.0, resolution - 1.001)
-	var fz := clampf((p.z + _half) / SPACING, 0.0, resolution - 1.001)
+	var fx := clampf((p.x + _half.x) / SPACING, 0.0, resolution_x - 1.001)
+	var fz := clampf((p.z + _half.y) / SPACING, 0.0, resolution_z - 1.001)
 	var ix := int(fx)
 	var iz := int(fz)
 	var tx := fx - ix
 	var tz := fz - iz
-	var i := iz * resolution + ix
+	var i := iz * resolution_x + ix
 	var top := lerpf(array[i], array[i + 1], tx)
-	var bottom := lerpf(array[i + resolution], array[i + resolution + 1], tx)
+	var bottom := lerpf(array[i + resolution_x], array[i + resolution_x + 1], tx)
 	return lerpf(top, bottom, tz)
+
+
+## Indici (x0, z0, x1, z1) dei vertici del rettangolo XZ, tagliati al campo.
+func _rect_indices(center: Vector3, half_size: Vector2) -> Array[int]:
+	return [
+		maxi(int(floor((center.x - half_size.x + _half.x) / SPACING)), 0),
+		maxi(int(floor((center.z - half_size.y + _half.y) / SPACING)), 0),
+		mini(int(ceil((center.x + half_size.x + _half.x) / SPACING)), resolution_x - 1),
+		mini(int(ceil((center.z + half_size.y + _half.y) / SPACING)), resolution_z - 1),
+	]
+
+
+func _full_aabb() -> AABB:
+	return AABB(Vector3(-_half.x, MIN_HEIGHT, -_half.y), Vector3(_half.x * 2.0, MAX_HEIGHT - MIN_HEIGHT, _half.y * 2.0))
+
+
+func _emit_rect_changed(x0: int, z0: int, x1: int, z1: int) -> void:
+	var lo := Vector3(x0 * SPACING - _half.x, MIN_HEIGHT, z0 * SPACING - _half.y)
+	var hi := Vector3(x1 * SPACING - _half.x, MAX_HEIGHT, z1 * SPACING - _half.y)
+	region_changed.emit(AABB(lo, hi - lo))
 
 
 ## Indici dei vertici dentro il disco (XZ).
 func _disc_points(center: Vector3, radius: float) -> PackedInt32Array:
 	var out := PackedInt32Array()
-	var x0 := maxi(int(floor((center.x - radius + _half) / SPACING)), 0)
-	var x1 := mini(int(ceil((center.x + radius + _half) / SPACING)), resolution - 1)
-	var z0 := maxi(int(floor((center.z - radius + _half) / SPACING)), 0)
-	var z1 := mini(int(ceil((center.z + radius + _half) / SPACING)), resolution - 1)
+	var r := _rect_indices(center, Vector2(radius, radius))
 	var r2 := radius * radius
-	for iz in range(z0, z1 + 1):
-		var wz := iz * SPACING - _half
-		for ix in range(x0, x1 + 1):
-			var wx := ix * SPACING - _half
+	for iz in range(r[1], r[3] + 1):
+		var wz := iz * SPACING - _half.y
+		for ix in range(r[0], r[2] + 1):
+			var wx := ix * SPACING - _half.x
 			if (wx - center.x) * (wx - center.x) + (wz - center.z) * (wz - center.z) <= r2:
-				out.append(iz * resolution + ix)
+				out.append(iz * resolution_x + ix)
 	return out
 
 
 func _brush(center: Vector3, radius: float, shape: Callable) -> float:
 	var volume := 0.0
 	var r2 := radius * radius
-	var x0 := maxi(int(floor((center.x - radius + _half) / SPACING)), 0)
-	var x1 := mini(int(ceil((center.x + radius + _half) / SPACING)), resolution - 1)
-	var z0 := maxi(int(floor((center.z - radius + _half) / SPACING)), 0)
-	var z1 := mini(int(ceil((center.z + radius + _half) / SPACING)), resolution - 1)
-	for iz in range(z0, z1 + 1):
-		var wz := iz * SPACING - _half
-		for ix in range(x0, x1 + 1):
-			var wx := ix * SPACING - _half
+	var r := _rect_indices(center, Vector2(radius, radius))
+	for iz in range(r[1], r[3] + 1):
+		var wz := iz * SPACING - _half.y
+		for ix in range(r[0], r[2] + 1):
+			var wx := ix * SPACING - _half.x
 			var d2 := ((wx - center.x) * (wx - center.x) + (wz - center.z) * (wz - center.z)) / r2
 			if d2 >= 1.0:
 				continue
-			var i := iz * resolution + ix
+			var i := iz * resolution_x + ix
 			if _protected[i] != 0:
 				continue
 			var falloff := (1.0 - d2) * (1.0 - d2)
@@ -376,10 +401,8 @@ func _brush(center: Vector3, radius: float, shape: Callable) -> float:
 			var after := clampf(shape.call(before, falloff), MIN_HEIGHT, MAX_HEIGHT)
 			_heights[i] = after
 			volume += (after - before) * SPACING * SPACING
-	_mirror_rect(x0, z0, x1, z1)
-	var lo := Vector3(x0 * SPACING - _half, MIN_HEIGHT, z0 * SPACING - _half)
-	var hi := Vector3(x1 * SPACING - _half, MAX_HEIGHT, z1 * SPACING - _half)
-	region_changed.emit(AABB(lo, hi - lo))
+	_mirror_rect(r[0], r[1], r[2], r[3])
+	_emit_rect_changed(r[0], r[1], r[2], r[3])
 	return volume
 
 
@@ -402,14 +425,17 @@ func _build_terrain3d() -> void:
 	if _terrain.data == null or not is_inside_tree():
 		return
 	_disable_terrain3d_collision()
+	# Regioni da 128 m centrate sull'origine, quante ne servono per asse (tappa B).
 	var region_m := REGION_SIZE * SPACING
-	for gx in [-region_m * 0.5, region_m * 0.5]:
-		for gz in [-region_m * 0.5, region_m * 0.5]:
-			_terrain.data.add_region_blankp(Vector3(gx, 0.0, gz), false)
+	var nx := int(ceil(_half.x / region_m))
+	var nz := int(ceil(_half.y / region_m))
+	for gx in range(-nx, nx):
+		for gz in range(-nz, nz):
+			_terrain.data.add_region_blankp(Vector3((gx + 0.5) * region_m, 0.0, (gz + 0.5) * region_m), false)
 	_apply_quality_preset()
 	_terrain_ready = true
 	TerrainSurface.apply(_terrain)
-	TerrainSurface.update_base(_terrain, _base, resolution, _half)
+	TerrainSurface.update_base(_terrain, _base, resolution_x, resolution_z, _half)
 	_mirror_all()
 	render_ready.emit()
 
@@ -432,7 +458,7 @@ func _disable_terrain3d_collision() -> void:
 func _mirror_all() -> void:
 	if not _terrain_ready:
 		return
-	_mirror_rect(0, 0, resolution - 1, resolution - 1)
+	_mirror_rect(0, 0, resolution_x - 1, resolution_z - 1)
 
 
 func _mirror_rect(x0: int, z0: int, x1: int, z1: int) -> void:
@@ -441,13 +467,8 @@ func _mirror_rect(x0: int, z0: int, x1: int, z1: int) -> void:
 	var data := _terrain.data
 	for iz in range(z0, z1 + 1):
 		for ix in range(x0, x1 + 1):
-			data.set_height(Vector3(ix * SPACING - _half, 0.0, iz * SPACING - _half), _heights[iz * resolution + ix])
-	var lo := Vector3(x0 * SPACING - _half, 0.0, z0 * SPACING - _half)
-	var hi := Vector3(x1 * SPACING - _half, 0.0, z1 * SPACING - _half)
-	for corner in [lo, Vector3(hi.x, 0.0, lo.z), Vector3(lo.x, 0.0, hi.z), hi]:
-		var region: Terrain3DRegion = data.get_regionp(corner)
-		if region != null:
-			region.edited = true
+			data.set_height(Vector3(ix * SPACING - _half.x, 0.0, iz * SPACING - _half.y), _heights[iz * resolution_x + ix])
+	_mark_rect_regions([x0, z0, x1, z1])
 	data.update_maps(Terrain3DRegion.TYPE_HEIGHT, false)
 
 
@@ -456,3 +477,24 @@ func _mark_regions(center: Vector3, radius: float) -> void:
 		var region: Terrain3DRegion = _terrain.data.get_regionp(center + offset)
 		if region != null:
 			region.edited = true
+
+
+## Marca `edited` ogni regione toccata dal rettangolo di indici (anche quelle interne,
+## se il rettangolo e piu largo di una regione: il treno).
+func _mark_rect_regions(r: Array[int]) -> void:
+	var lo := Vector3(r[0] * SPACING - _half.x, 0.0, r[1] * SPACING - _half.y)
+	var hi := Vector3(r[2] * SPACING - _half.x, 0.0, r[3] * SPACING - _half.y)
+	var region_m := REGION_SIZE * SPACING
+	var x := lo.x
+	while true:
+		var z := lo.z
+		while true:
+			var region: Terrain3DRegion = _terrain.data.get_regionp(Vector3(minf(x, hi.x), 0.0, minf(z, hi.z)))
+			if region != null:
+				region.edited = true
+			if z >= hi.z:
+				break
+			z += region_m
+		if x >= hi.x:
+			break
+		x += region_m

@@ -515,14 +515,13 @@ func apply_base_relief(field: TerrainField) -> void:
 	var noise := FastNoiseLite.new()
 	noise.seed = layout_seed
 	noise.frequency = 0.025
-	var half := field.half_extent()
-	var r := field.resolution
-	for iz in r:
-		for ix in r:
-			var x := ix * TerrainField.SPACING - half
-			var z := iz * TerrainField.SPACING - half
+	var half := field.half_extents()
+	for iz in field.resolution_z:
+		for ix in field.resolution_x:
+			var x := ix * TerrainField.SPACING - half.x
+			var z := iz * TerrainField.SPACING - half.y
 			var h := noise.get_noise_2d(x, z) * 1.2 + noise.get_noise_2d(x * 2.8, z * 2.8) * 0.5 + noise.get_noise_2d(x * 6.5, z * 6.5) * 0.25
-			field._heights[iz * r + ix] = h * _relief_calm(Vector2(x, z))
+			field._heights[iz * field.resolution_x + ix] = h * _relief_calm(Vector2(x, z))
 	var rubble := RandomNumberGenerator.new()
 	rubble.seed = layout_seed + 7
 	for block in block_rects():
@@ -542,8 +541,7 @@ func apply_base_relief(field: TerrainField) -> void:
 	field.commit_base()
 	field._mirror_all()
 	# Le quote del rumore sono scritte senza pennello: collisione e percorso vanno avvisati.
-	field.region_changed.emit(AABB(Vector3(-half, TerrainField.MIN_HEIGHT, -half),
-		Vector3(half * 2.0, TerrainField.MAX_HEIGHT - TerrainField.MIN_HEIGHT, half * 2.0)))
+	field.region_changed.emit(field._full_aabb())
 
 
 ## Pennellate dei punti di interesse sopra la base: sporgono da essa, cosi il Demolitore
@@ -584,10 +582,10 @@ func paint_surface(field: TerrainField) -> void:
 	# Prato dipinto dove cresce il verde (stessa formula dei ciuffi), fuori dalla piazza.
 	var green: Array[Vector3] = []
 	var pitch := 3.0
-	var half := field.half_extent()
+	var half := field.half_extents()
 	var k := 0
-	for z in range(int(-half / pitch), int(half / pitch) + 1):
-		for x in range(int(-half / pitch), int(half / pitch) + 1):
+	for z in range(int(-half.y / pitch), int(half.y / pitch) + 1):
+		for x in range(int(-half.x / pitch), int(half.x / pitch) + 1):
 			k += 1
 			var p := Vector2(x * pitch + (0.7 if k % 2 == 0 else -0.7), z * pitch)
 			if p.length() < plaza_radius_m * 0.8 or _cover_sampled(p) < 0.5:

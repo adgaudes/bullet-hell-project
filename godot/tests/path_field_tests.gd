@@ -318,7 +318,7 @@ func _test_rectangular_arena() -> void:
 func _test_slope_blocks_path() -> void:
 	print("slope")
 	var field := TerrainField.new()
-	field.size_m = 48.0
+	field.size_m = Vector2(48.0, 48.0)
 	field.tuning = TerrainTuning.new()
 	root.add_child(field)
 	var target := Node3D.new()

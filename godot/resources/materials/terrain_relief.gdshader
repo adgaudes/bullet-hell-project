@@ -103,7 +103,7 @@ struct material {
 
 // Rilievo continuo (D-085): base del livello (quote R32F) e tinte, impostate da TerrainSurface.
 uniform highp sampler2D base_map : filter_linear, repeat_disable;
-uniform float base_half = 102.0;
+uniform vec2 base_half = vec2(102.0);
 uniform vec3 raised_tint : source_color = vec3(0.62, 0.42, 0.24);
 uniform vec3 dug_tint : source_color = vec3(0.30, 0.20, 0.12);
 uniform float mud_level = -0.6;
@@ -548,7 +548,7 @@ void fragment() {
 
 	// Rilievo (D-082, D-085): tinte di alzato e scavato dal delta rispetto alla base del
 	// livello, fango nelle conche, fianchi ripidi piu spenti.
-	vec2 base_uv = (v_vertex.xz + vec2(base_half)) / (base_half * 2.0);
+	vec2 base_uv = (v_vertex.xz + base_half) / (base_half * 2.0);
 	float base_h = texture(base_map, base_uv).r;
 	float delta = v_vertex.y - base_h;
 	float slope = 1.0 - clamp(w_normal.y, 0.0, 1.0);

@@ -77,7 +77,7 @@ func _initialize() -> void:
 func _test_relief_player_strokes_trigger() -> void:
 	print("relief strokes")
 	var relief := TerrainField.new()
-	relief.size_m = 32.0
+	relief.size_m = Vector2(32.0, 32.0)
 	relief.tuning = TerrainTuning.new()
 	relief.render = false
 	_world.add_child(relief)

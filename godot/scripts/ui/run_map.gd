@@ -98,15 +98,16 @@ static func height_color(delta: float, is_barricade: bool, initial_delta := 0.0)
 	return GROUND
 
 
-## Lato in campioni del rilievo a passo [param step_m].
-static func height_samples(field: TerrainField, step_m := HEIGHT_STEP_M) -> int:
-	return int(round(field.half_extent() * 2.0 / step_m)) + 1
+## Campioni del rilievo per asse (colonne lungo X, righe lungo Z) a passo [param step_m].
+static func height_samples(field: TerrainField, step_m := HEIGHT_STEP_M) -> Vector2i:
+	var half := field.half_extents()
+	return Vector2i(int(round(half.x * 2.0 / step_m)) + 1, int(round(half.y * 2.0 / step_m)) + 1)
 
 
 ## Mondo (XZ) del campione (colonna, riga): colonna cresce verso est, riga verso sud.
 static func sample_world(field: TerrainField, sample: Vector2i, step_m := HEIGHT_STEP_M) -> Vector3:
-	var half := field.half_extent()
-	return Vector3(-half + sample.x * step_m, 0.0, -half + sample.y * step_m)
+	var half := field.half_extents()
+	return Vector3(-half.x + sample.x * step_m, 0.0, -half.y + sample.y * step_m)
 
 
 ## Quote del rilievo campionate a passo [param step_m] (riga * n + colonna): la
@@ -114,10 +115,10 @@ static func sample_world(field: TerrainField, sample: Vector2i, step_m := HEIGHT
 static func snapshot_heights(field: TerrainField, step_m := HEIGHT_STEP_M) -> PackedFloat32Array:
 	var n := height_samples(field, step_m)
 	var result := PackedFloat32Array()
-	result.resize(n * n)
-	for row in n:
-		for column in n:
-			result[row * n + column] = field.height_at(sample_world(field, Vector2i(column, row), step_m))
+	result.resize(n.x * n.y)
+	for row in n.y:
+		for column in n.x:
+			result[row * n.x + column] = field.height_at(sample_world(field, Vector2i(column, row), step_m))
 	return result
 
 
@@ -129,15 +130,15 @@ static func render_heights(field: TerrainField, initial: PackedFloat32Array, bar
 		buildings: Array[Rect2], start: Vector3, end: Vector3, boss: Variant = null, lamps: Array[Vector3] = [],
 		step_m := HEIGHT_STEP_M) -> Image:
 	var n := height_samples(field, step_m)
-	var size := Vector2i(n, n)
-	var full := Image.create(n, n, false, Image.FORMAT_RGBA8)
+	var size := n
+	var full := Image.create(n.x, n.y, false, Image.FORMAT_RGBA8)
 	full.fill(GROUND)
 	var points: Array[Vector2i] = []
-	for row in n:
-		for column in n:
+	for row in n.y:
+		for column in n.x:
 			var pixel := Vector2i(column, row)
 			var world := sample_world(field, pixel, step_m)
-			var i := row * n + column
+			var i := row * n.x + column
 			var before: float = initial[i] if i < initial.size() else field.height_at(world)
 			var delta := field.height_at(world) - before
 			var near_barricade := false
@@ -176,10 +177,10 @@ static func render_heights(field: TerrainField, initial: PackedFloat32Array, bar
 
 ## Campione (colonna, riga) piu vicino a un punto del mondo, dentro la mappa.
 static func _sample_at(field: TerrainField, world: Vector3, size: Vector2i, step_m: float) -> Vector2i:
-	var half := field.half_extent()
+	var half := field.half_extents()
 	return Vector2i(
-		clampi(roundi((world.x + half) / step_m), 0, size.x - 1),
-		clampi(roundi((world.z + half) / step_m), 0, size.y - 1))
+		clampi(roundi((world.x + half.x) / step_m), 0, size.x - 1),
+		clampi(roundi((world.z + half.y) / step_m), 0, size.y - 1))
 
 
 ## Riquadro quadrato di celle (pixel della mappa intera) che contiene le celle

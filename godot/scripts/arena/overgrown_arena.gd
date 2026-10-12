@@ -1011,7 +1011,7 @@ func _build_ground_cover() -> void:
 
 
 func _relief_ready() -> bool:
-	return terrain_field != null and terrain_field.is_node_ready() and terrain_field.resolution > 0
+	return terrain_field != null and terrain_field.is_node_ready() and terrain_field.resolution_x > 0
 
 
 ## Rilievo continuo (D-085): appoggia alle quote i corpi generati a quota zero (rovine
@@ -1020,12 +1020,12 @@ func _relief_ready() -> bool:
 func settle_on_relief() -> void:
 	if not _relief_ready():
 		return
-	var half := terrain_field.half_extent()
+	var half := terrain_field.half_extents()
 	for node in _generated:
 		if not (node is Node3D) or node is MultiMeshInstance3D or node is DirectionalLight3D:
 			continue
 		var body := node as Node3D
-		if absf(body.position.x) > half or absf(body.position.z) > half:
+		if absf(body.position.x) > half.x or absf(body.position.z) > half.y:
 			continue
 		if not body.has_meta(&"flat_y"):
 			body.set_meta(&"flat_y", body.position.y)

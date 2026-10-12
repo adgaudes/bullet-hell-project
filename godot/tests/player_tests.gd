@@ -29,7 +29,7 @@ func _initialize() -> void:
 func _test_pack_gauge() -> void:
 	print("pack gauge")
 	var field := TerrainField.new()
-	field.size_m = 32.0
+	field.size_m = Vector2(32.0, 32.0)
 	field.tuning = TerrainTuning.new()
 	field.render = false
 	root.add_child(field)

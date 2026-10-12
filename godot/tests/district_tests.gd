@@ -67,7 +67,7 @@ static func _at(p: Vector2) -> Vector3:
 func _test_scale() -> void:
 	print("scale")
 	_check(_district.play_half_extent >= 100.0, "area giocabile di almeno 200 m di lato (%.0f)" % (_district.play_half_extent * 2.0))
-	_check(_field.resolution == 409, "quartiere 204 m -> 409 vertici per lato (%d)" % _field.resolution)
+	_check(_field.resolution_x == 409 and _field.resolution_z == 409, "quartiere 204 m -> 409 vertici per lato (%d)" % _field.resolution_x)
 	_check(absf(_field.half_extent() - _district.play_half_extent) <= 0.5, "il rilievo copre l'arena (%.1f m)" % (_field.half_extent() * 2.0))
 	_check(is_equal_approx(_path.half_extent, _district.play_half_extent), "campo di percorso esteso all'arena")
 

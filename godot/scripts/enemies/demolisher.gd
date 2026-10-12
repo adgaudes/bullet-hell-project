@@ -815,7 +815,7 @@ func _pick_barricade_point() -> Vector3:
 	for ahead in [2.0, 3.0, 1.0]:
 		for lateral in [0.0, 1.0, -1.0, 2.0, -2.0]:
 			var point: Vector3 = _planar(global_position) + forward * step * ahead + side * step * lateral
-			if absf(point.x) > terrain_field.half_extent() - step or absf(point.z) > terrain_field.half_extent() - step:
+			if absf(point.x) > terrain_field.half_extents().x - step or absf(point.z) > terrain_field.half_extents().y - step:
 				continue
 			if not terrain_field.is_flat(point, BARRICADE_RADIUS, 0.35) or terrain_field.is_protected(point):
 				continue

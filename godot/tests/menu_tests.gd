@@ -152,7 +152,7 @@ func _test_map_rules() -> void:
 func _test_run_map_heights() -> void:
 	print("run map heights")
 	var field := TerrainField.new()
-	field.size_m = 48.0
+	field.size_m = Vector2(48.0, 48.0)
 	field.tuning = TerrainTuning.new()
 	field.render = false
 	root.add_child(field)

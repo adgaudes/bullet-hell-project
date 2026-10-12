@@ -10,7 +10,8 @@ const CHUNK_CELLS := 32
 var body: StaticBody3D
 var _field: TerrainField
 var _shapes: Dictionary[Vector2i, HeightMapShape3D] = {}
-var _chunks_per_side := 0
+var _chunks_x := 0
+var _chunks_z := 0
 var _refreshed := 0
 
 
@@ -22,11 +23,12 @@ func setup(field: TerrainField) -> void:
 	body.collision_mask = 0
 	add_child(body)
 	var chunk_m := CHUNK_CELLS * TerrainField.SPACING
-	_chunks_per_side = int(ceil(_field.half_extent() * 2.0 / chunk_m)) + 1
-	var origin := -_chunks_per_side / 2
-	for cx in _chunks_per_side:
-		for cz in _chunks_per_side:
-			var key := Vector2i(origin + cx, origin + cz)
+	var half := _field.half_extents()
+	_chunks_x = int(ceil(half.x * 2.0 / chunk_m)) + 1
+	_chunks_z = int(ceil(half.y * 2.0 / chunk_m)) + 1
+	for cx in _chunks_x:
+		for cz in _chunks_z:
+			var key := Vector2i(-_chunks_x / 2 + cx, -_chunks_z / 2 + cz)
 			var shape := HeightMapShape3D.new()
 			shape.map_width = CHUNK_CELLS + 1
 			shape.map_depth = CHUNK_CELLS + 1

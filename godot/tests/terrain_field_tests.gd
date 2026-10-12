@@ -12,6 +12,7 @@ func _initialize() -> void:
 	Engine.physics_ticks_per_second = 60
 	await _open()
 	_test_flat_start()
+	await _test_rectangular_field()
 	_test_collision_chunks()
 	await _test_body_pushed_up()
 	_test_sculpt_volume_and_bell()
@@ -31,7 +32,7 @@ func _initialize() -> void:
 
 func _open() -> void:
 	_field = TerrainField.new()
-	_field.size_m = 64.0
+	_field.size_m = Vector2(64.0, 64.0)
 	_field.tuning = TerrainTuning.new()
 	root.add_child(_field)
 	await _frames(3)
@@ -39,9 +40,53 @@ func _open() -> void:
 
 func _test_flat_start() -> void:
 	print("flat start")
-	_check(_field.resolution == 129, "64 m a passo 0,5 = 129 vertici per lato (%d)" % _field.resolution)
+	_check(_field.resolution_x == 129 and _field.resolution_z == 129, "64 m a passo 0,5 = 129 vertici per lato (%d)" % _field.resolution_x)
 	_check(is_zero_approx(_field.height_at(Vector3(3.3, 0, -7.1))), "quota zero all'inizio")
 	_check(_field.normal_at(Vector3.ZERO).is_equal_approx(Vector3.UP), "normale verticale su un piano")
+
+
+## Campo rettangolare (spec tappa B, sezione 2): indici, quote, regioni e chunk per asse.
+func _test_rectangular_field() -> void:
+	print("rectangular field")
+	var field := TerrainField.new()
+	field.size_m = Vector2(96.0, 32.0)
+	field.tuning = TerrainTuning.new()
+	root.add_child(field)
+	await _frames(2)
+	_check(field.resolution_x == 193 and field.resolution_z == 65, "96 x 32 m -> 193 x 65 vertici (%d x %d)" % [field.resolution_x, field.resolution_z])
+	_check(field.half_extents().is_equal_approx(Vector2(48.0, 16.0)), "semilati 48 x 16 (%s)" % field.half_extents())
+	field.sculpt(Vector3(40.0, 0.0, -10.0), 2.4, 1.0)
+	_check(absf(field.height_at(Vector3(40.0, 0.0, -10.0)) - 1.0) < 0.01, "pennellata vicino all'angolo lontano: quota 1 al centro")
+	_check(is_zero_approx(field.height_at(Vector3(-40.0, 0.0, 10.0))), "l'angolo opposto resta a zero")
+	var collision: TerrainCollision = field.get_node(^"Collision")
+	_check(collision.chunk_count() == 7 * 3, "chunk 7 x 3 (%d)" % collision.chunk_count())
+	var space := root.get_world_3d().direct_space_state
+	var hit := space.intersect_ray(PhysicsRayQueryParameters3D.create(Vector3(40.0, 5.0, -10.0), Vector3(40.0, -5.0, -10.0), 1))
+	_check(not hit.is_empty() and absf(hit.position.y - 1.0) < 0.1, "la collisione segue la quota anche in un campo rettangolare")
+	var path := "user://rect_base_test.bin"
+	field.commit_base()
+	var bytes := field.save_base(path, 5)
+	var other := TerrainField.new()
+	other.size_m = Vector2(96.0, 32.0)
+	other.tuning = TerrainTuning.new()
+	root.add_child(other)
+	await _frames(2)
+	_check(bytes > 0 and other.load_base(path, 5), "salvataggio versione 3 e ricarica su un campo uguale")
+	_check(absf(other.height_at(Vector3(40.0, 0.0, -10.0)) - 1.0) < 0.01, "le quote ricaricate sono le stesse")
+	var square := TerrainField.new()
+	square.size_m = Vector2(96.0, 96.0)
+	square.tuning = TerrainTuning.new()
+	root.add_child(square)
+	await _frames(2)
+	_check(not square.load_base(path, 5), "un campo di altra forma rifiuta il file")
+	var old := FileAccess.open("user://rect_base_v2.bin", FileAccess.WRITE)
+	old.store_buffer("TFLD".to_ascii_buffer())
+	old.store_32(2)
+	old.close()
+	_check(not other.load_base("user://rect_base_v2.bin", 5), "la versione 2 non si legge piu")
+	for node in [field, other, square]:
+		node.queue_free()
+	await _frames(2)
 
 
 func _test_collision_chunks() -> void:
@@ -187,7 +232,7 @@ func _test_save_load_base() -> void:
 	var bytes := _field.save_base(path, 7)
 	_check(bytes > 0, "salvataggio scritto (%d byte)" % bytes)
 	var other := TerrainField.new()
-	other.size_m = 64.0
+	other.size_m = Vector2(64.0, 64.0)
 	other.tuning = TerrainTuning.new()
 	root.add_child(other)
 	_check(not other.load_base(path, 8), "un file cotto con un altro seme del layout viene rifiutato")

@@ -13,7 +13,7 @@ var _player: PlayerCharacter
 func _initialize() -> void:
 	Engine.physics_ticks_per_second = 60
 	_field = TerrainField.new()
-	_field.size_m = 64.0
+	_field.size_m = Vector2(64.0, 64.0)
 	_field.tuning = TerrainTuning.new()
 	root.add_child(_field)
 	_player = PlayerScene.instantiate()

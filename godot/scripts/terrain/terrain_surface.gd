@@ -48,8 +48,8 @@ static func set_raised_tint(terrain: Terrain3D, color: Color) -> void:
 
 ## La base del livello come texture R32F (stessa risoluzione del campo): lo shader ne
 ## ricava il delta per le tinte di alzato e scavato.
-static func update_base(terrain: Terrain3D, base: PackedFloat32Array, resolution: int, half: float) -> void:
-	var image := Image.create_from_data(resolution, resolution, false, Image.FORMAT_RF, base.to_byte_array())
+static func update_base(terrain: Terrain3D, base: PackedFloat32Array, resolution_x: int, resolution_z: int, half: Vector2) -> void:
+	var image := Image.create_from_data(resolution_x, resolution_z, false, Image.FORMAT_RF, base.to_byte_array())
 	terrain.material.set_shader_param("base_map", ImageTexture.create_from_image(image))
 	terrain.material.set_shader_param("base_half", half)
 

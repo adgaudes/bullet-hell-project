@@ -98,7 +98,7 @@ func _initialize() -> void:
 	if field != null:
 		var collision: TerrainCollision = field.get_node(^"Collision")
 		print("PROTOTYPE01_ARENA_BENCH content vertices=%d chunks=%d strokes=%d blocks=%d props=%d trees=%d tufts=%d flowers=%d"
-			% [field.resolution * field.resolution, collision.chunk_count(), district.terrain_strokes.size(),
+			% [field.resolution_x * field.resolution_z, collision.chunk_count(), district.terrain_strokes.size(),
 				district.stats.blocks, district.stats.props, district.stats.trees, district.stats.tufts, district.stats.flowers])
 		# Cento pennellate casuali del giocatore (raggio del tuning) fuori dalle aree protette.
 		var rng := RandomNumberGenerator.new()

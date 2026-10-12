@@ -114,7 +114,7 @@ func _test_scrap_sources() -> void:
 ## senza il rumore del quartiere.
 func _setup_vein_field() -> void:
 	_field = TerrainField.new()
-	_field.size_m = 64.0
+	_field.size_m = Vector2(64.0, 64.0)
 	_field.tuning = TerrainTuning.new()
 	_field.position = Vector3(0.0, -50.0, 0.0)
 	root.add_child(_field)

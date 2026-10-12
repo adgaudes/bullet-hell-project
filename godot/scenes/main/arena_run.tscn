@@ -38,7 +38,7 @@ flowers = 4000
 
 [node name="TerrainField" type="Node3D" parent="."]
 script = ExtResource("5_terrain_field")
-size_m = 204.0
+size_m = Vector2(204, 204)
 tuning = ExtResource("6_terrain_tuning")
 
 [node name="Player" parent="." node_paths=PackedStringArray("terrain_field", "recoil_source", "lamp_field") instance=ExtResource("4_player")]

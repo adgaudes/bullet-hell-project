@@ -18,7 +18,7 @@ func _initialize() -> void:
 	camera.current = true
 	await process_frame
 	var field := TerrainField.new()
-	field.size_m = 64.0
+	field.size_m = Vector2(64.0, 64.0)
 	field.tuning = TerrainTuning.new()
 	root.add_child(field)
 	for i in 6:

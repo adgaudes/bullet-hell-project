@@ -86,8 +86,8 @@ func can_place(target: Variant) -> bool:
 		if terrain_field == null:
 			return grid != null and can_place(grid.cell_at(target))
 		var point := target as Vector3
-		var half := terrain_field.half_extent()
-		if absf(point.x) > half - FLAT_RADIUS_M or absf(point.z) > half - FLAT_RADIUS_M:
+		var half := terrain_field.half_extents()
+		if absf(point.x) > half.x - FLAT_RADIUS_M or absf(point.z) > half.y - FLAT_RADIUS_M:
 			return false
 		if terrain_field.is_protected(point) or not terrain_field.is_flat(point, FLAT_RADIUS_M, FLAT_TOLERANCE_M):
 			return false

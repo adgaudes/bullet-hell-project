@@ -160,10 +160,10 @@ func _choose_fault() -> void:
 	_fault_side = Vector3(-direction.z, 0.0, direction.x)
 	var half := length_cells * 0.5
 	if terrain_field != null:
-		var limit := terrain_field.half_extent() - CREST_RADIUS
+		var limit := terrain_field.half_extents() - Vector2.ONE * CREST_RADIUS
 		for i in length_cells:
 			var p := fault_center + direction * FAULT_STEP * (i - half + 0.5)
-			if absf(p.x) > limit or absf(p.z) > limit or terrain_field.is_protected(p):
+			if absf(p.x) > limit.x or absf(p.z) > limit.y or terrain_field.is_protected(p):
 				continue
 			fault_points.append(p)
 		return

@@ -39,7 +39,6 @@ const MAIN_MENU_SCENE := "res://scenes/main/main_menu.tscn"
 const BOSS_NAMES: Dictionary[StringName, String] = {&"demolisher": "IL DEMOLITORE", &"driller": "LA TRIVELLA"}
 ## Direzioni di arrivo annunciate: nome e verso nel mondo (nord = -Z = alto dello schermo).
 ## Rilievo di base cotto da `tests/tools/bake_terrain_base.gd` (LFS); se manca si ricalcola.
-const BASE_RELIEF_PATH := "res://levels/district/base.bin"
 const BOSS_DIRECTIONS := [
 	["NORD", Vector3(0.0, 0.0, -1.0)], ["EST", Vector3(1.0, 0.0, 0.0)],
 	["SUD", Vector3(0.0, 0.0, 1.0)], ["OVEST", Vector3(-1.0, 0.0, 0.0)],
@@ -461,8 +460,8 @@ func _walkable_near(origin: Vector3, radius: float) -> Variant:
 ## finirebbero su celle sbagliate in silenzio. Qui si grida all'avvio.
 func _check_scale() -> void:
 	if district != null and terrain_field != null \
-			and (Vector2.ONE * terrain_field.half_extent() - district.half_extents()).length() > 0.5:
-		push_error("Scala incoerente: rilievo %.1f m di semilato, distretto %s" % [terrain_field.half_extent(), district.half_extents()])
+			and (terrain_field.half_extents() - district.half_extents()).length() > 0.5:
+		push_error("Scala incoerente: rilievo %s m di semilati, distretto %s" % [terrain_field.half_extents(), district.half_extents()])
 	if grid == null:
 		return
 	if district != null and not is_equal_approx(grid.cell_size_m(), RuinsDistrict.CELL):
@@ -634,11 +633,16 @@ func _build_terrain_layout() -> void:
 		% [district.terrain_features.size(), raised, lowered])
 
 
-## Rilievo continuo (D-085): base cotta (`BASE_RELIEF_PATH`) o ricalcolata dal quartiere,
+## Rilievo di base cotto del livello (`bake_terrain_base.gd -- --level=<id>`), in LFS.
+func base_relief_path() -> String:
+	return "res://levels/%s/base.bin" % level_id
+
+
+## Rilievo continuo (D-085): base cotta (`base_relief_path()`) o ricalcolata dal quartiere,
 ## poi le pennellate dei punti di interesse; dischi protetti attorno alle rovine e, per i
 ## primi secondi, al cortile di partenza. Le quote iniziali per la mappa arrivano col Task 13.
 func _build_terrain_relief() -> void:
-	if not terrain_field.load_base(BASE_RELIEF_PATH, district.layout_seed):
+	if not terrain_field.load_base(base_relief_path(), district.layout_seed):
 		district.apply_base_relief(terrain_field)
 	district.apply_strokes(terrain_field, _scrap_field())
 	var margin: float = terrain_field.tuning.protected_radius_m
