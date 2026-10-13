@@ -22,9 +22,15 @@ enum AimDevice { GAMEPAD, MOUSE }
 ## Azioni con semantica Started di Unreal: un comando per pressione.
 const STARTED_ACTIONS: Array[StringName] = [&"dash", &"terrain_tool", &"terrain_mode"]
 
-const BODY_COLOR_LINEAR := Color(1.0, 0.35, 0.02)
+## Tuta neutra (D-088): il blu sta nella texture. Gli stati non la tingono piu: un colore
+## grigio (ricarica, riposo) la scurisce o la lascia com'e, un colore acceso (scatto, colpo)
+## la fa brillare per emissione, cosi resta leggibile su qualunque tinta della texture.
+const BODY_COLOR_LINEAR := Color(1.0, 1.0, 1.0)
 const HIT_COLOR_LINEAR := Color(1.0, 0.02, 0.02)
 const HIT_FLASH_SECONDS := 0.3
+## Sotto questa saturazione un colore di stato e un grigio: scurisce invece di brillare.
+const STATE_GREY_SATURATION := 0.1
+const STATE_GLOW_ENERGY := 0.9
 
 # --- Movimento procedurale (ActorMotion): solo sul nodo visivo `Model`. La scala del
 # dash resta su `_body` (figlio di `Model`) e i colori sul materiale: si compongono.
@@ -104,8 +110,8 @@ var _recoil_direction := Vector3.BACK
 var _flinch := 0.0
 var _motion_at_rest := true
 
-## Mesh del modello (tools/blender/build_actor_assets.py, `player_engineer`): la tuta
-## e la superficie `suit`, colorata da `_body_material`; il resto ha colori fissi.
+## Mesh del modello (tools/blender/build_engineer.py, `player_engineer`, D-088): il corpo
+## morbido e la superficie `suit`, con `_body_material`; il resto ha il materiale importato.
 @onready var _body: MeshInstance3D = ActorModel.mesh_instance_of($Model)
 @onready var _collision: CollisionShape3D = $Collision
 ## Radice del modello: l'unico nodo mosso dal movimento procedurale.
@@ -124,8 +130,8 @@ func _ready() -> void:
 		tuning = PlayerTuning.new()
 	_movement.configure(tuning)
 
-	# La tuta: la tinta e lo stato (dash, colpo) va in `albedo_color`. Col modello rifinito
-	# (D-071) l'ombreggiatura sta nella texture cotta; con quello a blocchi nel colore di vertice.
+	# La tuta: texture cotta con la tinta neutra; gli stati passano da `_set_body_color`
+	# (D-088). Con il modello a blocchi l'ombreggiatura sta nel colore di vertice.
 	var suit_source := ActorModel.surface_material(_body, "suit") as StandardMaterial3D
 	if suit_source != null and suit_source.albedo_texture != null:
 		_body_material.albedo_texture = suit_source.albedo_texture
@@ -639,7 +645,7 @@ func take_damage(amount: int) -> bool:
 ## Colpito dalla sfera (Companion Slice): lampo rosso, nessun danno.
 func on_hit() -> void:
 	_hit_flash_left = HIT_FLASH_SECONDS
-	_body_material.albedo_color = HIT_COLOR_LINEAR.linear_to_srgb()
+	_set_body_color(HIT_COLOR_LINEAR)
 	_flinch = 1.0
 	if _animator != null:
 		_animator.play_hit()
@@ -659,7 +665,19 @@ func _update_hit_flash(delta: float) -> void:
 
 
 func _set_body_color(linear_color: Color) -> void:
-	_body_material.albedo_color = linear_color.linear_to_srgb()
+	if linear_color.s < STATE_GREY_SATURATION:
+		_body_material.albedo_color = linear_color.linear_to_srgb()
+		_body_material.emission_enabled = false
+		return
+	_body_material.albedo_color = Color.WHITE
+	_body_material.emission_enabled = true
+	_body_material.emission = linear_color.linear_to_srgb()
+	_body_material.emission_energy_multiplier = STATE_GLOW_ENERGY
+
+
+## Materiale della tuta costruito dal codice (stati di colore, test).
+func body_material() -> StandardMaterial3D:
+	return _body_material
 
 
 ## Colore di stato (dash, cooldown, riposo): il lampo rosso del danno ha la precedenza

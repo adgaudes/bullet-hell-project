@@ -18,6 +18,7 @@ func _initialize() -> void:
 	_test_movement_model()
 	await _test_player_in_scene()
 	await _test_pack_gauge()
+	await _test_state_colors()
 	# T-12: i nodi messi in coda con queue_free vanno liberati prima di uscire, o
 	# il motore segnala istanze ObjectDB perse all'uscita.
 	await _frames(2)
@@ -47,6 +48,38 @@ func _test_pack_gauge() -> void:
 	_check(sack != null and sack.scale.x > 1.1, "a zaino pieno la sacca si gonfia")
 	player.queue_free()
 	field.queue_free()
+
+
+## Stati sulla tuta blu (D-088): neutro, scatto (bagliore), ricarica (scurita), colpo (lampo
+## rosso); finito il lampo torna lo stato in corso, anche durante uno scatto.
+func _test_state_colors() -> void:
+	print("state colors")
+	var player: PlayerCharacter = PlayerScene.instantiate()
+	root.add_child(player)
+	await _frames(2)
+	var material := player.body_material()
+	_check(material != null and material.albedo_color.is_equal_approx(Color.WHITE) and not material.emission_enabled,
+		"a riposo la tuta e neutra: niente tinta, niente bagliore")
+	player._set_state_color(player.tuning.dash_color_linear)
+	_check(material.emission_enabled and material.emission.b > material.emission.r and material.albedo_color.is_equal_approx(Color.WHITE),
+		"scatto: bagliore ciano, texture intatta")
+	player._set_state_color(player.tuning.dash_cooldown_color_linear)
+	_check(not material.emission_enabled and material.albedo_color.v < 0.8, "ricarica: tuta scurita, nessun bagliore")
+	# Colpito mentre scatta: alla fine del lampo `_update_hit_flash` deve ripristinare lo
+	# scatto. Passo fisico spento e lampo fatto scadere a mano: lo scatto vero (0,18 s)
+	# finirebbe prima del lampo (0,3 s) e il test non direbbe nulla.
+	player.set_physics_process(false)
+	player.is_dashing = true
+	player._set_state_color(player.tuning.dash_color_linear)
+	player.on_hit()
+	_check(material.emission_enabled and material.emission.r > 0.8 and material.emission.g < 0.3, "colpo: lampo rosso")
+	player._update_hit_flash(PlayerCharacter.HIT_FLASH_SECONDS + 0.01)
+	_check(material.emission_enabled and material.emission.b > material.emission.r,
+		"finito il lampo durante lo scatto torna il bagliore dello scatto")
+	player.is_dashing = false
+	player._set_state_color(PlayerCharacter.BODY_COLOR_LINEAR)
+	_check(material.albedo_color.is_equal_approx(Color.WHITE) and not material.emission_enabled, "fine ricarica: di nuovo neutra")
+	player.queue_free()
 
 
 func _check(condition: bool, label: String) -> void:

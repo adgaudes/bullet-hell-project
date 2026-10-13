@@ -30,6 +30,9 @@ const HIPS_BONE := &"DEF-hips"
 const SPINE_BONE := &"DEF-spine.001"
 ## Petto: HipTwistModifier lo tiene rivolto dove si mira.
 const CHEST_BONE := &"DEF-spine.003"
+## Postura (D-088): collo per il mento alto, punta del piede per sapere dov'e il fronte.
+const NECK_BONE := &"DEF-neck"
+const TOE_BONE := &"DEF-toe.L"
 ## Ossa che seguono la posa di mira invece della corsa.
 const AIM_BONES: Array[String] = [
 	"DEF-spine.003", "DEF-neck", "DEF-head",
@@ -65,6 +68,7 @@ const HIT_SECONDS := 0.35
 var _tree: AnimationTree
 var _player: AnimationPlayer
 var _twist: HipTwistModifier
+var _posture: PostureModifier
 var _move_target := 0.0
 var _move := 0.0
 var _rate := 1.0
@@ -114,6 +118,11 @@ static func required_clips() -> Array[StringName]:
 ## Miscela corrente fermo (0) / corsa (1).
 func move_blend() -> float:
 	return _move
+
+
+## Postura di carattere (mento alto, pancia in fuori), dopo la torsione dei fianchi.
+func posture() -> PostureModifier:
+	return _posture
 
 
 ## Torsione corrente delle gambe (rad).
@@ -177,6 +186,7 @@ func play_death() -> void:
 	_dead = true
 	_tree.active = false
 	_twist.angle = 0.0
+	_posture.active = false
 	# La fine della run mette in pausa l'albero: la caduta deve vedersi lo stesso.
 	_player.process_mode = Node.PROCESS_MODE_ALWAYS
 	_player.play(DEATH)
@@ -189,6 +199,7 @@ func revive() -> void:
 	_player.stop()
 	_player.process_mode = Node.PROCESS_MODE_INHERIT
 	_tree.active = true
+	_posture.active = true
 
 
 func _fire(action: StringName) -> void:
@@ -258,6 +269,10 @@ func _build(player: AnimationPlayer, skeleton: Skeleton3D) -> void:
 	_twist.name = "HipTwist"
 	skeleton.add_child(_twist)
 	_twist.setup(skeleton, HIPS_BONE, SPINE_BONE, CHEST_BONE)
+	_posture = PostureModifier.new()
+	_posture.name = "Posture"
+	skeleton.add_child(_posture)
+	_posture.setup(skeleton, SPINE_BONE, NECK_BONE, TOE_BONE)
 	# La posa iniziale c'e subito, anche se ActorMotion e spento dal primo frame.
 	_tree.advance(0.0)
 

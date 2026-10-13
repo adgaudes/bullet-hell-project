@@ -22,6 +22,8 @@ var _hips := -1
 var _head_pose := Transform3D.IDENTITY
 var _thigh_pose := Transform3D.IDENTITY
 var _hips_pose := Transform3D.IDENTITY
+var _chest := -1
+var _chest_pose := Transform3D.IDENTITY
 
 
 func _initialize() -> void:
@@ -131,15 +133,44 @@ func _initialize() -> void:
 	await _frames(60)
 	_check(_animator.move_blend() < 0.01 and is_zero_approx(_animator.twist()), "fermandosi torna a riposo")
 
+	print("Postura (D-088)")
+	await _frames(10)
+	var posture := _animator.posture()
+	_check(posture != null and posture.active, "la postura e accesa")
+	var toe := _skeleton.find_bone(CharacterAnimator.TOE_BONE)
+	var front := _skeleton.get_bone_global_rest(toe).basis.y
+	front = Vector3(front.x, 0.0, front.z).normalized()
+	var head_rest_inverse := _skeleton.get_bone_global_rest(_head).basis.orthonormalized().inverse()
+	# Pose finali (dopo i modificatori): si leggono solo in skeleton_updated.
+	_chest = _skeleton.find_bone(CharacterAnimator.CHEST_BONE)
+	await _frames(2)
+	var head_on := _head_pose
+	var chest_on := _chest_pose.origin
+	posture.active = false
+	await _frames(3)
+	var head_off := _head_pose
+	var chest_off := _chest_pose.origin
+	posture.active = true
+	await _frames(3)
+	# Mento alto: il fronte della testa punta piu in su; pancia in fuori: il petto va indietro.
+	var face_on := (head_on.basis.orthonormalized() * head_rest_inverse * front).y
+	var face_off := (head_off.basis.orthonormalized() * head_rest_inverse * front).y
+	_check(face_on > face_off + sin(posture.chin_up) * 0.5, "mento alto (fronte della testa %.2f -> %.2f)" % [face_off, face_on])
+	_check((chest_on - chest_off).dot(front) < -0.01, "busto all'indietro (%.3f m)" % (chest_on - chest_off).dot(front))
+	_check(_yaw_between(head_off, head_on) < 0.05, "la postura non gira la testa: la mira resta (%.3f rad)" % _yaw_between(head_off, head_on))
+
 	print("Scavo, schivata, colpo, morte, interruttore")
 	var tree: AnimationTree = _model.find_children("*", "AnimationTree", true, false)[0]
 	var standing := _hips_pose.origin.y
 	_animator.play_dodge()
 	var lowest := standing
+	var min_factor := 1.0
 	for i in 40:
 		await process_frame
 		lowest = minf(lowest, _hips_pose.origin.y)
+		min_factor = minf(min_factor, _animator.posture().factor())
 	_check(lowest < standing - 0.15, "la capriola abbassa il bacino (da %.2f a %.2f m)" % [standing, lowest])
+	_check(min_factor < 0.9, "durante la capriola la postura sfuma (fattore minimo %.2f)" % min_factor)
 	_check(not tree.get(&"parameters/dodge_shot/active"), "dopo DODGE_SECONDS la capriola e finita")
 	_check(absf(_hips_pose.origin.y - standing) < 0.05, "e il personaggio e di nuovo in piedi")
 	_animator.play_dig()
@@ -165,9 +196,11 @@ func _initialize() -> void:
 	_animator.play_death()
 	await _frames(5)
 	_check(not tree.active and player.current_animation == CharacterAnimator.DEATH, "alla morte parte la caduta")
+	_check(not _animator.posture().active, "alla morte la postura si spegne")
 	_animator.revive()
 	await _frames(5)
 	_check(tree.active and not player.is_playing(), "revive rimette la miscela")
+	_check(_animator.posture().active, "revive riaccende la postura")
 	_animator.set_locomotion(Vector3(0.0, 0.0, -SPEED), REFERENCE_SPEED)
 	await _frames(20)
 	ActorMotion.enabled = false
@@ -212,6 +245,8 @@ func _on_skeleton_updated() -> void:
 	_head_pose = _skeleton.get_bone_global_pose(_head)
 	_thigh_pose = _skeleton.get_bone_global_pose(_thigh)
 	_hips_pose = _skeleton.get_bone_global_pose(_hips)
+	if _chest >= 0:
+		_chest_pose = _skeleton.get_bone_global_pose(_chest)
 
 
 ## Strada fatta dal bacino (somma degli spostamenti) in [param n] frame.

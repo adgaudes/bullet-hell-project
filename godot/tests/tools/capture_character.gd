@@ -6,7 +6,8 @@ extends SceneTree
 ## le animazioni del modello (`CHARACTER_ANIMATIONS`). `--model=res://...glb` cambia modello,
 ## `--poses=Jog_Fwd@0.2,Dig@1.5` sceglie le pose (animazione@secondo).
 
-const SUIT_COLOR_LINEAR := Color(1.0, 0.35, 0.02)
+## Tuta neutra: il colore e nella texture (D-088).
+const SUIT_COLOR_LINEAR := Color(1.0, 1.0, 1.0)
 ## Animazione ("" = posa di riposo) e secondo a cui fermarla.
 var POSES: Array[Array] = [
 	["", 0.0], ["Idle", 0.0], ["Pistol_Idle", 0.0], ["Jog_Fwd", 0.0], ["Jog_Fwd", 0.25],
