@@ -122,7 +122,8 @@ def action_fcurves(action):
 class Skeleton:
     """Lo scheletro della libreria, riproporzionato, con le sole animazioni scelte."""
 
-    def __init__(self):
+    def __init__(self, proportions=None):
+        self.proportions = PROPORTIONS if proportions is None else proportions
         bpy.ops.import_scene.gltf(filepath=LIBRARY)
         for obj in list(bpy.data.objects):
             if obj.type != "ARMATURE":
@@ -265,7 +266,7 @@ class Skeleton:
 
         def visit(bone):
             head, tail, _ = old[bone.name]
-            length, joint = PROPORTIONS.get(bone.name.rsplit(".", 1)[0] if bone.name[-2:] in (".L", ".R")
+            length, joint = self.proportions.get(bone.name.rsplit(".", 1)[0] if bone.name[-2:] in (".L", ".R")
                                             else bone.name, (1.0, (1.0, 1.0, 1.0)))
             if bone.parent is None:
                 new_head = head.copy()
@@ -399,7 +400,7 @@ class Builder:
         return obj
 
 
-def build_pack_sack(skeleton, pack_z):
+def build_pack_sack(skeleton, pack_z, sack_center=None):
     """Zainetto di terra (spec sezione 3): sacca di tela appesa sotto lo zaino-officina e
     striscia indicatore sul fianco destro, come oggetto a parte `PackSack` con due materiali
     propri (colore base, nessuna cottura): Godot lo trova con `find_child`, sostituisce il
@@ -428,9 +429,9 @@ def build_pack_sack(skeleton, pack_z):
             for loop in face.loops:
                 loop[uv].uv = (0.5, (loop.vert.co.z - z0) / (z1 - z0))
 
-    sack_center = (0.0, 0.3, pack_z - 0.56)
+    sack_center = sack_center or (0.0, 0.3, pack_z - 0.56)
     add_box((0.38, 0.24, 0.22), sack_center, 0)
-    add_box((0.03, 0.2, 0.18), (-0.2, 0.3, pack_z - 0.56), 1)
+    add_box((0.03, 0.2, 0.18), (sack_center[0] - 0.2, sack_center[1], sack_center[2]), 1)
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
     mesh = bpy.data.meshes.new("PackSack")
     bm.to_mesh(mesh)

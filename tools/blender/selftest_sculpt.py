@@ -44,6 +44,15 @@ ys = [v.co.y for v in side.data.vertices]
 zs = [v.co.z for v in side.data.vertices]
 check(abs(max(ys) - 0.05) < 1e-4 and abs(max(zs) - 0.08) < 1e-4, "Ring asse x: rx lungo Y, ry lungo Z")
 
+# Anello perpendicolare a una direzione qualsiasi (tubi lungo un percorso curvo).
+slant = sculpt.Ring((0, 0, 0), 0.1, 0.1, axis=(1.0, 1.0, 0.0), sides=8)
+direction = Vector((1.0, 1.0, 0.0)).normalized()
+check(all(abs((p - slant.center).dot(direction)) < 1e-6 and abs((p - slant.center).length - 0.1) < 1e-6
+          for p in slant.points()), "Ring su asse obliquo: punti sul piano perpendicolare, a distanza r")
+path = sculpt.tube("Path", [(0, 0, 0), (0.2, 0, 0.1), (0.4, 0.1, 0.1)], [0.03, 0.04, 0.02], sides=8)
+check(sculpt.mesh_stats(path)["boundary_edges"] == 0 and len(path.data.polygons) == 2 * 8 + 2 * 8,
+      "tube: tubo chiuso lungo un percorso (%d facce)" % len(path.data.polygons))
+
 # Suddivisione: quadruplica i quadrilateri a ogni livello.
 before = len(body.data.polygons)
 sculpt.subdivide(body, 1)

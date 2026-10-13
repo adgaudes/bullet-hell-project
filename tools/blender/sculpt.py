@@ -65,20 +65,31 @@ def skin_body(name, nodes, edges, root=0, smooth=0.5):
 
 class Ring:
     """Sezione ellittica: `rx`/`ry` sono i semiassi nel piano perpendicolare ad `axis`
-    (asse z: X e Y; asse x: Y e Z; asse y: X e Z); `scale` deforma raggio per raggio."""
+    (asse z: X e Y; asse x: Y e Z; asse y: X e Z; una direzione qualsiasi: `rx` sul
+    vettore orizzontale perpendicolare, `ry` sul terzo); `scale` deforma raggio per raggio."""
 
     def __init__(self, center, rx, ry, axis="z", sides=12, scale=None):
         self.center = Vector(center)
         self.rx, self.ry, self.axis, self.sides = rx, ry, axis, sides
         self.scale = scale or [1.0] * sides
 
+    def _frame(self):
+        named = {"z": (Vector((1, 0, 0)), Vector((0, 1, 0))), "x": (Vector((0, 1, 0)), Vector((0, 0, 1))),
+                 "y": (Vector((1, 0, 0)), Vector((0, 0, 1)))}
+        if isinstance(self.axis, str):
+            return named[self.axis]
+        direction = Vector(self.axis).normalized()
+        up = Vector((0, 0, 1)) if abs(direction.z) < 0.95 else Vector((0, 1, 0))
+        first = up.cross(direction).normalized()
+        return first, direction.cross(first).normalized()
+
     def points(self):
+        first, second = self._frame()
         result = []
         for i in range(self.sides):
             a = 2.0 * math.pi * i / self.sides
             u, v = math.cos(a) * self.rx * self.scale[i], math.sin(a) * self.ry * self.scale[i]
-            offset = {"z": Vector((u, v, 0.0)), "x": Vector((0.0, u, v)), "y": Vector((u, 0.0, v))}[self.axis]
-            result.append(self.center + offset)
+            result.append(self.center + first * u + second * v)
         return result
 
 
@@ -105,6 +116,21 @@ def loft(name, rings, cap_start=True, cap_end=True):
     bm.to_mesh(mesh)
     bm.free()
     return _link(bpy.data.objects.new(name, mesh))
+
+
+def tube(name, points, radii, sides=10, cap_start=True, cap_end=True):
+    """Tubo lungo una polilinea (maniche annodate, cavi, cinghie morbide): un anello per
+    punto, perpendicolare alla direzione media dei due tratti vicini."""
+    pts = [Vector(p) for p in points]
+    rings = []
+    for i, p in enumerate(pts):
+        before = pts[i] - pts[i - 1] if i > 0 else pts[1] - pts[0]
+        after = pts[i + 1] - pts[i] if i + 1 < len(pts) else pts[-1] - pts[-2]
+        direction = before.normalized() + after.normalized()
+        radius = radii[i]
+        rx, ry = (radius, radius) if isinstance(radius, (int, float)) else radius
+        rings.append(Ring(p, rx, ry, axis=tuple(direction), sides=sides))
+    return loft(name, rings, cap_start, cap_end)
 
 
 def extract_shell(source, name, keep, offset, thickness):
