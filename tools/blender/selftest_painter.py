@@ -129,7 +129,14 @@ bpy.ops.mesh.select_all(action="SELECT")
 bpy.ops.uv.smart_project(island_margin=0.01)
 bpy.ops.object.mode_set(mode="OBJECT")
 normal_image = painter.new_normal_image("Pairs_normal", 256)
+bake_settings = bpy.context.scene.render.bake
+bake_settings.margin, bake_settings.cage_extrusion, bake_settings.max_ray_distance = 12, 0.0, 0.0
 painter.bake_normal_pairs(joined, pairs, normal_image)
+# Le cotture successive (albedo, ORM) devono ritrovare le impostazioni di prima: un margine
+# rimasto a 3 px lasciava cuciture scure nelle mip dell'Ingegnere.
+check((bake_settings.margin, bake_settings.cage_extrusion, bake_settings.max_ray_distance) == (12, 0.0, 0.0),
+      "bake_normal_pairs rimette margine, estrusione e raggio (%d, %.2f, %.2f)"
+      % (bake_settings.margin, bake_settings.cage_extrusion, bake_settings.max_ray_distance))
 px = normal_image.pixels[:]
 blues = [b for r, g, b in zip(px[0::4], px[1::4], px[2::4]) if not (abs(r - 0.5) < 0.01 and abs(g - 0.5) < 0.01)]
 flipped = sum(1 for b in blues if b < 0.5)

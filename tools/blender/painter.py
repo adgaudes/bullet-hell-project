@@ -317,6 +317,7 @@ def bake_normal_pairs(low, pairs, image, extrusion=0.02, max_ray=0.05):
     scene.cycles.device = "CPU"
     scene.cycles.samples = 4
     bake = scene.render.bake
+    saved = (bake.margin, bake.cage_extrusion, bake.max_ray_distance)
     bake.use_selected_to_active = True
     bake.use_cage = False
     bake.cage_extrusion = extrusion
@@ -355,6 +356,8 @@ def bake_normal_pairs(low, pairs, image, extrusion=0.02, max_ray=0.05):
         bpy.data.objects.remove(piece, do_unlink=True)
     bake.use_selected_to_active = False
     bake.use_clear = True
+    # Le cotture che seguono (albedo, ORM) vogliono il loro margine pieno.
+    bake.margin, bake.cage_extrusion, bake.max_ray_distance = saved
 
 
 # -- materiale finale -------------------------------------------------------------------

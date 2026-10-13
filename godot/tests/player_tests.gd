@@ -58,13 +58,16 @@ func _test_state_colors() -> void:
 	root.add_child(player)
 	await _frames(2)
 	var material := player.body_material()
-	_check(material != null and material.albedo_color.is_equal_approx(Color.WHITE) and not material.emission_enabled,
-		"a riposo la tuta e neutra: niente tinta, niente bagliore")
+	# Emissione sempre accesa (bagliore nero quando spento): accenderla e spegnerla a
+	# runtime cambia shader e puo dare uno scatto al primo scatto o colpo (Steam Deck).
+	_check(material != null and material.albedo_color.is_equal_approx(Color.WHITE) and material.emission_enabled
+		and material.emission.is_equal_approx(Color.BLACK), "a riposo la tuta e neutra: niente tinta, bagliore nero")
 	player._set_state_color(player.tuning.dash_color_linear)
 	_check(material.emission_enabled and material.emission.b > material.emission.r and material.albedo_color.is_equal_approx(Color.WHITE),
 		"scatto: bagliore ciano, texture intatta")
 	player._set_state_color(player.tuning.dash_cooldown_color_linear)
-	_check(not material.emission_enabled and material.albedo_color.v < 0.8, "ricarica: tuta scurita, nessun bagliore")
+	_check(material.emission_enabled and material.emission.is_equal_approx(Color.BLACK) and material.albedo_color.v < 0.8,
+		"ricarica: tuta scurita, bagliore nero")
 	# Colpito mentre scatta: alla fine del lampo `_update_hit_flash` deve ripristinare lo
 	# scatto. Passo fisico spento e lampo fatto scadere a mano: lo scatto vero (0,18 s)
 	# finirebbe prima del lampo (0,3 s) e il test non direbbe nulla.
@@ -78,7 +81,8 @@ func _test_state_colors() -> void:
 		"finito il lampo durante lo scatto torna il bagliore dello scatto")
 	player.is_dashing = false
 	player._set_state_color(PlayerCharacter.BODY_COLOR_LINEAR)
-	_check(material.albedo_color.is_equal_approx(Color.WHITE) and not material.emission_enabled, "fine ricarica: di nuovo neutra")
+	_check(material.albedo_color.is_equal_approx(Color.WHITE) and material.emission_enabled
+		and material.emission.is_equal_approx(Color.BLACK), "fine ricarica: di nuovo neutra")
 	player.queue_free()
 
 

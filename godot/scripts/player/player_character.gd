@@ -664,15 +664,17 @@ func _update_hit_flash(delta: float) -> void:
 		_set_body_color(color)
 
 
+## L'emissione resta sempre accesa (nera quando non brilla): accenderla e spegnerla
+## cambierebbe shader a runtime, con uno scatto al primo uso (Steam Deck).
 func _set_body_color(linear_color: Color) -> void:
+	_body_material.emission_enabled = true
+	_body_material.emission_energy_multiplier = STATE_GLOW_ENERGY
 	if linear_color.s < STATE_GREY_SATURATION:
 		_body_material.albedo_color = linear_color.linear_to_srgb()
-		_body_material.emission_enabled = false
+		_body_material.emission = Color.BLACK
 		return
 	_body_material.albedo_color = Color.WHITE
-	_body_material.emission_enabled = true
 	_body_material.emission = linear_color.linear_to_srgb()
-	_body_material.emission_energy_multiplier = STATE_GLOW_ENERGY
 
 
 ## Materiale della tuta costruito dal codice (stati di colore, test).
