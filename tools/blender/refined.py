@@ -35,8 +35,11 @@ BAKE_SAMPLES = 48
 
 
 class RefinedBuilder:
-    def __init__(self, paint_name="paint", front_axis=-1.0, bake_size=BAKE_SIZE, bake_normal=True, bake_orm=True):
+    def __init__(self, paint_name="paint", front_axis=-1.0, bake_size=BAKE_SIZE, bake_normal=True, bake_orm=True,
+                 style_overrides=None):
         self.pieces = []
+        # Per tipo di materiale ("paint", "gear", ...): chiavi di painter.STYLES da cambiare.
+        self.style_overrides = style_overrides or {}
         self.materials = {}
         self.paint_name = paint_name
         self.front_axis = front_axis
@@ -162,17 +165,10 @@ class RefinedBuilder:
 
     # -- unione, UV, cottura -----------------------------------------------------------
 
-    def to_object(self, name, skeleton=None, blends=None):
-        """Unisce i pezzi, apre le UV, cuoce. `blends`: lista di
-        (osso_a, osso_b, articolazione, direzione da a verso b, semi-banda in metri):
-        i pesi dei vertici dei due ossi sfumano lungo la direzione attorno all'articolazione."""
-        if skeleton is not None:
-            for piece in self.pieces:
-                for group in piece.vertex_groups:
-                    if group.name not in skeleton.joints:
-                        raise RuntimeError("Osso inesistente: %s" % group.name)
+    def join(self, name, extra=()):
+        """Unisce i pezzi (e gli oggetti `extra`, gia con materiali di questo costruttore)."""
         bpy.ops.object.select_all(action="DESELECT")
-        for piece in self.pieces:
+        for piece in list(self.pieces) + list(extra):
             piece.select_set(True)
         bpy.context.view_layer.objects.active = self.pieces[0]
         bpy.ops.object.join()
@@ -182,11 +178,30 @@ class RefinedBuilder:
         attribute = obj.data.color_attributes["Col"]
         obj.data.color_attributes.active_color = attribute
         obj.data.color_attributes.render_color_index = obj.data.color_attributes.find("Col")
+        return obj
+
+    @staticmethod
+    def unwrap(obj):
+        bpy.ops.object.select_all(action="DESELECT")
+        obj.select_set(True)
+        bpy.context.view_layer.objects.active = obj
         bpy.ops.object.mode_set(mode="EDIT")
         bpy.ops.mesh.select_all(action="SELECT")
         bpy.ops.uv.smart_project(angle_limit=math.radians(66.0), island_margin=0.008)
         bpy.ops.object.mode_set(mode="OBJECT")
-        self._bake(obj, name)
+
+    def to_object(self, name, skeleton=None, blends=None):
+        """Unisce i pezzi, apre le UV, cuoce. `blends`: lista di
+        (osso_a, osso_b, articolazione, direzione da a verso b, semi-banda in metri):
+        i pesi dei vertici dei due ossi sfumano lungo la direzione attorno all'articolazione."""
+        if skeleton is not None:
+            for piece in self.pieces:
+                for group in piece.vertex_groups:
+                    if group.name not in skeleton.joints:
+                        raise RuntimeError("Osso inesistente: %s" % group.name)
+        obj = self.join(name)
+        self.unwrap(obj)
+        self.bake(obj, name)
         if skeleton is not None:
             for blend in blends or ():
                 self._blend_weights(obj, *blend)
@@ -213,7 +228,10 @@ class RefinedBuilder:
             group_a.add([v.index], 1.0 - t, "REPLACE")
             group_b.add([v.index], t, "REPLACE")
 
-    def _bake(self, obj, name):
+    def bake(self, obj, name, high_pairs=None):
+        """Cuoce albedo, normal e ORM. Con `high_pairs` (pezzo -> oggetti alti, facce segnate
+        con painter.tag_part) la normal viene dalle superfici alte, pezzo per pezzo (D-088),
+        invece che dal rilievo procedurale."""
         scene = bpy.context.scene
         scene.render.engine = "CYCLES"
         scene.cycles.device = "CPU"
@@ -227,24 +245,36 @@ class RefinedBuilder:
             image = bpy.data.images.new(name + suffix, self.bake_size, self.bake_size)
             image.colorspace_settings.name = colorspace
             for mat_name, mat in self.materials.items():
-                graph(mat, image, self._kind(mat_name))
+                graph(mat, image, self._kind(mat_name), self._style(mat_name))
             scene.cycles.samples = samples
             bpy.ops.object.bake(type=bake_type)
             image.pack()
             return image
 
-        albedo = bake_pass("_albedo", "sRGB", painter.paint_albedo_graph, "EMIT", BAKE_SAMPLES)
+        # La normal per prima: la cottura dalle superfici alte svuota i grafi dei materiali.
         normal = None
-        if self.bake_normal:
+        if high_pairs:
+            normal = painter.new_normal_image(name + "_normal", self.bake_size)
+            painter.bake_normal_pairs(obj, high_pairs, normal)
+            normal.pack()
+            bpy.ops.object.select_all(action="DESELECT")
+            obj.select_set(True)
+            bpy.context.view_layer.objects.active = obj
+        elif self.bake_normal:
             scene.render.bake.normal_space = "TANGENT"
             normal = bake_pass("_normal", "Non-Color", painter.paint_normal_graph, "NORMAL", 4)
+        albedo = bake_pass("_albedo", "sRGB", painter.paint_albedo_graph, "EMIT", BAKE_SAMPLES)
         orm = None
         if self.bake_orm:
             orm = bake_pass("_orm", "Non-Color", painter.paint_orm_graph, "EMIT", 16)
         for mat_name, mat in self.materials.items():
-            painter.final_graph(mat, albedo, normal, orm, self._kind(mat_name))
+            painter.final_graph(mat, albedo, normal, orm, self._kind(mat_name), self._style(mat_name))
         print("BAKED %s %dx%d samples=%d normal=%s orm=%s" % (albedo.name, self.bake_size, self.bake_size,
                                                              BAKE_SAMPLES, normal is not None, orm is not None))
+
+    def _style(self, mat_name):
+        kind = self._kind(mat_name)
+        return {**painter.STYLES[kind], **self.style_overrides.get(kind, {})}
 
     def _kind(self, mat_name):
         return "paint" if mat_name == self.paint_name else mat_name
@@ -254,9 +284,9 @@ class StaticBuilder(RefinedBuilder):
     """Stesse primitive senza osso, per gli attori statici. `paint=True` manda il pezzo
     sul materiale "vernice", `emit=True` su `lamp`, come nel vecchio Builder."""
 
-    def __init__(self, bake_size=BAKE_SIZE, bake_normal=True, bake_orm=True):
+    def __init__(self, bake_size=BAKE_SIZE, bake_normal=True, bake_orm=True, style_overrides=None):
         super().__init__(paint_name="paint", front_axis=1.0, bake_size=bake_size,
-                         bake_normal=bake_normal, bake_orm=bake_orm)
+                         bake_normal=bake_normal, bake_orm=bake_orm, style_overrides=style_overrides)
 
     def _mat(self, mat, paint, emit):
         if emit:

@@ -47,7 +47,9 @@ def _scaled_distance(co, center, scale):
 
 def skin_body(name, nodes, edges, root=0, smooth=0.5):
     """Corpo da un grafo: ogni nodo ha posizione e raggio (uniforme o (rx, ry)), ogni
-    arco diventa un tubo; il modificatore Skin cuce rami e giunture a quadrilateri."""
+    arco diventa un tubo; il modificatore Skin cuce rami e giunture a quadrilateri.
+    Trappola: due nodi vicini con raggi piu grandi della loro distanza (pancia sopra il
+    bacino) fanno compenetrare gli involucri e lasciano buchi e facce interne."""
     mesh = bpy.data.meshes.new(name)
     mesh.from_pydata([Vector(p) for p, _r in nodes], [tuple(e) for e in edges], [])
     obj = _link(bpy.data.objects.new(name, mesh))
@@ -243,6 +245,14 @@ def fold_noise(obj, keep, amplitude, frequency, seed=0):
     for v in obj.data.vertices:
         if keep(v.co):
             v.co += v.normal * amplitude * noise.noise(v.co * frequency + shift)
+    obj.data.update()
+
+
+def flatten_below(obj, z):
+    """Porta sul piano `z` i vertici che ci stanno sotto (suole degli stivali a terra)."""
+    for v in obj.data.vertices:
+        if v.co.z < z:
+            v.co.z = z
     obj.data.update()
 
 

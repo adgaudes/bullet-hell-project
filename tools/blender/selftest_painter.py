@@ -12,6 +12,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import bpy  # noqa: E402
+import painter  # noqa: E402
 
 bpy.ops.wm.read_factory_settings(use_empty=True)
 
@@ -69,6 +70,70 @@ lamp_bsdf = next((n for n in lamp.node_tree.nodes if n.type == "BSDF_PRINCIPLED"
 check(lamp_bsdf is not None and lamp_bsdf.inputs["Emission Color"].is_linked, "lamp: emissiva dalla texture")
 
 check(obj is not None and len(obj.data.polygons) > 0, "l'oggetto unito ha facce")
+
+# Stili sovrascrivibili per costruttore (D-088): con il fango solo in fondo un cubo rosso
+# alto 1 m resta piu rosso (il fango e bruno) e senza macchie piu uniforme.
+def mean_red(overrides):
+    bpy.ops.wm.read_factory_settings(use_empty=True)
+    b = StaticBuilder(bake_size=128, bake_normal=False, bake_orm=False, style_overrides=overrides)
+    b.box((1.0, 1.0, 1.0), (0.0, 0.0, 0.5), (0.8, 0.1, 0.1), paint=True)
+    b.to_object("Style")
+    px = bpy.data.images["Style_albedo"].pixels[:]
+    reds = [r for r, a in zip(px[0::4], px[3::4]) if a > 0.5]
+    return sum(reds) / max(1, len(reds))
+
+
+default_red = mean_red(None)
+clean_red = mean_red({"paint": {"mud_top": 0.06, "stain_floor": (1.0, 1.0, 1.0), "wear_amount": 0.0}})
+check(clean_red > default_red + 0.03, "stili sovrascritti: meno fango e macchie (rosso %.3f -> %.3f)" % (default_red, clean_red))
+
+# Normal dalla versione alta con gusci vicini (D-088): un tubo e un guscio spesso a 12 mm
+# (cotti tutti insieme: 22 % di normali rovesciate dalla faccia interna del guscio). Ogni
+# pezzo basso va cotto solo contro il suo alto, altrimenti i raggi colpiscono il guscio
+# sbagliato e la normal esce rovesciata (blu < 0,5).
+import sculpt  # noqa: E402
+
+bpy.ops.wm.read_factory_settings(use_empty=True)
+lows, pairs = [], {}
+def thicken(obj):
+    """Spessore vero come gli abiti estratti: la faccia interna guarda il pezzo sotto."""
+    modifier = obj.modifiers.new("Solidify", "SOLIDIFY")
+    modifier.thickness = 0.01
+    modifier.offset = 1.0
+    sculpt._apply(obj, modifier)
+
+
+for part, radius in enumerate((0.1, 0.112)):
+    rings = [sculpt.Ring((0, 0, z), radius, radius, sides=10) for z in (0.0, 0.1, 0.2, 0.3)]
+    low_part = sculpt.subdivide(sculpt.loft("Low%d" % part, rings, False, False), 1)
+    high_part = sculpt.subdivide(sculpt.loft("High%d" % part, rings, False, False), 3)
+    if part == 1:
+        thicken(low_part)
+        thicken(high_part)
+    sculpt.fold_noise(high_part, lambda p: True, 0.002, 40.0, seed=part)
+    lows.append(low_part)
+    pairs[part] = [high_part]
+mat = bpy.data.materials.new("pairs")
+mat.use_nodes = True
+for part, obj in enumerate(lows):
+    sculpt.assign_material(obj, mat)
+    painter.tag_part(obj, part)
+bpy.ops.object.select_all(action="DESELECT")
+for obj in lows:
+    obj.select_set(True)
+bpy.context.view_layer.objects.active = lows[0]
+bpy.ops.object.join()
+joined = bpy.context.view_layer.objects.active
+bpy.ops.object.mode_set(mode="EDIT")
+bpy.ops.mesh.select_all(action="SELECT")
+bpy.ops.uv.smart_project(island_margin=0.01)
+bpy.ops.object.mode_set(mode="OBJECT")
+normal_image = painter.new_normal_image("Pairs_normal", 256)
+painter.bake_normal_pairs(joined, pairs, normal_image)
+px = normal_image.pixels[:]
+blues = [b for r, g, b in zip(px[0::4], px[1::4], px[2::4]) if not (abs(r - 0.5) < 0.01 and abs(g - 0.5) < 0.01)]
+flipped = sum(1 for b in blues if b < 0.5)
+check(len(blues) > 100 and flipped <= 0.02 * len(blues), "normal per coppie: rovesciati %d su %d" % (flipped, len(blues)))
 
 print("PAINTER_SELFTEST %s failures=%d" % ("PASS" if failures == 0 else "FAIL", failures))
 sys.exit(1 if failures else 0)

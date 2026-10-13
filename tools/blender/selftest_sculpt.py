@@ -83,6 +83,13 @@ sculpt.crease_line(line, [(0.1, 0, 0.0), (0.1, 0, 0.2)], 0.03, 0.01)
 check(min(v.co.x for v in line.data.vertices if abs(v.co.y) < 0.01 and v.co.x > 0) < 0.095,
       "crease_line: il solco rientra lungo la linea")
 
+# Suole: i vertici sotto il terreno salgono sul piano, quelli sopra non si muovono.
+sole = sculpt.loft("Sole", [sculpt.Ring((0, 0, z), 0.1, 0.1, sides=8) for z in (-0.05, 0.05, 0.15)])
+above = {v.index: v.co.copy() for v in sole.data.vertices if v.co.z >= 0.0}
+sculpt.flatten_below(sole, 0.0)
+check(min(v.co.z for v in sole.data.vertices) >= -1e-6, "flatten_below: niente sotto il piano")
+check(all((sole.data.vertices[i].co - co).length < 1e-9 for i, co in above.items()), "flatten_below: il resto non si muove")
+
 # Abiti estratti: solo le facce scelte, spessore vero.
 shell = sculpt.extract_shell(body, "Shirt", lambda p: 0.8 < p.z < 1.2, 0.01, 0.01)
 zs = [v.co.z for v in shell.data.vertices]
@@ -95,6 +102,15 @@ sculpt.tint(tube, (0.1, 0, 0.3), 0.05, (1.0, 0.0, 0.0), 1.0)
 cols = tube.data.color_attributes["Col"].data
 reds = [c.color[0] for c in cols]
 check(min(reds) < 0.21 and max(reds) > 0.9, "tint: rosso solo vicino al centro (%.2f..%.2f)" % (min(reds), max(reds)))
+
+# Grafo vero dell'Ingegnere (regressione): lo Skin lasciava 4 buchi attorno alla pancia.
+# In fondo: Skeleton() cancella gli oggetti della scena.
+from build_engineer import ENGINEER_PROPORTIONS, Skeleton, _body_graph  # noqa: E402
+
+skeleton = Skeleton(ENGINEER_PROPORTIONS)
+real = sculpt.skin_body("RealBody", *_body_graph(skeleton))
+check(sculpt.mesh_stats(real)["boundary_edges"] == 0, "skin_body: corpo dell'Ingegnere chiuso (%d bordi aperti)"
+      % sculpt.mesh_stats(real)["boundary_edges"])
 
 print("SCULPT_SELFTEST %s failures=%d" % ("PASS" if failures == 0 else "FAIL", failures))
 sys.exit(1 if failures else 0)

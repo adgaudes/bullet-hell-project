@@ -44,6 +44,18 @@ def _shot(scene, path, size):
     bpy.ops.render.render(write_still=True)
 
 
+def face_front_for_glb():
+    """Un .glb dei personaggi ha il nodo `Facing` che gira tutto di 180 gradi (fronte a -Z in
+    Godot): reimportato in Blender il fronte finisce a +Y. Lo riporta a -Y per le viste."""
+    for obj in bpy.data.objects:
+        if obj.name.startswith("Facing"):
+            obj.rotation_mode = "XYZ"
+            obj.rotation_euler = (0.0, 0.0, 0.0)
+        if obj.type == "ARMATURE":
+            obj.data.pose_position = "REST"
+    bpy.context.view_layer.update()
+
+
 def render_views(objects, out_dir, mode="clay", head=None, size=(900, 1100)):
     out_dir = os.path.abspath(out_dir)
     os.makedirs(out_dir, exist_ok=True)
@@ -54,7 +66,8 @@ def render_views(objects, out_dir, mode="clay", head=None, size=(900, 1100)):
     shading.light = "STUDIO"
     shading.color_type = {"clay": "SINGLE", "colors": "VERTEX", "painted": "TEXTURE"}[mode]
     shading.single_color = (0.62, 0.6, 0.58)
-    shading.show_cavity = True
+    # La cavita schiarisce le creste della normal map: con le texture sembrano macchie.
+    shading.show_cavity = mode != "painted"
     shading.cavity_type = "BOTH"
     shading.show_object_outline = True
     shading.show_shadows = True

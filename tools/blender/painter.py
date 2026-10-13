@@ -22,6 +22,9 @@ TWO_PI = 2.0 * math.pi
 #   brush_scale/brush_dir: pennellate (0 = nessuna); edge_color: colore dell'usura sugli
 #   spigoli; rough_base/rough_wear: roughness della superficie intatta e consumata;
 #   metal: metallo; gradient_top/bottom: rampa di luminosita per volume.
+#   Facoltativi (D-088), sovrascrivibili per costruttore: mud_top (quota in metri sotto cui
+#   sale il fango, 0,6), stain_floor (colore piu scuro delle macchie), wear_amount (usura
+#   sugli spigoli, 0,8; 0 = nessuna, per le superfici organiche lisce).
 STYLES = {
     "paint": dict(brush_scale=14.0, brush_dir=(1.0, 0.25), edge_color=(0.92, 0.88, 0.80),
                   rough_base=0.72, rough_wear=0.45, metal=0.0, gradient_top=1.12, gradient_bottom=0.78),
@@ -211,16 +214,17 @@ def paint_albedo_graph(mat, image, kind, style=None, coords_fn=None):
                              [(0.3, (0.55, 0.50, 0.52)), (0.95, (1.0, 1.0, 1.0))])
             color = mix(nodes, links, color, occlusion, 1.0, "MULTIPLY")
         stains = ramp(nodes, links, noise(nodes, links, coords, 5.0, 3.0, 0.6, w),
-                      [(0.42, (0.66, 0.58, 0.48)), (0.55, (1.0, 1.0, 1.0))])
+                      [(0.42, style.get("stain_floor", (0.66, 0.58, 0.48))), (0.55, (1.0, 1.0, 1.0))])
         color = mix(nodes, links, color, stains, 1.0, "MULTIPLY")
         if not tiled:
             # Usura sugli spigoli con il colore proprio del materiale (bordo netto, non grana).
-            wear = math_node(nodes, links, "MULTIPLY", edge_wear(nodes, links), 0.8)
+            wear = math_node(nodes, links, "MULTIPLY", edge_wear(nodes, links), style.get("wear_amount", 0.8))
             color = mix(nodes, links, color, style["edge_color"], wear)
             # Sporco verso terra: fattore 0 (fango) vicino a Z = 0, 1 oltre 0,6 m.
             mud = nodes.new("ShaderNodeMapRange")
-            mud.inputs["From Min"].default_value = 0.05
-            mud.inputs["From Max"].default_value = 0.6
+            mud_top = style.get("mud_top", 0.6)
+            mud.inputs["From Min"].default_value = min(0.05, mud_top * 0.5)
+            mud.inputs["From Max"].default_value = mud_top
             links.new(separate.outputs["Z"], mud.inputs["Value"])
             color = mix(nodes, links, MUD_COLOR, color, mud.outputs["Result"])
     links.new(color, emit.inputs["Color"])
@@ -279,6 +283,78 @@ def paint_normal_graph(mat, image, kind, style=None, coords_fn=None):
         links.new(height, bump.inputs["Height"])
         links.new(bump.outputs["Normal"], bsdf.inputs["Normal"])
     _bake_target(nodes, image)
+
+
+PART_ATTRIBUTE = "part"
+
+
+def tag_part(obj, part):
+    """Segna le facce di `obj` come pezzo `part` (attributo intero per faccia che sopravvive
+    all'unione): bake_normal_pairs cuoce ogni pezzo solo contro i suoi gemelli alti."""
+    attribute = obj.data.attributes.get(PART_ATTRIBUTE) or obj.data.attributes.new(PART_ATTRIBUTE, "INT", "FACE")
+    for item in attribute.data:
+        item.value = part
+
+
+def new_normal_image(name, size):
+    """Normal map vuota = piatta (0,5; 0,5; 1): i pezzi non cotti restano lisci."""
+    image = bpy.data.images.new(name, size, size)
+    image.colorspace_settings.name = "Non-Color"
+    image.generated_color = (0.5, 0.5, 1.0, 1.0)
+    return image
+
+
+def bake_normal_pairs(low, pairs, image, extrusion=0.02, max_ray=0.05):
+    """Normal in spazio tangente cotta pezzo per pezzo (D-088). `low` e la mesh unita con le
+    UV finali e l'attributo `part`; `pairs` mappa un pezzo agli oggetti alti da cui cuocerlo.
+    Ogni passata copia `low`, tiene le sole facce del pezzo e cuoce contro i suoi alti: i
+    raggi non colpiscono mai il guscio di un altro pezzo (canottiera a 12 mm dal corpo).
+    I pezzi senza coppia (accessori duri) restano piatti."""
+    import bmesh
+
+    scene = bpy.context.scene
+    scene.render.engine = "CYCLES"
+    scene.cycles.device = "CPU"
+    scene.cycles.samples = 4
+    bake = scene.render.bake
+    bake.use_selected_to_active = True
+    bake.use_cage = False
+    bake.cage_extrusion = extrusion
+    bake.max_ray_distance = max_ray
+    bake.normal_space = "TANGENT"
+    bake.use_clear = False
+    # Margine piccolo: uno grande invaderebbe le isole dei pezzi gia cotti.
+    bake.margin = 3
+    for mat in low.data.materials:
+        tree = mat.node_tree
+        tree.nodes.clear()
+        out = tree.nodes.new("ShaderNodeOutputMaterial")
+        bsdf = tree.nodes.new("ShaderNodeBsdfDiffuse")
+        tree.links.new(bsdf.outputs["BSDF"], out.inputs["Surface"])
+        _bake_target(tree.nodes, image)
+    for part, highs in pairs.items():
+        piece = low.copy()
+        piece.data = low.data.copy()
+        piece.modifiers.clear()
+        bpy.context.collection.objects.link(piece)
+        bm = bmesh.new()
+        bm.from_mesh(piece.data)
+        layer = bm.faces.layers.int.get(PART_ATTRIBUTE)
+        bmesh.ops.delete(bm, geom=[f for f in bm.faces if f[layer] != part], context="FACES")
+        bm.to_mesh(piece.data)
+        bm.free()
+        if len(piece.data.polygons) == 0:
+            bpy.data.objects.remove(piece, do_unlink=True)
+            continue
+        bpy.ops.object.select_all(action="DESELECT")
+        for obj in highs:
+            obj.select_set(True)
+        piece.select_set(True)
+        bpy.context.view_layer.objects.active = piece
+        bpy.ops.object.bake(type="NORMAL")
+        bpy.data.objects.remove(piece, do_unlink=True)
+    bake.use_selected_to_active = False
+    bake.use_clear = True
 
 
 # -- materiale finale -------------------------------------------------------------------

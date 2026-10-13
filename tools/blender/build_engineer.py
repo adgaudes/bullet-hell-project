@@ -24,10 +24,16 @@ import bpy
 from mathutils import Vector
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import painter  # noqa: E402
 import sculpt  # noqa: E402
 import render_turntable  # noqa: E402
 from build_character_assets import CHEST, HEAD, HIPS, ROOT, SPINE, Skeleton, build_pack_sack, export  # noqa: E402
 from refined import RefinedBuilder  # noqa: E402
+
+# Pittura del corpo morbido: fango solo sulle suole (gambe cortissime), macchie leggere
+# (quelle d'olio sono dipinte a mano con sculpt.tint), niente usura sugli spigoli, pennellate
+# larghe (a 14 sulle braccia sembravano pelo).
+SOFT_STYLE = {"paint": {"mud_top": 0.07, "stain_floor": (0.86, 0.8, 0.74), "wear_amount": 0.0, "brush_scale": 6.0}}
 
 LOW_LEVEL = 1
 HIGH_LEVEL = 3
@@ -75,7 +81,8 @@ def _body_graph(s):
     chest = s.head(CHEST)
     neck = s.tail(CHEST)
     pelvis = node(hips + Vector((0, 0, 0.02)), (0.27, 0.22))
-    belly = node(waist + Vector((0, -0.04, 0.02)), (0.34, 0.3))
+    # A meta fra bacino e costole: piu in basso gli involucri si compenetrano (buchi, facce interne).
+    belly = node((hips + chest) * 0.5 + Vector((0, -0.03, 0)), (0.33, 0.29))
     ribs = node(chest, (0.33, 0.25))
     collar = node(neck + Vector((0, 0, -0.04)), (0.2, 0.16))
     edges += [(pelvis, belly), (belly, ribs), (ribs, collar)]
@@ -145,7 +152,7 @@ def _head(s, level):
     profile = [(-0.02, 0.1, 0.1), (0.02, 0.17, 0.16), (0.07, 0.22, 0.21), (0.13, 0.25, 0.24), (0.19, 0.265, 0.255),
                (0.25, 0.27, 0.26), (0.31, 0.265, 0.255), (0.37, 0.25, 0.24), (0.43, 0.215, 0.205), (0.48, 0.16, 0.155),
                (0.52, 0.09, 0.09), (0.545, 0.03, 0.03)]
-    head = sculpt.loft("Head", [sculpt.Ring(top + Vector((0, -0.02, z)), rx, ry, sides=16) for z, rx, ry in profile])
+    head = sculpt.loft("Head", [sculpt.Ring(top + Vector((0, -0.02, z)), rx, ry, sides=14) for z, rx, ry in profile])
     sculpt.subdivide(head, level + 1)
     sculpt.grab(head, top + Vector((0, -0.22, 0.03)), 0.13, (0, -0.07, 0.03), scale=(1.5, 1.0, 0.8))  # mento
     sculpt.grab(head, top + Vector((0, -0.2, -0.02)), 0.12, (0, 0.0, 0.03), scale=(1.6, 1.0, 0.6))  # mascella
@@ -160,7 +167,7 @@ def _head(s, level):
     parts["lip"] = lip
     nose = sculpt.tube("Nose", [top + Vector((0.0, -0.27, 0.26)), top + Vector((0.02, -0.33, 0.21)),
                                 top + Vector((0.04, -0.35, 0.175))], [0.035, 0.05, 0.055], sides=12)
-    sculpt.subdivide(nose, level + 1)
+    sculpt.subdivide(nose, level)
     parts["nose"] = nose
     for sign in (1.0, -1.0):
         eye = _blob("Eye", (sign * 0.085, -0.252, top.z + 0.235), (0.04, 0.02, 0.024), sides=10, rings=5)
@@ -208,6 +215,8 @@ def build_organic(s, level, detail, materials):
     for key in ("body", "shirt", "overalls", "waistband", "belt"):
         _shape(parts[key], s)
     _shape_hands(parts["body"], s)
+    for key in ("body", "boots", "overalls"):
+        sculpt.flatten_below(parts[key], 0.0)
     sculpt.set_color(parts["body"], SKIN)
     sculpt.set_color(parts["shirt"], TANK)
     sculpt.set_color(parts["overalls"], SUIT_BLUE)
@@ -357,11 +366,11 @@ def build_gear(rb, s):
     rb.box("DEF-hand.R", (0.6, 0.12, 0.13), (grip.x - 0.2, grip.y, grip.z - 0.17), DARK_METAL, bevel=0.03, segments=3)
     rb.box("DEF-hand.R", (0.16, 0.1, 0.22), (grip.x - 0.12, grip.y, grip.z - 0.32), COPPER, bevel=0.02)
     rb.cyl("DEF-hand.R", 0.05, 0.1, (grip.x - 0.52, grip.y, grip.z - 0.17), ORANGE, mat="suit", axis="x", sides=14)
-    return {"pack_z": pack_z, "sack_center": (0.0, 0.3, pack_z - 0.5)}
+    return {"pack_z": pack_z, "sack_center": (0.0, 0.34, pack_z - 0.33)}
 
 
 def _clay(s):
-    rb = RefinedBuilder(paint_name="suit", bake_normal=False)
+    rb = RefinedBuilder(paint_name="suit", bake_normal=False, style_overrides=SOFT_STYLE)
     parts = build_organic(s, LOW_LEVEL, False, rb.materials)
     build_gear(rb, s)
     objects = list(parts.values()) + rb.pieces
@@ -369,6 +378,9 @@ def _clay(s):
         if obj.data.color_attributes.get("Col") is not None:
             obj.data.color_attributes.active_color = obj.data.color_attributes["Col"]
     tris = sum(sculpt.mesh_stats(o)["tris"] for o in objects)
+    by_part = sorted(((sculpt.mesh_stats(o)["tris"], k) for k, o in parts.items()), reverse=True)[:8]
+    print("ENGINEER_PARTS " + " ".join("%s=%d" % (k, t) for t, k in by_part)
+          + " gear=%d" % sum(sculpt.mesh_stats(o)["tris"] for o in rb.pieces))
     head = s.head(HEAD) + Vector((0.0, 0.0, 0.25))
     render_turntable.render_views(objects, os.path.join(ROOT, "output", "engineer", "clay"), "clay", head)
     render_turntable.render_views(objects, os.path.join(ROOT, "output", "engineer", "clay_colors"), "colors", head)
@@ -388,8 +400,85 @@ def main():
     build_and_export(s)
 
 
+# Parti rigide sulla testa e parti che prendono i pesi dal corpo per vicinanza.
+HEAD_PARTS = ("head", "nose", "lip", "hair", "bun", "cable", "plug_cable")
+HEAD_PREFIXES = ("eye_", "lid_", "brow_", "ear_")
+
+
+def _select_only(obj):
+    bpy.ops.object.select_all(action="DESELECT")
+    obj.select_set(True)
+    bpy.context.view_layer.objects.active = obj
+
+
+def _weights(s, parts):
+    """Corpo con i pesi automatici; abiti, cinghie e maniche li ricevono dal corpo per
+    vicinanza; la testa e cio che le sta sopra sono rigidi su DEF-head."""
+    body = parts["body"]
+    bpy.ops.object.select_all(action="DESELECT")
+    body.select_set(True)
+    s.obj.select_set(True)
+    bpy.context.view_layer.objects.active = s.obj
+    bpy.ops.object.parent_set(type="ARMATURE_AUTO")
+    for modifier in [m for m in body.modifiers if m.type == "ARMATURE"]:
+        body.modifiers.remove(modifier)
+    body.parent = None
+    # Il calore delle ossa non normalizza (somme 0,93-1): si normalizza, poi conta solo chi e a zero.
+    _select_only(body)
+    bpy.ops.object.vertex_group_normalize_all(lock_active=False)
+    missing = sum(1 for v in body.data.vertices if sum(g.weight for g in v.groups) < 1e-3)
+    if missing:
+        raise RuntimeError("Pesi automatici falliti su %d vertici del corpo: semplificare le giunture" % missing)
+    for key, obj in parts.items():
+        if key == "body":
+            continue
+        if key in HEAD_PARTS or key.startswith(HEAD_PREFIXES):
+            group = obj.vertex_groups.new(name=HEAD)
+            group.add(list(range(len(obj.data.vertices))), 1.0, "REPLACE")
+            continue
+        for group in body.vertex_groups:
+            obj.vertex_groups.new(name=group.name)
+        transfer = obj.modifiers.new("Weights", "DATA_TRANSFER")
+        transfer.object = body
+        transfer.use_vert_data = True
+        transfer.data_types_verts = {"VGROUP_WEIGHTS"}
+        transfer.vert_mapping = "POLYINTERP_NEAREST"
+        transfer.layers_vgroup_select_src = "ALL"
+        transfer.layers_vgroup_select_dst = "NAME"
+        _select_only(obj)
+        bpy.ops.object.modifier_apply(modifier=transfer.name)
+
+
 def build_and_export(s):
-    raise NotImplementedError("Task 5")
+    rb = RefinedBuilder(paint_name="suit", bake_normal=False, style_overrides=SOFT_STYLE)
+    low = build_organic(s, LOW_LEVEL, False, rb.materials)
+    gear = build_gear(rb, s)
+    high = build_organic(s, HIGH_LEVEL, True, rb.materials)
+    # Ogni parte organica bassa si cuoce solo contro la sua alta; gli accessori duri restano piatti.
+    high_pairs = {}
+    for index, key in enumerate(low):
+        painter.tag_part(low[key], index + 1)
+        high_pairs[index + 1] = [high[key]]
+    for piece in rb.pieces:
+        painter.tag_part(piece, 0)
+    _weights(s, low)
+    obj = rb.join("PlayerEngineerMesh", extra=list(low.values()))
+    _select_only(obj)
+    bpy.ops.object.vertex_group_limit_total(limit=4)
+    bpy.ops.object.vertex_group_normalize_all(lock_active=False)
+    rb.unwrap(obj)
+    if s.obj.data.pose_position != "REST":
+        raise RuntimeError("Lo scheletro deve stare a riposo durante la cottura")
+    rb.bake(obj, "PlayerEngineerMesh", high_pairs=high_pairs)
+    for twin in high.values():
+        bpy.data.objects.remove(twin, do_unlink=True)
+    obj.parent = s.obj
+    obj.modifiers.new("Armature", "ARMATURE").object = s.obj
+    sack = build_pack_sack(s, gear["pack_z"], gear["sack_center"])
+    s.obj.data.pose_position = "POSE"
+    tris = sum(len(p.vertices) - 2 for p in obj.data.polygons)
+    print("ENGINEER_BUILT tris=%d" % tris)
+    export(s, obj, "player_engineer", "PlayerEngineer", "NONE", [sack])
 
 
 if __name__ == "__main__":
