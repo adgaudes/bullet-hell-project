@@ -64,9 +64,20 @@ func _initialize() -> void:
 	_camera.make_current()
 
 	var scene: PackedScene = load(_model)
+	# La tuta come in PlayerCharacter._ready: texture cotta (e normal) se il modello ce l'ha,
+	# altrimenti il colore di vertice del modello a blocchi.
 	var suit := StandardMaterial3D.new()
-	suit.vertex_color_use_as_albedo = true
-	suit.roughness = 0.8
+	var probe: Node3D = scene.instantiate()
+	var suit_source := ActorModel.surface_material(ActorModel.mesh_instance_of(probe), "suit") as StandardMaterial3D
+	if suit_source != null and suit_source.albedo_texture != null:
+		suit.albedo_texture = suit_source.albedo_texture
+		suit.roughness = suit_source.roughness
+		ActorModel.copy_normal_map(suit_source, suit)
+	else:
+		suit.vertex_color_use_as_albedo = true
+		suit.roughness = 0.8
+	probe.free()
+	ActorModel.enable_rim(suit)
 	suit.albedo_color = SUIT_COLOR_LINEAR.linear_to_srgb()
 	for fill in _pack_fills:
 		POSES.append(["", fill])

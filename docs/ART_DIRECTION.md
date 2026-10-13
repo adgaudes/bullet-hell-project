@@ -125,7 +125,7 @@ Il proprietario ha scelto una resa "attuale": texture dipinte in alta risoluzion
 
 | # | Classe (asse di gioco) | Chi e | Come si vede che e rozzo e simpatico | Accento |
 |---|---|---|---|---|
-| 1 | **Ingegnere** (equilibrato, personaggio attuale) | Donna sulla cinquantina, tozza, spalle larghe, naso rotto, capelli grigi legati con un cavo elettrico | Tuta slacciata fino alla vita con canottiera macchiata, sigaro spento in bocca, fiaschetta all'anca, chiave da treno enorme a tracolla, postura a mento alto e pancia in fuori | Arancio |
+| 1 | **Ingegnere** (equilibrato, personaggio attuale; **fatta il 13 ottobre 2026, D-088**) | Donna sulla cinquantina, cartoon a 3 teste, spalle larghe, naso rotto, capelli grigi a crocchia legati con un cavo elettrico arancio | Tuta blu stinto abbassata in vita con le maniche annodate, canottiera macchiata, sigaro spento in bocca, fiaschetta all'anca, chiave da treno enorme sulla schiena, lanterna da segnale sullo zaino, postura a mento alto e pancia in fuori | Arancio |
 | 2 | **Guastatore** (scavo esplosivo, terreno) | Ragazzo magro e sdentato, iperattivo, sopracciglia bruciate | Occhiali da saldatore storti, giubbotto gonfio di cariche fatte in casa, pantaloni strappati, orecchie fasciate, bocca sempre aperta a ridere; corre a scatti | Rosso |
 | 3 | **Meccanico** (compagno potenziato) | Vecchio enorme, calvo, pancia da birra, braccia da gorilla | Grembiule di gomma, un occhio sostituito da una lente recuperata, mani nere di grasso, bottiglia nella tasca posteriore; passo lento e pesante | Turchese |
 | 4 | **Erbacciaia** (terreno che cresce, vegetazione come difesa) | Vecchia minuta e cattiva, gobba, pipa accesa | Cappello di paglia bruciacchiato, botte di distillato in spalla con il tubo che le arriva alla bocca, falce arrugginita, gatto-robot sulla botte; sputa per terra | Magenta |
@@ -142,7 +142,7 @@ Il suolo e Terrain3D con cinque strati dalle stesse tile dipinte (terra, lastre,
 
 ## Questioni aperte prima dell'Art Lock
 
-- grado esatto di caricatura delle proporzioni;
+- grado esatto di caricatura delle proporzioni: **deciso il 13 ottobre 2026, cartoon forte a circa 3 teste (D-088)**;
 - eventuale outline o rim light selettiva;
 - numero e diversita dei personaggi iniziali;
 - rapporto fra tecnologia terrestre, fantasy e aliena;
