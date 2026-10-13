@@ -3,8 +3,9 @@
 Eseguire (Blender 5.2.2, senza interfaccia):
     blender -b --factory-startup --python tools/blender/build_character_assets.py -- [nome ...]
 
-Senza nomi costruisce tutti gli asset. Uscita: godot/assets/models/<nome>.glb.
-Dopo l'export: godot_console --headless --path godot --editor --quit (importa i .glb).
+Senza nomi stampa l'uso; l'ingegnere del gioco lo costruisce `build_engineer.py` (D-088).
+I due costruttori qui (D-074 rifinito e a blocchi) restano per confronto ed escono in
+output/engineer/before/<nome>.glb.
 
 Come funziona:
 - scheletro e animazioni vengono dalla Universal Animation Library di Quaternius (CC0,
@@ -445,7 +446,7 @@ def build_pack_sack(skeleton, pack_z):
     return obj
 
 
-def export(skeleton, obj, asset_name, root_name, vertex_color="ACTIVE", extras=()):
+def export(skeleton, obj, asset_name, root_name, vertex_color="ACTIVE", extras=(), out_dir=OUT_DIR):
     root = bpy.data.objects.new(root_name, None)
     bpy.context.collection.objects.link(root)
     # L'export ignora la rotazione dell'oggetto armatura: la porta un nodo intermedio.
@@ -454,8 +455,8 @@ def export(skeleton, obj, asset_name, root_name, vertex_color="ACTIVE", extras=(
     facing.parent = root
     facing.rotation_euler = (0.0, 0.0, math.pi)
     skeleton.obj.parent = facing
-    os.makedirs(OUT_DIR, exist_ok=True)
-    path = os.path.join(OUT_DIR, asset_name + ".glb")
+    os.makedirs(out_dir, exist_ok=True)
+    path = os.path.join(out_dir, asset_name + ".glb")
     bpy.ops.object.select_all(action="DESELECT")
     for item in (root, facing, skeleton.obj, obj, *extras):
         item.select_set(True)
@@ -699,24 +700,31 @@ def build_player_engineer_refined():
     return s, obj, "PlayerEngineer", [sack]
 
 
-# Nome dell'asset -> (costruttore, colore di vertice nell'export). Il modello rifinito ha
-# il colore nella texture cotta: il colore di vertice resterebbe e Godot lo moltiplicherebbe.
+# Nome dell'asset -> (costruttore, colore di vertice nell'export, cartella d'uscita). Il
+# modello rifinito ha il colore nella texture cotta: il colore di vertice resterebbe e
+# Godot lo moltiplicherebbe. L'ingegnere del gioco lo costruisce build_engineer.py (D-088):
+# questi restano per confronto e finiscono fuori dal progetto Godot.
+BEFORE_DIR = os.path.join(ROOT, "output", "engineer", "before")
 ASSETS = {
-    "player_engineer": (build_player_engineer_refined, "NONE"),
-    "player_engineer_blocky": (build_player_engineer_blocky, "ACTIVE"),
+    "player_engineer_d074": (build_player_engineer_refined, "NONE", BEFORE_DIR),
+    "player_engineer_blocky": (build_player_engineer_blocky, "ACTIVE", BEFORE_DIR),
 }
 
 
 def main():
     argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
-    names = argv or ["player_engineer"]
-    for name in names:
+    if not argv:
+        print("Uso: ... build_character_assets.py -- player_engineer_d074|player_engineer_blocky "
+              "(l'ingegnere del gioco: build_engineer.py)")
+        return
+    for name in argv:
         bpy.ops.wm.read_factory_settings(use_empty=True)
-        builder, vertex_color = ASSETS[name]
+        builder, vertex_color, out_dir = ASSETS[name]
         built = builder()
         skeleton, obj, root_name = built[0], built[1], built[2]
         extras = built[3] if len(built) > 3 else []
-        export(skeleton, obj, name, root_name, vertex_color, extras)
+        export(skeleton, obj, name, root_name, vertex_color, extras, out_dir)
 
 
-main()
+if __name__ == "__main__":
+    main()
