@@ -12,6 +12,8 @@
   Exit code 0 solo se tutto passa.
   Il seme delle run e fisso (-Seed, variabile PROTOTYPE01_SEED): un rosso si riproduce
   rilanciando con lo stesso seme; il log completo delle suite fallite resta in output/gate/.
+  Un passo con finestra (320x200) rilancia restyle_tests con Terrain3D vero e avvia il gioco
+  contando anche gli errori degli shader; -NoWindow lo salta.
 
 .EXAMPLE
   powershell -ExecutionPolicy Bypass -File tools/godot/Invoke-GodotChecks.ps1
@@ -20,7 +22,9 @@
 param(
     [string]$Executable = "",
     # Seme delle run in tutte le suite (audit K-01): stesso seme, stesso esito.
-    [int]$Seed = 20261014
+    [int]$Seed = 20261014,
+    # Salta il passo con finestra (macchina senza schermo).
+    [switch]$NoWindow
 )
 
 $ErrorActionPreference = "Stop"
@@ -62,7 +66,7 @@ $allowedErrorPatterns = @{
 function Get-RuntimeErrors([string]$text, [string]$suite = "") {
     $allowed = @()
     if ($suite -and $allowedErrorPatterns.ContainsKey($suite)) { $allowed = $allowedErrorPatterns[$suite] }
-    $lines = @($text -split "`n" | Where-Object { $_ -match "SCRIPT ERROR|^ERROR:" })
+    $lines = @($text -split "`n" | Where-Object { $_ -match "SCRIPT ERROR|SHADER ERROR|^ERROR:" })
     return @($lines | Where-Object {
         $line = $_
         -not ($allowed | Where-Object { $line -match [regex]::Escape($_) })
@@ -144,6 +148,25 @@ Get-ChildItem -Path (Join-Path $project "tests") -Filter *.gd | ForEach-Object {
     } else {
         Write-Host "  ok   $resPath $summary"
     }
+}
+
+# Audit K-03: in headless Terrain3D non esiste e gli shader non si compilano; qui la suite
+# con i controlli su Terrain3D e un avvio vero, a finestra piccola.
+if (-not $NoWindow) {
+    Write-Host "== con finestra (Terrain3D e shader)"
+    $win = Invoke-Captured $godot @("--path", "$project", "--resolution", "320x200", "--fixed-fps", "60", "--script", "res://tests/restyle_tests.gd")
+    $winErrors = Get-RuntimeErrors $win.Text
+    if ($win.Code -ne 0 -or -not $win.Text.Contains("PROTOTYPE01_TESTS PASS") -or $win.Text.Contains("skip controlli Terrain3D") -or $winErrors.Count -gt 0) {
+        $failures++
+        Write-Host "  FAIL restyle_tests con finestra (exit $($win.Code), errori $($winErrors.Count))"
+        $win.Text -split "`n" | Where-Object { $_ -match "FAIL|skip" } | ForEach-Object { Write-Host "       $_" }
+        $winErrors | ForEach-Object { Write-Host "       $_" }
+    } else {
+        Write-Host "  ok   restyle_tests con finestra"
+    }
+    $start = Invoke-Captured $godot @("--path", "$project", "--resolution", "320x200", "--quit-after", "300", "--", "--autostart")
+    if (Test-Markers $start.Text) { Write-Host "  ok   avvio con finestra: marker presenti, nessun errore" } else { $failures++ }
+    if ($start.Code -ne 0) { Write-Host "  FAIL codice d'uscita $($start.Code)"; $failures++ }
 }
 
 Write-Host "== smoke test headless"

@@ -215,7 +215,7 @@ Il quartiere (`arena_run.tscn`) sta su `TerrainField` (campo di quote a 0,5 m, 2
 
 Trappole verificate:
 
-- `Terrain3D` esiste solo con una finestra: in headless `TerrainField.terrain3d()` e null e colori, strati e base dello shader non si applicano (le suite lo sanno); `restyle_tests` va lanciata anche con finestra per i controlli su Terrain3D;
+- `Terrain3D` esiste solo con una finestra: in headless `TerrainField.terrain3d()` e null e colori, strati e base dello shader non si applicano (le suite lo sanno); `restyle_tests` gira anche con finestra (320x200) nel passo «con finestra» del gate, che avvia pure il gioco contando gli errori degli shader (`-NoWindow` lo salta; audit K-03);
 - `Terrain3D.data` e `collision` nascono un fotogramma dopo `add_child`: `TerrainField` aspetta un `process_frame` e poi emette `render_ready`; chi dipinge strati o colori (il quartiere) lo fa su quel segnale;
 - la collisione di Terrain3D resta spenta (`Terrain3DCollision.DISABLED`): i corpi stanno sui chunk nostri; Jolt e obbligatorio (con Godot Physics 40 corpi su heightmap costano 17 ms a passo);
 - un rialzo secco sotto un corpo lo incastra nella heightfield: il pennello del giocatore alza 2 cm a passo, il Demolitore posa la barricata solo su un punto libero da corpi, il terremoto riappoggia i nemici sulla nuova quota;
