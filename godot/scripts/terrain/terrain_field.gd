@@ -156,6 +156,47 @@ func highest_bump(center: Vector3, radius: float, min_delta: float) -> Variant:
 	return best
 
 
+## Per dischi concentrici di raggio step, 2 step, ... fino a [param max_radius]: la cima
+## piu sporgente dalla base (oltre [param min_delta]) dentro ciascun disco, Vector3 o null.
+## Una sola passata (audit E-16): equivale a `highest_bump` per ogni raggio.
+func highest_bumps_by_ring(center: Vector3, step: float, max_radius: float, min_delta: float) -> Array:
+	var rings := maxi(int(floor(max_radius / step)), 0)
+	var out := []
+	if rings == 0:
+		return out
+	var ring_delta := PackedFloat32Array()
+	ring_delta.resize(rings)
+	ring_delta.fill(min_delta)
+	var ring_index := PackedInt32Array()
+	ring_index.resize(rings)
+	ring_index.fill(-1)
+	var outer := rings * step
+	var r := _rect_indices(center, Vector2(outer, outer))
+	for iz in range(r[1], r[3] + 1):
+		var wz := iz * SPACING - _half.y
+		for ix in range(r[0], r[2] + 1):
+			var wx := ix * SPACING - _half.x
+			var d2 := (wx - center.x) * (wx - center.x) + (wz - center.z) * (wz - center.z)
+			if d2 > outer * outer:
+				continue
+			var i := iz * resolution_x + ix
+			var d := _heights[i] - _base[i]
+			if d <= min_delta:
+				continue
+			var k := clampi(int(ceil(sqrt(d2) / step)) - 1, 0, rings - 1)
+			if d > ring_delta[k]:
+				ring_delta[k] = d
+				ring_index[k] = i
+	var best_delta := min_delta
+	var best := -1
+	for k in rings:
+		if ring_delta[k] > best_delta:
+			best_delta = ring_delta[k]
+			best = ring_index[k]
+		out.append(_vertex_world(best) if best >= 0 else null)
+	return out
+
+
 ## Primo punto lungo il segmento (campionato ogni SPACING) che sporge dalla base di
 ## almeno [param min_delta]: Vector3 con la quota, o null. Serve alla Trivella.
 func bump_along(from: Vector3, to: Vector3, min_delta: float) -> Variant:

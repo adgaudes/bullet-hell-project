@@ -112,19 +112,30 @@ func _fire_at(target: Enemy) -> void:
 	fired.emit(count)
 
 
+## Query del chiodo riusata a ogni tratto (audit E-15: prima una nuova per chiodo e passo).
+var _ray := PhysicsRayQueryParameters3D.create(Vector3.ZERO, Vector3.ZERO, 1)
+
+
 func _move_nails(delta: float) -> void:
 	if _nails.is_empty():
 		return
 	var space := get_world_3d().direct_space_state
 	var step := projectile_speed * delta
 	var enemies := director.enemies if director != null else []
+	# Scarto rapido (audit E-15): oltre questa distanza dal punto medio del tratto nessun
+	# nemico puo essere colpito, qualunque sia il suo bonus di raggio.
+	var reach := step * 0.5 + HIT_RADIUS + _max_hit_bonus(enemies)
+	var reach_squared := reach * reach
 	for k in range(_nails.size() - 1, -1, -1):
 		var nail: Dictionary = _nails[k]
 		var node: MeshInstance3D = nail.node
 		var from := node.global_position
 		var to: Vector3 = from + nail.direction * step
 		var alive := true
-		var wall := space.intersect_ray(PhysicsRayQueryParameters3D.create(from, to, 1))
+		_ray.from = from
+		_ray.to = to
+		var wall := space.intersect_ray(_ray)
+		var mid := (from + to) * 0.5
 		if not wall.is_empty():
 			to = wall.position
 			alive = false
@@ -134,6 +145,10 @@ func _move_nails(delta: float) -> void:
 				if e >= enemies.size():
 					continue
 				var enemy: Enemy = enemies[e]
+				var ex := enemy.global_position.x - mid.x
+				var ez := enemy.global_position.z - mid.z
+				if ex * ex + ez * ez > reach_squared:
+					continue
 				if enemy.is_dead or nail.hit.has(enemy):
 					continue
 				if _segment_distance(from, to, enemy.global_position) <= HIT_RADIUS + enemy.hit_radius_bonus:
@@ -151,6 +166,13 @@ func _move_nails(delta: float) -> void:
 		else:
 			_nails.remove_at(k)
 			node.queue_free()
+
+
+func _max_hit_bonus(enemies: Array) -> float:
+	var bonus := 0.0
+	for enemy: Enemy in enemies:
+		bonus = maxf(bonus, enemy.hit_radius_bonus)
+	return bonus
 
 
 ## Distanza planare del punto dal segmento.

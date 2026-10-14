@@ -63,6 +63,8 @@ var hoppers_spawned := 0
 var _flash_material := StandardMaterial3D.new()
 # Riusati a ogni passo (R-10): secchi di separazione e copia dell'elenco dei nemici.
 var _buckets: Dictionary[Vector2i, Array] = {}
+## Chiavi dei secchi riempiti in questo passo.
+var _bucket_keys: Array[Vector2i] = []
 var _step_list: Array[Enemy] = []
 
 
@@ -238,15 +240,21 @@ func _find_spawn_point() -> Variant:
 func _move_enemies(delta: float) -> void:
 	if night_active and light_field != null:
 		light_field.refresh()
-	for bucket: Array in _buckets.values():
-		bucket.clear()
-	for enemy in enemies:
-		var key := Vector2i(floori(enemy.global_position.x), floori(enemy.global_position.z))
-		if not _buckets.has(key):
-			_buckets[key] = []
-		_buckets[key].append(enemy)
+	# Si svuotano solo i secchi usati nel passo prima (audit E-14: prima tutte le chiavi mai
+	# visitate, fino a 4096); il dizionario troppo grande si azzera prima di riempirlo, cosi
+	# nessun passo resta senza separazione.
+	for key in _bucket_keys:
+		_buckets[key].clear()
+	_bucket_keys.clear()
 	if _buckets.size() > 4096:
 		_buckets.clear()
+	for enemy in enemies:
+		var key := Vector2i(floori(enemy.global_position.x), floori(enemy.global_position.z))
+		var bucket: Array = _buckets.get(key, [])
+		if bucket.is_empty():
+			_buckets[key] = bucket
+			_bucket_keys.append(key)
+		bucket.append(enemy)
 
 	# Copia riusata: un nemico che muore durante il passo esce subito dall'elenco.
 	_step_list.clear()

@@ -626,16 +626,16 @@ func _try_build_at_site() -> void:
 func _nearest_wall_point() -> Vector3:
 	var best := Vector3.INF
 	var best_distance := wall_attraction_radius
-	# Anelli crescenti: la cima piu vicina conta piu di quella piu alta.
-	var ring := 3.0
-	while ring <= wall_attraction_radius + 0.01 and best == Vector3.INF:
-		var bump: Variant = terrain_field.highest_bump(global_position, ring, WALL_MIN_DELTA)
-		if bump != null:
-			var at := Vector3((bump as Vector3).x, 0.0, (bump as Vector3).z)
-			if _point_is_target(at):
-				best = at
-				best_distance = _planar(at - global_position).length()
-		ring += 3.0
+	# Anelli crescenti: la cima piu vicina conta piu di quella piu alta. Una sola passata
+	# sul disco piu grande (audit E-16: prima quattro dischi annidati riscanditi).
+	for bump: Variant in terrain_field.highest_bumps_by_ring(global_position, 3.0, wall_attraction_radius + 0.01, WALL_MIN_DELTA):
+		if bump == null:
+			continue
+		var at := Vector3((bump as Vector3).x, 0.0, (bump as Vector3).z)
+		if _point_is_target(at):
+			best = at
+			best_distance = _planar(at - global_position).length()
+			break
 	if scrap_field != null:
 		for vein in scrap_field.veins():
 			if vein.scrap_left <= 0:

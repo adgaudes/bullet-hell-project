@@ -20,6 +20,7 @@ func _initialize() -> void:
 	_test_level()
 	_test_brush_outside_field()
 	_test_brush_without_change_is_silent()
+	_test_highest_bumps_by_ring()
 	_test_reset_to_base()
 	_test_bump_along()
 	_test_dig_to_base_offset()
@@ -357,6 +358,28 @@ func _test_soil_pack() -> void:
 	pack.add_capacity(20.0)
 	_check(absf(pack.capacity - 80.0) < 0.001 and absf(pack.fill_ratio() - 0.75) < 0.001, "add_capacity alza il tetto")
 	_check(seen.size() == 4, "ogni cambio emette changed (%d)" % seen.size())
+
+
+## Audit E-16: la ricerca a anelli in una passata da le stesse cime di `highest_bump`
+## chiamata per ogni raggio, su un rilievo casuale.
+func _test_highest_bumps_by_ring() -> void:
+	print("highest bumps by ring")
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 7
+	var center := Vector3(10.0, 0.0, -8.0)
+	for i in 14:
+		_field.sculpt(center + Vector3(rng.randf_range(-11.0, 11.0), 0.0, rng.randf_range(-11.0, 11.0)), rng.randf_range(1.0, 2.5), rng.randf_range(0.3, 1.6))
+	var rings := _field.highest_bumps_by_ring(center, 3.0, 12.01, 0.4)
+	var same := rings.size() == 4
+	for k in rings.size():
+		var single: Variant = _field.highest_bump(center, 3.0 * (k + 1), 0.4)
+		var by_ring: Variant = rings[k]
+		if (single == null) != (by_ring == null):
+			same = false
+		elif single != null and _field.delta_at(single) != _field.delta_at(by_ring):
+			same = false
+	_check(same, "quattro anelli: stesse cime della ricerca disco per disco")
+	_field.reset_to_base(center, Vector2(15.0, 15.0))
 
 
 ## Audit T-03 e T-05: una pennellata che non cambia nessun vertice (disco protetto,
