@@ -26,7 +26,8 @@ const WAGON_RADIUS := 3.0
 const WAGON_HEIGHT := 1.5
 const WAGON_SCRAP := 8
 ## Tinta (lineare) della fascia (ghiaia scura) e dei vagoni (ruggine, come i rottami).
-const BALLAST_TINT := Color(0.30, 0.28, 0.25)
+## Tinta della massicciata sopra la ghiaia CC0: solo un po piu scura e calda.
+const BALLAST_TINT := Color(0.62, 0.58, 0.52)
 const WAGON_TINT := Color(0.55, 0.22, 0.06)
 ## Portali di galleria alle estremita: quanto sporgono oltre l'area giocabile.
 const PORTAL_DEPTH := 8.0
@@ -223,14 +224,14 @@ func apply_strokes(field: TerrainField, scrap_field: ScrapField = null) -> void:
 				vein.exhausted_tint = BALLAST_TINT
 
 
-## Strati del quartiere piu la fascia: asfalto e ghiaia scura per tutta la lunghezza.
+## Strati del quartiere piu la fascia: massicciata di ghiaia (texture CC0) per tutta la lunghezza.
 func paint_surface(field: TerrainField) -> void:
 	if field.terrain3d() == null:
 		return
 	field.begin_batch()
 	super(field)
 	var half := Vector2(half_x() + PORTAL_DEPTH, TRACK_HALF_WIDTH)
-	field.paint_layer_rect(Vector3.ZERO, half, TerrainSurface.LAYER_ASPHALT)
+	field.paint_layer_rect(Vector3.ZERO, half, TerrainSurface.LAYER_GRAVEL)
 	field.tint_rect(Vector3.ZERO, half, BALLAST_TINT, 0.8)
 	field.end_batch()
 

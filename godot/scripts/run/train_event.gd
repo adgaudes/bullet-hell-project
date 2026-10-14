@@ -210,8 +210,8 @@ func _sweep_band() -> void:
 	var half := Vector2((hi - lo) * 0.5, RailwayDistrict.TRACK_HALF_WIDTH)
 	var volume := terrain_field.reset_to_base(center, half)
 	if volume > 0.01:
-		# Il tratto spianato torna asfalto e ghiaia (i cumuli dei vagoni erano ruggine).
-		terrain_field.paint_layer_rect(center, half, TerrainSurface.LAYER_ASPHALT)
+		# Il tratto spianato torna massicciata di ghiaia (i cumuli dei vagoni erano ruggine).
+		terrain_field.paint_layer_rect(center, half, TerrainSurface.LAYER_GRAVEL)
 		terrain_field.tint_rect(center, half, RailwayDistrict.BALLAST_TINT, 0.8)
 		volume_flattened += volume
 		_debris_budget += volume

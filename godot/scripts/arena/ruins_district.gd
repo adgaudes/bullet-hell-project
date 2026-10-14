@@ -25,6 +25,8 @@ const OCCUPANCY_STEP := 1.0
 ## Gusci delle rovine basse: spessore dei muri e altezza minima di un tratto
 ## (sopra la quota di tiro, 0,88 m: dove un chiodo si ferma il muro si vede).
 const SHELL_WALL_THICKNESS := 0.5
+## Metri di macerie dipinte oltre l'ingombro di ogni rovina.
+const RUBBLE_SPILL_M := 2.5
 const SHELL_MIN_WALL := 1.3
 const SHELL_VINE_REACH := 0.3
 ## Corona spezzata in cima ai muri (D-068): altezze dei pezzi e dei tondini, misura della porta.
@@ -558,6 +560,11 @@ func paint_surface(field: TerrainField) -> void:
 	# Centinaia di strati e tinte: un solo caricamento delle mappe alla fine.
 	field.begin_batch()
 	field.paint_layer(Vector3.ZERO, plaza_radius_m * 0.8, TerrainSurface.LAYER_SLABS)
+	# Macerie attorno alle rovine (playtest del 14 ottobre, O-08): il crollo si sparge
+	# oltre i muri; prima delle strade, che restano sopra.
+	for rect: Rect2 in _block_rects:
+		var c := rect.get_center()
+		field.paint_layer(Vector3(c.x, 0.0, c.y), maxf(rect.size.x, rect.size.y) * 0.5 + RUBBLE_SPILL_M, TerrainSurface.LAYER_RUBBLE)
 	for road: Array in _road_segments():
 		var from: Vector2 = road[0]
 		var to: Vector2 = road[1]
