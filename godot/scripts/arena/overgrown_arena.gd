@@ -24,6 +24,7 @@ const ENV_BAKED_SHADER := preload("res://resources/materials/env_baked.gdshader"
 ## puntatori LFS e un preload fallito bloccherebbe la compilazione.
 const WALLS_ALBEDO_PATH := "res://assets/textures/surfaces/walls_albedo.png"
 const WALLS_ORM_PATH := "res://assets/textures/surfaces/walls_orm.png"
+const WALLS_NORMAL_PATH := "res://assets/textures/surfaces/walls_normal.png"
 ## Tile dipinte delle piante: 0 ciuffi d'erba (tre colonne), 1 cartelle di foglie.
 const PLANTS_ALBEDO_PATH := "res://assets/textures/surfaces/plants_albedo.png"
 ## Modelli generati da tools/blender/build_arena_assets.py (D-037), rifiniti con
@@ -590,6 +591,7 @@ func _fallen_slab(node_name: String, center: Vector2, footprint: Vector2, height
 static func apply_wall_tiles(material: ShaderMaterial) -> void:
 	_set_surface_texture(material, &"walls_albedo", WALLS_ALBEDO_PATH)
 	_set_surface_texture(material, &"walls_orm", WALLS_ORM_PATH)
+	_set_surface_texture(material, &"walls_normal", WALLS_NORMAL_PATH)
 
 
 static func _set_surface_texture(material: ShaderMaterial, uniform: StringName, path: String) -> void:

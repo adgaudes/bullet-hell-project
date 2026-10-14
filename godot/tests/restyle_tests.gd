@@ -7,7 +7,7 @@ extends SceneTree
 
 const SURFACE_DIR := "res://assets/textures/surfaces"
 ## Gruppo -> numero di strati, nell'ordine fissato dal piano (Task 2).
-const SURFACE_LAYERS := {"ground": 6, "walls": 3, "plants": 2}
+const SURFACE_LAYERS := {"ground": 6, "walls": 4, "plants": 2}
 ## Lato per gruppo: il suolo copre lo schermo, muri e piante no (VRAM).
 const SURFACE_SIZES := {"ground": 2048, "walls": 1024, "plants": 1024}
 const COMPRESSED_FORMATS: Array[int] = [Image.FORMAT_DXT1, Image.FORMAT_DXT5, Image.FORMAT_BPTC_RGBA,

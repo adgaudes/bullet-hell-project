@@ -243,22 +243,27 @@ func _test_ruin_crowns_follow_walls() -> void:
 	print("ruin crowns")
 	# Le prove precedenti ricostruiscono il quartiere a quota zero: lo si riappoggia (ripetibile).
 	_district.settle_on_relief()
-	var crowns: MultiMeshInstance3D = _district.get_node_or_null(^"RuinCrowns")
+	# Con i muri a moduli (O-10) le corone a blocchi non ci sono piu: si controllano anche i tondini.
 	var checked := 0
 	var wrong := 0
-	if crowns != null:
-		var live := crowns.multimesh.buffer
-		for i in _district._crown_hosts.size():
-			var host: Variant = _district._crown_hosts[i]
+	for pair: Array in [["RuinCrowns", _district._crown_hosts, _district._crown_buffer], ["RuinRebar", _district._rebar_hosts, _district._rebar_buffer]]:
+		var details: MultiMeshInstance3D = _district.get_node_or_null(NodePath(pair[0]))
+		if details == null:
+			continue
+		var hosts: Array = pair[1]
+		var flat: PackedFloat32Array = pair[2]
+		var live := details.multimesh.buffer
+		for i in hosts.size():
+			var host: Variant = hosts[i]
 			if host == null or not (host as Node).has_meta(&"flat_y"):
 				continue
 			var shift := (host as Node3D).position.y - float((host as Node).get_meta(&"flat_y"))
 			if absf(shift) < 0.05:
 				continue
 			checked += 1
-			if absf(live[i * 16 + 7] - (_district._crown_buffer[i * 16 + 7] + shift)) > 0.001:
+			if absf(live[i * 16 + 7] - (flat[i * 16 + 7] + shift)) > 0.001:
 				wrong += 1
-	_check(checked > 10 and wrong == 0, "corone spostate con il loro muro (%d controllate, %d fuori posto)" % [checked, wrong])
+	_check(checked > 10 and wrong == 0, "corone e tondini spostati con il loro muro (%d controllati, %d fuori posto)" % [checked, wrong])
 
 
 func _test_markers() -> void:

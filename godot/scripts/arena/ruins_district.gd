@@ -137,6 +137,8 @@ var _occupancy_rows := 0
 var _unit_box: BoxMesh
 ## Ingombri (XZ) delle rovine interne e dei palazzi ai lati, nell'ordine di costruzione.
 var _block_rects: Array[Rect2] = []
+## Muri a moduli con la cima spezzata (O-10): le corone a blocchi non servono piu.
+var crowns_from_modules := true
 
 
 func _init() -> void:
@@ -672,11 +674,18 @@ func _ruin_shell(node_name: String, base: Vector3, size: Vector3, yaw_deg: float
 			var along := -length * 0.5 + segment * (s + 0.5)
 			var across := direction * ((size.z if along_x else size.x) * 0.5 - t * 0.5)
 			var at := Vector3(along, wall_height * 0.5, across) if along_x else Vector3(across, wall_height * 0.5, along)
-			_shell_piece(body, at,
-				Vector3(segment, wall_height, t) if along_x else Vector3(t, wall_height, segment),
-				tint, base.y + wall_height, overgrowth, 1.0)
-			# Cima spezzata: pezzi irregolari e tondini sui tratti crollati (D-068).
-			if wall_height < size.y - 0.3:
+			# Modulo con la cima spezzata (O-10): base del tratto a terra, lunghezza lungo x
+			# del modulo (ruotato di 90 gradi per i muri lungo Z).
+			var broken := wall_height < size.y - 0.3
+			# Variante da un hash, non dal generatore: la disposizione del quartiere (e il
+			# rilievo cotto che ne dipende) resta identica.
+			var variant := ("%s:%d:%d" % [node_name, side, s]).hash()
+			var module := RuinModules.broken_wall(variant) if broken else RuinModules.whole_wall(variant)
+			var turn := Basis() if along_x else Basis(Vector3.UP, PI * 0.5)
+			_shell_piece(body, at - Vector3(0.0, wall_height * 0.5, 0.0), Vector3(segment, wall_height, t),
+				tint, base.y + wall_height, overgrowth, 1.0, turn, module)
+			# Cima spezzata: qualche pezzo e tondini sui tratti crollati (D-068).
+			if broken:
 				_wall_crown(body, at, along_x, segment, wall_height, t, tint)
 			# Una porta scura sulla facciata sud (quella vista dalla camera).
 			if s == door_segment and wall_height >= DOOR_SIZE.y + 0.2 and segment >= DOOR_SIZE.x + 0.6:
@@ -703,10 +712,10 @@ func _ruin_shell(node_name: String, base: Vector3, size: Vector3, yaw_deg: float
 ## Un pezzo del guscio: il cubo unitario condiviso, scalato (stessa mesh e stesso
 ## materiale per tutti i pezzi di tutte le rovine).
 func _shell_piece(body: Node3D, at: Vector3, size: Vector3, tint: Color, top_y: float,
-		overgrowth: float, windows: float, basis := Basis()) -> void:
+		overgrowth: float, windows: float, basis := Basis(), mesh: Mesh = null) -> void:
 	if _unit_box == null:
 		_unit_box = _box(Vector3.ONE)
-	var mi := _mesh_child(body, _unit_box, _ruin_material, Transform3D(basis.scaled_local(size), at))
+	var mi := _mesh_child(body, mesh if mesh != null else _unit_box, _ruin_material, Transform3D(basis.scaled_local(size), at))
 	mi.set_instance_shader_parameter(&"base_tint", tint)
 	mi.set_instance_shader_parameter(&"top_y", top_y)
 	mi.set_instance_shader_parameter(&"overgrowth", overgrowth)
@@ -733,13 +742,21 @@ func _wall_crown(body: Node3D, wall_at: Vector3, along_x: bool, segment: float,
 		var xform := body.transform * Transform3D(tilt.scaled_local(scale), local)
 		# Il colore di istanza arriva allo shader senza la conversione sRGB degli
 		# instance uniform `source_color`: si converte qui per avere la tinta del muro.
-		_append_instance(_crown_buffer, _crown_count, xform, Color(tint.srgb_to_linear() * _rng.randf_range(0.8, 0.95), 0.3))
+		var crown_color := Color(tint.srgb_to_linear() * _rng.randf_range(0.8, 0.95), 0.3)
+		# La cima la spezza gia il modulo (O-10), che sta sotto questa quota: niente pezzi
+		# sospesi. Si calcolano lo stesso, per non cambiare la sequenza del generatore.
+		if crowns_from_modules:
+			continue
+		_append_instance(_crown_buffer, _crown_count, xform, crown_color)
 		_crown_count += 1
 		_crown_hosts.append(body)
 	for i in _rng.randi_range(0, 2):
 		var rebar_height := _rng.randf_range(REBAR_HEIGHT.x, REBAR_HEIGHT.y)
 		var shift := _rng.randf_range(-0.45, 0.45) * segment
-		var local := top + (Vector3(shift, rebar_height * 0.5, 0.0) if along_x else Vector3(0.0, rebar_height * 0.5, shift))
+		# I tondini escono da dentro il muro: con la cima del modulo frastagliata partono
+		# un terzo piu in basso, cosi spuntano dalle tacche invece di galleggiare.
+		var sink := wall_height * 0.3 if crowns_from_modules else 0.0
+		var local := top + (Vector3(shift, rebar_height * 0.5 - sink, 0.0) if along_x else Vector3(0.0, rebar_height * 0.5 - sink, shift))
 		var lean := Basis.from_euler(Vector3(_rng.randf_range(-0.35, 0.35), 0.0, _rng.randf_range(-0.35, 0.35)))
 		var xform := body.transform * Transform3D(lean.scaled_local(Vector3(0.07, rebar_height, 0.07)), local)
 		_append_instance(_rebar_buffer, _rebar_count, xform, Color(0.16, 0.09, 0.05))

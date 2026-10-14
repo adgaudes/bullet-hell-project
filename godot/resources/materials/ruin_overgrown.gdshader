@@ -1,18 +1,23 @@
 shader_type spatial;
 // Edifici in rovina: facciate a finestre, colature, muschio sui piani orizzontali
 // e rampicanti che scendono dal tetto e salgono da terra. Coordinate mondo.
-// Dal restyling 2026-10-11 l'intonaco scrostato con i mattoni e il muschio vengono
-// dalle tile dipinte `walls` (strati 0 e 1) campionate in triplanare: i gusci restano
-// generati per impronta, cambia solo la pittura.
+// Dal playtest del 14 ottobre 2026 (O-10, D-090) gli strati `walls` sono texture CC0
+// fotografiche di Poly Haven (tools/textures/fetch_wall_textures.py) con normal map:
+// 0 intonaco con mattoni a vista, 1 muschio, 2 mattoni grezzi (bordi spezzati e corone),
+// 3 calcestruzzo (facce orizzontali). Albedo, normal e ORM in triplanare, coordinate mondo.
 
 #include "res://resources/materials/noise.gdshaderinc"
 
 uniform sampler2DArray walls_albedo : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2DArray walls_orm : hint_default_white, filter_linear_mipmap_anisotropic, repeat_enable;
+uniform sampler2DArray walls_normal : hint_normal, filter_linear_mipmap_anisotropic, repeat_enable;
+uniform float normal_strength = 1.0;
 // Ripetizioni della tile per metro sui muri.
 uniform float wall_tile_scale = 0.35;
 const float WALL_PLASTER = 0.0;
 const float WALL_MOSS = 1.0;
+const float WALL_BRICK = 2.0;
+const float WALL_CONCRETE = 3.0;
 
 instance uniform vec4 base_tint : source_color = vec4(0.66, 0.62, 0.55, 1.0);
 // Quota mondo del tetto del blocco: i rampicanti partono da qui.
@@ -46,6 +51,19 @@ vec3 wall_triplanar(sampler2DArray tex, vec3 p, vec3 n, float layer) {
 		+ texture(tex, vec3(p.xy * wall_tile_scale, layer)).rgb * w.z;
 }
 
+// Normal map in triplanare, fusione "whiteout" (Ben Golus): normale mondo perturbata.
+vec3 wall_triplanar_normal(vec3 p, vec3 n, float layer) {
+	vec3 w = pow(abs(n), vec3(4.0));
+	w /= (w.x + w.y + w.z);
+	vec3 tx = texture(walls_normal, vec3(p.zy * wall_tile_scale, layer)).rgb * 2.0 - 1.0;
+	vec3 ty = texture(walls_normal, vec3(p.xz * wall_tile_scale, layer)).rgb * 2.0 - 1.0;
+	vec3 tz = texture(walls_normal, vec3(p.xy * wall_tile_scale, layer)).rgb * 2.0 - 1.0;
+	tx = vec3(tx.xy * normal_strength + n.zy, abs(tx.z) * n.x);
+	ty = vec3(ty.xy * normal_strength + n.xz, abs(ty.z) * n.y);
+	tz = vec3(tz.xy * normal_strength + n.xy, abs(tz.z) * n.z);
+	return normalize(tx.zyx * w.x + ty.xzy * w.y + tz.xyz * w.z);
+}
+
 void vertex() {
 	world_pos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	world_normal = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
@@ -65,10 +83,23 @@ void fragment() {
 	float growth = batched ? instance_color.a : overgrowth;
 	float win_amount = batched ? 0.0 : windows;
 	float roof_y = batched ? world_pos.y + 100.0 : top_y;
-	// Intonaco dipinto, tinto per istanza (la tinta e chiara, circa 0,65: si compensa).
-	vec3 plaster = wall_triplanar(walls_albedo, world_pos, n, WALL_PLASTER);
-	vec3 plaster_orm = wall_triplanar(walls_orm, world_pos, n, WALL_PLASTER);
-	vec3 col = plaster * tint_rgb * 1.3 * (0.88 + 0.24 * fbm(uv * 0.35));
+	// Superficie: intonaco sulle pareti, calcestruzzo sulle facce orizzontali (pavimenti,
+	// solai, cime), mattoni grezzi sulle corone e sotto il bordo dei tratti crollati.
+	float edge = batched ? 1.0 : smoothstep(0.55, 0.05, roof_y - world_pos.y) * step(0.5, side);
+	float brick_mask = clamp(edge * smoothstep(0.35, 0.6, fbm(uv * 0.9 + 11.0) + edge * 0.4), 0.0, 1.0);
+	float layer = abs(up) > 0.6 ? WALL_CONCRETE : WALL_PLASTER;
+	vec3 surface = wall_triplanar(walls_albedo, world_pos, n, layer);
+	vec3 surface_orm = wall_triplanar(walls_orm, world_pos, n, layer);
+	vec3 surface_n = wall_triplanar_normal(world_pos, n, layer);
+	if (brick_mask > 0.01) {
+		surface = mix(surface, wall_triplanar(walls_albedo, world_pos, n, WALL_BRICK), brick_mask);
+		surface_orm = mix(surface_orm, wall_triplanar(walls_orm, world_pos, n, WALL_BRICK), brick_mask);
+		surface_n = normalize(mix(surface_n, wall_triplanar_normal(world_pos, n, WALL_BRICK), brick_mask));
+	}
+	vec3 plaster_orm = surface_orm;
+	// Tinta per istanza solo come velatura: le texture fotografiche hanno gia il loro colore
+	// (le tinte sono chiare, circa 0,65: si normalizzano).
+	vec3 col = surface * mix(vec3(1.0), tint_rgb / 0.65, 0.45) * (0.9 + 0.2 * fbm(uv * 0.35));
 	// Colature verticali.
 	col *= 0.86 + 0.18 * value_noise(vec2(uv.x * 2.5, uv.y * 0.15));
 	// Umidita sotto il tetto: una fascia piu scura a mezza altezza.
@@ -111,5 +142,6 @@ void fragment() {
 	ALBEDO = mix(col, moss, green);
 	ROUGHNESS = mix(mix(0.7, 1.0, plaster_orm.g), 0.95, green);
 	AO = plaster_orm.r;
+	NORMAL = normalize((VIEW_MATRIX * vec4(mix(surface_n, n, green * 0.6), 0.0)).xyz);
 	AO_LIGHT_AFFECT = 0.3;
 }
