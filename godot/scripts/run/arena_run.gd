@@ -754,6 +754,10 @@ func _setup_night() -> void:
 		lamp_field.lamps_changed.connect(func(_count: int) -> void: _refresh_tool_hud())
 		player.terrain_mode_changed.connect(func(_mode: int) -> void: _refresh_tool_hud())
 		_refresh_tool_hud()
+	# Terra nello zaino nel HUD (playtest O-02): prima `set_pack` non lo chiamava nessuno.
+	if player.pack != null and hud != null:
+		player.pack.changed.connect(hud.set_pack)
+		hud.set_pack(player.pack.amount, player.pack.capacity)
 	if day_night == null:
 		return
 	day_night.night_start_seconds = RunLaunchOptions.night_start_seconds(tuning.night_start_seconds)

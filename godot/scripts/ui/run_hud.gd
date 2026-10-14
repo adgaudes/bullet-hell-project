@@ -35,6 +35,16 @@ var _night_notice_left := 0.0
 var _night_notice_text := ""
 var _health_row: HealthBolts
 var _health_label: Label
+## Indicatore del tool sopra la barra dell'esperienza (playtest O-02): modo, terra nello
+## zaino e cosa fa il modo.
+var _gauge: PanelContainer
+var _gauge_mode: Label
+var _gauge_bar: ProgressBar
+var _gauge_hint: Label
+var _gauge_amount := 0.0
+var _gauge_capacity := 0.0
+var _gauge_mode_id := 0
+var _gauge_lamp_cost := 0
 var _damage_flash: TextureRect
 var _boss_warning: Label
 var _warning_plate: PanelContainer
@@ -73,6 +83,7 @@ func _ready() -> void:
 	_xp_bar.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM, Control.PRESET_MODE_MINSIZE, 12)
 	_xp_bar.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	_xp_bar.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	_build_tool_gauge(root)
 
 	# Riga superiore: livello a sinistra, tempo al centro, abbattuti a destra.
 	var top := HBoxContainer.new()
@@ -140,7 +151,7 @@ func _ready() -> void:
 	_pack_label.theme_type_variation = &"HudLabel"
 	_pack_label.add_theme_font_size_override(&"font_size", 18)
 	_pack_label.hide()
-	tool_row.add_child(_pack_label)
+	_gauge_row().add_child(_pack_label)
 
 	# Annuncio del boss: scritta sotto la riga superiore e freccia verso la direzione di arrivo.
 	_warning_plate = PanelContainer.new()
@@ -405,6 +416,7 @@ func _build_damage_flash(root: Control) -> void:
 
 ## Modalita del tool: visibile solo in LAMP, con costo e contatore (specifica, sezione 9).
 func set_tool_mode(mode: int, lamps: int, max_lamps: int, cost: int) -> void:
+	_set_gauge_mode(mode, cost)
 	if mode != TerrainField.ToolMode.LAMP:
 		_tool_label.hide()
 		_tool_icon.hide()
@@ -415,10 +427,100 @@ func set_tool_mode(mode: int, lamps: int, max_lamps: int, cost: int) -> void:
 	_tool_icon.show()
 
 
-## Zainetto di terra del rilievo continuo: "quanta/capacita m3".
+## Zainetto di terra del rilievo continuo: barra e "quanta/capacita m3" nell'indicatore.
 func set_pack(amount: float, capacity: float) -> void:
-	_pack_label.text = "%d/%d m3" % [roundi(amount), roundi(capacity)]
+	_pack_label.text = "%d/%d m\u00b3" % [roundi(amount), roundi(capacity)]
 	_pack_label.show()
+	_gauge_amount = amount
+	_gauge_capacity = capacity
+	_gauge_bar.max_value = maxf(capacity, 0.001)
+	_gauge_bar.value = amount
+	_gauge.show()
+	_update_gauge_text()
+
+
+## Modo e testo dell'indicatore del tool (anche fuori dal modo lampione).
+func _set_gauge_mode(mode: int, cost: int) -> void:
+	_gauge_mode_id = mode
+	_gauge_lamp_cost = cost
+	_update_gauge_text()
+
+
+func gauge_text() -> String:
+	return "%s | %s | %s" % [_gauge_mode.text, _pack_label.text, _gauge_hint.text]
+
+
+func _update_gauge_text() -> void:
+	var names := ["SCAVA", "ALZA", "SPIANA", "LAMPIONE"]
+	var colors := [BrushPreview.DIG_COLOR, BrushPreview.RAISE_COLOR, BrushPreview.LEVEL_COLOR, BrushPreview.LAMP_COLOR]
+	var mode := clampi(_gauge_mode_id, 0, names.size() - 1)
+	_gauge_mode.text = names[mode]
+	_gauge_mode.add_theme_color_override(&"font_color", (colors[mode] as Color).linear_to_srgb())
+	var empty := _gauge_amount <= 0.5
+	var full := _gauge_capacity > 0.0 and _gauge_amount >= _gauge_capacity - 0.5
+	match mode:
+		TerrainField.ToolMode.DIG:
+			_gauge_hint.text = "lo zaino e pieno: la terra in piu si perde" if full else "scavando riempi lo zaino di terra"
+		TerrainField.ToolMode.RAISE:
+			_gauge_hint.text = "zaino vuoto: scava per avere terra" if empty else "alzi argini con la terra dello zaino"
+		TerrainField.ToolMode.LEVEL:
+			_gauge_hint.text = "spiani: prendi o rendi terra allo zaino"
+		_:
+			_gauge_hint.text = "un lampione costa %d rottami del carretto" % _gauge_lamp_cost
+	_gauge_hint.add_theme_color_override(&"font_color", UiPalette.DANGER.lightened(0.3) if (empty and mode == TerrainField.ToolMode.RAISE) else UiPalette.TEXT_MUTED)
+
+
+func _gauge_row() -> HBoxContainer:
+	return _gauge_mode.get_parent() as HBoxContainer
+
+
+func _build_tool_gauge(root: Control) -> void:
+	_gauge = PanelContainer.new()
+	_gauge.name = "ToolGauge"
+	_gauge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_gauge.add_theme_stylebox_override(&"panel", UiPalette.plate("strip", UiPalette.panel_box(true), 18.0, 0.0, Vector4(16, 4, 16, 4)))
+	root.add_child(_gauge)
+	var row := HBoxContainer.new()
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_theme_constant_override(&"separation", 10)
+	_gauge.add_child(row)
+	var icon := UiIcon.make(&"shovel", 24.0, UiPalette.BORDER)
+	icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(icon)
+	_gauge_mode = Label.new()
+	_gauge_mode.theme_type_variation = &"HudLabel"
+	_gauge_mode.add_theme_font_size_override(&"font_size", 20)
+	_gauge_mode.custom_minimum_size = Vector2(96, 0)
+	_gauge_mode.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(_gauge_mode)
+	_gauge_bar = ProgressBar.new()
+	_gauge_bar.name = "SoilBar"
+	_gauge_bar.show_percentage = false
+	_gauge_bar.custom_minimum_size = Vector2(170, 14)
+	_gauge_bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_gauge_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var fill := StyleBoxFlat.new()
+	fill.bg_color = Color(0.62, 0.42, 0.22)
+	fill.set_corner_radius_all(3)
+	var back := StyleBoxFlat.new()
+	back.bg_color = Color(0.1, 0.07, 0.05, 0.85)
+	back.set_corner_radius_all(3)
+	back.border_color = UiPalette.OUTLINE
+	back.set_border_width_all(1)
+	_gauge_bar.add_theme_stylebox_override(&"fill", fill)
+	_gauge_bar.add_theme_stylebox_override(&"background", back)
+	row.add_child(_gauge_bar)
+	_gauge_hint = Label.new()
+	_gauge_hint.theme_type_variation = &"HudLabel"
+	_gauge_hint.add_theme_font_size_override(&"font_size", 16)
+	_gauge_hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_gauge_hint.custom_minimum_size = Vector2(330, 0)
+	_gauge.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM, Control.PRESET_MODE_MINSIZE, 36)
+	_gauge.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_gauge.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	# L'etichetta dei m3 si aggiunge in mezzo (in _ready), il suggerimento in fondo.
+	row.add_child.call_deferred(_gauge_hint)
+	_gauge.hide()
 
 
 ## Indicatore sole/luna nella riga superiore: tempo al tramonto di giorno, poi la fase.

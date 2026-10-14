@@ -246,6 +246,12 @@ func _test_hit_shove_and_dash() -> void:
 	_player.is_dashing = false
 	_clear_enemies()
 	_player.set_max_health(_run.tuning.player_max_health)
+	# Playtest O-02: la terra dello zaino si vede nel HUD e segue lo zaino.
+	var before := hud.gauge_text()
+	_check(before.contains("m³") and before.contains("/%d" % roundi(_player.pack.capacity)), "indicatore della terra nel HUD: %s" % before)
+	_player.pack.give(5.0)
+	_check(hud.gauge_text().contains("%d/" % roundi(_player.pack.amount)), "la terra nel HUD segue lo zaino: %s" % hud.gauge_text())
+	_player.pack.take(5.0)
 
 
 ## Audit P-01: i frammenti di esperienza stanno sopra il rilievo, non a quota fissa: su un
