@@ -159,3 +159,4 @@ workshop = NodePath("../WorkshopPanel")
 script = ExtResource("20_flow")
 path_field = NodePath("../PathField")
 terrain_field = NodePath("../TerrainField")
+auto_show_on_terrain_change = false
