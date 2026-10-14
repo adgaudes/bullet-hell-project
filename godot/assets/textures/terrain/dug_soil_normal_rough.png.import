@@ -3,7 +3,7 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bge3hish8g252"
-path.s3tc="res://.godot/imported/dug_soil_normal_rough.png-e8a851e76577ba02cadab5550a9ca1e3.s3tc.ctex"
+path.bptc="res://.godot/imported/dug_soil_normal_rough.png-e8a851e76577ba02cadab5550a9ca1e3.bptc.ctex"
 metadata={
 "imported_formats": ["s3tc_bptc"],
 "vram_texture": true
@@ -12,12 +12,12 @@ metadata={
 [deps]
 
 source_file="res://assets/textures/terrain/dug_soil_normal_rough.png"
-dest_files=["res://.godot/imported/dug_soil_normal_rough.png-e8a851e76577ba02cadab5550a9ca1e3.s3tc.ctex"]
+dest_files=["res://.godot/imported/dug_soil_normal_rough.png-e8a851e76577ba02cadab5550a9ca1e3.bptc.ctex"]
 
 [params]
 
 compress/mode=2
-compress/high_quality=false
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

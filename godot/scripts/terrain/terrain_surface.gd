@@ -1,20 +1,33 @@
 class_name TerrainSurface
 extends RefCounted
-## Resa del rilievo continuo (spec 6.2, D-082): cinque strati dalle tile dipinte (impacchettate
-## da `tests/tools/pack_terrain_tiles.gd`), shader di Terrain3D con il blocco "Rilievo"
+## Resa del rilievo continuo (spec 6.2, D-082): sette strati da texture CC0 (impacchettate
+## da `tools/textures/fetch_terrain_textures.py`, playtest del 14 ottobre 2026), shader di Terrain3D con il blocco "Rilievo"
 ## (tinte di alzato e scavato dal delta rispetto alla base, fango nelle conche) e scelta
 ## dello strato dal control map (`TerrainField.paint_layer`). Solo con finestra: in
 ## headless Terrain3D non c'e e nessuno chiama queste funzioni.
 
-const LAYERS: Array[String] = ["dirt", "slabs", "asphalt", "dug_soil", "mud"]
+const LAYERS: Array[String] = ["dirt", "slabs", "asphalt", "dug_soil", "mud", "rubble", "gravel"]
 const LAYER_DIRT := 0
 const LAYER_SLABS := 1
 const LAYER_ASPHALT := 2
 const LAYER_DUG_SOIL := 3
 const LAYER_MUD := 4
-const SLABS_UV_SCALE := 0.3
-## Strati con un disegno regolare: niente rotazione di detiling.
-const PATTERNED_LAYERS: Array[int] = [LAYER_SLABS, LAYER_ASPHALT]
+const LAYER_RUBBLE := 5
+const LAYER_GRAVEL := 6
+## Metri coperti da una ripetizione di ogni strato (uv_scale = 1 / metri). Le texture CC0
+## del 14 ottobre 2026 (`tools/textures/fetch_terrain_textures.py`) misurano 1,3-3 m dal
+## vero; un po' piu grandi si ripetono meno senza sembrare giganti dalla camera.
+const LAYER_METERS: Array[float] = [3.0, 2.2, 3.5, 4.0, 2.0, 2.6, 2.2]
+## Tinta per strato (moltiplica l'albedo): le lastre CC0 sono quasi bianche al sole.
+const LAYER_TINTS: Array[Color] = [Color.WHITE, Color(0.9, 0.88, 0.84), Color.WHITE, Color(0.9, 0.85, 0.8), Color.WHITE, Color.WHITE, Color.WHITE]
+## Strati con un disegno regolare: niente rotazione di detiling, che ne spezzerebbe le
+## fughe in una griglia di quadrati (playtest del 14 ottobre, O-08).
+const PATTERNED_LAYERS: Array[int] = [LAYER_SLABS]
+const DETILE_ROTATION := 0.12
+const DETILE_SHIFT := 0.5
+## Variazione su grande scala (rumore di Terrain3D) contro la ripetizione: due tinte lievi.
+const MACRO_VARIATION_1 := Color(0.86, 0.84, 0.78)
+const MACRO_VARIATION_2 := Color(0.92, 0.95, 0.88)
 const TEXTURE_DIR := "res://assets/textures/terrain/"
 const SHADER := preload("res://resources/materials/terrain_relief.gdshader")
 const RAISED_TINT := Color(0.62, 0.42, 0.24)
@@ -30,11 +43,10 @@ static func apply(terrain: Terrain3D) -> void:
 		asset.name = LAYERS[i]
 		asset.albedo_texture = load(TEXTURE_DIR + "%s_albedo_height.png" % LAYERS[i])
 		asset.normal_texture = load(TEXTURE_DIR + "%s_normal_rough.png" % LAYERS[i])
-		# Le lastre a 0,12 misuravano quasi 3 m l'una: i "quadratoni" del playtest (O-08).
-		asset.uv_scale = SLABS_UV_SCALE if i == LAYER_SLABS else 0.12
-		# Playtest del 14 ottobre (O-08): ruotare a caso ogni cella da 8 m spezza le fughe
-		# delle texture a disegno regolare (lastre, asfalto) in una griglia di quadrati.
-		asset.detiling_rotation = 0.0 if i in PATTERNED_LAYERS else 0.15
+		asset.uv_scale = 1.0 / LAYER_METERS[i]
+		asset.albedo_color = LAYER_TINTS[i]
+		asset.detiling_rotation = 0.0 if i in PATTERNED_LAYERS else DETILE_ROTATION
+		asset.detiling_shift = DETILE_SHIFT
 		assets.set_texture(i, asset)
 	terrain.assets = assets
 	var material: Terrain3DMaterial = terrain.material
@@ -45,6 +57,8 @@ static func apply(terrain: Terrain3D) -> void:
 	set_raised_tint(terrain, RAISED_TINT)
 	material.set_shader_param("dug_tint", _rgb(DUG_TINT))
 	material.set_shader_param("mud_level", MUD_LEVEL)
+	material.set_shader_param("macro_variation1", _rgb(MACRO_VARIATION_1))
+	material.set_shader_param("macro_variation2", _rgb(MACRO_VARIATION_2))
 
 
 ## Tinta degli argini alzati dal giocatore (spiked_wall la cambia in metallo chiaro).
