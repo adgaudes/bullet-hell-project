@@ -44,6 +44,7 @@ func _initialize() -> void:
 	_test_setup()
 	await _test_warning()
 	await _test_shake()
+	await _test_crest_lifts_player_and_companion()
 	_test_options()
 	await _test_railway_has_no_quake()
 	await _frames(2)
@@ -182,6 +183,33 @@ func _test_shake() -> void:
 	_check(_scrap.count() >= scrap_before and resting, "rottami in superficie, nessuno sepolto (%d)" % _scrap.count())
 	_check(is_equal_approx(_quake.next_at, next_before + _quake.interval_seconds), "prossimo terremoto fra %.0f s" % _quake.interval_seconds)
 	_check(_audio.play_count(&"quake_rumble") >= 2, "brontolio anche alla scossa")
+
+
+## Audit R-02: giocatore e compagno sono risparmiati solo entro HIT_RADIUS, ma la cresta ha
+## raggio CREST_RADIUS: appena fuori il suolo sale sotto di loro e va riappoggiati, come i nemici.
+func _test_crest_lifts_player_and_companion() -> void:
+	print("crest lifts player and companion")
+	var q := Vector3(-30.0, 0.0, 30.0)
+	_field.level(q, 6.0, _field.base_height_at(q), 1.0)
+	_field.set_protected(q, 6.0, false)
+	# Dal lato opposto al solco (che sta su `fault_side`), lungo una faglia perpendicolare.
+	var side := _quake.fault_side()
+	var along := Vector3(-side.z, 0.0, side.x)
+	_place(_companion, q - side * 1.5, 0.3)
+	_place(_player, q - side * 1.3 + along * 3.0, 0.88)
+	_player._invulnerable_left = 5.0
+	await _frames(10)
+	var health := _player.health
+	for k in 6:
+		_quake._shake_point(q + along * ((k - 1) * QuakeEvent.FAULT_STEP))
+	var c := _companion.global_position
+	var p := _player.global_position
+	_check(_player.health == health, "giocatore fuori dal raggio di colpo: nessun danno")
+	_check(_field.delta_at(c) > 0.3 and c.y >= _field.height_at(c) + 0.2, "compagno riappoggiato sulla cresta (centro %.2f, suolo %.2f)" % [c.y, _field.height_at(c)])
+	_check(_field.delta_at(p) > 0.3 and p.y >= _field.height_at(p) + 0.7, "giocatore riappoggiato sulla cresta (centro %.2f, suolo %.2f)" % [p.y, _field.height_at(p)])
+	await _frames(30)
+	_check(_companion.global_position.y >= _field.height_at(_companion.global_position) - 0.05
+		and _player.global_position.y >= _field.height_at(_player.global_position) - 0.05, "dopo mezzo secondo entrambi sopra il suolo")
 
 
 func _test_options() -> void:

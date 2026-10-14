@@ -212,7 +212,8 @@ func _fault_position(index: int) -> Vector3:
 
 ## Una pennellata della faglia sul rilievo: cresta nel punto, solco a fianco. Il punto
 ## del giocatore (colpito) e quelli di compagno e boss sono risparmiati; i rottamatori
-## entro HIT_RADIUS sono travolti, quelli appena fuori vengono riappoggiati sulla nuova
+## entro HIT_RADIUS sono travolti, quelli appena fuori (e giocatore e compagno sotto la
+## cresta, audit R-02) vengono riappoggiati sulla nuova
 ## quota (un rialzo secco sotto un corpo lo incastrerebbe nel rilievo).
 func _shake_point(p: Vector3) -> void:
 	if terrain_field.is_protected(p):
@@ -226,7 +227,7 @@ func _shake_point(p: Vector3) -> void:
 		return
 	if _near(companion, at):
 		return
-	if boss != null and not boss.is_dead and _planar_distance(boss.global_position, at) < BOSS_SPARE_RADIUS:
+	if is_instance_valid(boss) and not boss.is_dead and _planar_distance(boss.global_position, at) < BOSS_SPARE_RADIUS:
 		return
 	if director != null:
 		for enemy in director.enemies.duplicate():
@@ -236,10 +237,14 @@ func _shake_point(p: Vector3) -> void:
 				enemies_hit += 1
 				enemy.take_damage(enemy.health)
 				quake_hit.emit(&"enemy")
+	# Giocatore e compagno appena fuori da HIT_RADIUS ma sotto la cresta (audit R-02):
+	# altezza sul suolo prima, per riappoggiarli dopo come i nemici.
+	var spared := _spared_offsets(p)
 	volume_moved += absf(terrain_field.sculpt(p, CREST_RADIUS, CREST_HEIGHT))
 	volume_moved += absf(terrain_field.sculpt(p + _fault_side * FAULT_STEP, FURROW_RADIUS, -FURROW_DEPTH))
 	cells_raised += 1
 	_lift_bodies(p, CREST_RADIUS)
+	_restore_offsets(spared)
 	DebrisBurst.spawn(get_parent(), Vector3(p.x, terrain_field.height_at(p) + 0.3, p.z), EARTH_COLOR, 10, 4.0, 0.18)
 	quake_hit.emit(&"cell")
 	if lamp_field != null and lamp_field.knock_down_near(at, 1.5) > 0:
@@ -255,6 +260,25 @@ func _lift_bodies(p: Vector3, radius: float) -> void:
 			continue
 		var ground := terrain_field.height_at(enemy.global_position)
 		enemy.global_position.y = maxf(enemy.global_position.y, ground + enemy.spawn_center_height())
+
+
+## Giocatore e compagno entro CREST_RADIUS dalla pennellata [param p], con la loro
+## altezza sul suolo attuale.
+func _spared_offsets(p: Vector3) -> Dictionary:
+	var offsets := {}
+	for body: Node3D in [player, companion]:
+		if body != null and _planar_distance(body.global_position, p) <= CREST_RADIUS:
+			offsets[body] = body.global_position.y - terrain_field.height_at(body.global_position)
+	return offsets
+
+
+## Riporta ogni corpo alla stessa altezza sul suolo nuovo, se il suolo e salito.
+func _restore_offsets(offsets: Dictionary) -> void:
+	for body: Node3D in offsets:
+		var target: float = terrain_field.height_at(body.global_position) + offsets[body]
+		if target > body.global_position.y:
+			body.global_position.y = target
+			body.reset_physics_interpolation()
 
 
 func _near(body: Node3D, at: Vector3) -> bool:
