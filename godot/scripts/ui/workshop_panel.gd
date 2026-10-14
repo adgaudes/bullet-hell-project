@@ -21,80 +21,78 @@ const INK_GREEN := Color("3f7a2a")
 const INK_RED := Color("a8321e")
 var _back: Button
 var _dots: Dictionary[StringName, LevelDots] = {}
+var _detail_id: StringName = &""
+var _detail_icon: UiIcon
+var _detail_name: Label
+var _detail_text: Label
+var _detail_level: Label
+var _detail_price: Label
 
 
 func _ready() -> void:
 	layer = 96
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_profile = get_node_or_null(^"/root/PlayerProfile") as PlayerProfileService
+	# Fondo opaco (playtest O-13): prima la schermata di fine livello trapelava dietro.
 	_overlay = ColorRect.new()
-	_overlay.color = Color(UiPalette.BG, 0.94)
+	_overlay.color = UiPalette.BG
 	_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(_overlay)
 	var center := CenterContainer.new()
 	center.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_overlay.add_child(center)
 	var column := VBoxContainer.new()
-	column.custom_minimum_size = Vector2(760, 0)
+	column.custom_minimum_size = Vector2(1060, 0)
 	column.add_theme_constant_override(&"separation", 10)
 	center.add_child(column)
+	# Testata: titolo a sinistra, totale dei rottami a destra.
+	var header := HBoxContainer.new()
+	header.add_theme_constant_override(&"separation", 8)
+	column.add_child(header)
 	var title := Label.new()
 	title.text = "OFFICINA"
 	title.theme_type_variation = &"TitleLabel"
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	column.add_child(title)
-	var total_row := HBoxContainer.new()
-	total_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	total_row.add_theme_constant_override(&"separation", 8)
-	column.add_child(total_row)
-	var scrap_icon := UiIcon.make(&"scrap", 24.0, UiPalette.SCRAP)
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	header.add_child(title)
+	var scrap_icon := UiIcon.make(&"scrap", 28.0, UiPalette.SCRAP)
 	scrap_icon.name = "ScrapIcon"
 	scrap_icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	total_row.add_child(scrap_icon)
+	header.add_child(scrap_icon)
 	_scrap_label = Label.new()
 	_scrap_label.theme_type_variation = &"ScrapLabel"
-	_scrap_label.add_theme_font_size_override(&"font_size", 22)
-	_scrap_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	total_row.add_child(_scrap_label)
-	# Le voci scorrono (R-21): il catalogo puo crescere oltre lo schermo del Deck e il
-	# fuoco del controller resta sempre visibile.
-	var scroll := ScrollContainer.new()
-	scroll.follow_focus = true
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	scroll.custom_minimum_size = Vector2(0, 0)
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	column.add_child(scroll)
-	_rows = VBoxContainer.new()
-	_rows.add_theme_constant_override(&"separation", 6)
-	_rows.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.add_child(_rows)
-	# Il pannello non supera lo schermo: 800 px meno titolo, totale, Torna e prompt.
-	scroll.custom_minimum_size.y = minf(float(PermanentCatalog.all().size()) * 64.0, 420.0)
-	for entry in PermanentCatalog.all():
-		var id: StringName = entry.id
-		var button := Button.new()
-		button.theme_type_variation = &"CardButton"
-		button.custom_minimum_size = Vector2(0, 62)
-		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		button.pressed.connect(func() -> void: _on_pressed(id))
-		_rows.add_child(button)
-		_buttons[id] = button
-		# Icona a sinistra; il testo lascia lo spazio con gli spazi iniziali.
-		var icon := UiIcon.make(UiIcon.for_permanent(id), 34.0, UiPalette.BORDER)
-		icon.name = "Icon"
-		icon.outline = INK
-		button.add_child(icon)
-		icon.set_anchors_and_offsets_preset(Control.PRESET_CENTER_LEFT, Control.PRESET_MODE_MINSIZE, 14)
-		icon.grow_vertical = Control.GROW_DIRECTION_BOTH
-		# Pallini del livello a destra: pieni quelli comprati.
-		var dots := LevelDots.new()
-		dots.name = "Dots"
-		dots.total = (entry.costs as Array).size()
-		button.add_child(dots)
-		dots.set_anchors_and_offsets_preset(Control.PRESET_CENTER_RIGHT, Control.PRESET_MODE_MINSIZE, 16)
-		dots.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-		dots.grow_vertical = Control.GROW_DIRECTION_BOTH
-		_dots[id] = dots
+	_scrap_label.add_theme_font_size_override(&"font_size", 26)
+	_scrap_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	header.add_child(_scrap_label)
+	var intro := Label.new()
+	intro.theme_type_variation = &"MutedLabel"
+	intro.text = "I rottami che porti fuori dai livelli restano qui: spendili in migliorie che valgono per tutte le run."
+	intro.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	column.add_child(intro)
+	# Corpo: a sinistra le carte per sezione, a destra il dettaglio della carta col fuoco.
+	var body := HBoxContainer.new()
+	body.add_theme_constant_override(&"separation", 18)
+	column.add_child(body)
+	var cards := VBoxContainer.new()
+	cards.add_theme_constant_override(&"separation", 6)
+	cards.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	body.add_child(cards)
+	_rows = cards
+	for group: Array in PermanentCatalog.GROUPS:
+		var section := Label.new()
+		section.theme_type_variation = &"SectionLabel"
+		section.text = String(group[1]).to_upper()
+		cards.add_child(section)
+		var grid := GridContainer.new()
+		grid.columns = 2
+		grid.add_theme_constant_override(&"h_separation", 8)
+		grid.add_theme_constant_override(&"v_separation", 8)
+		grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		cards.add_child(grid)
+		for entry in PermanentCatalog.all():
+			if entry.get("group", &"engineer") != group[0]:
+				continue
+			grid.add_child(_make_card(entry))
+	body.add_child(_make_detail())
 	_back = Button.new()
 	_back.text = "Torna"
 	_back.theme_type_variation = &"MainButton"
@@ -103,6 +101,98 @@ func _ready() -> void:
 	column.add_child(_back)
 	column.add_child(ButtonPrompts.create([[&"ui_accept", "Compra"], [&"ui_cancel", "Torna"]]))
 	_overlay.hide()
+
+
+## Carta di un upgrade: icona a sinistra, nome e livello, prezzo sotto, pallini in alto a destra.
+func _make_card(entry: Dictionary) -> Button:
+	var id: StringName = entry.id
+	var button := Button.new()
+	button.name = "Card_%s" % id
+	button.theme_type_variation = &"CardButton"
+	button.custom_minimum_size = Vector2(320, 66)
+	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	button.pressed.connect(func() -> void: _on_pressed(id))
+	button.focus_entered.connect(func() -> void: _show_detail(id))
+	button.mouse_entered.connect(func() -> void: _show_detail(id))
+	_buttons[id] = button
+	# Il testo lascia lo spazio all'icona col margine dello stile, non con spazi iniziali.
+	var theme := ThemeDB.get_project_theme()
+	if theme != null:
+		for state: StringName in [&"normal", &"hover", &"pressed", &"focus", &"disabled"]:
+			var box := theme.get_stylebox(state, &"CardButton")
+			if box != null:
+				box = box.duplicate()
+				box.content_margin_left = 64.0
+				box.content_margin_right = 52.0
+				button.add_theme_stylebox_override(state, box)
+	var icon := UiIcon.make(UiIcon.for_permanent(id), 36.0, UiPalette.BORDER)
+	icon.name = "Icon"
+	icon.outline = INK
+	button.add_child(icon)
+	icon.set_anchors_and_offsets_preset(Control.PRESET_CENTER_LEFT, Control.PRESET_MODE_MINSIZE, 14)
+	icon.grow_vertical = Control.GROW_DIRECTION_BOTH
+	var dots := LevelDots.new()
+	dots.name = "Dots"
+	dots.total = (entry.costs as Array).size()
+	button.add_child(dots)
+	dots.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT, Control.PRESET_MODE_MINSIZE, 14)
+	dots.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	_dots[id] = dots
+	return button
+
+
+## Dettaglio: cosa fa l'upgrade, a che livello sei, quanto costa il prossimo.
+func _make_detail() -> Control:
+	var panel := PanelContainer.new()
+	panel.name = "Detail"
+	panel.custom_minimum_size = Vector2(360, 0)
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override(&"separation", 10)
+	panel.add_child(box)
+	_detail_icon = UiIcon.make(&"scrap", 72.0, UiPalette.BORDER)
+	_detail_icon.outline = INK
+	_detail_icon.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	box.add_child(_detail_icon)
+	_detail_name = Label.new()
+	_detail_name.theme_type_variation = &"SectionLabel"
+	_detail_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_child(_detail_name)
+	_detail_text = Label.new()
+	_detail_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_detail_text.custom_minimum_size = Vector2(320, 0)
+	box.add_child(_detail_text)
+	_detail_level = Label.new()
+	_detail_level.theme_type_variation = &"MutedLabel"
+	box.add_child(_detail_level)
+	_detail_price = Label.new()
+	_detail_price.theme_type_variation = &"ScrapLabel"
+	_detail_price.add_theme_font_size_override(&"font_size", 22)
+	_detail_price.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	box.add_child(_detail_price)
+	return panel
+
+
+func _show_detail(id: StringName) -> void:
+	_detail_id = id
+	var entry := PermanentCatalog.find(id)
+	if entry.is_empty() or _profile == null:
+		return
+	_detail_icon.kind = UiIcon.for_permanent(id)
+	_detail_name.text = entry.name
+	_detail_text.text = entry.text
+	var level := _profile.level_of(id)
+	_detail_level.text = "Livello %d di %d" % [level, (entry.costs as Array).size()]
+	var cost := _profile.cost_of(id)
+	if cost < 0:
+		_detail_price.text = "Al massimo"
+		_detail_price.add_theme_color_override(&"font_color", Color("8fcf5f"))
+	elif _profile.scrap >= cost:
+		_detail_price.text = "Prossimo livello: %d rottami" % cost
+		_detail_price.remove_theme_color_override(&"font_color")
+	else:
+		_detail_price.text = "Prossimo livello: %d rottami\nNe mancano %d" % [cost, cost - _profile.scrap]
+		_detail_price.add_theme_color_override(&"font_color", Color("e0603f"))
 
 
 func _input(event: InputEvent) -> void:
@@ -120,7 +210,9 @@ func open() -> void:
 	var fx := get_node_or_null(^"/root/UiFx") as UiFxService
 	if fx != null:
 		fx.pop_in(_overlay.get_child(0))
-	(_rows.get_child(0) as Button).grab_focus()
+	var first: StringName = PermanentCatalog.all()[0].id
+	_buttons[first].grab_focus()
+	_show_detail(first)
 
 
 func close() -> void:
@@ -164,19 +256,21 @@ func _refresh() -> void:
 		var id: StringName = entry.id
 		var level := _profile.level_of(id)
 		var cost := _profile.cost_of(id)
-		var price := "AL MASSIMO"
+		var price := "Al massimo"
 		var color := INK_GREEN
 		if cost >= 0 and _profile.scrap >= cost:
 			price = "%d rottami" % cost
 			color = INK
 		elif cost >= 0:
-			price = "%d rottami (ne mancano %d)" % [cost, cost - _profile.scrap]
+			price = "%d rottami, ne mancano %d" % [cost, cost - _profile.scrap]
 			color = INK_RED
 		var button := _buttons[id]
-		button.text = "          %s  %d/%d  -  %s\n          %s" % [entry.name, level, (entry.costs as Array).size(), price, entry.text]
+		button.text = "%s  %d/%d\n%s" % [entry.name, level, (entry.costs as Array).size(), price]
 		_dots[id].filled = level
 		for state: StringName in [&"font_color", &"font_focus_color", &"font_hover_color", &"font_pressed_color"]:
 			button.add_theme_color_override(state, color)
+	if _detail_id != &"":
+		_show_detail(_detail_id)
 
 
 ## Pallini del livello di un upgrade permanente: pieni di rame quelli comprati.

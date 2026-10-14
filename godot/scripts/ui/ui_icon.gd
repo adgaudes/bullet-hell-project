@@ -43,18 +43,22 @@ static func for_category(category: StringName) -> StringName:
 
 static func for_permanent(id: StringName) -> StringName:
 	match id:
-		&"tool_reach", &"pack_size":
+		&"tool_reach":
 			return &"shovel"
+		&"pack_size":
+			return &"sack"
 		&"base_health":
 			return &"bolt"
 		&"reflexes":
 			return &"boot"
-		&"cargo", &"stock":
-			return &"wrench"
+		&"cargo":
+			return &"crate"
+		&"stock":
+			return &"scrap"
 		&"fixed_turret":
 			return &"nail"
 		&"salvage":
-			return &"scrap"
+			return &"parachute"
 	return &"scrap"
 
 
@@ -149,6 +153,24 @@ func _draw() -> void:
 			# Chiodo orizzontale con la punta a destra: il cursore del focus.
 			_shape([[0.06, 0.4], [0.62, 0.4], [0.62, 0.3], [0.94, 0.5], [0.62, 0.7], [0.62, 0.6], [0.06, 0.6]], tint)
 			_shape([[0.04, 0.3], [0.14, 0.3], [0.14, 0.7], [0.04, 0.7]], dark)
+		&"sack":
+			# Zainetto di terra: sacca tonda con la patta e la cinghia.
+			_shape([[0.22, 0.34], [0.78, 0.34], [0.86, 0.6], [0.78, 0.88], [0.22, 0.88], [0.14, 0.6]], tint)
+			_shape([[0.26, 0.2], [0.74, 0.2], [0.8, 0.42], [0.2, 0.42]], dark)
+			_stroke([[0.38, 0.2], [0.42, 0.08], [0.58, 0.08], [0.62, 0.2]], outline, 0.07)
+		&"crate":
+			# Cassone del compagno: cassa a doghe con le traverse.
+			_shape([[0.12, 0.28], [0.88, 0.28], [0.88, 0.86], [0.12, 0.86]], tint)
+			_stroke([[0.12, 0.47], [0.88, 0.47]], dark, 0.05)
+			_stroke([[0.12, 0.67], [0.88, 0.67]], dark, 0.05)
+			_stroke([[0.16, 0.32], [0.84, 0.82]], dark, 0.07)
+		&"parachute":
+			# Paracadute: calotta a spicchi, funi e un rottame appeso.
+			_shape([[0.1, 0.42], [0.2, 0.22], [0.38, 0.1], [0.62, 0.1], [0.8, 0.22], [0.9, 0.42]], tint)
+			_stroke([[0.1, 0.42], [0.46, 0.74]], outline, 0.04)
+			_stroke([[0.9, 0.42], [0.54, 0.74]], outline, 0.04)
+			_stroke([[0.5, 0.42], [0.5, 0.74]], outline, 0.04)
+			_shape([[0.4, 0.72], [0.6, 0.72], [0.62, 0.9], [0.38, 0.9]], dark)
 		&"check":
 			_stroke([[0.16, 0.52], [0.4, 0.78], [0.86, 0.26]], outline, 0.2)
 			_stroke([[0.16, 0.52], [0.4, 0.78], [0.86, 0.26]], tint, 0.1)
