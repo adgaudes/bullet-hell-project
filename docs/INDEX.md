@@ -82,6 +82,7 @@ Legenda stato: **vivo** = aggiornato e autorevole; **riferimento** = stabile, si
 
 | File | Contenuto | Leggilo quando | Stato |
 |---|---|---|---|
+| `docs/AUDIO/MUSIC_SHORTLIST_2026-10-14.md` | Rosa di brani musicali gratuiti (CC0, CC BY) per menu, giorno, notte, boss, Officina e jingle, con licenze verificate e link | per scegliere o integrare la musica (D-089) | vivo |
 | `docs/PLAYTESTS/OWNER_PLAYTEST_2026-10-14.md` | Primo playtest del proprietario dopo l'audit (esito Modifica): 14 osservazioni con la causa trovata nel codice e il piano a quattro blocchi | **per sapere cosa fare dopo il playtest** e per lavorare su una delle osservazioni | vivo |
 | `docs/PLAYTESTS/ARENA_RUN_LEVEL_2026-10-07.md` | Promemoria per il playtest del livello completo: come avviare, problemi gia noti dalla review (da spuntare, non da riscoprire), cosa annotare, esito | **prima di giocare il livello**; dopo, per registrare l'esito | vivo |
 | `docs/PLAYTESTS/GODOT_PARITY_PLAYTEST.md` | Playtest di parita Godot: feel, Test A, Steam Deck, preset; esiti registrati | per esiti del feel e test in sospeso | vivo |
