@@ -46,6 +46,9 @@ const AIM_COLOR := Color(1.0, 0.2, 0.1, 0.45)
 const AIM_WIDTH := 1.8
 ## Spinta laterale per chi viene colpito in carica.
 const SIDE_PUSH := 2.6
+## Quanto piu in alto di dove si e puo far atterrare la spinta laterale (audit E-11): basta a
+## uscire dal solco della carica (0,8 m), non a finire in cima a un argine.
+const PUSH_MAX_RISE_M := 1.0
 ## Lungo la linea di mira, un ostacolo che non e un argine entro questa distanza fa
 ## preferire il campo di percorso (non si carica contro una rovina).
 const AIM_PROBE_METERS: Array[float] = [3.0, 6.0, 9.0]
@@ -345,11 +348,38 @@ func _hit_in_the_way(body: Node3D, damages: bool) -> void:
 		side = -side
 	if damages and body is PlayerCharacter:
 		(body as PlayerCharacter).take_damage(contact_damage)
-	var at := body.global_position + side * SIDE_PUSH
+	var landing: Variant = _side_landing(body.global_position, side)
+	if landing == null:
+		return
+	var lift := clampf(body.global_position.y - terrain_field.height_at(body.global_position), 0.3, 1.5)
+	var at: Vector3 = landing
+	at.y = terrain_field.height_at(at) + lift
 	body.global_position = at
 	if body is CharacterBody3D:
 		(body as CharacterBody3D).velocity = Vector3.ZERO
 	body.reset_physics_interpolation()
+
+
+## Dove atterra la spinta laterale (audit E-11): prima il lato da cui il corpo gia pende,
+## poi l'altro, a piena distanza e a meta; il punto deve stare nel campo, fuori dalle
+## rovine, su suolo calpestabile e non molto piu alto di dove si trova (come la
+## spinta del treno, `TrainEvent._push_out`). Null se tutto e murato: niente spinta.
+func _side_landing(from: Vector3, side: Vector3) -> Variant:
+	var half := terrain_field.half_extents()
+	var ground := terrain_field.height_at(from)
+	for direction: Vector3 in [side, -side]:
+		for distance: float in [SIDE_PUSH, SIDE_PUSH * 0.5]:
+			var probe := Vector3(from.x, 0.0, from.z) + direction * distance
+			if absf(probe.x) > half.x - 1.0 or absf(probe.z) > half.y - 1.0:
+				continue
+			if path_field != null and not path_field.is_walkable(probe):
+				continue
+			if terrain_field.height_at(probe) - ground > PUSH_MAX_RISE_M:
+				continue
+			if terrain_field.slope_at(probe) > terrain_field.tuning.max_grade:
+				continue
+			return probe
+	return null
 
 
 ## Un argine ferma la carica: il varco torna alla base (la terra si polverizza, niente

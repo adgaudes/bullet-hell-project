@@ -45,6 +45,7 @@ func _initialize() -> void:
 	await _test_call_and_arrival()
 	await _test_aim_and_charge()
 	await _test_aims_through_rampart()
+	await _test_side_push_lands_on_ground()
 	await _test_wall_stops_and_stuns()
 	await _test_wall_over_vein_gives_scrap()
 	await _test_low_mound_does_not_stop()
@@ -159,6 +160,42 @@ func _test_aim_and_charge() -> void:
 	_check(_player.health == health_before - _boss.contact_damage, "giocatore colpito una volta (%d -> %d)" % [health_before, _player.health])
 	_check(absf(_player.global_position.z) >= Driller.SIDE_PUSH - 0.5, "e spinto di lato (z=%.1f)" % _player.global_position.z)
 	_check(_boss.charges == 1 and _boss.walls_broken == 0, "una carica, nessun argine")
+
+
+## Audit E-11: la spinta laterale non infila il giocatore in un cumulo. Con un cumulo da
+## 1,5 m sul lato della spinta va dall'altra parte; con cumuli su entrambi i lati resta dov'e.
+## In tutti i casi resta sopra il suolo e poggia a terra.
+func _test_side_push_lands_on_ground() -> void:
+	print("side push lands on ground")
+	_clear_tracks()
+	var p := Vector3(-20.0, 0.0, 0.0)
+	_place_player(p)
+	_place_boss(p + Vector3(1.0, 0.0, 0.0), Driller.Phase.CHARGE, 5.0)
+	_boss.charge_direction = Vector3(-1.0, 0.0, 0.0)
+	_boss._hit_this_charge.clear()
+	# Il lato di spinta e -Z (offset nullo lungo il lato): li un cumulo da 1,5 m.
+	_field.sculpt(p + Vector3(0.0, 0.0, -Driller.SIDE_PUSH), 2.0, 1.5)
+	_boss._hit_in_the_way(_player, false)
+	var landed := _player.global_position
+	_check(landed.z > 1.0, "con un cumulo sul lato della spinta finisce dall'altra parte (z=%.1f)" % landed.z)
+	_check(landed.y >= _field.height_at(landed) - 0.05, "atterra sopra il suolo (%.2f su %.2f)" % [landed.y, _field.height_at(landed)])
+	_boss.phase = Driller.Phase.REST
+	_boss.phase_left = 10.0
+	await _frames(60)
+	_check(_player.is_on_floor() and _player.global_position.y >= _field.height_at(_player.global_position) - 0.05, "e poggia a terra dopo un secondo")
+	# Cumuli da entrambe le parti: nessun punto buono, nessuna spinta.
+	_place_player(p)
+	_place_boss(p + Vector3(1.0, 0.0, 0.0), Driller.Phase.REST, 10.0)
+	_field.sculpt(p + Vector3(0.0, 0.0, Driller.SIDE_PUSH), 2.0, 1.5)
+	_field.sculpt(p + Vector3(0.0, 0.0, Driller.SIDE_PUSH * 0.5), 1.2, 1.5)
+	_field.sculpt(p + Vector3(0.0, 0.0, -Driller.SIDE_PUSH * 0.5), 1.2, 1.5)
+	var before := _player.global_position
+	_boss._hit_this_charge.clear()
+	_boss._hit_in_the_way(_player, false)
+	_check(_player.global_position.distance_to(before) < 0.01, "tutto murato: nessuna spinta")
+	_field.reset_to_base(p, Vector2(4.0, 4.0))
+	_boss.phase = Driller.Phase.REST
+	_path.solve()
 
 
 ## Un argine del giocatore sulla linea non e una rovina: la Trivella lo vuole e mira dritta,
