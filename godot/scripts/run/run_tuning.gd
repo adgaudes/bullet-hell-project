@@ -5,9 +5,14 @@ extends Resource
 ## risorsa: gli upgrade cambiano le copie, non il file condiviso.
 
 @export_group("Player")
-@export var player_max_health := 5
+## Playtest del 14 ottobre 2026 (O-01): a 5 si moriva in circa 3 s a contatto e la vita
+## "non si sentiva"; a 10, con la spinta al colpo, c'e il tempo di reagire.
+@export var player_max_health := 10
 ## Invulnerabilita dopo un colpo.
 @export var player_invulnerability := 0.8
+## Al colpo i nemici entro questo raggio vengono respinti (m) a questa velocita (m/s).
+@export var hit_shove_radius := 3.0
+@export var hit_shove_speed := 9.0
 ## Raggio entro cui i frammenti di esperienza volano verso il giocatore.
 @export var pickup_radius := 2.5
 

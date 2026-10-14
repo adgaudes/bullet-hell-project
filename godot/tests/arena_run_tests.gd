@@ -40,6 +40,7 @@ func _initialize() -> void:
 	_test_path_uses_gates()
 	await _test_sealed_courtyard()
 	await _test_contact_damage()
+	await _test_hit_shove_and_dash()
 	await _test_weapon_kills_and_drops_xp()
 	await _test_xp_follows_relief()
 	await _test_wall_blocks_line_of_fire()
@@ -214,6 +215,35 @@ func _test_contact_damage() -> void:
 	_check(hit_frame >= 0, "il rottamatore raggiunge il giocatore e lo colpisce (frame %d)" % hit_frame)
 	await _frames(30)
 	_check(_player.health == start_health - 1, "invulnerabilita: un solo colpo in 0,5 s (vita %d)" % _player.health)
+	_clear_enemies()
+	_player.set_max_health(_run.tuning.player_max_health)
+
+
+## Playtest O-01: vita 10, spinta dei nemici al colpo, scatto intoccabile, vita in numero
+## e lampo rosso nel HUD.
+func _test_hit_shove_and_dash() -> void:
+	print("hit shove and dash")
+	_clear_enemies()
+	_check(_run.tuning.player_max_health == 10, "vita base 10 (%d)" % _run.tuning.player_max_health)
+	_player.set_max_health(_run.tuning.player_max_health)
+	_place_player(Vector3.ZERO)
+	var near := _director.spawn_at(Vector3(1.2, 0.0, 0.0))
+	var far := _director.spawn_at(Vector3(9.0, 0.0, 0.0))
+	await physics_frame
+	_player._invulnerable_left = 0.0
+	var start := near.global_position.x
+	_check(_player.take_damage(1), "il colpo va a segno")
+	_check(near.velocity.x > 4.0, "il nemico vicino viene respinto (%.1f m/s)" % near.velocity.x)
+	_check(absf(far.velocity.x) < 4.0, "quello lontano no")
+	await _frames(6)
+	_check(near.global_position.x > start + 0.3, "il nemico arretra (%.2f -> %.2f)" % [start, near.global_position.x])
+	var hud := _run.hud
+	_check(hud._health_label.text == "9/10", "vita in numero nel HUD (%s)" % hud._health_label.text)
+	_check(hud.damage_flash_alpha() > 0.0, "lampo rosso al colpo")
+	_player._invulnerable_left = 0.0
+	_player.is_dashing = true
+	_check(not _player.take_damage(1) and _player.health == 9, "durante lo scatto i colpi non passano")
+	_player.is_dashing = false
 	_clear_enemies()
 	_player.set_max_health(_run.tuning.player_max_health)
 

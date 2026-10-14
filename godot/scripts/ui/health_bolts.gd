@@ -3,8 +3,9 @@ extends Control
 ## Vita come bulloni esagonali (D-080): pieni `DANGER`, vuoti scuri. Si ridisegna
 ## solo quando cambiano i valori; nessun nodo figlio.
 
-const SIZE := 22.0
-const GAP := 6.0
+## Playtest O-01: a 22 px la vita non si notava.
+const SIZE := 28.0
+const GAP := 5.0
 const OFF_COLOR := Color(0.12, 0.08, 0.07, 0.85)
 const OFF_CENTER := Color(0.25, 0.18, 0.15)
 

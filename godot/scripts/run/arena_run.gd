@@ -171,6 +171,7 @@ func _ready() -> void:
 	_start_position = player.global_position
 
 	player.health_changed.connect(hud.set_health)
+	player.damaged.connect(_on_player_damaged)
 	player.died.connect(_on_player_died)
 	director.enemy_killed.connect(_on_enemy_killed)
 	xp_field.collected.connect(_on_xp_collected)
@@ -1089,6 +1090,14 @@ func _magnet_part() -> Node3D:
 
 func _refresh_xp() -> void:
 	hud.set_xp(progression.xp, progression.xp_to_next(), progression.level)
+
+
+## Colpo al giocatore (O-01): i nemici attorno arretrano e lo schermo lampeggia di rosso.
+func _on_player_damaged(_amount: int) -> void:
+	if director != null:
+		director.shove_from(player.global_position, tuning.hit_shove_radius, tuning.hit_shove_speed)
+	if hud != null:
+		hud.flash_damage()
 
 
 func _on_player_died() -> void:

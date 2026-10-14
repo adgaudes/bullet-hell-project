@@ -34,6 +34,8 @@ var _day_second_shown := -1
 var _night_notice_left := 0.0
 var _night_notice_text := ""
 var _health_row: HealthBolts
+var _health_label: Label
+var _damage_flash: TextureRect
 var _boss_warning: Label
 var _warning_plate: PanelContainer
 var _boss_name_label: Label
@@ -85,6 +87,13 @@ func _ready() -> void:
 	_health_row = HealthBolts.new()
 	_health_row.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	left.add_child(_health_row)
+	# Vita anche in numero (O-01): con 10 bulloni il conto a occhio non basta.
+	_health_label = _label(left, HORIZONTAL_ALIGNMENT_LEFT)
+	_health_label.name = "HealthLabel"
+	_health_label.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	_health_label.add_theme_font_size_override(&"font_size", 22)
+	_health_label.add_theme_color_override(&"font_color", UiPalette.DANGER.lightened(0.25))
+	_build_damage_flash(root)
 	_level_label = _label(left, HORIZONTAL_ALIGNMENT_LEFT)
 	_level_label.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	_level_label.add_theme_font_size_override(&"font_size", 20)
@@ -354,6 +363,44 @@ func set_xp(xp: int, needed: int, level: int) -> void:
 ## Bulloni esagonali, ridisegnati solo quando cambiano i valori (U-07).
 func set_health(health: int, max_health: int) -> void:
 	_health_row.set_health(health, max_health)
+	_health_label.text = "%d/%d" % [health, max_health]
+
+
+## Bordo rosso sullo schermo quando il giocatore e colpito (O-01).
+func flash_damage() -> void:
+	if _damage_flash == null:
+		return
+	_damage_flash.modulate.a = 0.85
+	var tween := create_tween()
+	tween.tween_property(_damage_flash, ^"modulate:a", 0.0, 0.45).set_ease(Tween.EASE_OUT)
+
+
+func damage_flash_alpha() -> float:
+	return _damage_flash.modulate.a if _damage_flash != null else 0.0
+
+
+func _build_damage_flash(root: Control) -> void:
+	var gradient := Gradient.new()
+	gradient.set_color(0, Color(0.75, 0.05, 0.02, 0.0))
+	gradient.set_color(1, Color(0.75, 0.05, 0.02, 0.75))
+	gradient.add_point(0.62, Color(0.75, 0.05, 0.02, 0.0))
+	var texture := GradientTexture2D.new()
+	texture.gradient = gradient
+	texture.fill = GradientTexture2D.FILL_RADIAL
+	texture.fill_from = Vector2(0.5, 0.5)
+	texture.fill_to = Vector2(1.0, 1.0)
+	texture.width = 256
+	texture.height = 256
+	_damage_flash = TextureRect.new()
+	_damage_flash.name = "DamageFlash"
+	_damage_flash.texture = texture
+	_damage_flash.stretch_mode = TextureRect.STRETCH_SCALE
+	_damage_flash.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_damage_flash.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_damage_flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_damage_flash.modulate.a = 0.0
+	root.add_child(_damage_flash)
+	root.move_child(_damage_flash, 0)
 
 
 ## Modalita del tool: visibile solo in LAMP, con costo e contatore (specifica, sezione 9).

@@ -397,6 +397,25 @@ func _tick_gnaw(enemy: Enemy, direction: Vector3, moved: float, delta: float) ->
 	print("PROTOTYPE01_ENEMY_GNAW total=%d" % gnaws)
 
 
+## Respinge i nemici entro [param radius] da [param center] (colpo al giocatore, O-01):
+## la velocita verso l'esterno cala da sola, perche ogni passo la riporta verso quella
+## desiderata con ACCELERATION. I boss (self_driven) non si spostano.
+func shove_from(center: Vector3, radius: float, speed: float) -> int:
+	var shoved := 0
+	for enemy in enemies:
+		if enemy.is_dead or enemy.self_driven:
+			continue
+		var away := _planar(enemy.global_position - center)
+		var distance := away.length()
+		if distance > radius:
+			continue
+		var dir := away / distance if distance > 0.001 else Vector3.FORWARD
+		var push := dir * speed * (1.0 - 0.5 * distance / radius)
+		enemy.velocity = Vector3(push.x, enemy.velocity.y, push.z)
+		shoved += 1
+	return shoved
+
+
 func _separation(enemy: Enemy) -> Vector3:
 	var push := Vector3.ZERO
 	var base := Vector2i(floori(enemy.global_position.x), floori(enemy.global_position.z))

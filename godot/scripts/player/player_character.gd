@@ -12,6 +12,8 @@ signal dash_started
 signal dash_ready
 signal aim_device_changed(device: AimDevice)
 signal health_changed(health: int, max_health: int)
+## Colpo andato a segno (dopo il calcolo della vita): spinta dei nemici e lampo del HUD.
+signal damaged(amount: int)
 signal died
 ## Lo strumento terreno non ha potuto agire: cella non valida o niente rottami.
 signal terrain_tool_rejected
@@ -652,13 +654,15 @@ func is_alive() -> bool:
 
 ## Danno con breve invulnerabilita. Restituisce true se il colpo e andato a segno.
 func take_damage(amount: int) -> bool:
-	if max_health <= 0 or health <= 0 or _invulnerable_left > 0.0:
+	# Lo scatto rende intoccabili (playtest O-01): e la mossa per uscire dall'accerchiamento.
+	if max_health <= 0 or health <= 0 or _invulnerable_left > 0.0 or is_dashing:
 		return false
 	health = maxi(health - amount, 0)
 	_invulnerable_left = invulnerability_seconds
 	on_hit()
 	print("PROTOTYPE01_PLAYER_DAMAGED health=%d" % health)
 	health_changed.emit(health, max_health)
+	damaged.emit(amount)
 	if health == 0:
 		if _animator != null:
 			_animator.play_death()
