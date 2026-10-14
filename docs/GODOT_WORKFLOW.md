@@ -95,7 +95,7 @@ Al 12 ottobre 2026 (sera) le suite in `godot/tests/` sono 36 (il gate le trova d
 
 Piu semplice: `tools/godot/Invoke-GodotChecks.ps1` esegue tutte le suite presenti in `godot/tests/`.
 
-`--fixed-fps 60` rende ogni frame un passo fisico da 1/60 s: risultati deterministici. Esito su stdout (`PROTOTYPE01_TESTS PASS|FAIL`) ed exit code 0/1. Trappola verificata: in headless la posizione del cursore del viewport non segue gli eventi mouse simulati; testare la logica sulla posizione schermo esplicita.
+`--fixed-fps 60` rende ogni frame un passo fisico da 1/60 s, ma **il seme della run e casuale** se non si passa `-- --seed=N` o la variabile `PROTOTYPE01_SEED` (letta da `RunLaunchOptions.run_seed`; il gate la imposta per tutte le suite, `-Seed` per cambiarla, e stampa il seme di una suita fallita con il log intero in `output/gate/`). Il seme compare nella riga `PROTOTYPE01_RUN_START`: un rosso si riproduce con quello (audit K-01, D-01; caso reale: `quake_tests` con il seme 1026822462). Esito su stdout (`PROTOTYPE01_TESTS PASS|FAIL`) ed exit code 0/1. Trappola verificata: in headless la posizione del cursore del viewport non segue gli eventi mouse simulati; testare la logica sulla posizione schermo esplicita.
 
 Trappola verificata: `CollisionShape3D.set_deferred("disabled", ...)` lascia la forma attiva per un frame; se applicato in costruzione spinge via i corpi sovrapposti. In costruzione impostarlo direttamente, a runtime differito.
 
