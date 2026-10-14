@@ -12,9 +12,20 @@ const COLLECT_DISTANCE := 0.55
 const FLY_SPEED := 9.0
 const FLY_ACCELERATION := 30.0
 const MAX_FRAGMENTS := 250
+## Altezza dei frammenti sopra il suolo.
+const HOVER_HEIGHT := 0.35
 
 @export var player: Node3D
 @export var player_radius := 2.5
+## Rilievo continuo (audit P-01): i frammenti stanno sopra il suolo e lo seguono. Senza,
+## stanno a quota fissa (scene minori).
+var terrain_field: TerrainField:
+	set(value):
+		if terrain_field != null and terrain_field.region_changed.is_connected(_on_region_changed):
+			terrain_field.region_changed.disconnect(_on_region_changed)
+		terrain_field = value
+		if terrain_field != null:
+			terrain_field.region_changed.connect(_on_region_changed)
 
 ## Attrattori aggiuntivi: { node: Node3D, radius: float }.
 var attractors: Array[Dictionary] = []
@@ -47,7 +58,7 @@ func spawn(world: Vector3, value: int) -> void:
 	node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	node.rotation = Vector3(PI * 0.25, 0.0, PI * 0.25)
 	add_child(node)
-	node.global_position = Vector3(world.x, 0.35, world.z)
+	node.global_position = Vector3(world.x, _hover_y(world), world.z)
 	_fragments.append({node = node, value = value, speed = 0.0, target = null})
 
 
@@ -78,7 +89,9 @@ func _physics_process(delta: float) -> void:
 			collected.emit(fragment.value)
 			continue
 		fragment.speed = minf(fragment.speed + FLY_ACCELERATION * delta, FLY_SPEED * 2.0)
-		node.global_position += to_goal.normalized() * minf(fragment.speed * delta, to_goal.length())
+		var next := node.global_position + to_goal.normalized() * minf(fragment.speed * delta, to_goal.length())
+		next.y = _hover_y(next)
+		node.global_position = next
 
 
 func _attractor_for(world: Vector3) -> Node3D:
@@ -89,6 +102,19 @@ func _attractor_for(world: Vector3) -> Node3D:
 		if is_instance_valid(node) and _planar_distance(node.global_position, world) <= entry.radius:
 			return node
 	return null
+
+
+func _hover_y(world: Vector3) -> float:
+	return (terrain_field.height_at(world) if terrain_field != null else 0.0) + HOVER_HEIGHT
+
+
+## Il suolo e cambiato in [param aabb]: i frammenti fermi li dentro si riappoggiano.
+func _on_region_changed(aabb: AABB) -> void:
+	for fragment: Dictionary in _fragments:
+		var node: Node3D = fragment.node
+		var at := node.global_position
+		if at.x >= aabb.position.x and at.x <= aabb.end.x and at.z >= aabb.position.z and at.z <= aabb.end.z:
+			node.global_position.y = _hover_y(at)
 
 
 static func _planar_distance(a: Vector3, b: Vector3) -> float:

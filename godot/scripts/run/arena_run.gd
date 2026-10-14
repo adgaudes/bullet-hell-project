@@ -155,6 +155,7 @@ func _ready() -> void:
 	weapon.damage = tuning.weapon_damage
 	weapon.projectile_speed = tuning.projectile_speed
 	xp_field.player_radius = tuning.pickup_radius
+	xp_field.terrain_field = terrain_field
 	_death_scrap_share = tuning.death_scrap_share
 	_apply_permanent_upgrades()
 	_build_terrain_layout()

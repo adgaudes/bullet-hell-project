@@ -41,6 +41,7 @@ func _initialize() -> void:
 	await _test_sealed_courtyard()
 	await _test_contact_damage()
 	await _test_weapon_kills_and_drops_xp()
+	await _test_xp_follows_relief()
 	await _test_wall_blocks_line_of_fire()
 	await _test_uphill_slows_enemies()
 	await _test_dig_debris_throttled()
@@ -214,6 +215,23 @@ func _test_contact_damage() -> void:
 	_check(_player.health == start_health - 1, "invulnerabilita: un solo colpo in 0,5 s (vita %d)" % _player.health)
 	_clear_enemies()
 	_player.set_max_health(_run.tuning.player_max_health)
+
+
+## Audit P-01: i frammenti di esperienza stanno sopra il rilievo, non a quota fissa: su un
+## cumulo non spariscono dentro il terreno, e se il suolo sale sotto di loro risalgono.
+func _test_xp_follows_relief() -> void:
+	print("xp on relief")
+	var spot := Vector3(-14.0, 0.0, -14.0)
+	_field.set_protected(spot, 4.0, false)
+	_field.sculpt(spot, 2.5, 1.5)
+	_xp.spawn(spot, 1)
+	var node: Node3D = _xp._fragments[_xp._fragments.size() - 1].node
+	_check(node.global_position.y >= _field.height_at(spot) + 0.2, "su un cumulo il frammento sta sopra il suolo (%.2f su %.2f)" % [node.global_position.y, _field.height_at(spot)])
+	_field.sculpt(spot, 2.5, 1.0)
+	await _frames(1)
+	_check(node.global_position.y >= _field.height_at(spot) + 0.2, "il suolo sale sotto il frammento: risale (%.2f su %.2f)" % [node.global_position.y, _field.height_at(spot)])
+	_field.level(spot, 3.5, _field.base_height_at(spot), 1.0)
+	await _frames(1)
 
 
 func _test_weapon_kills_and_drops_xp() -> void:
