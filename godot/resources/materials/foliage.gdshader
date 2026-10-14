@@ -36,7 +36,9 @@ void fragment() {
 		// La tinta per istanza e scura (LEAF_TINTS): qui modula solo la tonalita,
 		// la luminosita viene dalla texture dipinta.
 		vec3 hue = tint.rgb / max(max(tint.r, tint.g), max(tint.b, 0.001));
-		col = tex.rgb * mix(vec3(1.0), hue, 0.6) * mix(vec3(1.0), COLOR.rgb, 0.5) * 1.15;
+		// Playtest del 14 ottobre: a 1,15 e con piena saturazione i cespugli erano verde
+		// fosforescente accanto al prato e ai muri fotografici.
+		col = tex.rgb * mix(vec3(1.0), hue, 0.45) * mix(vec3(1.0), COLOR.rgb, 0.5) * 0.72;
 	}
 	col *= 0.8 + 0.35 * value_noise(world_pos.xz * 1.3 + world_pos.y * 0.7);
 	ALBEDO = col;

@@ -709,7 +709,8 @@ func _car(base: Vector3, yaw_deg: float) -> void:
 	_model(CAR_MODEL, body, Transform3D.IDENTITY, {
 		&"tint": _pick(CAR_PAINTS),
 		&"rust": _rng.randf_range(0.45, 0.8),
-		&"overgrowth": _rng.randf_range(0.3, 0.8),
+		# Playtest del 14 ottobre: da 0,3-0,8 il tetto era tutto muschio, l'auto sembrava verde.
+		&"overgrowth": _rng.randf_range(0.0, 0.3),
 	})
 	_box_shape_child(body, Vector3(1.8, 1.5, 4.3), Transform3D(Basis(), Vector3(0.0, 0.75, 0.0)))
 	_bush(base + basis * Vector3(0.9, 0.0, 1.6), 1.1, false)
