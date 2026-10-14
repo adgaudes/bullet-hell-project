@@ -153,6 +153,10 @@ func _test_vegetation_and_props() -> void:
 	var leaves_textured := false
 	for node in tree_meshes:
 		var mi := node as MeshInstance3D
+		# Chioma generata (playtest del 14 ottobre): materiale su tutto il nodo "Crown".
+		var whole := mi.material_override as ShaderMaterial
+		if mi.name == "Crown" and whole != null and whole.get_shader_parameter(&"textured") == true:
+			leaves_textured = true
 		for surface in mi.mesh.get_surface_count():
 			var mat := mi.get_surface_override_material(surface) as ShaderMaterial
 			if mat != null and mat.get_shader_parameter(&"textured") == true:

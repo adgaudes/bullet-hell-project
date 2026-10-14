@@ -110,6 +110,8 @@ var _foliage_material: ShaderMaterial
 var _bush_material: ShaderMaterial
 var _canopy_material: ShaderMaterial
 var _grass_material: ShaderMaterial
+var _shared_hidden: ShaderMaterial
+var _shared_canopies: Array[ArrayMesh] = []
 ## Vero quando il prato lo fa GrassField (a particelle, con Terrain3D): niente ciuffi nel MultiMesh.
 var gpu_grass := false
 var _litter_material: StandardMaterial3D
@@ -672,7 +674,8 @@ func _facade_vines(center: Vector2, footprint: Vector2, height: float) -> void:
 func _tree(base: Vector3, scale: float) -> void:
 	var body := _static_body("Tree", Transform3D(Basis(Vector3.UP, _rng.randf_range(0.0, TAU)), base))
 	var tint := _pick(LEAF_TINTS) * 1.6
-	_model(TREE_MODEL, body, Transform3D(Basis.from_scale(Vector3.ONE * scale), Vector3.ZERO), {&"tint": tint})
+	var model := _model(TREE_MODEL, body, Transform3D(Basis.from_scale(Vector3.ONE * scale), Vector3.ZERO), {&"tint": tint})
+	_thicken_canopy(model, tint, int(absi(int(base.x * 13.0 + base.z * 7.0))))
 	var shape := CylinderShape3D.new()
 	shape.radius = 0.4 * scale
 	shape.height = 3.0 * scale
@@ -681,6 +684,72 @@ func _tree(base: Vector3, scale: float) -> void:
 	collision.position = Vector3(0.1 * scale, 1.5 * scale, 0.0)
 	body.add_child(collision)
 	stats.trees += 1
+
+
+## Chioma piena (playtest del 14 ottobre 2026): il modello ha solo 42 cartelle di foglie e
+## dall'alto sembrava un foglio verde. Le sue foglie si nascondono e al loro posto, nello
+## stesso volume, va una chioma generata: un centinaio di cartelle a grappoli con normali
+## sferiche, cosi la luce la modella come un volume (lato in ombra, bordo illuminato).
+func _thicken_canopy(model: Node3D, tint: Color, variant: int) -> void:
+	for mi: MeshInstance3D in model.find_children("*", "MeshInstance3D", true, false):
+		for surface in mi.mesh.get_surface_count():
+			var source := mi.mesh.surface_get_material(surface)
+			if source == null or source.resource_name != "leaves":
+				continue
+			var vertices: PackedVector3Array = mi.mesh.surface_get_arrays(surface)[Mesh.ARRAY_VERTEX]
+			var bounds := AABB(vertices[0], Vector3.ZERO)
+			for v in vertices:
+				bounds = bounds.expand(v)
+			mi.set_surface_override_material(surface, _hidden_material())
+			var crown := MeshInstance3D.new()
+			crown.name = "Crown"
+			crown.mesh = _canopy_mesh(variant)
+			crown.material_override = _canopy_material
+			crown.transform = mi.transform * Transform3D(Basis.from_scale(bounds.size * 0.55), bounds.get_center())
+			mi.get_parent().add_child(crown)
+			crown.set_instance_shader_parameter(&"tint", tint)
+			return
+
+
+## Materiale che non disegna nulla (neppure in ombra): nasconde una superficie importata.
+func _hidden_material() -> ShaderMaterial:
+	if _shared_hidden == null:
+		var shader := Shader.new()
+		shader.code = "shader_type spatial;\nrender_mode unshaded;\nvoid fragment() { discard; }\n"
+		_shared_hidden = ShaderMaterial.new()
+		_shared_hidden.shader = shader
+	return _shared_hidden
+
+
+## Chioma unitaria (ellissoide di raggio 1): grappoli di cartelle di foglie orientate a
+## caso, con la normale che esce dal centro della chioma. Tre varianti condivise.
+func _canopy_mesh(variant: int) -> ArrayMesh:
+	var index := posmod(variant, 3)
+	if _shared_canopies.size() > index and _shared_canopies[index] != null:
+		return _shared_canopies[index]
+	while _shared_canopies.size() <= index:
+		_shared_canopies.append(null)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 7700 + index
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var uvs: Array[Vector2] = [Vector2(0.0, 1.0), Vector2(1.0, 1.0), Vector2(1.0, 0.0), Vector2(0.0, 0.0)]
+	for cluster in 8:
+		var cluster_center := Vector3(rng.randf_range(-1.0, 1.0), rng.randf_range(-0.6, 1.0), rng.randf_range(-1.0, 1.0)).limit_length(0.62)
+		for card in 13:
+			var center := cluster_center + Vector3(rng.randf_range(-0.32, 0.32), rng.randf_range(-0.26, 0.26), rng.randf_range(-0.32, 0.32))
+			var basis := Basis.from_euler(Vector3(rng.randf_range(-0.9, 0.9), rng.randf_range(0.0, TAU), rng.randf_range(-0.9, 0.9)))
+			var half := rng.randf_range(0.2, 0.3)
+			var corners: Array[Vector3] = [Vector3(-half, -half, 0.0), Vector3(half, -half, 0.0), Vector3(half, half, 0.0), Vector3(-half, half, 0.0)]
+			var normal := (center + Vector3(0.0, 0.35, 0.0)).normalized()
+			for k in [0, 1, 2, 0, 2, 3]:
+				st.set_normal(normal)
+				st.set_color(Color.WHITE)
+				st.set_uv(uvs[k])
+				st.add_vertex(center + basis * corners[k])
+	st.generate_tangents()
+	_shared_canopies[index] = st.commit()
+	return _shared_canopies[index]
 
 
 ## Cespuglio: ciuffi sfaccettati e bitorzoluti (D-070), senza collisione.
