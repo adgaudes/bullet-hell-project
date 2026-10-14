@@ -901,6 +901,11 @@ func ground_cover_at(p: Vector2) -> float:
 
 
 func _build_ground_cover() -> void:
+	# Rilievo atteso ma non ancora pronto (il quartiere nasce prima del campo nella scena):
+	# niente prato a quota zero da buttare, lo costruisce `settle_on_relief` sulle quote
+	# (audit R-04: prima a ogni avvio due costruzioni intere, una invisibile).
+	if terrain_field != null and not _relief_ready() and not Engine.is_editor_hint():
+		return
 	var limit := cover_limit()
 	var limit_z := cover_limit_z()
 	var height := cover_height()
@@ -1006,6 +1011,9 @@ func settle_on_relief() -> void:
 	var half := terrain_field.half_extents()
 	for node in _generated:
 		if not (node is Node3D) or node is MultiMeshInstance3D or node is DirectionalLight3D:
+			continue
+		# Contenitori delle porzioni di copertura: si rifanno sotto, non si spostano.
+		if node.name in ["GrassTufts", "Flowers", "Litter"]:
 			continue
 		var body := node as Node3D
 		if absf(body.position.x) > half.x or absf(body.position.z) > half.y:

@@ -206,6 +206,7 @@ func _plan_trenches() -> void:
 ## Le pennellate di cortili, depositi e argini sbavano sulla fascia per il raggio del
 ## pennello: la fascia torna alla base e solo i vagoni vi restano sopra.
 func apply_strokes(field: TerrainField, scrap_field: ScrapField = null) -> void:
+	field.begin_batch()
 	super(field, scrap_field)
 	field.reset_to_base(Vector3.ZERO, Vector2(half_x(), TRACK_HALF_WIDTH))
 	for stroke: Dictionary in terrain_strokes:
@@ -214,6 +215,7 @@ func apply_strokes(field: TerrainField, scrap_field: ScrapField = null) -> void:
 		var amount: float = stroke.height / line_overlap(stroke.step, stroke.brush)
 		for p: Vector2 in stroke.points:
 			field.sculpt(Vector3(p.x, 0.0, p.y), stroke.brush, amount)
+	field.end_batch()
 	# Una vena sulla fascia, esaurita, torna del colore della ghiaia, non bianca.
 	if scrap_field != null:
 		for vein in scrap_field.veins():
@@ -223,12 +225,14 @@ func apply_strokes(field: TerrainField, scrap_field: ScrapField = null) -> void:
 
 ## Strati del quartiere piu la fascia: asfalto e ghiaia scura per tutta la lunghezza.
 func paint_surface(field: TerrainField) -> void:
-	super(field)
 	if field.terrain3d() == null:
 		return
+	field.begin_batch()
+	super(field)
 	var half := Vector2(half_x() + PORTAL_DEPTH, TRACK_HALF_WIDTH)
 	field.paint_layer_rect(Vector3.ZERO, half, TerrainSurface.LAYER_ASPHALT)
 	field.tint_rect(Vector3.ZERO, half, BALLAST_TINT, 0.8)
+	field.end_batch()
 
 
 ## Massicciata, rotaie e traversine: solo mesh, nessuna collisione. Sporgono oltre

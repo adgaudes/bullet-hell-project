@@ -529,6 +529,9 @@ func _finish_base(field: TerrainField) -> void:
 ## le vede come gli argini del layout. Con [param scrap_field] ogni deposito registra la
 ## sua vena di rottami alla quota di base del cumulo (spec 5.1).
 func apply_strokes(field: TerrainField, scrap_field: ScrapField = null) -> void:
+	# Centinaia di pennellate: un solo aggiornamento di specchio, collisione e campo alla fine
+	# (audit PF-03: prima uno per pennellata, a ogni avvio del livello).
+	field.begin_batch()
 	for stroke: Dictionary in terrain_strokes:
 		var amount: float = stroke.height / line_overlap(stroke.step, stroke.brush)
 		for p: Vector2 in stroke.points:
@@ -536,6 +539,7 @@ func apply_strokes(field: TerrainField, scrap_field: ScrapField = null) -> void:
 		var center := Vector3(stroke.center.x, 0.0, stroke.center.y)
 		if stroke.scrap > 0 and scrap_field != null:
 			scrap_field.add_vein(center, stroke.radius, stroke.scrap, field.base_height_at(center))
+	field.end_batch()
 	paint_surface(field)
 
 
@@ -545,6 +549,8 @@ func apply_strokes(field: TerrainField, scrap_field: ScrapField = null) -> void:
 func paint_surface(field: TerrainField) -> void:
 	if field.terrain3d() == null:
 		return
+	# Centinaia di strati e tinte: un solo caricamento delle mappe alla fine.
+	field.begin_batch()
 	field.paint_layer(Vector3.ZERO, plaza_radius_m * 0.8, TerrainSurface.LAYER_SLABS)
 	for road: Array in _road_segments():
 		var from: Vector2 = road[0]
@@ -573,6 +579,7 @@ func paint_surface(field: TerrainField) -> void:
 				continue
 			green.append(Vector3(p.x, 0.0, p.y))
 	field.tint_points(green, pitch * 0.9, GRASS_PAINT, 0.55)
+	field.end_batch()
 
 
 # --- Edifici e oggetti dentro il perimetro ----------------------------------------------

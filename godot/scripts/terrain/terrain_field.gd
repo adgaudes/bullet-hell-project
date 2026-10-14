@@ -44,6 +44,8 @@ var _collision: TerrainCollision
 ## le quote ma specchio, collisione e `region_changed` aspettano l'unione delle aree.
 var _batch_depth := 0
 var _batch_rect: Array[int] = []
+## Tipi di mappa di Terrain3D da caricare a fine lotto.
+var _batch_maps: Dictionary[int, bool] = {}
 
 
 func _ready() -> void:
@@ -580,7 +582,18 @@ func begin_batch() -> void:
 ## Chiude il lotto: specchio, collisione e `region_changed` una volta sola sull'unione.
 func end_batch() -> void:
 	_batch_depth = maxi(_batch_depth - 1, 0)
-	if _batch_depth > 0 or _batch_rect.is_empty():
+	if _batch_depth > 0:
+		return
+	# Prima le mappe rimandate (strati, tinte, quote scritte direttamente), tutte insieme e
+	# smarcando le regioni una volta sola: smarcarle dopo il primo tipo perderebbe gli altri.
+	if not _batch_maps.is_empty():
+		var pending := _batch_maps.keys()
+		_batch_maps.clear()
+		if _terrain_ready:
+			for map_type: int in pending:
+				_terrain.data.update_maps(map_type, false)
+			_clear_edited_regions()
+	if _batch_rect.is_empty():
 		return
 	var r := _batch_rect
 	_batch_rect = []
@@ -671,9 +684,17 @@ func _mirror_rect(x0: int, z0: int, x1: int, z1: int) -> void:
 ## operazione): lasciate marcate, ogni aggiornamento ricaricava tutte le regioni del
 ## livello, fino a 23 ms a pennellata sulla ferrovia.
 func _update_maps(map_type: int) -> void:
-	var data := _terrain.data
-	data.update_maps(map_type, false)
-	for region: Terrain3DRegion in data.get_regions_active():
+	# Dentro un lotto: un solo caricamento per tipo a fine lotto (audit PF-03: dipingere il
+	# quartiere ne faceva centinaia, 478 ms al caricamento).
+	if _batch_depth > 0:
+		_batch_maps[map_type] = true
+		return
+	_terrain.data.update_maps(map_type, false)
+	_clear_edited_regions()
+
+
+func _clear_edited_regions() -> void:
+	for region: Terrain3DRegion in _terrain.data.get_regions_active():
 		region.edited = false
 
 
