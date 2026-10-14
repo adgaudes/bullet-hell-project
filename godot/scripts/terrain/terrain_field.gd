@@ -40,6 +40,10 @@ var _protected := PackedByteArray()
 var _terrain: Terrain3D
 var _terrain_ready := false
 var _collision: TerrainCollision
+## Scritture a lotti (audit E-12): fra `begin_batch` ed `end_batch` le pennellate scrivono
+## le quote ma specchio, collisione e `region_changed` aspettano l'unione delle aree.
+var _batch_depth := 0
+var _batch_rect: Array[int] = []
 
 
 func _ready() -> void:
@@ -208,8 +212,7 @@ func reset_to_base(center: Vector3, half_size: Vector2) -> float:
 	# Fascia gia alla base (quasi ogni passo del treno): niente specchio, chunk ne segnale.
 	if changed == 0:
 		return 0.0
-	_mirror_rect(r[0], r[1], r[2], r[3])
-	_emit_rect_changed(r[0], r[1], r[2], r[3])
+	_flush_rect(r[0], r[1], r[2], r[3])
 	return volume
 
 
@@ -247,8 +250,7 @@ func dig_to_base_offset(center: Vector3, radius: float, depth: float) -> float:
 			changed += 1
 	if changed == 0:
 		return 0.0
-	_mirror_rect(r[0], r[1], r[2], r[3])
-	_emit_rect_changed(r[0], r[1], r[2], r[3])
+	_flush_rect(r[0], r[1], r[2], r[3])
 	return volume
 
 
@@ -514,9 +516,36 @@ func _brush(center: Vector3, radius: float, shape: Callable) -> float:
 			var after := clampf(shape.call(before, falloff), MIN_HEIGHT, MAX_HEIGHT)
 			_heights[i] = after
 			volume += (after - before) * SPACING * SPACING
+	_flush_rect(r[0], r[1], r[2], r[3])
+	return volume
+
+
+## Comincia un lotto di pennellate con un solo aggiornamento finale (annidabile).
+func begin_batch() -> void:
+	_batch_depth += 1
+
+
+## Chiude il lotto: specchio, collisione e `region_changed` una volta sola sull'unione.
+func end_batch() -> void:
+	_batch_depth = maxi(_batch_depth - 1, 0)
+	if _batch_depth > 0 or _batch_rect.is_empty():
+		return
+	var r := _batch_rect
+	_batch_rect = []
 	_mirror_rect(r[0], r[1], r[2], r[3])
 	_emit_rect_changed(r[0], r[1], r[2], r[3])
-	return volume
+
+
+## Fine di una pennellata sul rettangolo di indici: subito, o nell'unione del lotto aperto.
+func _flush_rect(x0: int, z0: int, x1: int, z1: int) -> void:
+	if _batch_depth == 0:
+		_mirror_rect(x0, z0, x1, z1)
+		_emit_rect_changed(x0, z0, x1, z1)
+		return
+	if _batch_rect.is_empty():
+		_batch_rect = [x0, z0, x1, z1]
+	else:
+		_batch_rect = [mini(_batch_rect[0], x0), mini(_batch_rect[1], z0), maxi(_batch_rect[2], x1), maxi(_batch_rect[3], z1)]
 
 
 # --- Terrain3D (solo resa) ------------------------------------------------------------

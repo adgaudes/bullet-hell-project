@@ -40,6 +40,8 @@ const BARRICADE_HEIGHT := 1.5
 const BARRICADE_RADIUS := 2.4
 const HAMMER_RADIUS := 3.6
 const HAMMER_RATE := 3.0
+## Colpi di martello al secondo (audit E-12): prima uno a ogni passo fisico, con 9 pennellate.
+const HAMMER_INTERVAL := 0.1
 const WALL_MIN_DELTA := 0.8
 const WALL_DONE_DELTA := 0.3
 ## Distanza (oltre il corpo) da cui il martello raggiunge il bersaglio.
@@ -132,6 +134,8 @@ var _site_point := Vector3.INF
 var _ignored_points: Dictionary[Vector3, float] = {}
 
 var _demolish_left := 0.0
+## Tempo accumulato dall'ultimo colpo di martello.
+var _hammer_accum := 0.0
 var _retarget_left := 0.0
 ## Distanza minima raggiunta dal muro scelto e secondi senza avvicinarsi.
 var _wall_best_distance := INF
@@ -344,6 +348,7 @@ func _start_demolition_at(at: Vector3) -> void:
 	_demolish_vein = scrap_field != null and scrap_field.vein_scrap_left(demolish_point) > 0 \
 			or _vein_under(demolish_point)
 	_demolish_left = demolish_seconds
+	_hammer_accum = 0.0
 	velocity = Vector3.ZERO
 	print("PROTOTYPE01_BOSS_DEMOLISH_START x=%.1f z=%.1f vein=%s" % [at.x, at.z, _demolish_vein])
 
@@ -369,14 +374,22 @@ func _tick_demolition_at(delta: float) -> void:
 		rotation.y = lerp_angle(rotation.y, atan2(-facing.x, -facing.z), minf(delta * 8.0, 1.0))
 	if _demolish_left > 0.0:
 		return
+	_hammer_accum += delta
+	if _hammer_accum < HAMMER_INTERVAL:
+		return
+	var hammer_step := _hammer_accum
+	_hammer_accum = 0.0
 	var base := terrain_field.base_height_at(demolish_point)
 	var target := base - VEIN_DIG_DEPTH if _demolish_vein else base
-	var removed := -terrain_field.level(demolish_point, HAMMER_RADIUS, target, HAMMER_RATE * delta)
+	var removed := -terrain_field.level(demolish_point, HAMMER_RADIUS, target, HAMMER_RATE * hammer_step)
 	if removed > 0.0:
 		var spoil_amount := removed / (SPOIL_POINTS * PI * SPOIL_RADIUS * SPOIL_RADIUS / 3.0)
+		# Le 8 pennellate di terra smossa in un solo aggiornamento del terreno.
+		terrain_field.begin_batch()
 		for k in SPOIL_POINTS:
 			var angle := TAU * k / SPOIL_POINTS
 			terrain_field.sculpt(demolish_point + Vector3(cos(angle), 0.0, sin(angle)) * (HAMMER_RADIUS + 2.0), SPOIL_RADIUS, spoil_amount)
+		terrain_field.end_batch()
 		if scrap_field != null:
 			scrap_field.extract_from_veins(demolish_point, HAMMER_RADIUS, removed)
 	var digging_vein := _demolish_vein and _vein_under(demolish_point)

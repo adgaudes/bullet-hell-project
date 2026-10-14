@@ -260,7 +260,20 @@ func _test_boss_levels_player_mound() -> void:
 	_place_boss(at + Vector3(-5.0, 0.0, 0.0))
 	_player._invulnerable_left = 600.0
 	var demolished := _boss.walls_demolished
-	await _frames(60 * 6)
+	# Audit E-12: il martello batteva a ogni passo con 9 pennellate (9 aggiornamenti del
+	# terreno per passo); ora a 10 Hz con la terra smossa in un solo aggiornamento.
+	var updates := [0, 0]
+	var counter := func(_aabb: AABB) -> void:
+		if _boss.is_demolishing() and _boss._demolish_left <= 0.0:
+			updates[0] += 1
+	_field.region_changed.connect(counter)
+	for i in 60 * 6:
+		await physics_frame
+		if _boss.is_demolishing() and _boss._demolish_left <= 0.0:
+			updates[1] += 1
+	_field.region_changed.disconnect(counter)
+	var per_second: float = updates[0] * 60.0 / maxf(updates[1], 1.0)
+	_check(updates[1] > 10 and per_second <= 30.0, "martello: %.0f aggiornamenti del terreno al secondo (%d passi di martello)" % [per_second, updates[1]])
 	_check(_field.delta_at(at) < 0.6, "il Demolitore spiana il cumulo del giocatore (delta %.2f)" % _field.delta_at(at))
 	_check(_boss.walls_demolished == demolished + 1, "contato come un solo muro demolito (%d)" % (_boss.walls_demolished - demolished))
 	_check(not _boss.is_demolishing() or _planar_distance(_boss.demolish_point, at) > 3.0, "spianato, non rimartella lo stesso punto")
