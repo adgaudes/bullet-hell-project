@@ -36,6 +36,10 @@ const PRESETS: Dictionary = {
 const SHADOW_SIZES: Array[int] = [1024, 1024, 2048, 4096]
 const SHADOW_MODES: Array[int] = [DirectionalLight3D.SHADOW_ORTHOGONAL, DirectionalLight3D.SHADOW_ORTHOGONAL,
 	DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS, DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS]
+## Sole: diametro angolare e distanza d'ombra dei preset alti e dei bassi (audit V-04).
+const SUN_ANGULAR_DISTANCE := 1.5
+const SHADOW_DISTANCE := 90.0
+const LOW_SHADOW_DISTANCE := 55.0
 ## Moltiplicatore delle istanze di erba, fiori e detriti per densita.
 const VEGETATION: Array[float] = [0.35, 0.65, 1.0]
 
@@ -46,6 +50,16 @@ static func apply(s: GameSettingsService, environment: Environment, sun: Directi
 		sun.shadow_enabled = s.shadow_quality > 0
 		sun.directional_shadow_mode = SHADOW_MODES[s.shadow_quality]
 		RenderingServer.directional_shadow_atlas_set_size(SHADOW_SIZES[s.shadow_quality], true)
+		# Audit V-04: con il diametro angolare il sole usa le ombre PCSS (ricerca dei
+		# bloccanti e filtro) in ogni pixel illuminato; nei preset bassi niente PCSS, il
+		# bordo morbido lo da lo sfocato, e l'ombra copre i 55 m che la camera vede invece di
+		# 90 (meno oggetti nella passata d'ombra).
+		var low := s.shadow_quality <= 1
+		sun.light_angular_distance = 0.0 if low else SUN_ANGULAR_DISTANCE
+		sun.directional_shadow_max_distance = LOW_SHADOW_DISTANCE if low else SHADOW_DISTANCE
+		sun.shadow_blur = 1.6 if low else 1.2
+		RenderingServer.directional_soft_shadow_filter_set_quality(
+			RenderingServer.SHADOW_QUALITY_SOFT_VERY_LOW if low else RenderingServer.SHADOW_QUALITY_SOFT_LOW)
 	if environment == null:
 		return
 	environment.ssao_enabled = s.ssao_quality > 0
