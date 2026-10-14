@@ -102,6 +102,13 @@ var _pending_level_ups := 0
 ## Punti di interesse ancora da indicare: { center: Vector3, text: String, color: Color, kind: StringName }.
 var _marker_targets: Array[Dictionary] = []
 var _marker_refresh_left := 0.0
+## Controlli `highest_bump` degli indicatori (audit R-03, per i test).
+var marker_bump_checks := 0
+## Esito per pennellata del quartiere (indice): l'argine sporge ancora? Si ricontrolla solo
+## se il terreno e cambiato sopra di lei dall'ultimo aggiornamento.
+var _marker_alive: Dictionary[int, bool] = {}
+var _marker_dirty := Rect2()
+var _marker_has_dirty := false
 var _marker_step := 0
 ## Profilo permanente (autoload PlayerProfile); null se la scena gira senza.
 var _profile: PlayerProfileService
@@ -175,6 +182,7 @@ func _ready() -> void:
 		workshop.closed.connect(game_over.focus_default.bind(false))
 	if terrain_field != null:
 		terrain_field.player_sculpted.connect(_on_player_sculpted)
+		terrain_field.region_changed.connect(_on_marker_terrain_changed)
 	hud.set_health(player.health, player.max_health)
 	_refresh_xp()
 	var title := LevelCatalog.title_of(level_id)
@@ -222,7 +230,8 @@ func _tick_markers(delta: float) -> void:
 func _refresh_marker_targets() -> void:
 	_marker_targets.clear()
 	if terrain_field != null:
-		for stroke: Dictionary in district.terrain_strokes:
+		for index in district.terrain_strokes.size():
+			var stroke: Dictionary = district.terrain_strokes[index]
 			if stroke.height <= 0.0:
 				continue
 			var center := Vector3(stroke.center.x, 0.0, stroke.center.y)
@@ -231,10 +240,27 @@ func _refresh_marker_targets() -> void:
 				# Un deposito vale finche la sua vena ha rottami, anche se il cumulo e spianato.
 				if _scrap_field().vein_scrap_left(center) <= 0:
 					continue
-			elif terrain_field.highest_bump(center, stroke.radius + 2.0, 0.8) == null:
+			elif not _stroke_still_raised(index, center, stroke.radius + 2.0):
 				continue
 			_add_marker_target(is_deposit, stroke.marker)
+		_marker_has_dirty = false
 
+
+
+## L'argine della pennellata [param index] sporge ancora? Il disco di 9-14 m si riscandisce
+## solo se il terreno e cambiato li sopra (audit R-03: prima ogni secondo, per ogni cortile).
+func _stroke_still_raised(index: int, center: Vector3, radius: float) -> bool:
+	var disc := Rect2(center.x - radius, center.z - radius, radius * 2.0, radius * 2.0)
+	if not _marker_alive.has(index) or (_marker_has_dirty and _marker_dirty.intersects(disc)):
+		marker_bump_checks += 1
+		_marker_alive[index] = terrain_field.highest_bump(center, radius, 0.8) != null
+	return _marker_alive[index]
+
+
+func _on_marker_terrain_changed(aabb: AABB) -> void:
+	var rect := Rect2(aabb.position.x, aabb.position.z, aabb.size.x, aabb.size.z)
+	_marker_dirty = _marker_dirty.merge(rect) if _marker_has_dirty else rect
+	_marker_has_dirty = true
 
 
 func _scrap_field() -> ScrapField:

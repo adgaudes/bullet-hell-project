@@ -248,6 +248,19 @@ func _test_markers() -> void:
 	var deposits := markers.filter(func(m: Dictionary) -> bool: return m.text == "ROTTAMI")
 	_check(courtyards.size() == 2 and deposits.size() == 2, "due cortili e due depositi indicati (%d, %d)" % [courtyards.size(), deposits.size()])
 	_check(hud.marker_count() == markers.size(), "l'HUD mostra gli stessi indicatori (%d)" % hud.marker_count())
+	# Audit R-03: senza modifiche del terreno l'aggiornamento non riscandisce i cortili.
+	var checks := run.marker_bump_checks
+	run._refresh_marker_targets()
+	run._refresh_marker_targets()
+	_check(run.marker_bump_checks == checks, "terreno fermo: nessun nuovo controllo delle cime (%d)" % (run.marker_bump_checks - checks))
+	var court: Dictionary = {}
+	for s2: Dictionary in _district.terrain_strokes:
+		if s2.height > 0.0 and s2.scrap <= 0:
+			court = s2
+			break
+	_field.sculpt(Vector3(court.center.x, 0.0, court.center.y) + Vector3(court.radius, 0.0, 0.0), 1.0, 0.01)
+	run._refresh_marker_targets()
+	_check(run.marker_bump_checks > checks, "una pennellata su un cortile lo fa ricontrollare")
 	var far := true
 	for m: Dictionary in markers:
 		far = far and m.distance >= ArenaRun.MARKER_MIN_DISTANCE
