@@ -33,7 +33,7 @@ Esito **Modifica**: 14 osservazioni (salute, terra senza indicatore, buca senza 
 
 ## Prossimo passo (agente)
 
-0. **Blocco 1 del playtest del 14 ottobre** (vedi sopra), poi i blocchi 2-4.
+0. **Blocco 2 (grafica) del playtest del 14 ottobre**, poi i blocchi 1, 3, 4 (ordine D-089). Primo passo: cattura delle ombre accese e spente su Massimo (O-07).
 1. **Voci rimaste dell'audit**, nell'ordine della sua sezione 1:
    - PF-03, caricamento: prato sul rilievo 850 ms, pittura del terreno 460 ms;
    - T-01 e T-02: collisione copiata dal campo, ferrovia allineata;

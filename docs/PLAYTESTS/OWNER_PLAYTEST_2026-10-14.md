@@ -29,11 +29,13 @@ La partita breve non ha raggiunto il boss, la notte, la ferrovia ne il controlle
 
 ## Piano proposto (agente, 14 ottobre 2026)
 
+**Ordine scelto dal proprietario (D-089): prima il blocco 2 (grafica), poi 1, 3, 4.** La ricerca della musica (blocco 4) parte subito in parallelo.
+
 **Blocco 1 — gioco leggibile e giusto** (subito, senza decisioni aperte tranne la mira):
 - O-01 salute: barra grande con numero, spinta dei nemici al colpo, scatto con invulnerabilita, schermo che segnala il danno.
 - O-02 terra: indicatore dello zaino e della modalita corrente nel HUD, accanto al tool.
 - O-03 buca: lo scavo non abbassa il terreno sotto i piedi oltre la pendenza percorribile, piu una via d'uscita se si resta bloccati.
-- O-04 sparo: dalla canna della pistola, col busto che si gira verso il bersaglio (o mira manuale, vedi decisioni).
+- O-04 sparo: dalla canna della pistola; mira manuale e automatica commutabili con un tasto in qualsiasi momento (D-089).
 - O-06 frecce viola: spente di default.
 - O-11 impostazioni: schede Grafica / Audio / Controlli, colonne allineate.
 
