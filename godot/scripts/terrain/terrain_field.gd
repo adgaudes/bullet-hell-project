@@ -495,7 +495,11 @@ func _disc_points(center: Vector3, radius: float) -> PackedInt32Array:
 
 
 func _brush(center: Vector3, radius: float, shape: Callable) -> float:
+	# Raggio nullo: nessuna pennellata (0/0 scriverebbe NaN nelle quote, audit T-05).
+	if radius <= 0.0:
+		return 0.0
 	var volume := 0.0
+	var changed := 0
 	var r2 := radius * radius
 	var r := _rect_indices(center, Vector2(radius, radius))
 	# Pennellata tutta fuori dal campo: niente da scrivere e nessun AABB vuoto da emettere.
@@ -514,8 +518,15 @@ func _brush(center: Vector3, radius: float, shape: Callable) -> float:
 			var falloff := (1.0 - d2) * (1.0 - d2)
 			var before := _heights[i]
 			var after := clampf(shape.call(before, falloff), MIN_HEIGHT, MAX_HEIGHT)
+			if after == before:
+				continue
 			_heights[i] = after
 			volume += (after - before) * SPACING * SPACING
+			changed += 1
+	# Niente di cambiato (disco protetto, fondo o cima gia raggiunti): niente specchio,
+	# collisione ne campo di percorso da rifare (audit T-03).
+	if changed == 0:
+		return 0.0
 	_flush_rect(r[0], r[1], r[2], r[3])
 	return volume
 

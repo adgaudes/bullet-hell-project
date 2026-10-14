@@ -19,6 +19,7 @@ func _initialize() -> void:
 	_test_sculpt_across_region_border()
 	_test_level()
 	_test_brush_outside_field()
+	_test_brush_without_change_is_silent()
 	_test_reset_to_base()
 	_test_bump_along()
 	_test_dig_to_base_offset()
@@ -356,6 +357,27 @@ func _test_soil_pack() -> void:
 	pack.add_capacity(20.0)
 	_check(absf(pack.capacity - 80.0) < 0.001 and absf(pack.fill_ratio() - 0.75) < 0.001, "add_capacity alza il tetto")
 	_check(seen.size() == 4, "ogni cambio emette changed (%d)" % seen.size())
+
+
+## Audit T-03 e T-05: una pennellata che non cambia nessun vertice (disco protetto,
+## quantita nulla) non rifa specchio, collisione e campo; raggio zero non scrive NaN.
+func _test_brush_without_change_is_silent() -> void:
+	print("brush without change")
+	var emits := [0]
+	var counter := func(_aabb: AABB) -> void: emits[0] += 1
+	_field.region_changed.connect(counter)
+	var at := Vector3(-20.0, 0.0, -20.0)
+	_field.set_protected(at, 3.0, true)
+	_field.sculpt(at, 2.4, 0.5)
+	_check(emits[0] == 0, "disco tutto protetto: nessun aggiornamento")
+	_field.set_protected(at, 3.0, false)
+	_field.sculpt(at, 2.4, 0.0)
+	_check(emits[0] == 0, "quantita nulla: nessun aggiornamento")
+	_field.sculpt(at, 2.4, -0.5)
+	_check(emits[0] == 1, "una pennellata vera aggiorna una volta")
+	_check(_field.sculpt(at, 0.0, 1.0) == 0.0 and not is_nan(_field.height_at(at)) and emits[0] == 1, "raggio zero: nessuna pennellata e nessun NaN")
+	_field.region_changed.disconnect(counter)
+	_field.level(at, 3.0, _field.base_height_at(at), 1.0)
 
 
 func _check(condition: bool, label: String) -> void:
