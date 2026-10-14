@@ -160,6 +160,10 @@ func _ready() -> void:
 	player.invulnerability_seconds = tuning.player_invulnerability
 	player.set_max_health(tuning.player_max_health)
 	weapon.fire_interval = tuning.fire_interval
+	# Il chiodo parte dalla canna, all'altezza della mano (O-04).
+	weapon.muzzle_height = 0.15
+	weapon.muzzle_forward = 0.55
+	_setup_aim_mode()
 	weapon.weapon_range = tuning.weapon_range
 	weapon.damage = tuning.weapon_damage
 	weapon.projectile_speed = tuning.projectile_speed
@@ -1094,6 +1098,23 @@ func _magnet_part() -> Node3D:
 
 func _refresh_xp() -> void:
 	hud.set_xp(progression.xp, progression.xp_to_next(), progression.level)
+
+
+## Mira commutabile (D-089): la scelta del giocatore resta nelle impostazioni.
+func _setup_aim_mode() -> void:
+	var settings := get_node_or_null(^"/root/GameSettings") as GameSettingsService
+	if not player.aim_mode_changed.is_connected(_on_aim_mode_changed):
+		player.aim_mode_changed.connect(_on_aim_mode_changed)
+	player.set_aim_mode(PlayerCharacter.AimMode.MANUAL if settings != null and settings.manual_aim else PlayerCharacter.AimMode.AUTO)
+
+
+func _on_aim_mode_changed(mode: int) -> void:
+	weapon.manual_aim = mode == PlayerCharacter.AimMode.MANUAL
+	if hud != null:
+		hud.set_aim_mode(weapon.manual_aim)
+	var settings := get_node_or_null(^"/root/GameSettings") as GameSettingsService
+	if settings != null and settings.manual_aim != weapon.manual_aim:
+		settings.set_manual_aim(weapon.manual_aim)
 
 
 ## Colpo al giocatore (O-01): i nemici attorno arretrano e lo schermo lampeggia di rosso.

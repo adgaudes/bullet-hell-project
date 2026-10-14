@@ -45,6 +45,7 @@ var _gauge_amount := 0.0
 var _gauge_capacity := 0.0
 var _gauge_mode_id := 0
 var _gauge_lamp_cost := 0
+var _aim_label: Label
 var _damage_flash: TextureRect
 var _boss_warning: Label
 var _warning_plate: PanelContainer
@@ -202,7 +203,7 @@ func _ready() -> void:
 
 	# Comandi di gioco, in basso a sinistra.
 	_controls = ButtonPrompts.create([[&"dash", "Scatto"], [&"terrain_tool", "Scava o rialza"],
-		[&"terrain_mode", "Cambia modo"], [&"camera_zoom_cycle", "Distanza camera"], [&"pause", "Pausa"]], true)
+		[&"terrain_mode", "Cambia modo"], [&"weapon_aim_mode", "Mira auto/manuale"], [&"camera_zoom_cycle", "Distanza camera"], [&"pause", "Pausa"]], true)
 	_controls.modulate.a = 0.85
 	root.add_child(_controls)
 	_controls.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT, Control.PRESET_MODE_MINSIZE, 24)
@@ -446,6 +447,16 @@ func _set_gauge_mode(mode: int, cost: int) -> void:
 	_update_gauge_text()
 
 
+## Mira della chiodatrice (D-089) nell'indicatore del tool.
+func set_aim_mode(manual: bool) -> void:
+	_aim_label.text = "MIRA MANUALE" if manual else "MIRA AUTO"
+	_aim_label.add_theme_color_override(&"font_color", Color("8fd0ff") if manual else UiPalette.TEXT_MUTED)
+
+
+func aim_text() -> String:
+	return _aim_label.text
+
+
 func gauge_text() -> String:
 	return "%s | %s | %s" % [_gauge_mode.text, _pack_label.text, _gauge_hint.text]
 
@@ -518,8 +529,15 @@ func _build_tool_gauge(root: Control) -> void:
 	_gauge.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM, Control.PRESET_MODE_MINSIZE, 36)
 	_gauge.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	_gauge.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	# L'etichetta dei m3 si aggiunge in mezzo (in _ready), il suggerimento in fondo.
+	# L'etichetta dei m3 si aggiunge in mezzo (in _ready), suggerimento e mira in fondo.
 	row.add_child.call_deferred(_gauge_hint)
+	_aim_label = Label.new()
+	_aim_label.name = "AimLabel"
+	_aim_label.theme_type_variation = &"HudLabel"
+	_aim_label.add_theme_font_size_override(&"font_size", 16)
+	_aim_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_aim_label.text = "MIRA AUTO"
+	row.add_child.call_deferred(_aim_label)
 	_gauge.hide()
 
 

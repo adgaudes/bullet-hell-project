@@ -20,11 +20,21 @@ signal terrain_tool_rejected
 signal terrain_mode_changed(mode: int)
 ## Rampa d'uscita ritagliata nella parete di una buca (playtest O-03).
 signal escape_ramp_carved
+## Mira della chiodatrice cambiata (D-089): AimMode.AUTO o AimMode.MANUAL.
+signal aim_mode_changed(mode: int)
+
+enum AimMode { AUTO, MANUAL }
+## Dopo un colpo in mira automatica il corpo guarda il bersaglio per questo tempo (O-04).
+const SHOT_FACING_SECONDS := 0.35
+const SHOT_FACING_SPEED := 28.0
+var aim_mode := AimMode.AUTO
+var _shot_facing := Vector3.ZERO
+var _shot_facing_left := 0.0
 
 enum AimDevice { GAMEPAD, MOUSE }
 
 ## Azioni con semantica Started di Unreal: un comando per pressione.
-const STARTED_ACTIONS: Array[StringName] = [&"dash", &"terrain_tool", &"terrain_mode"]
+const STARTED_ACTIONS: Array[StringName] = [&"dash", &"terrain_tool", &"terrain_mode", &"weapon_aim_mode"]
 
 const BODY_COLOR_LINEAR := Color(1.0, 0.35, 0.02)
 const HIT_COLOR_LINEAR := Color(1.0, 0.02, 0.02)
@@ -242,6 +252,8 @@ func _run_pending_actions() -> void:
 				_start_dash()
 			&"terrain_mode":
 				_toggle_terrain_mode()
+			&"weapon_aim_mode":
+				toggle_aim_mode()
 	_pending_actions.clear()
 
 
@@ -575,7 +587,35 @@ func _set_aim_device(device: AimDevice) -> void:
 	aim_device_changed.emit(device)
 
 
+## Passa da mira automatica a manuale e viceversa (D-089), in qualsiasi momento.
+func toggle_aim_mode() -> void:
+	set_aim_mode(AimMode.MANUAL if aim_mode == AimMode.AUTO else AimMode.AUTO)
+
+
+func set_aim_mode(mode: int) -> void:
+	aim_mode = mode as AimMode
+	aim_mode_changed.emit(aim_mode)
+
+
+## Direzione planare in cui guarda il personaggio (quella della mira manuale).
+func facing_direction() -> Vector3:
+	var forward := -global_basis.z
+	forward.y = 0.0
+	return forward.normalized() if not forward.is_zero_approx() else Vector3.FORWARD
+
+
+## Un colpo automatico verso [param direction]: il corpo si gira verso il bersaglio, cosi il
+## chiodo esce dalla canna e non dalle spalle (playtest O-04).
+func face_shot(direction: Vector3) -> void:
+	_shot_facing = Vector3(direction.x, 0.0, direction.z).normalized()
+	_shot_facing_left = SHOT_FACING_SECONDS
+
+
 func _apply_facing_rotation(aim_input: Vector2, delta: float) -> void:
+	if _shot_facing_left > 0.0 and not _shot_facing.is_zero_approx():
+		_shot_facing_left -= delta
+		rotation.y = _interp_yaw(rotation.y, atan2(-_shot_facing.x, -_shot_facing.z), delta, SHOT_FACING_SPEED)
+		return
 	var direction := Vector3.ZERO
 	var interp_speed := tuning.gamepad_aim_rotation_interp_speed
 

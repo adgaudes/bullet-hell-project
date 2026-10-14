@@ -77,7 +77,7 @@ func _test_screens() -> void:
 	root.add_child(hud)
 	await process_frame
 	var in_hud := _find_prompts(hud)
-	_check(in_hud.size() == 1 and in_hud[0].vertical and in_hud[0].prompt_count() == 5, "l'HUD elenca i cinque comandi di gioco")
+	_check(in_hud.size() == 1 and in_hud[0].vertical and in_hud[0].prompt_count() == 6, "l'HUD elenca i sei comandi di gioco (con la mira, D-089)")
 	hud.queue_free()
 	menu.queue_free()
 	await process_frame

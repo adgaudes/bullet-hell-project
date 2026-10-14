@@ -42,6 +42,7 @@ func _initialize() -> void:
 	await _test_contact_damage()
 	await _test_hit_shove_and_dash()
 	await _test_pit_escape_ramp()
+	await _test_aim_modes()
 	await _test_weapon_kills_and_drops_xp()
 	await _test_xp_follows_relief()
 	await _test_wall_blocks_line_of_fire()
@@ -276,6 +277,47 @@ func _test_pit_escape_ramp() -> void:
 	_check(_player.escape_ramps >= 1, "spingendo contro la parete si ritaglia una rampa (%d)" % _player.escape_ramps)
 	_check(_player.global_position.x > start_x + 2.5, "il giocatore esce dalla buca (%.1f m)" % (_player.global_position.x - start_x))
 	_place_player(Vector3.ZERO)
+
+
+## D-089 e playtest O-04: mira automatica e manuale commutabili; il chiodo parte dalla canna.
+func _test_aim_modes() -> void:
+	print("aim modes")
+	_clear_enemies()
+	_place_player(Vector3.ZERO)
+	_player.set_aim_mode(PlayerCharacter.AimMode.AUTO)
+	_check(not _weapon.manual_aim and _run.hud.aim_text() == "MIRA AUTO", "si parte in mira automatica")
+	# Nemico a est, il giocatore guarda a nord. L'arma e spenta nei test: la si accende qui.
+	_director.set_physics_process(false)
+	_weapon.set_physics_process(true)
+	_player.rotation.y = 0.0
+	_director.spawn_at(Vector3(5.0, 0.0, 0.0))
+	_weapon._cooldown = 0.0
+	await _frames(3)
+	_check(_weapon.last_fire_direction.x > 0.9, "in automatico spara verso il nemico (%s)" % str(_weapon.last_fire_direction))
+	await _frames(10)
+	_check(_player.facing_direction().x > 0.7, "e il corpo si gira verso il bersaglio (%s)" % str(_player.facing_direction()))
+	var origin := _weapon.muzzle_toward(Vector3.RIGHT)
+	_check(origin.x > _player.global_position.x + 0.4 and origin.y > _player.global_position.y + 0.1, "il chiodo parte dalla canna, davanti e piu in alto del busto")
+	_player.toggle_aim_mode()
+	_check(_weapon.manual_aim and _run.hud.aim_text() == "MIRA MANUALE", "il tasto passa alla mira manuale")
+	var settings := root.get_node_or_null(^"GameSettings") as GameSettingsService
+	_check(settings == null or settings.manual_aim, "la scelta resta nelle impostazioni")
+	# In manuale spara dove guarda, anche se il nemico e altrove.
+	_clear_enemies()
+	_director.spawn_at(Vector3(5.0, 0.0, 0.0))
+	_player._shot_facing_left = 0.0
+	_player.rotation.y = 0.0
+	_weapon._cooldown = 0.0
+	await _frames(2)
+	_player.rotation.y = 0.0
+	_weapon._cooldown = 0.0
+	await physics_frame
+	_check(_weapon.last_fire_direction.z < -0.9, "in manuale spara dove guarda (%s)" % str(_weapon.last_fire_direction))
+	_player.toggle_aim_mode()
+	_check(not _weapon.manual_aim, "e si torna all'automatica")
+	_weapon.set_physics_process(false)
+	_director.set_physics_process(true)
+	_clear_enemies()
 
 
 ## Audit P-01: i frammenti di esperienza stanno sopra il rilievo, non a quota fissa: su un

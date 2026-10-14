@@ -20,6 +20,11 @@ const MAX_CANDIDATES := 8
 @export var director: EnemyDirector
 ## Altezza di sparo rispetto all'origine di chi spara.
 @export var muzzle_height := 0.0
+## Distanza della canna dall'origine, lungo la direzione del colpo (O-04).
+@export var muzzle_forward := 0.0
+## Mira manuale (D-089): spara dove guarda chi spara (`facing_direction()`), quando c'e un
+## nemico in portata; altrimenti al nemico piu vicino, girando chi spara verso di lui.
+@export var manual_aim := false
 @export var fire_interval := 0.5
 @export var weapon_range := 9.0
 @export var damage := 1
@@ -54,6 +59,13 @@ func _physics_process(delta: float) -> void:
 	_cooldown -= delta
 	if _cooldown > 0.0:
 		return
+	if manual_aim and shooter.has_method(&"facing_direction"):
+		if director.enemies_near(muzzle(), weapon_range).is_empty():
+			_cooldown = BLOCKED_RETRY
+			return
+		_cooldown = fire_interval
+		_fire_toward(shooter.facing_direction())
+		return
 	var target := find_target()
 	if target == null:
 		_cooldown = BLOCKED_RETRY
@@ -64,6 +76,11 @@ func _physics_process(delta: float) -> void:
 
 func muzzle() -> Vector3:
 	return shooter.global_position + Vector3(0.0, muzzle_height, 0.0)
+
+
+## Punto da cui parte il chiodo: la canna, davanti a chi spara nella direzione del colpo.
+func muzzle_toward(direction: Vector3) -> Vector3:
+	return muzzle() + direction * muzzle_forward
 
 
 ## Nemico vivo piu vicino entro la portata con linea di tiro libera, o null.
@@ -92,8 +109,15 @@ func nail_count() -> int:
 
 
 func _fire_at(target: Enemy) -> void:
-	var origin := muzzle()
-	var forward := Vector3(target.global_position.x - origin.x, 0.0, target.global_position.z - origin.z).normalized()
+	var base := muzzle()
+	var forward := Vector3(target.global_position.x - base.x, 0.0, target.global_position.z - base.z).normalized()
+	if shooter.has_method(&"face_shot"):
+		shooter.face_shot(forward)
+	_fire_toward(forward)
+
+
+func _fire_toward(forward: Vector3) -> void:
+	var origin := muzzle_toward(forward)
 	last_fire_direction = forward
 	var count := maxi(projectiles, 1)
 	for i in count:

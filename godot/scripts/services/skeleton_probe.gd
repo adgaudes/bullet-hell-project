@@ -13,7 +13,7 @@ const UNREAL_UNITS_TO_METERS := 0.01
 const EXPECTED_ACTIONS: Array[StringName] = [
 	&"move_forward", &"move_back", &"move_left", &"move_right",
 	&"aim_up", &"aim_down", &"aim_left", &"aim_right",
-	&"dash", &"terrain_tool", &"terrain_mode", &"pause",
+	&"dash", &"terrain_tool", &"terrain_mode", &"pause", &"weapon_aim_mode",
 ]
 ## Azioni dei menu: in Godot 4.7 nascono senza pulsanti joypad, il progetto le
 ## ridefinisce con A e B (trappola in GODOT_WORKFLOW.md). Se l'editor rigenera
