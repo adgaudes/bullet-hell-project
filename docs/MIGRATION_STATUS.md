@@ -27,9 +27,11 @@ Esito **Modifica**: 14 osservazioni (salute, terra senza indicatore, buca senza 
 - rovine: muri a moduli con la cima spezzata (`RuinModules`), texture CC0 con normal map in triplanare; `tools/textures/fetch_wall_textures.py`;
 - frecce viola spente; cespugli e auto meno verdi.
 
+**Secondo giro (14 ottobre, notte):** menu 3D al tramonto (`MenuDiorama`), Officina a carte, finestre vere e chiome piene; blocco di gioco D-091 (vita 10 e spinta, terra nel HUD, rampa d'uscita, mira commutabile V/rotella/R3, impostazioni a schede).
+
 ## Prossimo passo (agente)
 
-0. **Resto del blocco grafica:** sfondo del menu (O-12), Officina (O-13), alberi e finestre delle rovine, ProtonScatter (approvato in D-090, non ancora installato). Poi blocco 1 (salute, terra, buca, mira commutabile D-089, impostazioni), 3 (armi), 4 (musica: aspetta l'ascolto del proprietario).
+0. **Blocchi 1 e 2 del playtest fatti** (grafica, menu, Officina, salute, terra, buca, mira, impostazioni; D-090, D-091). Prossimo: **blocco 3, armi (O-05)**, da progettare col proprietario prima del codice; poi la musica scelta da lui (candidati in `Videogame-assets/music-candidates/`). ProtonScatter approvato (D-090) ma non installato: serve quando si spargono oggetti.
 1. **Voci rimaste dell'audit**, nell'ordine della sua sezione 1:
    - PF-03, caricamento: prato sul rilievo 850 ms, pittura del terreno 460 ms;
    - T-01 e T-02: collisione copiata dal campo, ferrovia allineata;
@@ -45,7 +47,7 @@ Esito **Modifica**: 14 osservazioni (salute, terra senza indicatore, buca senza 
 
 ## Cosa aspetta il proprietario
 
-1. **Musica:** ascoltare la rosa in `docs/AUDIO/MUSIC_SHORTLIST_2026-10-14.md` e dire quali brani tenere (D-089). **Grafica:** giudicare il blocco grafica nella nuova build (catture in `output/lighting/`).
+1. **Musica:** ascoltare i candidati in `C:\Users\adgau\Desktop\Videogame-assets\music-candidates\` (LEGGIMI.md con licenze) e dire quali tenere (D-089). **Grafica:** giudicare il blocco grafica nella nuova build (catture in `output/lighting/`).
 2. **Giudizio sull'Ingegnere** (D-088): catture in `../Videogame-engineer/output/engineer/`. Dopo il si si integra.
 3. **Playtest dei due livelli:** primo giro fatto il 14 ottobre (livello 1, tastiera, breve). Restano boss, notte, ferrovia e controller: promemoria in `docs/PLAYTESTS/ARENA_RUN_LEVEL_2026-10-07.md`.
 4. **Misura sul Steam Deck** con la build in `LocalBuilds/` e il Debug Menu (F3).
@@ -56,6 +58,9 @@ Esito **Modifica**: 14 osservazioni (salute, terra senza indicatore, buca senza 
 6. **Catture ancora da giudicare** (identita, restyling, passate artistiche): elenco nella roadmap, sezione "Stato operativo".
 
 ## Rischi e limiti noti
+
+- **Gate, 14 ottobre notte:** `run_progression_tests` ha passato i controlli ma il processo non si e chiuso entro 300 s (exit 124) una volta su quattro; da sola esce sempre in 1 s. Blocco intermittente all'uscita di Godot, da tenere d'occhio.
+- **Steam Deck:** costo del prato a particelle e del menu 3D non misurato.
 
 - **Steam Deck mai misurato.** CPU: il direttore costa 2,6 ms per passo, e a 60 fps i passi sono due per frame. GPU: le stime vanno da 25 a 40 fps senza ulteriori ottimizzazioni.
 - **Registro minori di D-088** in `.superpowers/` (ignorato da Git): va portato in `docs/` all'integrazione (D-03).
