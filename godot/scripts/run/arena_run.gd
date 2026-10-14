@@ -1106,6 +1106,15 @@ func _setup_aim_mode() -> void:
 	if not player.aim_mode_changed.is_connected(_on_aim_mode_changed):
 		player.aim_mode_changed.connect(_on_aim_mode_changed)
 	player.set_aim_mode(PlayerCharacter.AimMode.MANUAL if settings != null and settings.manual_aim else PlayerCharacter.AimMode.AUTO)
+	# Cambiata dalle Impostazioni in pausa: vale subito.
+	if settings != null and not settings.changed.is_connected(_on_settings_aim):
+		settings.changed.connect(_on_settings_aim)
+
+
+func _on_settings_aim() -> void:
+	var settings := get_node_or_null(^"/root/GameSettings") as GameSettingsService
+	if settings != null and weapon != null and settings.manual_aim != weapon.manual_aim:
+		player.set_aim_mode(PlayerCharacter.AimMode.MANUAL if settings.manual_aim else PlayerCharacter.AimMode.AUTO)
 
 
 func _on_aim_mode_changed(mode: int) -> void:

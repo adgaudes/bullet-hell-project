@@ -4,6 +4,10 @@ extends PanelContainer
 ## Dal restyling 2026-10-11: preset grafico in testa, opzioni di qualita una a una (una
 ## modifica porta il preset a Personalizzato), limite di fps fino a 240 e Illimitato,
 ## contenuto scorrevole che segue il focus.
+## Dal playtest del 14 ottobre 2026 (O-11): tre schede (Grafica, Audio, Controlli) al posto
+## di una lista unica, etichette centrate accanto ai menu, interruttori in colonna con le
+## altre righe, mira manuale della chiodatrice (D-089). Le schede si costruiscono qui sopra
+## le righe della scena: nomi unici e percorsi restano quelli di prima.
 
 signal back_requested
 
@@ -32,6 +36,13 @@ signal back_requested
 @onready var _back_button: Button = %BackButton
 @onready var _settings: GameSettingsService = get_node(^"/root/GameSettings")
 
+const TABS: Array[Array] = [["Grafica", &"GraphicsHeader"], ["Audio", &"AudioHeader"], ["Controlli", &"ControlsHeader"]]
+const LABEL_WIDTH := 300.0
+var _tab_buttons: Array[Button] = []
+var _tab_rows: Array[Array] = [[], [], []]
+var current_tab := 0
+var _manual_aim_check: CheckButton
+
 const RENDER_SCALES: Array[float] = [0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
 const PRESET_LABELS: Array[String] = ["Steam Deck", "Basso", "Medio", "Alto (predefinito)", "Massimo", "Personalizzato"]
 
@@ -59,12 +70,136 @@ func _ready() -> void:
 	_invert_x.toggled.connect(_settings.set_invert_aim_x)
 	_invert_y.toggled.connect(_settings.set_invert_aim_y)
 	_back_button.pressed.connect(func(): back_requested.emit())
+	_build_tabs()
+
+
+## Righe in colonna e schede (O-11).
+func _build_tabs() -> void:
+	var content: VBoxContainer = %Content
+	# La mira manuale va nei Controlli, prima delle inversioni.
+	_manual_aim_check = CheckButton.new()
+	_manual_aim_check.name = "ManualAim"
+	_manual_aim_check.text = "Mira manuale della chiodatrice"
+	_manual_aim_check.custom_minimum_size = Vector2(0, 40)
+	content.add_child(_manual_aim_check)
+	content.move_child(_manual_aim_check, _invert_x.get_index())
+	_manual_aim_check.toggled.connect(_settings.set_manual_aim)
+	for check: CheckButton in [_volumetric_check, _fsr_check, _manual_aim_check, _invert_x, _invert_y]:
+		_wrap_check(content, check)
+	for row in content.get_children():
+		if row is HBoxContainer:
+			_align_row(row)
+	# Righe per scheda: tutto cio che sta fra un'intestazione e la successiva.
+	var section := -1
+	for child in content.get_children():
+		for i in TABS.size():
+			if child.name == TABS[i][1]:
+				section = i
+		if child == _back_button or child.name == &"Title" or section < 0:
+			continue
+		_tab_rows[section].append(child)
+	var bar := HBoxContainer.new()
+	bar.name = "Tabs"
+	bar.add_theme_constant_override(&"separation", 8)
+	content.add_child(bar)
+	content.move_child(bar, content.get_node(^"Title").get_index() + 1)
+	var group := ButtonGroup.new()
+	for i in TABS.size():
+		var tab := Button.new()
+		tab.name = "Tab%d" % i
+		tab.text = TABS[i][0]
+		tab.theme_type_variation = &"MainButton"
+		tab.toggle_mode = true
+		tab.button_group = group
+		tab.custom_minimum_size = Vector2(0, 46)
+		tab.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		tab.pressed.connect(show_tab.bind(i))
+		bar.add_child(tab)
+		_tab_buttons.append(tab)
+	show_tab(0)
+	get_viewport().gui_focus_changed.connect(_on_focus_changed)
+
+
+## Se il focus arriva su una riga di un'altra scheda (mouse, codice), si passa a quella.
+func _on_focus_changed(control: Control) -> void:
+	if control == null or not is_visible_in_tree():
+		return
+	for i in _tab_rows.size():
+		if i == current_tab:
+			continue
+		for row: Control in _tab_rows[i]:
+			if row == control or row.is_ancestor_of(control):
+				show_tab(i)
+				return
+
+
+## Un interruttore diventa una riga come le altre: etichetta a sinistra, levetta a destra.
+func _wrap_check(content: VBoxContainer, check: CheckButton) -> void:
+	var row := HBoxContainer.new()
+	row.name = "%sRow" % check.name
+	content.add_child(row)
+	content.move_child(row, check.get_index())
+	var label := Label.new()
+	label.name = "Label"
+	label.text = check.text
+	row.add_child(label)
+	check.text = ""
+	check.reparent(row, false)
+	check.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	check.alignment = HORIZONTAL_ALIGNMENT_RIGHT
+
+
+## Etichetta larga uguale per tutte le righe, centrata in altezza sul controllo e a capo
+## se lunga: prima stava in alto e le piu lunghe spingevano il menu a destra (O-11).
+func _align_row(row: HBoxContainer) -> void:
+	row.add_theme_constant_override(&"separation", 16)
+	var label := row.get_node_or_null(^"Label") as Label
+	if label == null:
+		return
+	label.custom_minimum_size = Vector2(LABEL_WIDTH, 0)
+	label.size_flags_horizontal = Control.SIZE_FILL
+	label.size_flags_vertical = Control.SIZE_FILL
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+
+
+## Mostra le righe della scheda [param index] e nasconde le altre.
+func show_tab(index: int) -> void:
+	current_tab = clampi(index, 0, TABS.size() - 1)
+	for i in _tab_rows.size():
+		for node: Control in _tab_rows[i]:
+			# Intestazioni e linee le sostituiscono le schede.
+			var is_header := String(node.name).ends_with("Header") or String(node.name).ends_with("Rule")
+			node.visible = i == current_tab and not is_header
+	if current_tab < _tab_buttons.size():
+		_tab_buttons[current_tab].set_pressed_no_signal(true)
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if not is_visible_in_tree():
+		return
+	var step := 0
+	if event is InputEventJoypadButton and event.pressed:
+		if event.button_index == JOY_BUTTON_LEFT_SHOULDER:
+			step = -1
+		elif event.button_index == JOY_BUTTON_RIGHT_SHOULDER:
+			step = 1
+	elif event is InputEventKey and event.pressed and not event.echo:
+		if event.keycode == KEY_PAGEUP:
+			step = -1
+		elif event.keycode == KEY_PAGEDOWN:
+			step = 1
+	if step != 0:
+		get_viewport().set_input_as_handled()
+		show_tab(posmod(current_tab + step, TABS.size()))
+		_tab_buttons[current_tab].grab_focus()
 
 
 ## Sincronizza i controlli e mette il focus sulla prima opzione.
 func open() -> void:
 	_sync_from_settings()
 	show()
+	show_tab(0)
 	_preset_option.grab_focus()
 
 
@@ -116,6 +251,8 @@ func _sync_from_settings() -> void:
 	_camera_option.select(_settings.camera_distance)
 	_invert_x.set_pressed_no_signal(_settings.invert_aim_x)
 	_invert_y.set_pressed_no_signal(_settings.invert_aim_y)
+	if _manual_aim_check != null:
+		_manual_aim_check.set_pressed_no_signal(_settings.manual_aim)
 
 
 ## Un preset riscrive tutte le opzioni di qualita: si risincronizzano le righe.

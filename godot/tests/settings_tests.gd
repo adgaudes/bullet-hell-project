@@ -209,6 +209,12 @@ func _test_volume_sliders() -> void:
 	var master_label: Label = pause_menu.get_node("%SettingsPanel").get_node("%MasterVolumeValue")
 	_check(is_equal_approx(master.value, 1.0) and is_equal_approx(sfx.value, 0.8), "i cursori mostrano i valori correnti")
 	_check(master.focus_mode == Control.FOCUS_ALL and sfx.focus_mode == Control.FOCUS_ALL, "i cursori prendono il focus")
+	# I volumi stanno nella scheda Audio (playtest O-11): ci si passa con il dorsale destro.
+	_send_joypad_button(JOY_BUTTON_RIGHT_SHOULDER, true)
+	await process_frame
+	_send_joypad_button(JOY_BUTTON_RIGHT_SHOULDER, false)
+	await process_frame
+	_check((pause_menu.get_node("%SettingsPanel") as SettingsMenu).current_tab == 1, "il dorsale destro passa alla scheda Audio")
 	master.grab_focus()
 	_send_joypad_button(JOY_BUTTON_DPAD_LEFT, true)
 	await process_frame
@@ -414,6 +420,22 @@ func _check_settings_menu_rows(pause_menu: Node) -> void:
 	_check(volumetric.button_pressed == settings.volumetric_fog, "la spunta della volumetrica segue il servizio")
 	_check(menu.get_node("%Content").get_parent() is ScrollContainer, "il contenuto scorre")
 	settings.set_preset(before)
+	# Playtest O-11: tre schede; ogni scheda mostra solo le sue righe; mira manuale nei Controlli.
+	var panel := menu as SettingsMenu
+	panel.show_tab(0)
+	_check(menu.get_node("%PresetOption").is_visible_in_tree() == menu.is_visible_in_tree() and not menu.get_node("%MasterVolume").get_parent().visible, "scheda Grafica: niente volumi")
+	panel.show_tab(1)
+	_check(menu.get_node("%MasterVolume").get_parent().visible and not menu.get_node("%PresetOption").get_parent().visible, "scheda Audio: solo i volumi")
+	panel.show_tab(2)
+	var aim: CheckButton = menu.find_child("ManualAim", true, false)
+	_check(aim != null and aim.get_parent().visible and not menu.get_node("%MasterVolume").get_parent().visible, "scheda Controlli con la mira manuale")
+	var was := settings.manual_aim
+	aim.button_pressed = not was
+	_check(settings.manual_aim == not was, "la spunta della mira cambia l'impostazione")
+	settings.set_manual_aim(was)
+	var volumetric_row := menu.get_node("%VolumetricCheck").get_parent()
+	_check(volumetric_row is HBoxContainer and (volumetric_row.get_node("Label") as Label).text.begins_with("Nebbia"), "gli interruttori stanno in colonna con un'etichetta")
+	panel.show_tab(0)
 
 
 ## Review finale del restyling: le suite non devono toccare il file reale; il Deck si
