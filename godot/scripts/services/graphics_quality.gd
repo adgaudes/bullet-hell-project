@@ -63,7 +63,7 @@ static func apply(s: GameSettingsService, environment: Environment, sun: Directi
 	if environment == null:
 		return
 	environment.ssao_enabled = s.ssao_quality > 0
-	environment.ssao_intensity = 1.0 if s.ssao_quality == 1 else 1.6
+	environment.ssao_intensity = 1.6 if s.ssao_quality == 1 else 2.4
 	# La qualita dell'SSAO e globale del renderer: bassa = pochi campioni a meta risoluzione.
 	if s.ssao_quality == 1:
 		RenderingServer.environment_set_ssao_quality(RenderingServer.ENV_SSAO_QUALITY_VERY_LOW, true, 0.5, 2, 50.0, 300.0)
@@ -75,6 +75,9 @@ static func apply(s: GameSettingsService, environment: Environment, sun: Directi
 		environment.sdfgi_cascades = 4
 		environment.sdfgi_min_cell_size = 0.3
 		environment.sdfgi_use_occlusion = true
+		# Playtest del 14 ottobre (O-07): a energia piena il rimbalzo del cielo azzurro
+		# riempiva le ombre di blu e le schiariva.
+		environment.sdfgi_energy = 0.6
 	environment.glow_enabled = s.glow_quality > 0
 	environment.glow_intensity = 0.3 if s.glow_quality == 1 else 0.55
 	# Basso: un solo livello (meno passate di sfocatura); alto: tre livelli come l'arena.
@@ -88,6 +91,8 @@ static func apply(s: GameSettingsService, environment: Environment, sun: Directi
 		environment.set_glow_level(5, 0.4)
 	environment.volumetric_fog_enabled = s.volumetric_fog
 	if s.volumetric_fog:
-		environment.volumetric_fog_density = 0.012
+		# Playtest del 14 ottobre (O-07): a 0,012 la nebbia velava di latte tutto il campo
+		# visto dalla camera (15-25 m d'aria) e schiariva le ombre; ora resta una foschia.
+		environment.volumetric_fog_density = 0.003
 		environment.volumetric_fog_albedo = Color(0.95, 0.85, 0.7)
 		environment.volumetric_fog_anisotropy = 0.6

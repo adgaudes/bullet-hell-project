@@ -125,6 +125,8 @@ Asset Blender (D-037): `"/c/Program Files/Blender Foundation/Blender 5.2/blender
 
 Catture multiple dell'arena (vista di gioco, panoramica, nord, ovest, nord-est), con finestra reale: `godot_console --path godot --resolution 1280x800 --script res://tests/tools/capture_arena.gd -- --out=../output/arena`. Gli script in `tests/tools/` non sono suite: il gate non li esegue.
 
+Luce del quartiere a confronto (playtest del 14 ottobre, O-07): `godot_console --path godot --resolution 1280x800 --fixed-fps 60 --quit-after 4000 --script res://tests/tools/capture_lighting.gd -- --out=../output/lighting --preset=4` cattura la stessa inquadratura con tutto acceso e senza ombre, SSAO, GI e nebbia volumetrica (`p<preset>_*.png`). Trappola verificata: sul preset Massimo la nebbia volumetrica a densita 0,012 velava tutto il campo (la camera guarda attraverso 15-25 m d'aria) e schiariva le ombre; il Massimo rendeva peggio dell'Alto.
+
 Benchmark del campo di percorso su un'arena sintetica grande (D-039): `godot_console --headless --path godot --fixed-fps 60 --script res://tests/tools/benchmark_path_field.gd -- --extent=240 --walls=400 --window=64` (righe `BENCH`; con `extent` fino a 240 confronta anche il campo intero).
 
 Catture della run (combattimento e level-up): `godot_console --path godot --resolution 1280x800 --fixed-fps 60 --script res://tests/tools/capture_run.gd -- --out=../output/run`.

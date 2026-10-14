@@ -1262,7 +1262,7 @@ func _add_sun() -> void:
 	var direction := Vector3(0.78, -0.50, -0.35).normalized()
 	sun.basis = Basis.looking_at(direction, Vector3.UP)
 	sun.light_color = SUN_COLOR
-	sun.light_energy = 1.6
+	sun.light_energy = 1.9
 	sun.light_angular_distance = 1.5
 	sun.shadow_enabled = true
 	sun.shadow_blur = 1.2
@@ -1288,7 +1288,9 @@ func _add_environment() -> void:
 	# Ambiente freddo a colore fisso: le ombre del sole caldo diventano blu-viola.
 	environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	environment.ambient_light_color = AMBIENT_COLOR
-	environment.ambient_light_energy = 0.55
+	# Playtest del 14 ottobre (O-07): a 0,55 l'ambiente piatto schiariva le ombre fino a
+	# farle sparire; il contrasto lo da il sole piu forte.
+	environment.ambient_light_energy = 0.4
 	environment.reflected_light_source = Environment.REFLECTION_SOURCE_SKY
 	environment.tonemap_mode = Environment.TONE_MAPPER_ACES
 	environment.tonemap_white = 4.0
@@ -1304,9 +1306,13 @@ func _add_environment() -> void:
 	# La skyline lontana prende il colore del cielo (D-068).
 	environment.fog_aerial_perspective = 0.45
 	environment.ssao_enabled = true
-	environment.ssao_radius = 3.0
-	environment.ssao_intensity = 1.6
-	environment.ssao_light_affect = 0.15
+	# Occlusione di contatto (O-07): raggio corto e curva piu dura, cosi si vede nei piedi
+	# dei muri, nelle buche e sotto i prop, e tocca anche un po' la luce diretta.
+	environment.ssao_radius = 1.4
+	environment.ssao_intensity = 2.4
+	environment.ssao_power = 1.6
+	environment.ssao_detail = 0.7
+	environment.ssao_light_affect = 0.3
 	# Bagliore a piu livelli, in soft light, solo su emissive e alte luci calde.
 	environment.glow_enabled = true
 	environment.glow_intensity = 0.55
