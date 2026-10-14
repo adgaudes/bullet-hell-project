@@ -105,7 +105,8 @@ func _exit_tree() -> void:
 	# Uscita dal gioco con una scrittura ancora in attesa: non si perde.
 	_flush_save()
 	if settings_path.begins_with("user://settings_test_"):
-		DirAccess.remove_absolute(ProjectSettings.globalize_path(settings_path))
+		for suffix: String in ["", ".tmp", ".bak"]:
+			DirAccess.remove_absolute(ProjectSettings.globalize_path(settings_path + suffix))
 
 
 ## Ripristina i valori iniziali (preset Alto) senza salvare automaticamente.
@@ -135,13 +136,17 @@ func load_settings(path_override: String = "") -> Error:
 	if not path_override.is_empty():
 		settings_path = path_override
 	reset_to_defaults()
-	var config := ConfigFile.new()
-	var error := config.load(settings_path)
+	# Ripiego su .tmp e .bak e copia del file illeggibile (audit S-01/S-02, `ConfigIO`).
+	var result := ConfigIO.load_recovering(settings_path)
+	var error: Error = result.error
 	if error == ERR_FILE_NOT_FOUND:
 		_apply_deck_if_unchosen()
 		return OK
 	if error != OK:
 		return error
+	var config: ConfigFile = result.config
+	if result.source != "main":
+		print("PROTOTYPE01_SETTINGS_RECOVERED from=%s" % result.source)
 	fps_cap = _validated_int(config.get_value("graphics", "fps_cap", fps_cap), FPS_CAPS, DEFAULT_FPS_CAP)
 	vsync_mode = _validated_int(config.get_value("graphics", "vsync_mode", vsync_mode), VSYNC_MODES, DEFAULT_VSYNC_MODE)
 	msaa_3d = _validated_int(config.get_value("graphics", "msaa_3d", msaa_3d), MSAA_MODES, DEFAULT_MSAA_3D)

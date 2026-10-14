@@ -30,6 +30,9 @@ func _initialize() -> void:
 	await _test_player_sculpt_signals()
 	_test_soil_pack()
 	await _frames(2)
+	# File di prova nella cartella utente del gioco: non restano (audit K-11).
+	for file: String in ["user://rect_base_test.bin", "user://rect_base_v2.bin"]:
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(file))
 	print("PROTOTYPE01_TESTS %s failures=%d" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
 

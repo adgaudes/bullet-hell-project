@@ -19,6 +19,12 @@ func _initialize() -> void:
 	await _test_aim_inversion()
 	_test_graphics_presets()
 	_test_isolation_and_deck()
+	# Le prove salvano piu volte: restano .bak e .tmp oltre al file (audit K-11).
+	var own := "settings_test_%d.cfg" % OS.get_process_id()
+	var dir := DirAccess.open("user://")
+	for file in dir.get_files():
+		if file.begins_with("settings_test_") and not file.begins_with(own):
+			dir.remove(file)
 	print("PROTOTYPE01_TESTS %s failures=%d" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -91,9 +97,19 @@ func _test_persistence() -> void:
 	_check(loaded.window_mode == GameSettingsScript.WindowModeChoice.BORDERLESS_FULLSCREEN, "round trip modalita finestra")
 	_check(loaded.invert_aim_x and loaded.invert_aim_y, "round trip inversione assi")
 	_check(is_equal_approx(loaded.master_volume, 0.35) and is_equal_approx(loaded.sfx_volume, 0.6), "round trip volumi")
-	var absolute_path := ProjectSettings.globalize_path(temp_path)
-	if FileAccess.file_exists(temp_path):
-		DirAccess.remove_absolute(absolute_path)
+	# Audit S-01/S-02: un file illeggibile non fa perdere le impostazioni, si recupera il .bak.
+	saved.fps_cap = 30
+	saved.save_settings(temp_path)
+	var garbage := FileAccess.open(temp_path, FileAccess.WRITE)
+	garbage.store_string("[graphics
+fps_cap = = =
+")
+	garbage.close()
+	_check(loaded.load_settings(temp_path) == OK and loaded.fps_cap == 144, "file illeggibile: impostazioni recuperate dal .bak (%d)" % loaded.fps_cap)
+	var dir := DirAccess.open("user://")
+	for file in dir.get_files():
+		if file.begins_with(temp_path.get_file()):
+			dir.remove(file)
 	saved.free()
 	loaded.free()
 

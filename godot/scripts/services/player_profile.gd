@@ -29,8 +29,17 @@ var completed_levels: PackedStringArray = []
 var last_save_error := OK
 ## Versione letta dal file (0 = file senza versione o assente).
 var loaded_version := 0
+## Da dove viene il profilo caricato: "main", "tmp" o "bak" (recupero, audit S-01), "" se nuovo.
+var load_source := ""
+## Copia del file illeggibile trovata al caricamento (audit S-02), oppure "".
+var corrupt_copy := ""
 ## Upgrade con id non in catalogo (file di una versione diversa): conservati tali e quali.
 var _unknown_upgrades: Dictionary[String, int] = {}
+## Chiavi di [profile] e sezioni intere che questa versione non conosce (S-03): si riscrivono.
+var _unknown_profile_keys: Dictionary[String, Variant] = {}
+var _unknown_sections: Dictionary[String, Dictionary] = {}
+
+const KNOWN_PROFILE_KEYS: Array[String] = ["version", "scrap", "runs", "victories", "levels_unlocked", "completed_levels"]
 
 
 func _init() -> void:
@@ -54,7 +63,12 @@ func reset() -> void:
 	victories = 0
 	levels_unlocked = 1
 	completed_levels.clear()
+	loaded_version = 0
+	load_source = ""
+	corrupt_copy = ""
 	_unknown_upgrades.clear()
+	_unknown_profile_keys.clear()
+	_unknown_sections.clear()
 
 
 func level_of(id: StringName) -> int:
@@ -108,19 +122,28 @@ func bank_run(scrap_out: int, victory: bool, level_index := 0, level_id: StringN
 	return error
 
 
-## Carica un file; valori assenti o non validi diventano quelli di un profilo nuovo.
+## Carica un file; valori assenti o non validi diventano quelli di un profilo nuovo. Se il
+## file manca o non si legge si recupera l'ultimo salvataggio buono (`ConfigIO`); un file
+## illeggibile resta copiato a parte, cosi il prossimo salvataggio non lo distrugge.
 func load_profile(path_override: String = "") -> Error:
 	if not path_override.is_empty():
 		profile_path = path_override
 	reset()
 	if profile_path.is_empty():
 		return OK
-	var config := ConfigFile.new()
-	var error := config.load(profile_path)
+	var result := ConfigIO.load_recovering(profile_path)
+	corrupt_copy = result.corrupt_copy
+	if not corrupt_copy.is_empty():
+		print("PROTOTYPE01_PROFILE_CORRUPT copy=%s" % corrupt_copy)
+	var error: Error = result.error
 	if error == ERR_FILE_NOT_FOUND:
 		return OK
 	if error != OK:
 		return error
+	var config: ConfigFile = result.config
+	load_source = result.source
+	if load_source != "main":
+		print("PROTOTYPE01_PROFILE_RECOVERED from=%s" % load_source)
 	loaded_version = _validated_count(config.get_value("profile", "version", 0))
 	scrap = _validated_count(config.get_value("profile", "scrap", 0))
 	runs = _validated_count(config.get_value("profile", "runs", 0))
@@ -140,6 +163,17 @@ func load_profile(path_override: String = "") -> Error:
 		for key in config.get_section_keys("upgrades"):
 			if PermanentCatalog.find(StringName(key)).is_empty():
 				_unknown_upgrades[key] = _validated_count(config.get_value("upgrades", key, 0))
+	for section in config.get_sections():
+		if section == "upgrades":
+			continue
+		for key in config.get_section_keys(section):
+			if section == "profile":
+				if not KNOWN_PROFILE_KEYS.has(key):
+					_unknown_profile_keys[key] = config.get_value(section, key)
+				continue
+			if not _unknown_sections.has(section):
+				_unknown_sections[section] = {}
+			_unknown_sections[section][key] = config.get_value(section, key)
 	return OK
 
 
@@ -149,7 +183,13 @@ func save_profile(path_override: String = "") -> Error:
 	if profile_path.is_empty():
 		return OK
 	var config := ConfigFile.new()
-	config.set_value("profile", "version", VERSION)
+	for section: String in _unknown_sections:
+		for key: String in _unknown_sections[section]:
+			config.set_value(section, key, _unknown_sections[section][key])
+	for key: String in _unknown_profile_keys:
+		config.set_value("profile", key, _unknown_profile_keys[key])
+	# Un file di una versione piu alta resta tale: questa build non lo "declassa" (S-03).
+	config.set_value("profile", "version", maxi(VERSION, loaded_version))
 	config.set_value("profile", "scrap", scrap)
 	config.set_value("profile", "runs", runs)
 	config.set_value("profile", "victories", victories)

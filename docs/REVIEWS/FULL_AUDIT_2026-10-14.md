@@ -4,6 +4,8 @@
 
 **Metodo.** Cinque letture indipendenti e complete per area (terreno, navigazione e nemici; run, boss, compagno e progressione; giocatore, input, servizi e audio; interfaccia, resa e shader; test, gate, strumenti e documenti), **statiche e senza Godot**, cosi da non falsare le misure. In parallelo, **misure con Godot** (matrice di benchmark, sonde temporanee poi rimosse) e verifica a mano, sul codice o con Godot, delle voci di gravita A e delle principali M. Colonna "Verifica": **misurata** = numero preso con Godot oggi; **confermata** = riletta sul codice (o sul sorgente del motore) da chi ha scritto questo documento; **lettura** = solo il revisore d'area, non ripresa.
 
+**Stato delle correzioni** (aggiornato a ogni commit): **14 ottobre, chiuse con test:** S-01, S-02, S-03 (`ConfigIO` con `.bak`, `.tmp` conservato, recupero e copia `.corrupt`; profilo e impostazioni; chiavi e versione conservate), K-05 (allowlist per suite), K-11 (file di prova nella cartella utente), D-02. Resta per S-02 un avviso nel menu quando il profilo e stato recuperato o era illeggibile (oggi solo i marker `PROTOTYPE01_PROFILE_RECOVERED` e `PROTOTYPE01_PROFILE_CORRUPT`).
+
 Gravita: **A** = puo rovinare una run, perdere dati o rendere ingiocabile il Deck; **M** = comportamento sbagliato o costo evitabile; **B** = debito, incoerenza, caso raro.
 
 ## Esito in breve

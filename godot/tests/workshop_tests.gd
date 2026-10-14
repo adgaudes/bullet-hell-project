@@ -5,6 +5,7 @@ extends SceneTree
 const RunScene := preload("res://scenes/main/arena_run.tscn")
 const ProfileScript := preload("res://scripts/services/player_profile.gd")
 const TEMP_PATH := "user://test_profile.cfg"
+const RECOVERY_PATH := "user://test_profile_recovery.cfg"
 
 var _failures := 0
 
@@ -14,10 +15,11 @@ func _initialize() -> void:
 	_test_catalog()
 	_test_profile_rules()
 	_test_persistence()
+	_test_save_recovery()
 	await _test_new_profile_changes_nothing()
 	await _test_permanent_upgrades_apply()
 	await _test_banking_and_workshop_flow()
-	DirAccess.remove_absolute(ProjectSettings.globalize_path(TEMP_PATH))
+	_remove_profile_files(TEMP_PATH)
 	# T-12: i nodi messi in coda con queue_free vanno liberati prima di uscire, o
 	# il motore segnala istanze ObjectDB perse all'uscita.
 	await _frames(2)
@@ -131,6 +133,88 @@ func _test_persistence() -> void:
 	_check(loaded.scrap == 0 and loaded.levels.is_empty(), "file assente: profilo nuovo")
 	profile.free()
 	loaded.free()
+
+
+## Audit del 14 ottobre, S-01/S-02/S-03: su Windows la rinomina di Godot cancella la
+## destinazione prima di spostare; un salvataggio fallito o un file illeggibile non
+## devono costare il profilo.
+func _test_save_recovery() -> void:
+	print("save recovery")
+	var path := RECOVERY_PATH
+	_remove_profile_files(path)
+	var profile: PlayerProfileService = ProfileScript.new()
+	profile.profile_path = path
+	profile.scrap = 11
+	profile.save_profile()
+	profile.scrap = 12
+	profile.save_profile()
+	var bak := ConfigFile.new()
+	_check(bak.load(path + ".bak") == OK and bak.get_value("profile", "scrap", 0) == 11,
+		"il salvataggio precedente resta come copia di riserva (.bak)")
+	# Salvataggio interrotto dopo aver spostato il vero in .bak: resta solo il .tmp nuovo.
+	DirAccess.rename_absolute(ProjectSettings.globalize_path(path), ProjectSettings.globalize_path(path + ".tmp"))
+	var loaded: PlayerProfileService = ProfileScript.new()
+	_check(loaded.load_profile(path) == OK and loaded.scrap == 12 and loaded.load_source == "tmp",
+		"file principale mancante: si recupera il .tmp (%d da %s)" % [loaded.scrap, loaded.load_source])
+	# File principale illeggibile: copia conservata e recupero dal .bak.
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(path + ".tmp"))
+	var garbage := FileAccess.open(path, FileAccess.WRITE)
+	garbage.store_string("[profile
+scrap = = =
+")
+	garbage.close()
+	_check(loaded.load_profile(path) == OK and loaded.scrap == 11 and loaded.load_source == "bak",
+		"file illeggibile: si recupera il .bak (%d da %s)" % [loaded.scrap, loaded.load_source])
+	_check(not loaded.corrupt_copy.is_empty() and FileAccess.get_file_as_string(loaded.corrupt_copy).begins_with("[profile
+scrap"),
+		"il file illeggibile e conservato tale e quale (%s)" % loaded.corrupt_copy)
+	# Nessuna copia valida: profilo vuoto, ma il primo salvataggio non distrugge l'originale.
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(path + ".bak"))
+	garbage = FileAccess.open(path, FileAccess.WRITE)
+	garbage.store_string("[profile
+scrap = = =
+")
+	garbage.close()
+	_check(loaded.load_profile(path) != OK and loaded.scrap == 0 and not loaded.corrupt_copy.is_empty(), "nessuna copia valida: profilo nuovo e errore riportato")
+	var kept := loaded.corrupt_copy
+	loaded.save_profile()
+	_check(FileAccess.file_exists(kept) and FileAccess.get_file_as_string(kept).begins_with("[profile
+scrap"), "dopo il salvataggio la copia del file illeggibile c'e ancora")
+	# Rinomina finale impossibile (al posto del file c'e una cartella): il .tmp non si cancella.
+	_remove_profile_files(path)
+	DirAccess.make_dir_absolute(ProjectSettings.globalize_path(path))
+	profile.scrap = 30
+	_check(profile.save_profile() != OK and FileAccess.file_exists(path + ".tmp"), "rinomina fallita: il .tmp con i dati nuovi resta su disco")
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
+	# S-03: chiavi sconosciute di [profile] e versione piu alta sopravvivono a un salvataggio.
+	_remove_profile_files(path)
+	var future := ConfigFile.new()
+	future.set_value("profile", "version", PlayerProfileService.VERSION + 4)
+	future.set_value("profile", "scrap", 5)
+	future.set_value("profile", "prestige", 2)
+	future.set_value("cosmetics", "hat", "red")
+	future.save(path)
+	loaded.load_profile(path)
+	loaded.scrap = 6
+	loaded.save_profile()
+	var reread := ConfigFile.new()
+	_check(reread.load(path) == OK and reread.get_value("profile", "prestige", 0) == 2 and reread.get_value("cosmetics", "hat", "") == "red"
+		and reread.get_value("profile", "version", 0) == PlayerProfileService.VERSION + 4 and reread.get_value("profile", "scrap", 0) == 6,
+		"chiavi e sezioni sconosciute e versione piu alta conservate")
+	_remove_profile_files(path)
+	profile.free()
+	loaded.free()
+
+
+func _remove_profile_files(path: String) -> void:
+	for suffix in ["", ".tmp", ".bak"]:
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(path + suffix))
+	var dir := DirAccess.open(path.get_base_dir())
+	if dir == null:
+		return
+	for file in dir.get_files():
+		if file.begins_with(path.get_file() + ".corrupt"):
+			dir.remove(file)
 
 
 func _test_new_profile_changes_nothing() -> void:

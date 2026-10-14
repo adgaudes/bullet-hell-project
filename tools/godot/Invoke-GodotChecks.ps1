@@ -40,22 +40,26 @@ $expectedMarkers = @(
     "PROTOTYPE01_PATH_FIELD_READY"
 )
 
-# Righe di errore runtime di Godot che non fanno fallire il gate. Ogni voce e un
-# errore noto e spiegato; aggiungerne una solo con il motivo accanto.
-$allowedErrorPatterns = @(
-    # P-09 (review 9 ottobre 2026), riverificato il 12 ottobre 2026 senza la griglia: il
-    # renderer fittizio di --headless stampa `ERROR: Parameter "material" is null` quando
-    # una suite cambia preset grafico (settings_tests) su mesh generate senza materiale.
-    # Non e un bug del progetto: con finestra reale non compare.
-    'Parameter "material" is null'
-)
+# Righe di errore runtime di Godot che non fanno fallire il gate, **per suite** (audit del
+# 14 ottobre 2026, K-05): ogni voce vale solo nella suite che la provoca apposta, e negli
+# smoke test non vale nulla. Aggiungerne una solo con il motivo accanto.
+$allowedErrorPatterns = @{
+    # P-09 (review 9 ottobre 2026): il renderer fittizio di --headless stampa
+    # `Parameter "material" is null` quando la suite cambia preset grafico su mesh generate
+    # senza materiale. Con finestra reale non compare.
+    "settings_tests.gd" = @('Parameter "material" is null', 'ConfigFile parse error at user://settings_test_')
+    # Audit S-02: la suite scrive apposta un profilo illeggibile per provarne il recupero.
+    "workshop_tests.gd" = @('ConfigFile parse error at user://test_profile_recovery.cfg')
+}
 
-# Righe `SCRIPT ERROR` o `ERROR:` nell'output, tolte quelle in allowlist (U-03).
-function Get-RuntimeErrors([string]$text) {
+# Righe `SCRIPT ERROR` o `ERROR:` nell'output, tolte quelle ammesse per [suite] (U-03).
+function Get-RuntimeErrors([string]$text, [string]$suite = "") {
+    $allowed = @()
+    if ($suite -and $allowedErrorPatterns.ContainsKey($suite)) { $allowed = $allowedErrorPatterns[$suite] }
     $lines = @($text -split "`n" | Where-Object { $_ -match "SCRIPT ERROR|^ERROR:" })
     return @($lines | Where-Object {
         $line = $_
-        -not ($allowedErrorPatterns | Where-Object { $line -match [regex]::Escape($_) })
+        -not ($allowed | Where-Object { $line -match [regex]::Escape($_) })
     })
 }
 
@@ -118,7 +122,7 @@ Get-ChildItem -Path (Join-Path $project "tests") -Filter *.gd | ForEach-Object {
     $result = Invoke-Captured $godot @("--headless", "--path", "$project", "--fixed-fps", "60", "--script", $resPath)
     $summary = ($result.Text -split "`n" | Where-Object { $_ -match "PROTOTYPE01_TESTS" }) -join ""
     # Una suite verde che scatena un errore runtime non asserito e comunque FAIL (U-03).
-    $errors = Get-RuntimeErrors $result.Text
+    $errors = Get-RuntimeErrors $result.Text $_.Name
     if ($result.Code -ne 0 -or -not $summary.Contains("PASS") -or $errors.Count -gt 0) {
         $failures++
         Write-Host "  FAIL $resPath (exit $($result.Code), errori runtime $($errors.Count))"
