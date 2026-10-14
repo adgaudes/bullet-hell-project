@@ -6,12 +6,18 @@ extends RefCounted
 ## y in [0, 1], z in [-0.5, 0.5]: si scala come il cubo che sostituisce (lunghezza,
 ## altezza, spessore) e lo shader delle rovine, triplanare in coordinate mondo, non
 ## ha bisogno di UV. La collisione resta il blocco pieno del guscio.
+## Meta delle varianti ha una finestra vera (vano con davanzale, architrave e stipiti),
+## al posto di quelle dipinte dallo shader: dalla camera si vede attraverso.
 
 const VARIANTS := 6
 ## Colonne del profilo per modulo (un tratto da 3 m: circa 30-50 cm a colonna).
 const COLUMNS := Vector2i(12, 18)
 ## Passo dei gradini (corsi di mattoni) in frazione dell'altezza del tratto.
 const COURSE := 0.035
+## Vano della finestra in frazioni del modulo: larghezza, davanzale, architrave.
+const WINDOW_WIDTH := 0.28
+const WINDOW_SILL := 0.30
+const WINDOW_LINTEL := 0.62
 
 static var _broken: Array[ArrayMesh] = []
 static var _whole: Array[ArrayMesh] = []
@@ -21,7 +27,7 @@ static var _whole: Array[ArrayMesh] = []
 static func broken_wall(index: int) -> ArrayMesh:
 	if _broken.is_empty():
 		for v in VARIANTS:
-			_broken.append(_build(1000 + v, 0.55, 0.45))
+			_broken.append(_build(1000 + v, 0.55, 0.45, v % 2 == 0))
 	return _broken[posmod(index, VARIANTS)]
 
 
@@ -29,11 +35,11 @@ static func broken_wall(index: int) -> ArrayMesh:
 static func whole_wall(index: int) -> ArrayMesh:
 	if _whole.is_empty():
 		for v in VARIANTS:
-			_whole.append(_build(2000 + v, 0.92, 0.0))
+			_whole.append(_build(2000 + v, 0.92, 0.0, v % 2 == 0))
 	return _whole[posmod(index, VARIANTS)]
 
 
-static func _build(seed_value: int, low: float, notch_chance: float) -> ArrayMesh:
+static func _build(seed_value: int, low: float, notch_chance: float, with_window: bool) -> ArrayMesh:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed_value
 	var count := rng.randi_range(COLUMNS.x, COLUMNS.y)
@@ -66,15 +72,41 @@ static func _build(seed_value: int, low: float, notch_chance: float) -> ArrayMes
 	if low >= 0.9:
 		for i in count:
 			heights[i] = clampf(1.0 - absf(rng.randfn(0.0, 0.03)), low, 1.0)
+	# Finestra: colonne consecutive larghe circa WINDOW_WIDTH, con muro pieno sopra
+	# l'architrave in tutte e nelle due vicine (altrimenti niente finestra).
+	var win_from := -1
+	var win_to := -1
+	if with_window:
+		var want := rng.randf_range(-0.2, 0.2)
+		for first in range(1, count - 1):
+			var last := first
+			while last < count - 2 and xs[last + 1] - xs[first] < WINDOW_WIDTH:
+				last += 1
+			var ok := true
+			for k in range(first - 1, last + 2):
+				if heights[k] < WINDOW_LINTEL + 0.08:
+					ok = false
+			var mid: float = (xs[first] + xs[last + 1]) * 0.5
+			if ok and (win_from < 0 or absf(mid - want) < absf((xs[win_from] + xs[win_to + 1]) * 0.5 - want)):
+				win_from = first
+				win_to = last
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	for i in count:
 		var x0: float = xs[i]
 		var x1: float = xs[i + 1]
 		var h: float = heights[i]
-		# Fronte (+z) e retro (-z).
-		_quad(st, Vector3(x0, 0, 0.5), Vector3(x1, 0, 0.5), Vector3(x1, h, 0.5), Vector3(x0, h, 0.5), Vector3.BACK)
-		_quad(st, Vector3(x1, 0, -0.5), Vector3(x0, 0, -0.5), Vector3(x0, h, -0.5), Vector3(x1, h, -0.5), Vector3.FORWARD)
+		# Fronte (+z) e retro (-z); dentro la finestra due fasce, sotto e sopra il vano.
+		if i >= win_from and i <= win_to and win_from >= 0:
+			for span: Vector2 in [Vector2(0.0, WINDOW_SILL), Vector2(WINDOW_LINTEL, h)]:
+				_quad(st, Vector3(x0, span.x, 0.5), Vector3(x1, span.x, 0.5), Vector3(x1, span.y, 0.5), Vector3(x0, span.y, 0.5), Vector3.BACK)
+				_quad(st, Vector3(x1, span.x, -0.5), Vector3(x0, span.x, -0.5), Vector3(x0, span.y, -0.5), Vector3(x1, span.y, -0.5), Vector3.FORWARD)
+			# Davanzale (guarda in su) e architrave (guarda in giu).
+			_quad(st, Vector3(x0, WINDOW_SILL, 0.5), Vector3(x1, WINDOW_SILL, 0.5), Vector3(x1, WINDOW_SILL, -0.5), Vector3(x0, WINDOW_SILL, -0.5), Vector3.UP)
+			_quad(st, Vector3(x0, WINDOW_LINTEL, -0.5), Vector3(x1, WINDOW_LINTEL, -0.5), Vector3(x1, WINDOW_LINTEL, 0.5), Vector3(x0, WINDOW_LINTEL, 0.5), Vector3.DOWN)
+		else:
+			_quad(st, Vector3(x0, 0, 0.5), Vector3(x1, 0, 0.5), Vector3(x1, h, 0.5), Vector3(x0, h, 0.5), Vector3.BACK)
+			_quad(st, Vector3(x1, 0, -0.5), Vector3(x0, 0, -0.5), Vector3(x0, h, -0.5), Vector3(x1, h, -0.5), Vector3.FORWARD)
 		# Cima della colonna, appena inclinata: i mattoni spezzati non sono un piano.
 		var tilt := rng.randf_range(-0.03, 0.03)
 		_quad(st, Vector3(x0, h + tilt, 0.5), Vector3(x1, h - tilt, 0.5), Vector3(x1, h - tilt, -0.5), Vector3(x0, h + tilt, -0.5), Vector3.UP)
@@ -88,6 +120,12 @@ static func _build(seed_value: int, low: float, notch_chance: float) -> ArrayMes
 				_quad(st, Vector3(x1, lo, 0.5), Vector3(x1, lo, -0.5), Vector3(x1, hi, -0.5), Vector3(x1, hi, 0.5), facing)
 			else:
 				_quad(st, Vector3(x1, lo, -0.5), Vector3(x1, lo, 0.5), Vector3(x1, hi, 0.5), Vector3(x1, hi, -0.5), facing)
+	# Stipiti: il muro pieno a sinistra guarda dentro il vano (+x), quello a destra (-x).
+	if win_from >= 0:
+		var left: float = xs[win_from]
+		var right: float = xs[win_to + 1]
+		_quad(st, Vector3(left, WINDOW_SILL, 0.5), Vector3(left, WINDOW_SILL, -0.5), Vector3(left, WINDOW_LINTEL, -0.5), Vector3(left, WINDOW_LINTEL, 0.5), Vector3.RIGHT)
+		_quad(st, Vector3(right, WINDOW_SILL, -0.5), Vector3(right, WINDOW_SILL, 0.5), Vector3(right, WINDOW_LINTEL, 0.5), Vector3(right, WINDOW_LINTEL, -0.5), Vector3.LEFT)
 	# Testata sinistra.
 	var h0: float = heights[0]
 	_quad(st, Vector3(-0.5, 0, -0.5), Vector3(-0.5, 0, 0.5), Vector3(-0.5, h0, 0.5), Vector3(-0.5, h0, -0.5), Vector3.LEFT)

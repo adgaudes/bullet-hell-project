@@ -682,8 +682,9 @@ func _ruin_shell(node_name: String, base: Vector3, size: Vector3, yaw_deg: float
 			var variant := ("%s:%d:%d" % [node_name, side, s]).hash()
 			var module := RuinModules.broken_wall(variant) if broken else RuinModules.whole_wall(variant)
 			var turn := Basis() if along_x else Basis(Vector3.UP, PI * 0.5)
+			# Le finestre ora sono vani veri nei moduli: niente finestre dipinte (windows 0).
 			_shell_piece(body, at - Vector3(0.0, wall_height * 0.5, 0.0), Vector3(segment, wall_height, t),
-				tint, base.y + wall_height, overgrowth, 1.0, turn, module)
+				tint, base.y + wall_height, overgrowth, 0.0, turn, module)
 			# Cima spezzata: qualche pezzo e tondini sui tratti crollati (D-068).
 			if broken:
 				_wall_crown(body, at, along_x, segment, wall_height, t, tint)
