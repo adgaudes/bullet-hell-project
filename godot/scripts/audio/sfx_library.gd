@@ -1,12 +1,15 @@
 class_name SfxLibrary
 extends RefCounted
-## Effetti sonori sintetizzati in codice: nessun file audio, nessuna licenza.
-## Ogni suono e una somma di strati (sinusoide, quadra morbida, triangolare,
-## rumore filtrato) con inviluppo e glissando, reso come AudioStreamWAV mono a
-## 16 bit. Il rumore usa un seme fisso: gli stream sono identici a ogni avvio.
+## Effetti sonori della run e dell'interfaccia. Dal D-084 ogni id ha un file
+## registrato in `SAMPLE_DIR` (mix dal bundle Sonniss GDC 2024, generato da
+## `tools/audio/build_sfx.py`); se il file manca resta la sintesi in codice di
+## D-048: somma di strati (sinusoide, quadra morbida, triangolare, rumore
+## filtrato) con inviluppo e glissando, resa come AudioStreamWAV mono a 16 bit,
+## con rumore a seme fisso (stream identici a ogni avvio).
 
 enum Wave { SINE, SOFT_SQUARE, TRIANGLE, NOISE }
 
+const SAMPLE_DIR := "res://assets/audio/sfx/"
 const MIX_RATE := 22050
 const PEAK := 0.85
 const FADE_OUT_SECONDS := 0.004
@@ -24,70 +27,123 @@ const IDS: Array[StringName] = [
 	&"ui_move", &"ui_confirm", &"ui_back", &"ui_open",
 ]
 
-static var _cache: Dictionary[StringName, AudioStreamWAV] = {}
-## Sintesi in corso nel WorkerThreadPool (R-40): id del task e PCM gia codificato
-## per id, scritto dal thread sotto mutex e letto dal thread principale solo a task finito.
+static var _cache: Dictionary[StringName, AudioStream] = {}
+## Precaricamento (R-40): i file si caricano con le richieste in thread del
+## ResourceLoader, la sintesi di riserva nel WorkerThreadPool. Id del task e PCM
+## gia codificato per id, scritto dal thread sotto mutex e letto dal thread
+## principale solo a task finito.
+static var _precache_started := false
 static var _precache_task := -1
 static var _precache_mutex := Mutex.new()
 static var _precache_pcm: Dictionary[StringName, PackedByteArray] = {}
+## Percorsi chiesti al ResourceLoader in thread e non ancora ritirati.
+static var _requested: Array[String] = []
 
 
 ## Stream per id, costruiti una sola volta per processo (il riavvio della run
-## ricarica la scena ma non risintetizza nulla). Se `precache_async` e in corso
-## ne aspetta la fine e usa il suo lavoro; altrimenti sintetizza qui, in modo sincrono.
-static func build_all() -> Dictionary[StringName, AudioStreamWAV]:
+## ricarica la scena ma non ricarica nulla). Se `precache_async` e in corso ne
+## aspetta la fine e usa il suo lavoro; altrimenti carica e sintetizza qui.
+static func build_all() -> Dictionary[StringName, AudioStream]:
 	if not _cache.is_empty():
 		return _cache
+	var pcm: Dictionary[StringName, PackedByteArray] = {}
 	if _precache_task >= 0:
 		WorkerThreadPool.wait_for_task_completion(_precache_task)
 		_precache_task = -1
 		_precache_mutex.lock()
-		var pcm := _precache_pcm
+		pcm = _precache_pcm
 		_precache_pcm = {}
 		_precache_mutex.unlock()
-		for id in IDS:
+	for id in IDS:
+		var path := sample_path(id)
+		if _requested.has(path):
+			_requested.erase(path)
+			_cache[id] = ResourceLoader.load_threaded_get(path) as AudioStream
+		elif pcm.has(id):
 			_cache[id] = _wrap(pcm[id])
-	else:
-		for id in IDS:
+		else:
 			_cache[id] = build(id)
+		if _cache[id] == null:
+			_cache[id] = synthesize(id)
+	_precache_started = false
 	return _cache
 
 
-## Avvia la sintesi di tutta la libreria in un thread del WorkerThreadPool (dal menu
-## iniziale, cosi "Gioca" non la paga). Solo buffer puri nel thread; gli
-## AudioStreamWAV nascono sul thread principale in `build_all`. Innocuo se ripetuto.
+## Avvia il caricamento dei file e la sintesi dei suoni senza file in thread (dal
+## menu iniziale, cosi "Gioca" non li paga). Solo buffer puri nel thread di sintesi;
+## gli AudioStreamWAV nascono sul thread principale in `build_all`. Innocuo se ripetuto.
 static func precache_async() -> void:
-	if not _cache.is_empty() or _precache_task >= 0:
+	if not _cache.is_empty() or _precache_started:
 		return
-	_precache_task = WorkerThreadPool.add_task(SfxLibrary._precache_in_thread, false, "SfxLibrary.precache")
+	_precache_started = true
+	var to_synthesize: Array[StringName] = []
+	for id in IDS:
+		if has_sample(id):
+			var path := sample_path(id)
+			if ResourceLoader.load_threaded_request(path, "AudioStream", false, ResourceLoader.CACHE_MODE_IGNORE) == OK:
+				_requested.append(path)
+		else:
+			to_synthesize.append(id)
+	if not to_synthesize.is_empty():
+		_precache_task = WorkerThreadPool.add_task(SfxLibrary._precache_in_thread.bind(to_synthesize), false, "SfxLibrary.precache")
 
 
-## Vero quando `build_all` non deve piu sintetizzare ne aspettare.
+## Vero quando `build_all` non deve piu caricare, sintetizzare ne aspettare.
 static func is_precached() -> bool:
 	if not _cache.is_empty():
 		return true
-	return _precache_task >= 0 and WorkerThreadPool.is_task_completed(_precache_task)
+	if not _precache_started:
+		return false
+	if _precache_task >= 0 and not WorkerThreadPool.is_task_completed(_precache_task):
+		return false
+	for path in _requested:
+		if ResourceLoader.load_threaded_get_status(path) == ResourceLoader.THREAD_LOAD_IN_PROGRESS:
+			return false
+	return true
 
 
-static func _precache_in_thread() -> void:
+static func _precache_in_thread(ids: Array[StringName]) -> void:
 	var pcm: Dictionary[StringName, PackedByteArray] = {}
-	for id in IDS:
+	for id in ids:
 		pcm[id] = _encode(_synthesize(id))
 	_precache_mutex.lock()
 	_precache_pcm = pcm
 	_precache_mutex.unlock()
 
 
-## Sintetizza un singolo suono; null per un id sconosciuto.
-static func build(id: StringName) -> AudioStreamWAV:
+static func sample_path(id: StringName) -> String:
+	return SAMPLE_DIR + String(id) + ".ogg"
+
+
+static func has_sample(id: StringName) -> bool:
+	return ResourceLoader.exists(sample_path(id))
+
+
+## Un singolo suono: il file registrato se c'e, altrimenti la sintesi; null per un
+## id sconosciuto. Se la libreria e gia pronta restituisce la sua risorsa.
+## I file si caricano fuori dalla cache del ResourceLoader: la cache statica di
+## questa classe li tiene vivi fino all'uscita e il motore li segnalerebbe come
+## risorse ancora in uso.
+static func build(id: StringName) -> AudioStream:
+	if not IDS.has(id):
+		return null
+	if _cache.has(id):
+		return _cache[id]
+	if has_sample(id):
+		return ResourceLoader.load(sample_path(id), "AudioStream", ResourceLoader.CACHE_MODE_IGNORE) as AudioStream
+	return synthesize(id)
+
+
+## Sintesi di riserva (D-048) di un singolo suono; null per un id sconosciuto.
+static func synthesize(id: StringName) -> AudioStreamWAV:
 	var samples := _synthesize(id)
 	if samples.is_empty():
 		return null
 	return _wrap(_encode(samples))
 
 
-static func duration_of(stream: AudioStreamWAV) -> float:
-	return float(stream.data.size() / 2) / float(stream.mix_rate)
+static func duration_of(stream: AudioStream) -> float:
+	return stream.get_length()
 
 
 static func _synthesize(id: StringName) -> PackedFloat32Array:

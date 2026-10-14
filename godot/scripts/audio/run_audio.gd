@@ -63,7 +63,7 @@ var last_played: StringName = &""
 ## non fa mai finire una riproduzione: i test lo sostituiscono con player finti (P-08).
 var is_busy: Callable = func(stream_player: AudioStreamPlayer) -> bool: return stream_player.playing
 
-var _streams: Dictionary[StringName, AudioStreamWAV] = {}
+var _streams: Dictionary[StringName, AudioStream] = {}
 var _players: Array[AudioStreamPlayer] = []
 ## Per player: id dell'ultimo suono assegnato.
 var _player_ids: Array[StringName] = []
@@ -102,7 +102,7 @@ func _process(delta: float) -> void:
 ## Riproduce il suono [param id]; [param volume_db] si somma al volume di base.
 ## Restituisce false se l'id non esiste o se e stato appena riprodotto.
 func play(id: StringName, volume_db := 0.0) -> bool:
-	var stream: AudioStreamWAV = _streams.get(id)
+	var stream: AudioStream = _streams.get(id)
 	if stream == null:
 		return false
 	if _clock < _next_allowed.get(id, 0.0):
@@ -135,7 +135,7 @@ func has_sound(id: StringName) -> bool:
 	return _streams.has(id)
 
 
-func stream_for(id: StringName) -> AudioStreamWAV:
+func stream_for(id: StringName) -> AudioStream:
 	return _streams.get(id)
 
 

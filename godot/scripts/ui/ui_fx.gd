@@ -20,7 +20,7 @@ var _veil: ColorRect
 var _cursor: UiIcon
 var _target: Control
 var _audio: AudioStreamPlayer
-var _streams: Dictionary[StringName, AudioStreamWAV] = {}
+var _streams: Dictionary[StringName, AudioStream] = {}
 var _play_counts: Dictionary[StringName, int] = {}
 var _scene_changes := 0
 var _time := 0.0

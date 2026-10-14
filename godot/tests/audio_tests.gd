@@ -1,5 +1,5 @@
 extends SceneTree
-## Test degli effetti sonori sintetizzati e del loro collegamento alla run.
+## Test degli effetti sonori (file registrati e sintesi di riserva) e del loro collegamento alla run.
 ## In headless il driver audio e fittizio: si contano le riproduzioni, non si
 ## ascolta nulla. Eseguire con:
 ##   godot_console --headless --path godot --fixed-fps 60 --script res://tests/audio_tests.gd
@@ -99,15 +99,16 @@ func _peak(stream: AudioStreamWAV) -> int:
 	return peak
 
 
-## R-40: la libreria si sintetizza in un thread del WorkerThreadPool (avviato dal menu);
-## a lavoro finito build_all sul thread principale costa quasi nulla.
+## R-40: la libreria si precarica in thread (avviata dal menu): file con le richieste
+## del ResourceLoader, sintesi di riserva nel WorkerThreadPool; a lavoro finito
+## build_all sul thread principale costa quasi nulla.
 func _test_precache() -> void:
 	print("precache")
 	_check(not SfxLibrary.is_precached(), "all'avvio la cache e vuota")
-	# Costo della sintesi sincrona, per confronto (stesso lavoro che faceva RunAudio._ready).
+	# Costo della sintesi sincrona di tutto, per confronto con la libreria di D-048.
 	var start := Time.get_ticks_usec()
 	for id in EXPECTED_IDS:
-		SfxLibrary.build(id)
+		SfxLibrary.synthesize(id)
 	var sync_us := Time.get_ticks_usec() - start
 	SfxLibrary.precache_async()
 	var started := Time.get_ticks_msec()
@@ -116,39 +117,49 @@ func _test_precache() -> void:
 		await process_frame
 		frames += 1
 	var wait_ms := Time.get_ticks_msec() - started
-	_check(SfxLibrary.is_precached(), "la sintesi in thread finisce (%d ms, %d frame)" % [wait_ms, frames])
+	_check(SfxLibrary.is_precached(), "il precaricamento in thread finisce (%d ms, %d frame)" % [wait_ms, frames])
 	start = Time.get_ticks_usec()
 	var streams := SfxLibrary.build_all()
 	var build_us := Time.get_ticks_usec() - start
 	print("PROTOTYPE01_SFX_PRECACHE sync_us=%d thread_wait_ms=%d build_all_us=%d" % [sync_us, wait_ms, build_us])
 	_check(build_us < 5000, "dopo il precaricamento build_all costa < 5 ms (%d us)" % build_us)
-	_check(streams.size() == EXPECTED_IDS.size() and streams[&"nail_shot"].data == SfxLibrary.build(&"nail_shot").data,
-		"gli stream dal thread sono identici alla sintesi sincrona")
+	_check(streams.size() == EXPECTED_IDS.size() and streams[&"nail_shot"] == SfxLibrary.build(&"nail_shot"),
+		"gli stream precaricati sono le stesse risorse di un caricamento diretto")
 	_check(SfxLibrary.build_all() == streams, "build_all restituisce sempre la stessa cache")
 
 
+## D-084: ogni id ha il suo file registrato; la sintesi di D-048 resta come riserva.
 func _test_library() -> void:
 	print("library")
 	var streams := SfxLibrary.build_all()
 	_check(streams.size() == EXPECTED_IDS.size(), "%d suoni nella libreria (%d)" % [EXPECTED_IDS.size(), streams.size()])
 	for id in EXPECTED_IDS:
-		var stream: AudioStreamWAV = streams.get(id)
+		var stream: AudioStream = streams.get(id)
 		if stream == null:
 			_check(false, "%s: stream mancante" % id)
 			continue
 		var seconds := SfxLibrary.duration_of(stream)
-		var format_ok := stream.format == AudioStreamWAV.FORMAT_16_BITS and not stream.stereo \
-			and stream.mix_rate == SfxLibrary.MIX_RATE and stream.loop_mode == AudioStreamWAV.LOOP_DISABLED
-		var peak := _peak(stream)
-		var tail := absi(stream.data.decode_s16(stream.data.size() - 2))
-		_check(format_ok and seconds >= 0.03 and seconds <= 2.0 and peak > 12000 and peak <= 32767 and tail < 400,
-			"%s: PCM 16 bit mono, %.2f s, picco %d, coda %d" % [id, seconds, peak, tail])
+		var ogg := stream as AudioStreamOggVorbis
+		_check(SfxLibrary.has_sample(id) and ogg != null and not ogg.loop and seconds >= 0.03 and seconds <= 2.0,
+			"%s: file OGG senza loop, %.2f s" % [id, seconds])
 	for id in FREQUENT_IDS:
 		_check(SfxLibrary.duration_of(streams[id]) <= 0.15, "%s e corto: suona spesso" % id)
-	var again := SfxLibrary.build(&"nail_shot")
-	_check(again != streams[&"nail_shot"] and again.data == streams[&"nail_shot"].data, "sintesi deterministica (rumore con seme fisso)")
-	_check(SfxLibrary.build(&"enemy_death").data != again.data, "suoni diversi hanno dati diversi")
-	_check(SfxLibrary.build(&"missing_sound") == null, "id sconosciuto: nessuno stream")
+	for id in EXPECTED_IDS:
+		var synth := SfxLibrary.synthesize(id)
+		if synth == null:
+			_check(false, "%s: sintesi di riserva mancante" % id)
+			continue
+		var seconds := SfxLibrary.duration_of(synth)
+		var format_ok := synth.format == AudioStreamWAV.FORMAT_16_BITS and not synth.stereo 			and synth.mix_rate == SfxLibrary.MIX_RATE and synth.loop_mode == AudioStreamWAV.LOOP_DISABLED
+		var peak := _peak(synth)
+		var tail := absi(synth.data.decode_s16(synth.data.size() - 2))
+		_check(format_ok and seconds >= 0.03 and seconds <= 2.0 and peak > 12000 and peak <= 32767 and tail < 400,
+			"%s di riserva: PCM 16 bit mono, %.2f s, picco %d, coda %d" % [id, seconds, peak, tail])
+	var again := SfxLibrary.synthesize(&"nail_shot")
+	_check(again.data == SfxLibrary.synthesize(&"nail_shot").data, "sintesi deterministica (rumore con seme fisso)")
+	_check(SfxLibrary.synthesize(&"enemy_death").data != again.data, "suoni diversi hanno dati diversi")
+	_check(SfxLibrary.build(&"missing_sound") == null and SfxLibrary.synthesize(&"missing_sound") == null,
+		"id sconosciuto: nessuno stream")
 
 
 func _test_node_setup() -> void:

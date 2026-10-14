@@ -29,6 +29,7 @@ Legenda stato: **vivo** = aggiornato e autorevole; **riferimento** = stabile, si
 | `tools/blender/painter.py` | Pittore condiviso del restyling (D-077): grafi Cycles per albedo dipinta, normal e ORM, coordinate toroidali per le tile; `selftest_painter.py` lo verifica in 20 s | prima di toccare la pittura dei modelli o delle tile | vivo |
 | `tools/blender/build_surface_tiles.py` | Tile dipinte e ripetibili del mondo (ground, walls, plants) come `Texture2DArray`, con gli `.import` | prima di aggiungere o cambiare una tile | vivo |
 | `tools/blender/build_character_assets.py` | Generatore dei personaggi con scheletro e animazioni (D-060): riproporziona lo scheletro CC0 di `third_party/quaternius_ual/`, pezzi rigidi, export `.glb`; convenzioni in testa al file (non e un documento) | prima di creare o modificare un personaggio animato | vivo |
+| `tools/audio/build_sfx.py` | Effetti sonori dal bundle Sonniss (D-084): ricette per id (sorgente, taglio, intonazione, strati), mix e OGG in `godot/assets/audio/sfx/`, anteprima in fila | prima di cambiare o aggiungere un suono | vivo |
 | `tools/godot/Invoke-GodotChecks.ps1` | Gate di qualita unico (non e un documento: commento in testa al file) | prima di dichiarare finito un lavoro | vivo |
 
 ## Design e gameplay

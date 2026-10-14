@@ -24,7 +24,7 @@ var _ground: ColorRect
 var _dust: CPUParticles2D
 var _tween: Tween
 var _audio: AudioStreamPlayer
-var _streams: Dictionary[StringName, AudioStreamWAV] = {}
+var _streams: Dictionary[StringName, AudioStream] = {}
 var _fade: ColorRect
 var _pause_menu: Node
 var _ending := false
@@ -184,7 +184,7 @@ func _shake(strength: float) -> void:
 
 
 func _sound(id: StringName, volume_db: float) -> void:
-	var stream: AudioStreamWAV = _streams.get(id)
+	var stream: AudioStream = _streams.get(id)
 	if stream == null:
 		return
 	_audio.stream = stream
