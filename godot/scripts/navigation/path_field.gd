@@ -28,6 +28,11 @@ const ORTHO_COST := 10
 const DIAG_COST := 14
 const BUCKETS := 15
 const CHUNK := 16
+## Lato dell'anello di celle attorno a un chunk usato per le diagonali (vicine delle vicine).
+const RING := CHUNK + 2
+## Precalcolo per passo fisico: righe di ostacoli statici e righe di pendenze (audit N-01).
+const PREFETCH_STATIC_ROWS := 4
+const PREFETCH_TERRAIN_ROWS := 2
 ## Offset dei vicini: prima i 4 ortogonali, poi le diagonali.
 const NEIGHBORS: Array[Vector2i] = [
 	Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1),
@@ -79,6 +84,22 @@ var _has_dirty_rect := false
 var _slopes_all := true
 ## Chunk -> PackedByteArray(CHUNK * CHUNK) di ostacoli statici.
 var _static_chunks: Dictionary[Vector2i, PackedByteArray] = {}
+## Pendenze e passi per chunk mondo (audit N-01): 2 byte per cella, pendenza e maschera dei
+## passi, con le regole di `_slope_blocked` e `_step_mask` ma calcolati sul mondo. Un
+## ricentro copia da qui invece di ricalcolare 4096 celle (51-64 ms misurati); una modifica
+## del terreno invalida i chunk che tocca.
+var _terrain_chunks: Dictionary[Vector2i, PackedByteArray] = {}
+## Chunk invalidati da modifiche: se stanno dentro la finestra si riscrivono da li.
+var _touched_chunks: Dictionary[Vector2i, bool] = {}
+## Chunk di pendenze calcolati sul momento in un ricentro (non ancora precalcolati).
+var terrain_chunks_sync := 0
+## Precalcolo a rate dei chunk attorno alla finestra: chunk in lavoro, fase, riga, dati.
+var _prefetch_chunk := Vector2i(-1, -1)
+var _prefetch_stage := 0
+var _prefetch_row := 0
+var _prefetch_static := PackedByteArray()
+var _prefetch_orth := PackedByteArray()
+var _prefetch_slope := PackedByteArray()
 ## Per cella: indice della vicina verso il bersaglio (-1 nessuna), NEXT_UNKNOWN se non
 ## ancora calcolato dall'ultima soluzione (E-03): `next_waypoint` lo legge invece di
 ## scandire gli otto vicini a ogni passo di ogni nemico.
@@ -143,6 +164,8 @@ func _physics_process(delta: float) -> void:
 		_dirty = true
 	if _dirty and _since_solve >= min_solve_interval:
 		solve()
+	else:
+		_prefetch_step()
 
 
 func is_ready() -> bool:
@@ -272,6 +295,17 @@ func _on_terrain_region_changed(aabb: AABB) -> void:
 	var rect := Rect2(aabb.position.x, aabb.position.z, aabb.size.x, aabb.size.z)
 	_dirty_rect = _dirty_rect.merge(rect) if _has_dirty_rect else rect
 	_has_dirty_rect = true
+	# Pendenza, passi e diagonali guardano fino a due celle in la: chunk entro tre celle.
+	var margin := cell_size * 3.0
+	var lo := _world_cell_of(Vector3(rect.position.x - margin, 0.0, rect.position.y - margin))
+	var hi := _world_cell_of(Vector3(rect.end.x + margin, 0.0, rect.end.y + margin))
+	for cy in range(maxi(lo.y, 0) / CHUNK, maxi(hi.y, 0) / CHUNK + 1):
+		for cx in range(maxi(lo.x, 0) / CHUNK, maxi(hi.x, 0) / CHUNK + 1):
+			var chunk := Vector2i(cx, cy)
+			_terrain_chunks.erase(chunk)
+			_touched_chunks[chunk] = true
+			if chunk == _prefetch_chunk:
+				_prefetch_chunk = Vector2i(-1, -1)
 
 
 func _needs_recenter(world_cell: Vector2i) -> bool:
@@ -297,7 +331,7 @@ func _world_inside(wc: Vector2i) -> bool:
 
 
 func _fill_window() -> void:
-	_slopes_all = true
+	_slopes_all = terrain_field == null
 	# Chunk per chunk: una sola lettura della cache (gli array impacchettati si copiano
 	# per valore: 4096 letture singole costavano quanto la soluzione intera).
 	var first_chunk := Vector2i(origin.x / CHUNK, origin.y / CHUNK)
@@ -318,6 +352,15 @@ func _fill_window() -> void:
 				var chunk_row := (wy % CHUNK) * CHUNK - cx * CHUNK
 				for wx in range(x0, x1):
 					_static_blocked[row + wx] = data[chunk_row + wx]
+			if terrain_field != null:
+				var terrain := _terrain_chunk(chunk)
+				for wy in range(y0, y1):
+					var row := (wy - origin.y) * columns - origin.x
+					var chunk_row := (wy % CHUNK) * CHUNK - cx * CHUNK
+					for wx in range(x0, x1):
+						var at := (chunk_row + wx) * 2
+						_slope_blocked[row + wx] = terrain[at]
+						_step_mask[row + wx] = terrain[at + 1]
 	_refresh_blocked()
 
 
@@ -337,13 +380,19 @@ func _scan_chunk(chunk: Vector2i) -> PackedByteArray:
 	chunks_scanned += 1
 	var data := PackedByteArray()
 	data.resize(CHUNK * CHUNK)
+	_scan_chunk_rows(chunk, data, 0, CHUNK)
+	return data
+
+
+## Righe [param y0, y1) degli ostacoli statici di un chunk (anche a rate, nel precalcolo).
+func _scan_chunk_rows(chunk: Vector2i, data: PackedByteArray, y0: int, y1: int) -> void:
 	var space := get_world_3d().direct_space_state
 	var shape := BoxShape3D.new()
 	shape.size = Vector3(cell_size * 0.9, 1.0, cell_size * 0.9)
 	var query := PhysicsShapeQueryParameters3D.new()
 	query.shape = shape
 	query.collision_mask = 1
-	for y in CHUNK:
+	for y in range(y0, y1):
 		for x in CHUNK:
 			var wc := chunk * CHUNK + Vector2i(x, y)
 			var blocked := 0
@@ -358,7 +407,6 @@ func _scan_chunk(chunk: Vector2i) -> PackedByteArray:
 						blocked = 1
 						break
 			data[y * CHUNK + x] = blocked
-	return data
 
 
 func _refresh_terrain() -> void:
@@ -376,6 +424,7 @@ func _refresh_blocked() -> void:
 	_terrain_dirty = false
 	if terrain_field != null:
 		_refresh_slopes()
+		_write_back_touched()
 	_next.fill(NEXT_UNKNOWN)
 	for i in _blocked.size():
 		var blocked := _static_blocked[i]
@@ -383,6 +432,158 @@ func _refresh_blocked() -> void:
 			blocked = 1
 		_blocked[i] = blocked
 	_dirty = true
+
+
+## Chunk toccati da modifiche: quelli tutti dentro la finestra, lontani dal bordo (dove le
+## diagonali vedono le stesse vicine che nel mondo), si rimettono in cache dalla finestra
+## appena aggiornata; gli altri restano da ricalcolare.
+func _write_back_touched() -> void:
+	for chunk: Vector2i in _touched_chunks:
+		var lo := chunk * CHUNK - origin
+		var hi := lo + Vector2i(CHUNK - 1, CHUNK - 1)
+		if lo.x < 2 or lo.y < 2 or hi.x > columns - 3 or hi.y > columns - 3:
+			continue
+		var data := PackedByteArray()
+		data.resize(CHUNK * CHUNK * 2)
+		for y in CHUNK:
+			for x in CHUNK:
+				var i := (lo.y + y) * columns + lo.x + x
+				data[(y * CHUNK + x) * 2] = _slope_blocked[i]
+				data[(y * CHUNK + x) * 2 + 1] = _step_mask[i]
+		_terrain_chunks[chunk] = data
+	_touched_chunks.clear()
+
+
+## Pendenze e passi di un chunk dalla cache, o calcolati ora.
+func _terrain_chunk(chunk: Vector2i) -> PackedByteArray:
+	var data: PackedByteArray = _terrain_chunks.get(chunk, PackedByteArray())
+	if data.is_empty():
+		var orth := PackedByteArray()
+		var slope := PackedByteArray()
+		orth.resize(RING * RING)
+		slope.resize(RING * RING)
+		_terrain_ring_rows(chunk, orth, slope, 0, RING)
+		data = _terrain_finish(orth, slope)
+		_terrain_chunks[chunk] = data
+		terrain_chunks_sync += 1
+	return data
+
+
+## Righe [param r0, r1) dell'anello attorno al chunk: pendenza e passi ortogonali di ogni
+## cella mondo, con le regole di `_refresh_slopes` (vicine dentro il mondo).
+func _terrain_ring_rows(chunk: Vector2i, orth: PackedByteArray, slope: PackedByteArray, r0: int, r1: int) -> void:
+	var base := chunk * CHUNK - Vector2i(1, 1)
+	for ry in range(r0, r1):
+		for rx in RING:
+			var wc := base + Vector2i(rx, ry)
+			var i := ry * RING + rx
+			if not _world_inside(wc):
+				orth[i] = 0
+				slope[i] = 0
+				continue
+			var here := _world_center(wc)
+			slope[i] = 1 if terrain_field.slope_at(here) > max_grade else 0
+			var m := 0
+			for k in 4:
+				var nb := wc + NEIGHBORS[k]
+				if _world_inside(nb) and terrain_field.can_step(here, _world_center(nb), max_grade):
+					m |= 1 << k
+			orth[i] = m
+
+
+## Maschere complete (diagonali dalle gambe ortogonali, come `_refresh_slopes`) delle
+## celle interne dell'anello: 2 byte per cella, pendenza e maschera.
+func _terrain_finish(orth: PackedByteArray, slope: PackedByteArray) -> PackedByteArray:
+	var data := PackedByteArray()
+	data.resize(CHUNK * CHUNK * 2)
+	for y in CHUNK:
+		for x in CHUNK:
+			var i := (y + 1) * RING + x + 1
+			var m := orth[i]
+			for k in range(4, 8):
+				var dx := NEIGHBORS[k].x
+				var dy := NEIGHBORS[k].y
+				var bit_x := 0 if dx > 0 else 1
+				var bit_y := 2 if dy > 0 else 3
+				var via_x := (m >> bit_x) & 1 != 0 and (orth[i + dx] >> bit_y) & 1 != 0
+				var via_y := (m >> bit_y) & 1 != 0 and (orth[i + dy * RING] >> bit_x) & 1 != 0
+				if via_x or via_y:
+					m |= 1 << k
+			data[(y * CHUNK + x) * 2] = slope[i]
+			data[(y * CHUNK + x) * 2 + 1] = m
+	return data
+
+
+func _world_center(wc: Vector2i) -> Vector3:
+	return Vector3(-half_extent + (wc.x + 0.5) * cell_size, 0.0, -half_z() + (wc.y + 0.5) * cell_size)
+
+
+## Un pezzo di precalcolo per passo fisico (audit N-01): ostacoli statici e pendenze dei
+## chunk della finestra e dell'anello di chunk attorno, il piu vicino al bersaglio per primo,
+## cosi un ricentro trova tutto pronto.
+func _prefetch_step() -> void:
+	if columns == 0:
+		return
+	if _prefetch_chunk.x < 0 and not _next_prefetch_chunk():
+		return
+	var chunk := _prefetch_chunk
+	match _prefetch_stage:
+		0:
+			if _static_chunks.has(chunk):
+				_prefetch_stage = 1
+				_prefetch_row = 0
+				return
+			if _prefetch_row == 0:
+				_prefetch_static = PackedByteArray()
+				_prefetch_static.resize(CHUNK * CHUNK)
+			var r1 := mini(_prefetch_row + PREFETCH_STATIC_ROWS, CHUNK)
+			_scan_chunk_rows(chunk, _prefetch_static, _prefetch_row, r1)
+			_prefetch_row = r1
+			if _prefetch_row >= CHUNK:
+				_static_chunks[chunk] = _prefetch_static
+				chunks_scanned += 1
+				_prefetch_stage = 1
+				_prefetch_row = 0
+		1:
+			if terrain_field == null or _terrain_chunks.has(chunk):
+				_prefetch_chunk = Vector2i(-1, -1)
+				return
+			if _prefetch_row == 0:
+				_prefetch_orth = PackedByteArray()
+				_prefetch_slope = PackedByteArray()
+				_prefetch_orth.resize(RING * RING)
+				_prefetch_slope.resize(RING * RING)
+			var r1 := mini(_prefetch_row + PREFETCH_TERRAIN_ROWS, RING)
+			_terrain_ring_rows(chunk, _prefetch_orth, _prefetch_slope, _prefetch_row, r1)
+			_prefetch_row = r1
+			if _prefetch_row >= RING:
+				_terrain_chunks[chunk] = _terrain_finish(_prefetch_orth, _prefetch_slope)
+				_prefetch_chunk = Vector2i(-1, -1)
+
+
+## Sceglie il prossimo chunk da precalcolare; false se e tutto pronto.
+func _next_prefetch_chunk() -> bool:
+	var first := Vector2i(origin.x / CHUNK, origin.y / CHUNK) - Vector2i(1, 1)
+	var last := Vector2i((origin.x + columns - 1) / CHUNK, (origin.y + columns - 1) / CHUNK) + Vector2i(1, 1)
+	var max_chunk := Vector2i((world_columns - 1) / CHUNK, (world_rows - 1) / CHUNK)
+	var center := (origin + Vector2i(columns / 2, columns / 2)) / CHUNK
+	var best := Vector2i(-1, -1)
+	var best_d := 1 << 30
+	for cy in range(maxi(first.y, 0), mini(last.y, max_chunk.y) + 1):
+		for cx in range(maxi(first.x, 0), mini(last.x, max_chunk.x) + 1):
+			var chunk := Vector2i(cx, cy)
+			if _static_chunks.has(chunk) and (terrain_field == null or _terrain_chunks.has(chunk)):
+				continue
+			var d := (chunk - center).length_squared()
+			if d < best_d:
+				best_d = d
+				best = chunk
+	if best.x < 0:
+		return false
+	_prefetch_chunk = best
+	_prefetch_stage = 0
+	_prefetch_row = 0
+	return true
 
 
 ## Ricalcola pendenza e passi solo per le celle toccate dall'area cambiata (piu un

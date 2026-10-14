@@ -9,7 +9,8 @@ extends SceneTree
 ## `--preset=deck|low|medium|high|max` (restyling 2026-10-11) applica il preset grafico prima di
 ## costruire l'arena; il limite di fps viene tolto, cosi il frame misurato e il costo reale.
 ## Sul rilievo continuo (D-085) misura anche la base (`apply_base_relief`), 100 pennellate
-## casuali del giocatore e l'aggiornamento dei chunk di collisione (riga `terrain`).
+## casuali del giocatore e l'aggiornamento dei chunk di collisione (riga `terrain`); poi una
+## corsa di 6 s con il costo massimo del ricentro del campo di percorso (riga `run`).
 ## Marker: PROTOTYPE01_ARENA_BENCH ...
 
 const WARMUP_FRAMES := 120
@@ -173,6 +174,17 @@ func _initialize() -> void:
 				Performance.get_monitor(Performance.RENDER_VIDEO_MEM_USED) / 1048576.0])
 	print("PROTOTYPE01_ARENA_BENCH path solve_ms=%.2f recenter_ms=%.2f chunks=%d leashed=%d"
 		% [path.last_solve_usec / 1000.0, path.last_recenter_usec / 1000.0, path.chunks_scanned, director.leashed])
+	# Corsa (audit PF-02): il ricentro del campo e stato per mesi il passo piu caro del
+	# gioco (51-64 ms) senza che il benchmark, a giocatore fermo, lo vedesse.
+	var recenter_max := 0.0
+	var recenters := path.recenter_count
+	for i in 720:
+		player._invulnerable_left = 1.0
+		player.global_position += Vector3(7.0 / 120.0, 0.0, 0.0) if i < 360 else Vector3(0.0, 0.0, 7.0 / 120.0)
+		await physics_frame
+		recenter_max = maxf(recenter_max, path.last_recenter_usec / 1000.0)
+	print("PROTOTYPE01_ARENA_BENCH run recenters=%d recenter_max_ms=%.2f terrain_chunks_sync=%d"
+		% [path.recenter_count - recenters, recenter_max, path.terrain_chunks_sync])
 	if OS.get_cmdline_user_args().has("--motion-ab"):
 		# Stesso processo, blocchi alternati con e senza movimento procedurale: il
 		# rumore della macchina pesa uguale sui due lati.
