@@ -86,3 +86,4 @@ dev/null/
 
 # Texture CC0 scaricate (si rigenerano con tools/textures/fetch_terrain_textures.py)
 tools/textures/third_party/
+tools/textures/__pycache__/
