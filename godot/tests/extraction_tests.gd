@@ -123,6 +123,18 @@ func _test_pad_broken_and_held() -> void:
 	await _frames(2)
 	_check(not _pad.intact and is_zero_approx(_pad.held), "un cumulo nel disco rompe la piazzola e azzera il conto")
 	_check(_hud.event_warning_text().begins_with("ESTRAZIONE: SPIANA"), "annuncio: %s" % _hud.event_warning_text())
+	# Audit R-01: un solo annuncio a schermo; durante l'estrazione un terremoto in arrivo
+	# deve vedersi lo stesso, con la sua freccia, e poi l'estrazione torna.
+	var quake: QuakeEvent = _run.quake_event
+	quake.warning_seconds = 3.0
+	quake.next_at = _run.elapsed + 2.5
+	await _frames(10)
+	_check(_hud.event_warning_text().begins_with("TERREMOTO") and _hud._boss_arrow.visible,
+		"durante l'estrazione il terremoto in arrivo ha la precedenza: %s" % _hud.event_warning_text())
+	quake.state = QuakeEvent.State.IDLE
+	quake.next_at = _run.elapsed + 999.0
+	await _frames(2)
+	_check(_hud.event_warning_text().begins_with("ESTRAZIONE"), "finito il preavviso torna l'estrazione: %s" % _hud.event_warning_text())
 	_check(not _run.is_over, "il livello non finisce")
 	_field.level(mound, 3.0, _field.base_height_at(mound), 1.0)
 	_field.level(mound, 3.0, _field.base_height_at(mound), 1.0)

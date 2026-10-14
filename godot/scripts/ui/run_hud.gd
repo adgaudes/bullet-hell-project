@@ -4,6 +4,8 @@ extends CanvasLayer
 ## rottamatori abbattuti; annuncio del boss con freccia di direzione e barra
 ## della sua vita (D-043). Solo lettura: mai focus ne input.
 
+## Priorita dell'annuncio unico: treno e terremoto, poi boss, poi piazzola di estrazione.
+enum WarningPriority { EXTRACTION, BOSS, EVENT }
 const XP_COLOR := UiPalette.XP
 const BOSS_COLOR := Color(0.95, 0.6, 0.08)
 const DAY_COLOR := Color(1.0, 0.9, 0.55)
@@ -36,6 +38,9 @@ var _boss_warning: Label
 var _warning_plate: PanelContainer
 var _boss_name_label: Label
 var _boss_arrow: Polygon2D
+## Passo fisico e priorita dell'ultima scrittura dell'annuncio (audit R-01).
+var _warning_frame := -1
+var _warning_priority := -1
 var _boss_box: VBoxContainer
 var _boss_bar: ProgressBar
 var _root: Control
@@ -190,7 +195,8 @@ func _ready() -> void:
 
 ## Annuncio dell'arrivo del boss: [param direction] e nel mondo (-Z = alto dello schermo).
 func set_boss_warning(boss_name: String, direction_name: String, direction: Vector3, seconds_left: float) -> void:
-	set_event_warning("%s ARRIVA DA %s" % [boss_name, direction_name], direction, seconds_left, BOSS_COLOR)
+	set_event_warning("%s ARRIVA DA %s" % [boss_name, direction_name], direction, seconds_left, BOSS_COLOR, true,
+		WarningPriority.BOSS)
 
 
 ## Nome sopra la barra vita del boss.
@@ -203,8 +209,13 @@ func boss_name_text() -> String:
 
 
 ## Annuncio con conto alla rovescia e freccia a bordo schermo verso [param direction]
-## (nel mondo): boss in arrivo, treno in arrivo (livello 2).
-func set_event_warning(text: String, direction: Vector3, seconds_left: float, color: Color, with_arrow := true) -> void:
+## (nel mondo): boss in arrivo, treno in arrivo (livello 2). Gli eventi lo riscrivono a ogni
+## passo e la riga e una sola: nello stesso passo fisico vince la [param priority] piu alta
+## (audit R-01: prima vinceva l'ultimo, e la piazzola nascondeva treno e terremoto).
+func set_event_warning(text: String, direction: Vector3, seconds_left: float, color: Color, with_arrow := true,
+		priority := WarningPriority.EVENT) -> void:
+	if not _claim_warning(priority):
+		return
 	var seconds := int(ceil(maxf(seconds_left, 0.0)))
 	if seconds != _boss_seconds_shown or text != _boss_direction_shown:
 		_boss_seconds_shown = seconds
@@ -285,15 +296,28 @@ func marker_count() -> int:
 
 
 func clear_boss_warning() -> void:
-	clear_event_warning()
+	clear_event_warning(WarningPriority.BOSS)
 
 
-func clear_event_warning() -> void:
+## [param priority]: chi toglie l'annuncio non cancella quello piu importante scritto nello stesso passo.
+func clear_event_warning(priority := WarningPriority.EVENT) -> void:
+	if not _claim_warning(priority):
+		return
 	_boss_warning.hide()
 	_warning_plate.hide()
 	_boss_arrow.hide()
 	_boss_seconds_shown = -1
 	_boss_direction_shown = ""
+
+
+## Vero se [param priority] puo scrivere l'annuncio in questo passo fisico.
+func _claim_warning(priority: int) -> bool:
+	var frame := Engine.get_physics_frames()
+	if frame == _warning_frame and priority < _warning_priority:
+		return false
+	_warning_frame = frame
+	_warning_priority = priority
+	return true
 
 
 func event_warning_text() -> String:

@@ -74,10 +74,11 @@ func advance(delta: float) -> void:
 	if hud != null:
 		if intact:
 			hud.set_event_warning("ESTRAZIONE: TIENI LA PIAZZOLA", Vector3.FORWARD, hold_seconds - held,
-				RunHud.EXTRACTION_COLOR, false)
+				RunHud.EXTRACTION_COLOR, false, RunHud.WarningPriority.EXTRACTION)
 		else:
 			var hint := "ESTRAZIONE: SPIANA UN DISCO DI %d M" % int(round(radius_m * 2.0))
-			hud.set_event_warning(hint, Vector3.FORWARD, hold_seconds, RunHud.EXTRACTION_COLOR, false)
+			hud.set_event_warning(hint, Vector3.FORWARD, hold_seconds, RunHud.EXTRACTION_COLOR, false,
+				RunHud.WarningPriority.EXTRACTION)
 	if held >= hold_seconds:
 		_complete()
 
@@ -85,7 +86,7 @@ func advance(delta: float) -> void:
 func _complete() -> void:
 	active = false
 	if hud != null:
-		hud.clear_event_warning()
+		hud.clear_event_warning(RunHud.WarningPriority.EXTRACTION)
 	var at := Vector3(center_point.x, terrain_field.height_at(center_point), center_point.z)
 	DebrisBurst.spawn(get_parent(), at + Vector3(0.0, 0.5, 0.0), LANDING_COLOR, 24, 6.0, 0.16)
 	if _ring != null:
