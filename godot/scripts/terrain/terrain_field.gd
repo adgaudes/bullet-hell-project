@@ -317,7 +317,7 @@ func paint_layer(center: Vector3, radius: float, layer: int) -> void:
 	for p in _disc_points(center, radius):
 		data.set_pixel(Terrain3DRegion.TYPE_CONTROL, _vertex_world(p), pixel)
 	_mark_regions(center, radius)
-	data.update_maps(Terrain3DRegion.TYPE_CONTROL, false)
+	_update_maps(Terrain3DRegion.TYPE_CONTROL)
 
 
 ## Strato di tile su un rettangolo XZ (la fascia dei binari); niente in headless.
@@ -331,7 +331,7 @@ func paint_layer_rect(center: Vector3, half_size: Vector2, layer: int) -> void:
 		for ix in range(r[0], r[2] + 1):
 			data.set_pixel(Terrain3DRegion.TYPE_CONTROL, _vertex_world(iz * resolution_x + ix), pixel)
 	_mark_rect_regions(r)
-	data.update_maps(Terrain3DRegion.TYPE_CONTROL, false)
+	_update_maps(Terrain3DRegion.TYPE_CONTROL)
 
 
 ## Pittura sul color map di Terrain3D (strade, piazza, cumuli, barricate); niente in headless.
@@ -339,7 +339,7 @@ func tint(center: Vector3, radius: float, color: Color, strength: float) -> void
 	if not _terrain_ready:
 		return
 	_tint_disc(center, radius, color, strength)
-	_terrain.data.update_maps(Terrain3DRegion.TYPE_COLOR, false)
+	_update_maps(Terrain3DRegion.TYPE_COLOR)
 
 
 ## Tante pennellate di colore con un solo aggiornamento delle mappe (prato dipinto).
@@ -348,7 +348,7 @@ func tint_points(points: Array[Vector3], radius: float, color: Color, strength: 
 		return
 	for center in points:
 		_tint_disc(center, radius, color, strength)
-	_terrain.data.update_maps(Terrain3DRegion.TYPE_COLOR, false)
+	_update_maps(Terrain3DRegion.TYPE_COLOR)
 
 
 ## Tinta uniforme su un rettangolo XZ; strength 0 la toglie (torna al bianco).
@@ -365,7 +365,7 @@ func tint_rect(center: Vector3, half_size: Vector2, color: Color, strength: floa
 			var old: Color = data.get_pixel(Terrain3DRegion.TYPE_COLOR, world)
 			data.set_pixel(Terrain3DRegion.TYPE_COLOR, world, old.lerp(Color(target.r, target.g, target.b, old.a), w))
 	_mark_rect_regions(r)
-	data.update_maps(Terrain3DRegion.TYPE_COLOR, false)
+	_update_maps(Terrain3DRegion.TYPE_COLOR)
 
 
 func _tint_disc(center: Vector3, radius: float, color: Color, strength: float) -> void:
@@ -582,7 +582,18 @@ func _mirror_rect(x0: int, z0: int, x1: int, z1: int) -> void:
 		for ix in range(x0, x1 + 1):
 			data.set_height(Vector3(ix * SPACING - _half.x, 0.0, iz * SPACING - _half.y), _heights[iz * resolution_x + ix])
 	_mark_rect_regions([x0, z0, x1, z1])
-	data.update_maps(Terrain3DRegion.TYPE_HEIGHT, false)
+	_update_maps(Terrain3DRegion.TYPE_HEIGHT)
+
+
+## Ricarica sulla GPU le mappe di [param map_type] delle regioni marcate `edited`, poi
+## le smarca. Terrain3D non le smarca da solo (lo fa il suo editor dopo ogni
+## operazione): lasciate marcate, ogni aggiornamento ricaricava tutte le regioni del
+## livello, fino a 23 ms a pennellata sulla ferrovia.
+func _update_maps(map_type: int) -> void:
+	var data := _terrain.data
+	data.update_maps(map_type, false)
+	for region: Terrain3DRegion in data.get_regions_active():
+		region.edited = false
 
 
 func _mark_regions(center: Vector3, radius: float) -> void:

@@ -73,6 +73,15 @@ func _test_terrain_textures() -> void:
 		_check(terrain.material.shader_override_enabled and terrain.material.shader_override == TerrainSurface.SHADER, "shader del rilievo attivo")
 		_check(terrain.assets.get_texture_count() == TerrainSurface.LAYERS.size(), "cinque strati di tile (%d)" % terrain.assets.get_texture_count())
 		_check(terrain.material.get_shader_param("base_map") != null, "la base del rilievo e nello shader")
+		# Terrain3D ricarica sulla GPU ogni regione marcata `edited` a ogni update_maps:
+		# lasciate marcate, ogni pennellata ricaricava tutto il livello (picchi di 23 ms).
+		field.player_sculpt(Vector3(10.0, 0.0, 10.0), 2.4, -0.03, TerrainField.ToolMode.DIG)
+		field.paint_layer(Vector3(10.0, 0.0, 10.0), 2.4, 0)
+		field.tint(Vector3(10.0, 0.0, 10.0), 2.4, Color.BROWN, 0.5)
+		var still_edited := 0
+		for region: Terrain3DRegion in terrain.data.get_regions_active():
+			still_edited += 1 if region.edited else 0
+		_check(still_edited == 0, "dopo pennellata, strato e tinta nessuna regione resta da ricaricare (%d)" % still_edited)
 	else:
 		print("  skip controlli Terrain3D (headless)")
 	await _close_scene()
