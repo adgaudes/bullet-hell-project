@@ -156,6 +156,15 @@ func _build() -> void:
 	add_child(dust)
 	_layout_dust()
 	resized.connect(_layout_dust)
+	# Sfondo 3D (playtest del 14 ottobre 2026, O-12): con finestra il quartiere al tramonto
+	# prende il posto del cielo dipinto e delle sagome 2D, che restano per l'headless.
+	if DisplayServer.get_name() != "headless":
+		var diorama := MenuDiorama.new()
+		diorama.name = "Diorama"
+		add_child(diorama)
+		background.visible = false
+		backdrop.visible = false
+		dust.amount = 24
 	var logo := GameLogo.new()
 	logo.name = "Logo"
 	logo.letter_size = 44
@@ -193,6 +202,9 @@ func _build() -> void:
 	version.name = "Version"
 	version.theme_type_variation = &"MutedLabel"
 	version.text = "v%s   Godot %s" % [ProjectSettings.get_setting("application/config/version", "0"), Engine.get_version_info().string]
+	# Sopra il cielo del tramonto 3D (O-12) il grigio tenue non si leggeva: contorno scuro.
+	version.add_theme_constant_override(&"outline_size", 6)
+	version.add_theme_color_override(&"font_outline_color", Color(0.08, 0.05, 0.04, 0.85))
 	add_child(version)
 	version.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT, Control.PRESET_MODE_MINSIZE, 24)
 	version.grow_horizontal = Control.GROW_DIRECTION_BEGIN

@@ -22,6 +22,8 @@ const LAYER_METERS: Array[float] = [3.0, 2.2, 3.5, 4.0, 2.0, 2.6, 2.2]
 const LAYER_TINTS: Array[Color] = [Color.WHITE, Color(0.9, 0.88, 0.84), Color.WHITE, Color(0.9, 0.85, 0.8), Color.WHITE, Color.WHITE, Color.WHITE]
 ## Strati con un disegno regolare: niente rotazione di detiling, che ne spezzerebbe le
 ## fughe in una griglia di quadrati (playtest del 14 ottobre, O-08).
+## Correzione di rugosita per strato (-1..1): l'asfalto CC0 controsole sembrava bagnato.
+const LAYER_ROUGHNESS: Array[float] = [0.0, 0.0, 0.35, 0.0, 0.0, 0.0, 0.0]
 const PATTERNED_LAYERS: Array[int] = [LAYER_SLABS]
 const DETILE_ROTATION := 0.12
 const DETILE_SHIFT := 0.5
@@ -45,6 +47,7 @@ static func apply(terrain: Terrain3D) -> void:
 		asset.normal_texture = load(TEXTURE_DIR + "%s_normal_rough.png" % LAYERS[i])
 		asset.uv_scale = 1.0 / LAYER_METERS[i]
 		asset.albedo_color = LAYER_TINTS[i]
+		asset.roughness = LAYER_ROUGHNESS[i]
 		asset.detiling_rotation = 0.0 if i in PATTERNED_LAYERS else DETILE_ROTATION
 		asset.detiling_shift = DETILE_SHIFT
 		assets.set_texture(i, asset)
