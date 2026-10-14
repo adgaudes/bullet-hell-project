@@ -47,11 +47,46 @@ func _initialize() -> void:
 	await _test_level_up_flow()
 	_test_companion_upgrades()
 	await _test_death_ends_run()
+	await _test_pause_quit_confirms_and_banks()
 	# T-12: i nodi messi in coda con queue_free vanno liberati prima di uscire, o
 	# il motore segnala istanze ObjectDB perse all'uscita.
 	await _frames(2)
 	print("PROTOTYPE01_TESTS %s failures=%d" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
+
+
+## Audit U-02: "Esci" dalla pausa chiede una seconda pressione e, come "Torna al menu",
+## incassa la run prima di uscire (R-20). Scena nuova: quella sopra e gia finita.
+func _test_pause_quit_confirms_and_banks() -> void:
+	print("pause quit")
+	root.remove_child(_scene)
+	_scene.queue_free()
+	var scene: Node3D = RunScene.instantiate()
+	root.add_child(scene)
+	current_scene = scene
+	var run: ArenaRun = scene.get_node(^"Run")
+	(scene.get_node(^"EnemyDirector") as EnemyDirector).spawning = false
+	await _frames(5)
+	var pause := root.get_node("PauseMenu")
+	var quits := [0]
+	pause.set(&"quit_action", func() -> void: quits[0] += 1)
+	var profile := root.get_node("PlayerProfile") as PlayerProfileService
+	var runs_before := profile.runs
+	pause.call(&"pause_game")
+	var quit_button: Button = pause.get_node("%QuitButton")
+	var label := quit_button.text
+	quit_button.pressed.emit()
+	_check(quits[0] == 0 and not run.is_over and quit_button.text != label, "prima pressione di Esci: chiede conferma (%s)" % quit_button.text)
+	pause.call(&"resume_game")
+	pause.call(&"pause_game")
+	_check(quit_button.text == label, "chiudere la pausa annulla la conferma")
+	quit_button.pressed.emit()
+	quit_button.pressed.emit()
+	_check(quits[0] == 1 and run.is_over and profile.runs == runs_before + 1, "seconda pressione: run incassata (%d run) e uscita" % profile.runs)
+	pause.call(&"resume_game")
+	current_scene = null
+	root.remove_child(scene)
+	scene.queue_free()
 
 
 func _check(condition: bool, label: String) -> void:
