@@ -28,9 +28,43 @@ func _initialize() -> void:
 	await _test_level_mode()
 	await _test_level_with_empty_pack()
 	await _test_protected_is_red()
+	await _test_dig_animation_rhythm()
+	_test_mouse_ray_on_relief()
 	await _frames(2)
 	print("PROTOTYPE01_TESTS %s failures=%d" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
+
+
+## Audit G-03: tenendo premuto il tool l'affondo riparte a fine animazione, non a ogni passo.
+func _test_dig_animation_rhythm() -> void:
+	print("dig animation rhythm")
+	var animator: CharacterAnimator = _player._animator
+	if animator == null:
+		_check(false, "il giocatore ha l'animatore")
+		return
+	if _player.terrain_tool_mode != TerrainField.ToolMode.DIG:
+		_player.terrain_tool_mode = TerrainField.ToolMode.DIG
+	_player.pack.take(999.0)
+	var before := animator.fired_count(&"dig")
+	await _hold(1.0)
+	var fired := animator.fired_count(&"dig") - before
+	_check(fired >= 2 and fired <= 3, "un secondo di scavo: %d affondi (non 60)" % fired)
+
+
+## Audit G-02: il punto sotto il cursore sta sul rilievo, non sul piano alla quota del giocatore.
+func _test_mouse_ray_on_relief() -> void:
+	print("mouse ray on relief")
+	var mound := Vector3(14.0, 0.0, 6.0)
+	_field.sculpt(mound, 4.0, 2.5)
+	var target := mound + Vector3(1.0, 0.0, 0.5)
+	target.y = _field.height_at(target)
+	var ray := Vector3(0.0, -sin(deg_to_rad(55.0)), -cos(deg_to_rad(55.0)))
+	var origin := target - ray * 20.0
+	var hit: Variant = PlayerCharacter.ray_ground_point(_field, origin, ray, 0.0)
+	var error := Vector2(hit.x - target.x, hit.z - target.z).length() if hit != null else INF
+	_check(error < 0.2, "il cursore su un cumulo da 2,5 m cade sul cumulo (errore %.2f m; col piano a quota 0 sarebbe %.2f m)"
+		% [error, target.y / tan(deg_to_rad(55.0))])
+	_field.sculpt(mound, 4.0, -2.5)
 
 
 func _hold(seconds: float) -> void:

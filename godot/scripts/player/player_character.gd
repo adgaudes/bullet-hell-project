@@ -51,6 +51,8 @@ var terrain_tool_mode: int = TerrainField.ToolMode.DIG
 const TOOL_MODE_NAMES: Array[String] = ["Dig", "Raise", "Level", "Lamp"]
 ## Pennello continuo (D-082): vero finche il tasto del tool e premuto.
 var tool_held := false
+## Attesa prima del prossimo affondo dell'animazione di scavo.
+var _dig_anim_left := 0.0
 var pack: SoilPack
 var brush_radius_bonus_m := 0.0
 var tool_range_bonus_m := 0.0
@@ -275,6 +277,7 @@ func _physics_process(delta: float) -> void:
 	_update_dash_timers(delta)
 	_update_hit_flash(delta)
 	_invulnerable_left = maxf(_invulnerable_left - delta, 0.0)
+	_dig_anim_left = maxf(_dig_anim_left - delta, 0.0)
 	_update_terrain_target()
 	# Rete di sicurezza (audit I-01): un rilascio che non e arrivato come evento. Solo per le
 	# pressioni nate da eventi: bot, test e catture impostano `tool_held` direttamente.
@@ -378,7 +381,7 @@ func _update_field_target() -> void:
 	_preview.show_ring(terrain_target + Vector3(0.0, 1.0, 0.0), brush_radius(), _preview_color())
 
 
-## Punto del cursore sul piano orizzontale alla quota del terreno sotto il giocatore (null senza camera).
+## Punto del cursore sul terreno (null senza camera).
 func _mouse_ground_point() -> Variant:
 	var camera := get_viewport().get_camera_3d()
 	if camera == null:
@@ -386,12 +389,24 @@ func _mouse_ground_point() -> Variant:
 	var screen := get_viewport().get_mouse_position()
 	var origin := camera.project_ray_origin(screen)
 	var ray := camera.project_ray_normal(screen)
-	if is_zero_approx(ray.y):
+	return ray_ground_point(terrain_field, origin, ray, terrain_field.height_at(global_position))
+
+
+## Intersezione del raggio con il rilievo: piano alla quota [param start_height], poi tre
+## iterazioni a punto fisso sulla quota sotto il punto trovato (audit G-02: col solo piano
+## alla quota del giocatore, in una buca da 2,5 m l'anello stava 1,75 m oltre il cursore).
+static func ray_ground_point(field: TerrainField, origin: Vector3, ray: Vector3, start_height: float) -> Variant:
+	if ray.y > -0.001:
 		return null
-	var t := (terrain_field.height_at(global_position) - origin.y) / ray.y
-	if t < 0.0:
-		return null
-	return origin + ray * t
+	var height := start_height
+	var point := Vector3.ZERO
+	for i in 4:
+		var t := (height - origin.y) / ray.y
+		if t < 0.0:
+			return null
+		point = origin + ray * t
+		height = field.height_at(point)
+	return point
 
 
 ## Una pennellata per passo fisico finche il tasto e premuto (spec sezione 3).
@@ -430,7 +445,9 @@ func _apply_brush(delta: float) -> void:
 			tool_held = false
 			if lamp_field == null or not lamp_field.place_at(terrain_target):
 				terrain_tool_rejected.emit()
-	if _animator != null:
+	# Un affondo per volta (audit G-03): rilanciato a ogni passo restava sui primi fotogrammi.
+	if _animator != null and _dig_anim_left <= 0.0:
+		_dig_anim_left = CharacterAnimator.DIG_SECONDS
 		_animator.play_dig()
 
 
