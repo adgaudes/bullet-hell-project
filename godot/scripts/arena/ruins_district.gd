@@ -528,6 +528,12 @@ func _finish_base(field: TerrainField) -> void:
 ## Pennellate dei punti di interesse sopra la base: sporgono da essa, cosi il Demolitore
 ## le vede come gli argini del layout. Con [param scrap_field] ogni deposito registra la
 ## sua vena di rottami alla quota di base del cumulo (spec 5.1).
+## La run (ArenaRun) chiama sempre `settle_on_relief` dopo il rilievo: niente prato a quota
+## zero da buttare (audit R-04).
+func _cover_waits_for_settle() -> bool:
+	return true
+
+
 func apply_strokes(field: TerrainField, scrap_field: ScrapField = null) -> void:
 	# Centinaia di pennellate: un solo aggiornamento di specchio, collisione e campo alla fine
 	# (audit PF-03: prima uno per pennellata, a ogni avvio del livello).

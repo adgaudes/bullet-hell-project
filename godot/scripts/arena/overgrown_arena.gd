@@ -904,7 +904,7 @@ func _build_ground_cover() -> void:
 	# Rilievo atteso ma non ancora pronto (il quartiere nasce prima del campo nella scena):
 	# niente prato a quota zero da buttare, lo costruisce `settle_on_relief` sulle quote
 	# (audit R-04: prima a ogni avvio due costruzioni intere, una invisibile).
-	if terrain_field != null and not _relief_ready() and not Engine.is_editor_hint():
+	if _cover_waits_for_settle() and terrain_field != null and not _relief_ready() and not Engine.is_editor_hint():
 		return
 	var limit := cover_limit()
 	var limit_z := cover_limit_z()
@@ -996,6 +996,12 @@ func _build_ground_cover() -> void:
 	stats.flowers = flower_count
 	stats.litter = litter_count
 	_rng = outer_rng
+
+
+## Vero se chi usa questa arena chiama sempre `settle_on_relief` (le run): allora il prato
+## non si costruisce a quota zero. L'arena minore (`ruins_arena`) non lo chiama: costruisce subito.
+func _cover_waits_for_settle() -> bool:
+	return false
 
 
 func _relief_ready() -> bool:
