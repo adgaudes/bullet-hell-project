@@ -140,9 +140,13 @@ func _test_shake() -> void:
 	var enemy := _director.spawn_at(enemy_point)
 	enemy.speed_scale = 0.0
 	var kills_before := _director.kills
-	var far := _quake.fault_center + Vector3(25.0, 0.0, 0.0)
+	# Fuori dalla faglia ma vicino al giocatore: oltre il guinzaglio (40 m) il direttore lo
+	# riporterebbe su un punto casuale dell'anello, con alcuni semi della run proprio sulla
+	# faglia (seme 1026822462: era a 41,7 m dal giocatore).
+	var far := player_point + _quake.fault_side() * 10.0
 	var bystander := _director.spawn_at(far)
 	bystander.speed_scale = 0.0
+	var leashed_before := _director.leashed
 	_place(_player, player_point, 0.88)
 	_player._invulnerable_left = 0.0
 	var health_before := _player.health
@@ -170,7 +174,7 @@ func _test_shake() -> void:
 	_check(_field.delta_at(_companion.global_position) < 0.5, "il punto del compagno e risparmiato")
 	_check((not is_instance_valid(enemy) or enemy.is_dead) and _director.kills == kills_before + 1 and _quake.enemies_hit == 1,
 		"rottamatore sulla faglia travolto e contato")
-	_check(is_instance_valid(bystander) and not bystander.is_dead, "rottamatore lontano illeso")
+	_check(is_instance_valid(bystander) and not bystander.is_dead and _director.leashed == leashed_before, "rottamatore lontano illeso e rimasto al suo posto")
 	_check(_lamps.count() == 0, "lampione sulla faglia caduto")
 	var resting := true
 	for position in _scrap.positions_near(scrap_point, 8.0):
