@@ -38,6 +38,7 @@ func _initialize() -> void:
 	await _test_far_path_and_spawn()
 	await _test_window_follows_player()
 	await _test_markers()
+	_test_ruin_crowns_follow_walls()
 	# T-12: i nodi messi in coda con queue_free vanno liberati prima di uscire, o
 	# il motore segnala istanze ObjectDB perse all'uscita.
 	await _frames(2)
@@ -237,6 +238,29 @@ func _test_far_path_and_spawn() -> void:
 
 
 ## Indicatori a bordo schermo: i piu vicini fuori vista, mai quelli esauriti.
+## Audit R-05: corone e tondini delle rovine salgono e scendono con il loro muro sul rilievo.
+func _test_ruin_crowns_follow_walls() -> void:
+	print("ruin crowns")
+	# Le prove precedenti ricostruiscono il quartiere a quota zero: lo si riappoggia (ripetibile).
+	_district.settle_on_relief()
+	var crowns: MultiMeshInstance3D = _district.get_node_or_null(^"RuinCrowns")
+	var checked := 0
+	var wrong := 0
+	if crowns != null:
+		var live := crowns.multimesh.buffer
+		for i in _district._crown_hosts.size():
+			var host: Variant = _district._crown_hosts[i]
+			if host == null or not (host as Node).has_meta(&"flat_y"):
+				continue
+			var shift := (host as Node3D).position.y - float((host as Node).get_meta(&"flat_y"))
+			if absf(shift) < 0.05:
+				continue
+			checked += 1
+			if absf(live[i * 16 + 7] - (_district._crown_buffer[i * 16 + 7] + shift)) > 0.001:
+				wrong += 1
+	_check(checked > 10 and wrong == 0, "corone spostate con il loro muro (%d controllate, %d fuori posto)" % [checked, wrong])
+
+
 func _test_markers() -> void:
 	print("markers")
 	var run: ArenaRun = _scene.get_node(^"Run")

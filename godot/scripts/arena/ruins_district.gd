@@ -728,6 +728,7 @@ func _wall_crown(body: Node3D, wall_at: Vector3, along_x: bool, segment: float,
 		# instance uniform `source_color`: si converte qui per avere la tinta del muro.
 		_append_instance(_crown_buffer, _crown_count, xform, Color(tint.srgb_to_linear() * _rng.randf_range(0.8, 0.95), 0.3))
 		_crown_count += 1
+		_crown_hosts.append(body)
 	for i in _rng.randi_range(0, 2):
 		var rebar_height := _rng.randf_range(REBAR_HEIGHT.x, REBAR_HEIGHT.y)
 		var shift := _rng.randf_range(-0.45, 0.45) * segment
@@ -736,6 +737,7 @@ func _wall_crown(body: Node3D, wall_at: Vector3, along_x: bool, segment: float,
 		var xform := body.transform * Transform3D(lean.scaled_local(Vector3(0.07, rebar_height, 0.07)), local)
 		_append_instance(_rebar_buffer, _rebar_count, xform, Color(0.16, 0.09, 0.05))
 		_rebar_count += 1
+		_rebar_hosts.append(body)
 
 
 func _build_props() -> void:

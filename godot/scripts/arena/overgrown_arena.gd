@@ -116,6 +116,10 @@ var _crown_buffer := PackedFloat32Array()
 var _crown_count := 0
 var _rebar_buffer := PackedFloat32Array()
 var _rebar_count := 0
+## Muro (corpo) che porta ogni corona e tondino, null per le torri: sul rilievo le istanze
+## salgono e scendono con il loro muro (audit R-05).
+var _crown_hosts: Array = []
+var _rebar_hosts: Array = []
 var _crown_material: ShaderMaterial
 var _shared_bush: ArrayMesh
 var _metal_material: StandardMaterial3D
@@ -551,6 +555,7 @@ func _edge_crown(center: Vector2, footprint: Vector2, height: float, yaw_deg: fl
 			_append_instance(_crown_buffer, _crown_count, xform * Transform3D(tilt.scaled_local(size), local),
 				Color(linear * _rng.randf_range(0.8, 0.95), 0.4))
 			_crown_count += 1
+			_crown_hosts.append(null)
 			if _rng.randf() < 0.5:
 				var rebar_height := _rng.randf_range(0.5, 1.3)
 				var lean := Basis.from_euler(Vector3(_rng.randf_range(-0.4, 0.4), 0.0, _rng.randf_range(-0.4, 0.4)))
@@ -559,6 +564,7 @@ func _edge_crown(center: Vector2, footprint: Vector2, height: float, yaw_deg: fl
 					xform * Transform3D(lean.scaled_local(Vector3(0.08, rebar_height, 0.08)), rebar_local),
 					Color(0.16, 0.09, 0.05))
 				_rebar_count += 1
+				_rebar_hosts.append(null)
 
 
 ## Lastra di facciata staccata dalla torre, appoggiata di sbieco al piede del lato sud.
@@ -594,6 +600,8 @@ func _reset_ruin_details() -> void:
 	_crown_count = 0
 	_rebar_buffer.clear()
 	_rebar_count = 0
+	_crown_hosts.clear()
+	_rebar_hosts.clear()
 
 
 ## Accoda un'istanza (trasformazione completa e colore) al buffer di un MultiMesh.
@@ -1008,6 +1016,21 @@ func _relief_ready() -> bool:
 	return terrain_field != null and terrain_field.is_node_ready() and terrain_field.resolution_x > 0
 
 
+## Corone e tondini (MultiMesh in coordinate mondo) con lo stesso scarto di quota del loro
+## muro, dal buffer piatto della composizione: ripetibile (audit R-05).
+func _shift_details(node_name: String, flat: PackedFloat32Array, hosts: Array) -> void:
+	var node := get_node_or_null(NodePath(node_name)) as MultiMeshInstance3D
+	if node == null or hosts.is_empty() or node.multimesh.instance_count != hosts.size():
+		return
+	var buffer := flat.duplicate()
+	for i in hosts.size():
+		var host: Variant = hosts[i]
+		if host == null or not is_instance_valid(host) or not (host as Node).has_meta(&"flat_y"):
+			continue
+		buffer[i * 16 + 7] += (host as Node3D).position.y - float((host as Node).get_meta(&"flat_y"))
+	node.multimesh.buffer = buffer
+
+
 ## Rilievo continuo (D-085): appoggia alle quote i corpi generati a quota zero (rovine
 ## un poco affondate, cosi i muri non galleggiano sulle ondulazioni) e rifa prato, fiori e
 ## detriti sulle quote. Da chiamare quando il rilievo di base e pronto; ripetibile.
@@ -1029,6 +1052,8 @@ func settle_on_relief() -> void:
 		var flat_y: float = body.get_meta(&"flat_y")
 		var sink := 0.2 if String(body.name).begins_with("Block") else 0.0
 		body.position.y = flat_y + terrain_field.height_at(body.position) - sink
+	_shift_details("RuinCrowns", _crown_buffer, _crown_hosts)
+	_shift_details("RuinRebar", _rebar_buffer, _rebar_hosts)
 	for cover_name in ["GrassTufts", "Flowers", "Litter"]:
 		var old := get_node_or_null(NodePath(cover_name))
 		if old != null:
