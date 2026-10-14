@@ -12,6 +12,7 @@ func _initialize() -> void:
 	_test_defaults()
 	_test_apply()
 	_test_persistence()
+	_test_terrain_detail_follows_quality()
 	await _test_volume_validation()
 	await _test_deferred_save()
 	await _test_pause_and_focus()
@@ -418,6 +419,19 @@ func _check_settings_menu_rows(pause_menu: Node) -> void:
 ## Review finale del restyling: le suite non devono toccare il file reale; il Deck si
 ## applica anche con un file vecchio finche il giocatore non sceglie un preset; i livelli
 ## bassi di SSAO e bagliore costano meno.
+## Audit Q-02: il dettaglio ridotto del terreno non sparisce toccando un'opzione del Deck.
+func _test_terrain_detail_follows_quality() -> void:
+	print("terrain detail")
+	var s := GameSettingsScript.new()
+	s.set_preset(GameSettingsService.Preset.STEAM_DECK)
+	_check(TerrainField.reduced_detail(s), "preset Steam Deck: terreno a dettaglio ridotto")
+	s.set_ssao_quality(0)
+	_check(s.preset == GameSettingsService.Preset.CUSTOM and TerrainField.reduced_detail(s), "spento l'SSAO (Personalizzato): resta ridotto")
+	s.set_preset(GameSettingsService.Preset.HIGH)
+	_check(not TerrainField.reduced_detail(s), "preset Alto: dettaglio pieno")
+	s.free()
+
+
 func _test_isolation_and_deck() -> void:
 	print("isolation and deck")
 	var live: GameSettingsService = _settings()

@@ -652,9 +652,16 @@ func _apply_quality_preset() -> void:
 	var settings := get_node_or_null(^"/root/GameSettings") as GameSettingsService
 	if settings == null:
 		return
-	if settings.preset == GameSettingsService.Preset.STEAM_DECK or settings.preset == GameSettingsService.Preset.LOW:
+	if reduced_detail(settings):
 		_terrain.mesh_lods = 5
 		_terrain.mesh_size = 32
+
+
+## Dettaglio ridotto del terreno (meno anelli di LOD, piu piccoli). Segue la qualita delle
+## ombre, come le ombre leggere dei preset bassi (audit Q-02): prima valeva solo con i
+## preset Deck e Basso esatti, e toccare un'opzione qualsiasi (Personalizzato) lo toglieva.
+static func reduced_detail(settings: GameSettingsService) -> bool:
+	return settings.shadow_quality <= 1
 
 
 func _disable_terrain3d_collision() -> void:
