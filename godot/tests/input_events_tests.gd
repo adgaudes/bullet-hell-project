@@ -31,6 +31,8 @@ func _initialize() -> void:
 	await _reload_scene()
 	_use_reference_tuning(_player)
 	await _test_mouse_aim_switch()
+	await _reload_scene()
+	await _test_tool_released_without_event()
 	# T-12: i nodi messi in coda con queue_free vanno liberati prima di uscire, o
 	# il motore segnala istanze ObjectDB perse all'uscita.
 	await _frames(2)
@@ -250,6 +252,49 @@ func _mouse_motion(relative: Vector2) -> void:
 	event.global_position = event.position
 	event.relative = relative * root.get_final_transform().get_scale()
 	Input.parse_input_event(event)
+
+
+## Audit I-01 e I-03: il rilascio che non arriva mai come evento (Alt-Tab: Godot svuota
+## lo stato di Input senza eventi) non lascia il pennello attivo; una ripetizione
+## automatica della tastiera non conta come rilascio.
+func _test_tool_released_without_event() -> void:
+	print("tool released without event")
+	_mouse_button(MOUSE_BUTTON_LEFT, true)
+	await _frames(2)
+	_check(_player.tool_held, "il clic tiene il pennello")
+	_player.notification(Node.NOTIFICATION_APPLICATION_FOCUS_OUT)
+	_check(not _player.tool_held, "finestra senza focus: pennello rilasciato")
+	_mouse_button(MOUSE_BUTTON_LEFT, false)
+	await _frames(1)
+	_mouse_button(MOUSE_BUTTON_LEFT, true)
+	await _frames(2)
+	_check(_player.tool_held, "una nuova pressione riparte")
+	# Stato di Input svuotato senza evento di rilascio.
+	Input.action_release(&"terrain_tool")
+	await _frames(2)
+	_check(not _player.tool_held, "Input dice rilasciato: il pennello si ferma anche senza evento")
+	_mouse_button(MOUSE_BUTTON_LEFT, false)
+	await _frames(1)
+	var dash_key: InputEventKey = null
+	for event in InputMap.action_get_events(&"dash"):
+		if event is InputEventKey:
+			dash_key = (event as InputEventKey).duplicate()
+	_check(dash_key != null, "lo scatto ha un tasto")
+	if dash_key == null:
+		return
+	dash_key.pressed = true
+	Input.parse_input_event(dash_key)
+	await _frames(1)
+	var echo := dash_key.duplicate() as InputEventKey
+	echo.echo = true
+	Input.parse_input_event(echo)
+	await _frames(1)
+	var sources: Dictionary = _player._held_actions.get(&"dash", {})
+	_check(sources.has("InputEventKey"), "la ripetizione del tasto non lo rilascia")
+	var release := dash_key.duplicate() as InputEventKey
+	release.pressed = false
+	Input.parse_input_event(release)
+	await _frames(1)
 
 
 func _mouse_button(button: MouseButton, pressed: bool) -> void:

@@ -195,6 +195,9 @@ func _input(event: InputEvent) -> void:
 ## Ogni sorgente (tasto, grilletto, pulsante, mouse) tiene l'azione per conto suo:
 ## rilasciarne una mentre un'altra e premuta non riarma il comando (P-02).
 func _unhandled_input(event: InputEvent) -> void:
+	# Una ripetizione automatica del tasto non e ne pressione ne rilascio (audit I-03).
+	if event.is_echo():
+		return
 	for action in STARTED_ACTIONS:
 		if not event.is_action(action):
 			continue
@@ -215,9 +218,11 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 ## Un rilascio avvenuto in pausa non arriva mai: alla ripresa nessuna azione e
-## "ancora premuta", altrimenti la pressione successiva verrebbe scartata (R-17).
+## "ancora premuta", altrimenti la pressione successiva verrebbe scartata (R-17). Lo stesso
+## quando la finestra perde il focus: Godot svuota lo stato di Input senza eventi, e il
+## pennello scaverebbe da solo fino al clic successivo (audit I-01).
 func _notification(what: int) -> void:
-	if what == NOTIFICATION_UNPAUSED:
+	if what == NOTIFICATION_UNPAUSED or what == NOTIFICATION_APPLICATION_FOCUS_OUT or what == NOTIFICATION_WM_WINDOW_FOCUS_OUT:
 		_held_actions.clear()
 		_pending_actions.clear()
 		tool_held = false
@@ -271,6 +276,11 @@ func _physics_process(delta: float) -> void:
 	_update_hit_flash(delta)
 	_invulnerable_left = maxf(_invulnerable_left - delta, 0.0)
 	_update_terrain_target()
+	# Rete di sicurezza (audit I-01): un rilascio che non e arrivato come evento. Solo per le
+	# pressioni nate da eventi: bot, test e catture impostano `tool_held` direttamente.
+	if tool_held and _held_actions.has(&"terrain_tool") and not Input.is_action_pressed(&"terrain_tool"):
+		tool_held = false
+		_held_actions.erase(&"terrain_tool")
 	if terrain_field != null and tool_held:
 		_apply_brush(delta)
 	else:
