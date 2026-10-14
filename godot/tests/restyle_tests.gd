@@ -110,7 +110,11 @@ func _test_vegetation_and_props() -> void:
 	print("vegetation and props")
 	await _open_scene()
 	var district: Node3D = _scene.get_node(^"District")
-	var tufts: MultiMeshInstance3D = district.find_child("GrassTufts", true, false)
+	# Audit V-01: il prato e diviso in porzioni sotto il nodo GrassTufts.
+	var tuft_holder := district.find_child("GrassTufts", true, false)
+	var tiles: Array[Node] = tuft_holder.get_children() if tuft_holder != null else []
+	_check(tiles.size() > 9, "prato diviso in porzioni scartabili dal frustum (%d)" % tiles.size())
+	var tufts: MultiMeshInstance3D = tiles[0] as MultiMeshInstance3D if not tiles.is_empty() else null
 	var grass_material := tufts.material_override as ShaderMaterial if tufts != null else null
 	_check(grass_material != null and grass_material.get_shader_parameter(&"plants_albedo") is TextureLayered, "l'erba usa l'array plants_albedo")
 	# Prato basso al vento (D-083): due quad per ciuffo, vento dal campo condiviso.
@@ -211,15 +215,24 @@ func _test_world_applies_preset() -> void:
 	await _frames(1)
 	_check(not env.sdfgi_enabled and not env.volumetric_fog_enabled and env.ssao_enabled, "cambiare preset a scena aperta aggiorna l'ambiente")
 	var district := _scene.get_node(^"District")
-	var tufts: MultiMeshInstance3D = district.find_child("GrassTufts", true, false)
-	var full_count := tufts.multimesh.instance_count
+	var full_count := _cover_instances(district, "GrassTufts")
 	await _close_scene()
 	await _open_scene()
 	district = _scene.get_node(^"District")
-	tufts = district.find_child("GrassTufts", true, false)
-	_check(tufts.multimesh.instance_count < full_count, "con densita media l'erba ha meno istanze (%d < %d)" % [tufts.multimesh.instance_count, full_count])
+	var medium_count := _cover_instances(district, "GrassTufts")
+	_check(medium_count < full_count, "con densita media l'erba ha meno istanze (%d < %d)" % [medium_count, full_count])
 	settings.set_preset(GameSettingsService.Preset.HIGH)
 	await _close_scene()
+
+
+## Istanze totali di una copertura divisa in porzioni (audit V-01).
+func _cover_instances(district: Node, cover_name: String) -> int:
+	var total := 0
+	var holder := district.find_child(cover_name, true, false)
+	if holder != null:
+		for tile in holder.get_children():
+			total += (tile as MultiMeshInstance3D).multimesh.instance_count
+	return total
 
 
 func _test_camera_distance() -> void:

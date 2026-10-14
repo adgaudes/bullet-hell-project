@@ -12,6 +12,8 @@ extends Node3D
 ## Il piano del suolo e a y = 0 nello spazio locale; il nodo va lasciato in origine
 ## perche gli shader lavorano in coordinate mondo.
 
+## Lato delle porzioni di erba, fiori e detriti (audit V-01): il frustum scarta le altre.
+const COVER_TILE_M := 32.0
 const RUIN_SHADER := preload("res://resources/materials/ruin_overgrown.gdshader")
 const RUST_SHADER := preload("res://resources/materials/rusted_metal.gdshader")
 const FOLIAGE_SHADER := preload("res://resources/materials/foliage.gdshader")
@@ -982,9 +984,9 @@ func _build_ground_cover() -> void:
 	tufts.resize(tuft_count * 16)
 	flower_buffer.resize(flower_count * 16)
 	litter_buffer.resize(litter_count * 16)
-	_add_multimesh("GrassTufts", _tuft_mesh(), tufts, tuft_count, _grass_material)
-	_add_multimesh("Flowers", _flower_mesh(), flower_buffer, flower_count)
-	_add_multimesh("Litter", _unit_box_mesh(), litter_buffer, litter_count, _litter_material)
+	_add_tiled_cover("GrassTufts", _tuft_mesh(), tufts, tuft_count, _grass_material)
+	_add_tiled_cover("Flowers", _flower_mesh(), flower_buffer, flower_count)
+	_add_tiled_cover("Litter", _unit_box_mesh(), litter_buffer, litter_count, _litter_material)
 	stats.tufts = tuft_count
 	stats.flowers = flower_count
 	stats.litter = litter_count
@@ -1045,6 +1047,66 @@ static func _write_instance(buffer: PackedFloat32Array, index: int, yaw: float, 
 	buffer[base + 13] = color.g
 	buffer[base + 14] = color.b
 	buffer[base + 15] = color.a
+
+
+## Erba, fiori e detriti in porzioni da COVER_TILE_M (audit V-01): un MultiMesh grande
+## come la mappa non esce mai dal frustum e la GPU elaborava tutto il prato (1,4 M
+## triangoli su due passate) per vederne il 2-4 %. Un nodo [param node_name] con un
+## MultiMeshInstance3D per porzione non vuota; le istanze si riordinano per porzione con
+## un ordinamento a conteggio (origine nei float 3 e 11 di ogni istanza).
+func _add_tiled_cover(node_name: String, mesh: Mesh, buffer: PackedFloat32Array, count: int,
+		material: Material = null) -> void:
+	var holder := Node3D.new()
+	holder.name = node_name
+	_add_generated(holder)
+	var limit := cover_limit()
+	var limit_z := cover_limit_z()
+	var cols := maxi(int(ceil(limit * 2.0 / COVER_TILE_M)), 1)
+	var rows := maxi(int(ceil(limit_z * 2.0 / COVER_TILE_M)), 1)
+	var tile_of := PackedInt32Array()
+	tile_of.resize(count)
+	var offsets := PackedInt32Array()
+	offsets.resize(cols * rows + 1)
+	offsets.fill(0)
+	for i in count:
+		var tx := clampi(int((buffer[i * 16 + 3] + limit) / COVER_TILE_M), 0, cols - 1)
+		var tz := clampi(int((buffer[i * 16 + 11] + limit_z) / COVER_TILE_M), 0, rows - 1)
+		var t := tz * cols + tx
+		tile_of[i] = t
+		offsets[t + 1] += 1
+	for t in cols * rows:
+		offsets[t + 1] += offsets[t]
+	var ordered := PackedFloat32Array()
+	ordered.resize(count * 16)
+	var cursor := offsets.duplicate()
+	for i in count:
+		var t := tile_of[i]
+		var dst := cursor[t] * 16
+		cursor[t] += 1
+		var src := i * 16
+		for j in 16:
+			ordered[dst + j] = buffer[src + j]
+	for t in cols * rows:
+		var n := offsets[t + 1] - offsets[t]
+		if n == 0:
+			continue
+		var tile := _cover_tile(mesh, ordered.slice(offsets[t] * 16, offsets[t + 1] * 16), n, material)
+		tile.name = "%s_%d_%d" % [node_name, t % cols, t / cols]
+		holder.add_child(tile)
+
+
+func _cover_tile(mesh: Mesh, buffer: PackedFloat32Array, count: int, material: Material) -> MultiMeshInstance3D:
+	var mm := MultiMesh.new()
+	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.use_colors = true
+	mm.mesh = mesh
+	mm.instance_count = count
+	mm.buffer = buffer
+	var mmi := MultiMeshInstance3D.new()
+	mmi.multimesh = mm
+	mmi.material_override = material if material != null else _foliage_material
+	mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	return mmi
 
 
 func _add_multimesh(node_name: String, mesh: Mesh, buffer: PackedFloat32Array, count: int,
