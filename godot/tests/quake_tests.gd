@@ -46,6 +46,7 @@ func _initialize() -> void:
 	await _test_shake()
 	await _test_crest_lifts_player_and_companion()
 	_test_options()
+	await _test_empty_fault_is_skipped()
 	await _test_railway_has_no_quake()
 	await _frames(2)
 	print("PROTOTYPE01_TESTS %s failures=%d" % ["PASS" if _failures == 0 else "FAIL", _failures])
@@ -218,6 +219,21 @@ func _test_options() -> void:
 	_check(is_equal_approx(RunLaunchOptions.quake_seconds(120.0, ["--seed=3"]), 120.0), "senza opzione vale il tuning")
 	_quake.first_seconds = 0.0
 	_check(not _quake.is_enabled(), "con 0 secondi il terremoto e spento")
+
+
+## Audit R-06: con tutto il campo protetto nessuna faglia e possibile: niente annuncio,
+## il ciclo si salta.
+func _test_empty_fault_is_skipped() -> void:
+	print("empty fault")
+	_quake.first_seconds = 120.0
+	_field.set_protected(Vector3.ZERO, 400.0, true)
+	_quake.state = QuakeEvent.State.IDLE
+	_quake.next_at = _run.elapsed + 1.0
+	var before := _quake.next_at
+	await _frames(5)
+	_check(_quake.state == QuakeEvent.State.IDLE and _quake.next_at > before and not _hud.is_boss_warning_visible(),
+		"campo tutto protetto: nessun preavviso, prossimo terremoto spostato (%.0f -> %.0f)" % [before, _quake.next_at])
+	_field.set_protected(Vector3.ZERO, 400.0, false)
 
 
 func _test_railway_has_no_quake() -> void:

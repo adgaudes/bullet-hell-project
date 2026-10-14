@@ -104,6 +104,8 @@ var _marker_targets: Array[Dictionary] = []
 var _marker_refresh_left := 0.0
 ## Controlli `highest_bump` degli indicatori (audit R-03, per i test).
 var marker_bump_checks := 0
+## Barricate del Demolitore copiate alla sua morte (audit B-01).
+var _boss_barricades: Array[Vector3] = []
 ## Esito per pennellata del quartiere (indice): l'argine sporge ancora? Si ricontrolla solo
 ## se il terreno e cambiato sopra di lei dall'ultimo aggiornamento.
 var _marker_alive: Dictionary[int, bool] = {}
@@ -197,12 +199,20 @@ func _physics_process(delta: float) -> void:
 	elapsed += delta
 	hud.set_time(elapsed)
 	_tick_night()
+	# Ogni evento puo chiudere la run (treno o terremoto mortali, piazzola tenuta): dopo,
+	# niente boss chiamato ne altri eventi nello stesso passo (audit B-02).
 	if train_event != null:
 		train_event.advance(elapsed, delta)
+	if is_over:
+		return
 	if quake_event != null:
 		quake_event.advance(elapsed, delta)
+	if is_over:
+		return
 	if extraction_pad != null:
 		extraction_pad.advance(delta)
+	if is_over:
+		return
 	_tick_boss(delta)
 	_tick_start_protection(delta)
 	_tick_markers(delta)
@@ -508,6 +518,10 @@ func scrap_out(victory: bool) -> int:
 ## Boss battuto: con la piazzola (D-076) il livello continua finche il giocatore non tiene
 ## un 3x3 piano; altrimenti vittoria subito (D-043).
 func _on_boss_died(_enemy: Enemy) -> void:
+	# Il boss viene liberato subito dopo: la mappa di fine livello (dopo l'estrazione) ha
+	# bisogno delle sue barricate (audit B-01).
+	if boss is Demolisher:
+		_boss_barricades = (boss as Demolisher).barricade_points.duplicate()
 	if extraction_pad != null and tuning.extraction_enabled and not is_over:
 		boss_phase = BossPhase.EXTRACTION
 		hud.clear_boss()
@@ -810,6 +824,13 @@ func abandon_run() -> void:
 
 
 ## Mappa del campo come l'ha lasciato il giocatore, per la schermata di fine livello.
+## Barricate del Demolitore per la mappa: dal boss vivo, o quelle copiate alla sua morte.
+func map_barricade_points() -> Array[Vector3]:
+	if is_instance_valid(boss) and boss is Demolisher:
+		return (boss as Demolisher).barricade_points
+	return _boss_barricades
+
+
 func build_run_map() -> Image:
 	var buildings: Array[Rect2] = []
 	if district != null:
@@ -822,9 +843,7 @@ func build_run_map() -> Image:
 					var at := (child as StaticBody3D).global_position
 					buildings.append(Rect2(at.x - size.x * 0.5, at.z - size.z * 0.5, size.x, size.z))
 	var boss_position: Variant = boss.global_position if is_instance_valid(boss) else null
-	var barricade_points: Array[Vector3] = []
-	if is_instance_valid(boss) and boss is Demolisher:
-		barricade_points = (boss as Demolisher).barricade_points
+	var barricade_points := map_barricade_points()
 	var lamp_points: Array[Vector3] = []
 	if lamp_field != null:
 		lamp_points = lamp_field.positions()

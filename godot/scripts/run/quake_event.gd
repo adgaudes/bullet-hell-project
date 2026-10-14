@@ -35,6 +35,8 @@ const FAULT_STEP := 2.4
 const CREST_RADIUS := 2.4
 const FURROW_RADIUS := 1.8
 const HIT_RADIUS := 1.2
+## Tentativi di scegliere una faglia con almeno un punto valido.
+const FAULT_ATTEMPTS := 4
 const BOSS_SPARE_RADIUS := 3.0
 
 ## Rilievo continuo (D-085): la faglia e una fila di pennellate.
@@ -124,7 +126,7 @@ func advance(elapsed: float, delta: float) -> void:
 		State.IDLE:
 			if elapsed >= next_at - warning_seconds:
 				_start_warning()
-			else:
+			if state != State.WARNING:
 				return
 			_tick_warning(elapsed, delta)
 		State.WARNING:
@@ -136,8 +138,17 @@ func advance(elapsed: float, delta: float) -> void:
 # --- Preavviso -------------------------------------------------------------------------
 
 func _start_warning() -> void:
+	# Faglia tutta fuori campo o su aree protette: qualche altro tentativo, poi il ciclo si
+	# salta invece di annunciare un terremoto che non fa nulla (audit R-06).
+	for attempt in FAULT_ATTEMPTS:
+		_choose_fault()
+		if not fault_points.is_empty():
+			break
+	if fault_points.is_empty():
+		next_at += interval_seconds
+		print("PROTOTYPE01_QUAKE_SKIPPED next=%.1f" % next_at)
+		return
 	state = State.WARNING
-	_choose_fault()
 	_dust_left = 0.0
 	print("PROTOTYPE01_QUAKE_WARNING cells=%d center=(%.1f, %.1f) at=%.1f"
 		% [_fault_size(), fault_center.x, fault_center.z, next_at])

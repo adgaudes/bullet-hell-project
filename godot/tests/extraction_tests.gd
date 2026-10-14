@@ -84,6 +84,8 @@ func _kill_boss() -> void:
 		await physics_frame
 		if _run.boss != null:
 			break
+	# Audit B-01: le barricate del Demolitore servono alla mappa anche dopo la sua liberazione.
+	(_run.boss as Demolisher).barricade_points.append(Vector3(9.0, 0.0, -7.0))
 	_run.boss.take_damage(_run.boss.health)
 	await _frames(2)
 
@@ -110,6 +112,9 @@ func _test_boss_death_calls_extraction() -> void:
 	_check(_hud.event_warning_text().begins_with("ESTRAZIONE: TIENI"), "annuncio senza freccia: %s" % _hud.event_warning_text())
 	_check(_audio.play_count(&"boss_warning") > plays, "sirena alla chiamata dell'estrazione")
 	_check(is_instance_valid(witness) and not witness.is_dead and _director.enemies.has(witness), "l'orda non si ritira: la pressione continua")
+	await _frames(30)
+	_check(not is_instance_valid(_run.boss) and _run.map_barricade_points().has(Vector3(9.0, 0.0, -7.0)),
+		"boss liberato: la mappa conserva le sue barricate")
 
 
 func _test_pad_broken_and_held() -> void:
