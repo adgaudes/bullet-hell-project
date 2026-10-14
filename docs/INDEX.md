@@ -10,7 +10,9 @@ Legenda stato: **vivo** = aggiornato e autorevole; **riferimento** = stabile, si
 
 | File | Contenuto | Leggilo quando | Stato |
 |---|---|---|---|
-| `docs/MIGRATION_STATUS.md` | Stato corrente, ultimo lavoro fatto, prossimo passo concreto, cosa aspetta il proprietario | **sempre per primo** | vivo |
+| `docs/MIGRATION_STATUS.md` | Stato corrente, ultimo lavoro fatto, prossimo passo concreto, cosa aspetta il proprietario; breve (sotto 8 KB), il vecchio va in `docs/archive/` | **sempre per primo** | vivo |
+| `docs/archive/STATUS_LOG_2026-10.md` | Vecchio MIGRATION_STATUS fino al 14 ottobre 2026: diario delle sessioni, fasi della migrazione, comandi e decisioni di allora | per ricostruire perche e quando e stato fatto qualcosa | archivio |
+| `docs/archive/ROADMAP_STATUS_2026-10.md` | Vecchia sezione "Stato operativo" della roadmap, giorno per giorno fino al 14 ottobre 2026 | per la cronologia delle fasi e dei giudizi chiesti al proprietario | archivio |
 | `AGENTS.md` | Regole operative per tutti gli agenti: engine, limiti, autonomia, qualita, Git | prima di una modifica sostanziale | vivo |
 | `CLAUDE.md` | Istruzioni specifiche per Claude (autonomia, consegna, delega a Codex) | caricato automaticamente | vivo |
 | `README.md` | Presentazione breve del progetto e link principali | per orientarsi da zero | vivo |
