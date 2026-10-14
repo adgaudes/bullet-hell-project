@@ -17,6 +17,10 @@ signal player_sculpted(center: Vector3, radius: float, volume: float, mode: int)
 enum ToolMode { DIG, RAISE, LEVEL, LAMP }
 
 const SPACING := 0.5
+## Bordo di paint_layer: lo strato sfuma come overlay sull'ultima fascia del disco, larga
+## PAINT_SOFT_WIDTH_M ma non oltre il 40 % del raggio (i dischi piccoli restano pieni al centro).
+const PAINT_SOFT_WIDTH_M := 1.5
+const PAINT_SOFT_MAX_FRACTION := 0.4
 const MIN_HEIGHT := -2.5
 const MAX_HEIGHT := 4.0
 const REGION_SIZE := 256
@@ -359,8 +363,25 @@ func paint_layer(center: Vector3, radius: float, layer: int) -> void:
 		return
 	var data := _terrain.data
 	var pixel := Color(Terrain3DUtil.as_float(Terrain3DUtil.enc_base(layer)), 0.0, 0.0, 0.0)
+	var soft_start := 1.0 - minf(PAINT_SOFT_WIDTH_M / radius, PAINT_SOFT_MAX_FRACTION)
 	for p in _disc_points(center, radius):
-		data.set_pixel(Terrain3DRegion.TYPE_CONTROL, _vertex_world(p), pixel)
+		var world := _vertex_world(p)
+		var d := Vector2(world.x - center.x, world.z - center.z).length() / radius
+		if d <= soft_start:
+			data.set_pixel(Terrain3DRegion.TYPE_CONTROL, world, pixel)
+			continue
+		# Bordo morbido (playtest del 14 ottobre, O-08): fuori dal nucleo lo strato entra come
+		# overlay sopra quello che c'era, con peso che cala verso il bordo, invece di un
+		# cambio netto per vertice che disegnava scalini da 0,5 m.
+		var old := Terrain3DUtil.as_uint(data.get_pixel(Terrain3DRegion.TYPE_CONTROL, world).r)
+		var old_base := Terrain3DUtil.get_base(old)
+		if old_base == layer:
+			continue
+		var weight := roundi(255.0 * smoothstep(1.0, soft_start, d))
+		if Terrain3DUtil.get_overlay(old) == layer:
+			weight = maxi(weight, Terrain3DUtil.get_blend(old))
+		var mixed := Terrain3DUtil.enc_base(old_base) | Terrain3DUtil.enc_overlay(layer) | Terrain3DUtil.enc_blend(weight)
+		data.set_pixel(Terrain3DRegion.TYPE_CONTROL, world, Color(Terrain3DUtil.as_float(mixed), 0.0, 0.0, 0.0))
 	_mark_regions(center, radius)
 	_update_maps(Terrain3DRegion.TYPE_CONTROL)
 
