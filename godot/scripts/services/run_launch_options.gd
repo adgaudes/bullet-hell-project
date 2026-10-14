@@ -26,11 +26,16 @@ static func level_id(args: PackedStringArray = OS.get_cmdline_user_args()) -> St
 	return StringName(_value_of("--level=", args))
 
 
-## Seme della run: `--seed=N`, altrimenti casuale.
+## Seme della run: `--seed=N`, altrimenti la variabile d'ambiente `PROTOTYPE01_SEED` (il gate
+## la imposta per tutte le suite: audit K-01, risultati riproducibili senza toccare la riga
+## di comando, che il menu legge per l'avvio diretto), altrimenti casuale.
 static func run_seed(args: PackedStringArray = OS.get_cmdline_user_args()) -> int:
 	var value := _value_of("--seed=", args)
 	if not value.is_empty():
 		return value.to_int()
+	var from_env := OS.get_environment("PROTOTYPE01_SEED")
+	if from_env.is_valid_int():
+		return from_env.to_int()
 	var rng := RandomNumberGenerator.new()
 	rng.randomize()
 	return rng.randi() & 0x7fffffff

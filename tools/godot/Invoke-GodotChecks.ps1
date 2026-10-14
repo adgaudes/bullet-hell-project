@@ -10,19 +10,25 @@
      e verifica dei marker attesi.
   Con -Executable verifica invece una build esportata (stessi marker, senza 1-2).
   Exit code 0 solo se tutto passa.
+  Il seme delle run e fisso (-Seed, variabile PROTOTYPE01_SEED): un rosso si riproduce
+  rilanciando con lo stesso seme; il log completo delle suite fallite resta in output/gate/.
 
 .EXAMPLE
   powershell -ExecutionPolicy Bypass -File tools/godot/Invoke-GodotChecks.ps1
   powershell -ExecutionPolicy Bypass -File tools/godot/Invoke-GodotChecks.ps1 -Executable LocalBuilds/Prototype01-Godot-Win64/Prototype01.exe
 #>
 param(
-    [string]$Executable = ""
+    [string]$Executable = "",
+    # Seme delle run in tutte le suite (audit K-01): stesso seme, stesso esito.
+    [int]$Seed = 20261014
 )
 
 $ErrorActionPreference = "Stop"
 $repo = Resolve-Path (Join-Path $PSScriptRoot "..\..")
 $project = Join-Path $repo "godot"
 $godot = (Get-Command godot_console -ErrorAction Stop).Source
+$env:PROTOTYPE01_SEED = "$Seed"
+$failedLogs = Join-Path $repo "output\gate"
 $failures = 0
 
 $expectedMarkers = @(
@@ -100,6 +106,8 @@ if ($Executable) {
     Write-Host "== smoke test build: $Executable"
     $run = Invoke-Captured (Resolve-Path $Executable) @("--headless", "--quit-after", "180", "--", "--autostart")
     if (Test-Markers $run.Text) { Write-Host "  ok   tutti i marker presenti" } else { $failures++ }
+    # Audit K-06: un crash all'uscita o un blocco dopo i marker non e un verde.
+    if ($run.Code -ne 0) { Write-Host "  FAIL codice d'uscita $($run.Code)"; $failures++ }
     if ($failures -eq 0) { Write-Host "GODOT_CHECKS PASS" } else { Write-Host "GODOT_CHECKS FAIL" }
     exit [int]($failures -gt 0)
 }
@@ -126,8 +134,13 @@ Get-ChildItem -Path (Join-Path $project "tests") -Filter *.gd | ForEach-Object {
     if ($result.Code -ne 0 -or -not $summary.Contains("PASS") -or $errors.Count -gt 0) {
         $failures++
         Write-Host "  FAIL $resPath (exit $($result.Code), errori runtime $($errors.Count))"
-        $result.Text -split "`n" | Where-Object { $_ -match "FAIL|TIMEOUT" } | ForEach-Object { Write-Host "       $_" }
+        $result.Text -split "`n" | Where-Object { $_ -match "FAIL|TIMEOUT|PROTOTYPE01_RUN_START" } | ForEach-Object { Write-Host "       $_" }
         $errors | ForEach-Object { Write-Host "       $_" }
+        # Audit K-02: il log intero resta per riprodurre il rosso.
+        New-Item -ItemType Directory -Force $failedLogs | Out-Null
+        $logFile = Join-Path $failedLogs ($_.BaseName + ".log")
+        Set-Content -Path $logFile -Value $result.Text -Encoding utf8
+        Write-Host "       log completo: $logFile (seme $Seed)"
     } else {
         Write-Host "  ok   $resPath $summary"
     }
@@ -136,6 +149,7 @@ Get-ChildItem -Path (Join-Path $project "tests") -Filter *.gd | ForEach-Object {
 Write-Host "== smoke test headless"
 $run = Invoke-Captured $godot @("--headless", "--path", "$project", "--quit-after", "180", "--", "--autostart")
 if (Test-Markers $run.Text) { Write-Host "  ok   tutti i marker presenti" } else { $failures++ }
+if ($run.Code -ne 0) { Write-Host "  FAIL codice d'uscita $($run.Code)"; $failures++ }
 
 if ($failures -eq 0) { Write-Host "GODOT_CHECKS PASS" } else { Write-Host "GODOT_CHECKS FAIL ($failures)" }
 exit [int]($failures -gt 0)
