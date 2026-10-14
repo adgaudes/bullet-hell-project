@@ -1174,15 +1174,22 @@ func _tuft_mesh() -> ArrayMesh:
 
 
 ## Fiore: piccolo bocciolo su uno stelo.
+## Testa del fiore: un ottaedro di 14 cm (8 triangoli). Era una sfera da 48 triangoli larga
+## circa 4 pixel sul Deck: micro-triangoli, 192 k su 4000 fiori (audit V-05).
 func _flower_mesh() -> ArrayMesh:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var head := SphereMesh.new()
-	head.radius = 0.07
-	head.height = 0.1
-	head.radial_segments = 6
-	head.rings = 3
-	st.append_from(head, 0, Transform3D(Basis(), Vector3(0.0, 0.28, 0.0)))
+	var center := Vector3(0.0, 0.28, 0.0)
+	var top := center + Vector3(0.0, 0.05, 0.0)
+	var bottom := center - Vector3(0.0, 0.05, 0.0)
+	var ring: Array[Vector3] = [center + Vector3(0.07, 0.0, 0.0), center + Vector3(0.0, 0.0, 0.07),
+		center + Vector3(-0.07, 0.0, 0.0), center + Vector3(0.0, 0.0, -0.07)]
+	for k in 4:
+		var a := ring[k]
+		var b := ring[(k + 1) % 4]
+		for v: Vector3 in [top, b, a, bottom, a, b]:
+			st.add_vertex(v)
+	st.generate_normals()
 	return st.commit()
 
 
