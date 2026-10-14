@@ -12,6 +12,9 @@ const LAYER_SLABS := 1
 const LAYER_ASPHALT := 2
 const LAYER_DUG_SOIL := 3
 const LAYER_MUD := 4
+const SLABS_UV_SCALE := 0.3
+## Strati con un disegno regolare: niente rotazione di detiling.
+const PATTERNED_LAYERS: Array[int] = [LAYER_SLABS, LAYER_ASPHALT]
 const TEXTURE_DIR := "res://assets/textures/terrain/"
 const SHADER := preload("res://resources/materials/terrain_relief.gdshader")
 const RAISED_TINT := Color(0.62, 0.42, 0.24)
@@ -27,8 +30,11 @@ static func apply(terrain: Terrain3D) -> void:
 		asset.name = LAYERS[i]
 		asset.albedo_texture = load(TEXTURE_DIR + "%s_albedo_height.png" % LAYERS[i])
 		asset.normal_texture = load(TEXTURE_DIR + "%s_normal_rough.png" % LAYERS[i])
-		asset.uv_scale = 0.12
-		asset.detiling_rotation = 0.15
+		# Le lastre a 0,12 misuravano quasi 3 m l'una: i "quadratoni" del playtest (O-08).
+		asset.uv_scale = SLABS_UV_SCALE if i == LAYER_SLABS else 0.12
+		# Playtest del 14 ottobre (O-08): ruotare a caso ogni cella da 8 m spezza le fughe
+		# delle texture a disegno regolare (lastre, asfalto) in una griglia di quadrati.
+		asset.detiling_rotation = 0.0 if i in PATTERNED_LAYERS else 0.15
 		assets.set_texture(i, asset)
 	terrain.assets = assets
 	var material: Terrain3DMaterial = terrain.material
