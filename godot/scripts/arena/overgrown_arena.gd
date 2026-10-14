@@ -109,6 +109,8 @@ var _foliage_material: ShaderMaterial
 var _bush_material: ShaderMaterial
 var _canopy_material: ShaderMaterial
 var _grass_material: ShaderMaterial
+## Vero quando il prato lo fa GrassField (a particelle, con Terrain3D): niente ciuffi nel MultiMesh.
+var gpu_grass := false
 var _litter_material: StandardMaterial3D
 ## Corone dei muri e tondini di ferro di tutte le rovine e torri, in due MultiMesh
 ## (D-068, D-070): le sottoclassi accodano con `_append_instance`.
@@ -997,13 +999,25 @@ func _build_ground_cover() -> void:
 	tufts.resize(tuft_count * 16)
 	flower_buffer.resize(flower_count * 16)
 	litter_buffer.resize(litter_count * 16)
-	_add_tiled_cover("GrassTufts", _tuft_mesh(), tufts, tuft_count, _grass_material)
+	if not gpu_grass:
+		_add_tiled_cover("GrassTufts", _tuft_mesh(), tufts, tuft_count, _grass_material)
 	_add_tiled_cover("Flowers", _flower_mesh(), flower_buffer, flower_count)
 	_add_tiled_cover("Litter", _unit_box_mesh(), litter_buffer, litter_count, _litter_material)
 	stats.tufts = tuft_count
 	stats.flowers = flower_count
 	stats.litter = litter_count
 	_rng = outer_rng
+
+
+## Passa il prato a GrassField (playtest del 14 ottobre 2026, O-09): toglie i ciuffi del
+## MultiMesh e non li rifa piu; fiori e detriti restano.
+func drop_tuft_cover() -> void:
+	gpu_grass = true
+	var old := get_node_or_null(^"GrassTufts")
+	if old != null:
+		_generated.erase(old)
+		remove_child(old)
+		old.queue_free()
 
 
 ## Vero se chi usa questa arena chiama sempre `settle_on_relief` (le run): allora il prato

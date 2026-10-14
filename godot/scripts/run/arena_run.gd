@@ -639,7 +639,23 @@ func _build_terrain_relief() -> void:
 	# Prato, prop e rovine sulle quote; strati e tinte quando Terrain3D e pronto (con finestra).
 	district.settle_on_relief()
 	terrain_field.render_ready.connect(district.paint_surface.bind(terrain_field))
+	# Terrain3D puo essere gia pronto (le pennellate dipingono subito): allora il prato parte ora.
+	terrain_field.render_ready.connect(_spawn_grass_field)
+	if terrain_field.terrain3d() != null:
+		_spawn_grass_field.call_deferred()
 	print("PROTOTYPE01_TERRAIN_LAYOUT_READY strokes=%d" % district.terrain_strokes.size())
+
+
+## Prato a particelle quando Terrain3D e pronto (playtest del 14 ottobre 2026, O-09).
+func _spawn_grass_field() -> void:
+	if terrain_field.terrain3d() == null or district.has_node(^"GrassField"):
+		return
+	district.drop_tuft_cover()
+	var grass := GrassField.new()
+	grass.name = "GrassField"
+	district.add_child(grass)
+	var settings := get_node_or_null(^"/root/GameSettings") as GameSettingsService
+	grass.setup(terrain_field, player, settings.vegetation_density if settings != null else 2)
 
 
 func _tick_start_protection(delta: float) -> void:
