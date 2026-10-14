@@ -2,38 +2,34 @@
 
 > **Breve per scelta** (audit D-06, 14 ottobre 2026): dove siamo, prossimo passo, cosa aspetta il proprietario. Va aggiornato a ogni avanzamento e tenuto **sotto 8 KB**: quando cresce, il vecchio va in `docs/archive/`. Storia delle sessioni fino al 14 ottobre 2026: `docs/archive/STATUS_LOG_2026-10.md`. Decisioni: `DECISIONS.md`. Piano di prodotto: `PROJECT_ROADMAP.md`. Per trovare un documento: `INDEX.md`.
 
-**Ultimo aggiornamento:** 14 ottobre 2026, notte.
+**Ultimo aggiornamento:** 14 ottobre 2026, notte (dopo il playtest).
 
 ## Dove siamo
 
 - **Engine** Godot 4.7.2 (GDScript). La migrazione da Unreal e chiusa; il codice Unreal sta nel tag `unreal-prototype-final`.
-- **Prodotto:** fase 3, prototipo della promessa A. Due livelli giocabili, quartiere e ferrovia, su terreno continuo (Terrain3D), con boss (Demolitore, Trivella), treno, terremoto, giorno e notte con lampioni, estrazione, Officina, campagna, interfaccia "fatta a mano", audio Sonniss. **Il proprietario non ha giocato nulla dal 7 ottobre.**
+- **Prodotto:** fase 3, prototipo della promessa A. Due livelli giocabili, quartiere e ferrovia, su terreno continuo (Terrain3D), con boss (Demolitore, Trivella), treno, terremoto, giorno e notte con lampioni, estrazione, Officina, campagna, interfaccia "fatta a mano", audio Sonniss. Primo playtest del proprietario il 14 ottobre (vedi sotto).
 - **Branch di lavoro:** `feature/arena-run`. Non integrato: `feature/engineer-restyle` (Ingegnere D-088, worktree `../Videogame-engineer`), in attesa del giudizio del proprietario.
 - **Gate:** `tools/godot/Invoke-GodotChecks.ps1`: check-only, 37 suite con seme fisso, passo con finestra (Terrain3D e shader), smoke test. Verde.
 - **Build:** `LocalBuilds/Prototype01-Godot-Win64/` e `-Linux/` (exe 196 MB).
 
-## Ultimo lavoro: audit e correzioni (14 ottobre 2026)
+## Audit (14 ottobre 2026)
 
-Audit generale in `docs/REVIEWS/FULL_AUDIT_2026-10-14.md`, con lo stato riga per riga in testa. Fatte, con un test ciascuna:
-
-- **Dati:** salvataggi con `.bak`, `.tmp` conservato, recupero e copia del file illeggibile (S-01..S-03).
-- **Gioco:** spinta della Trivella, terremoto sotto giocatore e compagno, annuncio con priorita, Esci con conferma e incasso, pennello dopo Alt-Tab, zainetto, frammenti e corone sul rilievo, mira col mouse sul rilievo, compagno e argini, mappa con barricate, terremoto senza faglia.
-- **Prestazioni (PC, i7-13620H e RTX 4050 Laptop, 70 nemici):**
-  - frame Alto 6,8 → 4,8 ms; frame Deck 5,4 → 4,1 ms;
-  - primitive 2,06 M → 0,76 M (prato a porzioni);
-  - ricentro del campo di percorso 51-64 → 0,5-1,4 ms;
-  - martello del Demolitore 557 → 18 aggiornamenti del terreno al secondo;
-  - primo frame del caricamento circa 3,1 → 2,7 s;
-  - exe 246 → 196 MB.
-- **Gate:** seme fisso, log delle suite fallite in `output/gate/`, allowlist per suite, passo con finestra.
+`docs/REVIEWS/FULL_AUDIT_2026-10-14.md`; riepilogo di cosa e stato corretto in `docs/archive/STATUS_LOG_2026-10.md`. Frame di riferimento prima del blocco grafica (RTX 4050, 70 nemici): Alto 4,8 ms, Deck 4,1 ms.
 
 ## Playtest del proprietario (14 ottobre 2026, sera)
 
-Esito **Modifica**: 14 osservazioni (salute, terra senza indicatore, buca senza uscita, sparo dalle spalle, armi, frecce viola, ombre e AO, terreno a quadrati, erba, rovine, impostazioni, menu, Officina, musica). Cause e piano in `docs/PLAYTESTS/OWNER_PLAYTEST_2026-10-14.md`. **Il piano di quel documento viene prima delle voci dell'audit qui sotto.**
+Esito **Modifica**: 14 osservazioni (salute, terra senza indicatore, buca senza uscita, sparo dalle spalle, armi, frecce viola, ombre e AO, terreno a quadrati, erba, rovine, impostazioni, menu, Officina, musica). Cause e piano in `docs/PLAYTESTS/OWNER_PLAYTEST_2026-10-14.md`. **Il piano di quel documento viene prima delle voci dell'audit.** Ordine scelto (D-089): grafica, gioco, armi, audio.
+
+**Blocco grafica, fatto il 14 ottobre (D-090, catture in `output/lighting/`):**
+- luce: nebbia volumetrica del Massimo da 0,012 a 0,003 (velava tutto), ambiente 0,4, AO di contatto, GI meno blu;
+- terreno: sette strati da texture CC0 (Poly Haven, ambientCG) a 1024, macerie e ghiaia nuovi, bordi degli strati sfumati, niente quadratoni; `tools/textures/fetch_terrain_textures.py`;
+- prato a particelle attorno al giocatore (`GrassField`), solo sulla terra dipinta di verde, sparisce da scavi e argini; +0,7 ms Deck, +1,2 ms Alto;
+- rovine: muri a moduli con la cima spezzata (`RuinModules`), texture CC0 con normal map in triplanare; `tools/textures/fetch_wall_textures.py`;
+- frecce viola spente; cespugli e auto meno verdi.
 
 ## Prossimo passo (agente)
 
-0. **Blocco 2 (grafica) del playtest del 14 ottobre**, poi i blocchi 1, 3, 4 (ordine D-089). Primo passo: cattura delle ombre accese e spente su Massimo (O-07).
+0. **Resto del blocco grafica:** sfondo del menu (O-12), Officina (O-13), alberi e finestre delle rovine, ProtonScatter (approvato in D-090, non ancora installato). Poi blocco 1 (salute, terra, buca, mira commutabile D-089, impostazioni), 3 (armi), 4 (musica: aspetta l'ascolto del proprietario).
 1. **Voci rimaste dell'audit**, nell'ordine della sua sezione 1:
    - PF-03, caricamento: prato sul rilievo 850 ms, pittura del terreno 460 ms;
    - T-01 e T-02: collisione copiata dal campo, ferrovia allineata;
@@ -49,7 +45,7 @@ Esito **Modifica**: 14 osservazioni (salute, terra senza indicatore, buca senza 
 
 ## Cosa aspetta il proprietario
 
-1. **Ascolto dei suoni** (D-084): `output/audio/sfx_preview.wav` oppure in gioco.
+1. **Musica:** ascoltare la rosa in `docs/AUDIO/MUSIC_SHORTLIST_2026-10-14.md` e dire quali brani tenere (D-089). **Grafica:** giudicare il blocco grafica nella nuova build (catture in `output/lighting/`).
 2. **Giudizio sull'Ingegnere** (D-088): catture in `../Videogame-engineer/output/engineer/`. Dopo il si si integra.
 3. **Playtest dei due livelli:** primo giro fatto il 14 ottobre (livello 1, tastiera, breve). Restano boss, notte, ferrovia e controller: promemoria in `docs/PLAYTESTS/ARENA_RUN_LEVEL_2026-10-07.md`.
 4. **Misura sul Steam Deck** con la build in `LocalBuilds/` e il Debug Menu (F3).

@@ -44,3 +44,7 @@ La partita breve non ha raggiunto il boss, la notte, la ferrovia ne il controlle
 **Blocco 3 — profondita di gioco** (O-05): progettare col proprietario armi multiple, come si ottengono e come evolvono, prima di scrivere codice.
 
 **Blocco 4 — audio** (O-14): musica e passata sugli effetti; servono fonti gratuite con licenza verificata.
+
+## Avanzamento
+
+- **14 ottobre, notte, blocco 2 in parte (D-090):** O-06 frecce spente; O-07 luce (nebbia del Massimo, ambiente, AO, GI); O-08 terreno con texture CC0 e bordi sfumati; O-09 prato a particelle; O-10 rovine a moduli con texture CC0 e normal map. Restano O-12 (menu), O-13 (Officina), alberi e finestre. Catture in `output/lighting/`.

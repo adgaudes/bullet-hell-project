@@ -110,6 +110,15 @@ func _test_vegetation_and_props() -> void:
 	print("vegetation and props")
 	await _open_scene()
 	var district: Node3D = _scene.get_node(^"District")
+	# Con finestra il prato lo fa GrassField a particelle (O-09): si controlla quello e si
+	# saltano le prove dei ciuffi del MultiMesh, che restano per l'headless.
+	var gpu_grass := district.get_node_or_null(^"GrassField") as GrassField
+	if gpu_grass != null:
+		_check(gpu_grass.particle_nodes.size() > 9, "prato a particelle diviso in celle (%d)" % gpu_grass.particle_nodes.size())
+		_check(gpu_grass.blade_material.shader.code.contains("wind.gdshaderinc"), "il prato a particelle usa il campo di vento condiviso")
+		_check(district.find_child("GrassTufts", true, false) == null, "con il prato a particelle i ciuffi del MultiMesh non ci sono")
+		await _close_scene()
+		return
 	# Audit V-01: il prato e diviso in porzioni sotto il nodo GrassTufts.
 	var tuft_holder := district.find_child("GrassTufts", true, false)
 	var tiles: Array[Node] = tuft_holder.get_children() if tuft_holder != null else []
@@ -223,14 +232,26 @@ func _test_world_applies_preset() -> void:
 	settings.set_preset(GameSettingsService.Preset.STEAM_DECK)
 	await _frames(1)
 	var district := _scene.get_node(^"District")
-	var full_count := _cover_instances(district, "GrassTufts")
+	var full_count := _grass_instances(district)
 	await _close_scene()
 	await _open_scene()
 	district = _scene.get_node(^"District")
-	var medium_count := _cover_instances(district, "GrassTufts")
+	var medium_count := _grass_instances(district)
 	_check(medium_count < full_count, "con densita media l'erba ha meno istanze (%d < %d)" % [medium_count, full_count])
 	settings.set_preset(GameSettingsService.Preset.HIGH)
 	await _close_scene()
+
+
+## Istanze del prato: con finestra le particelle di GrassField (O-09), in headless i
+## ciuffi del MultiMesh.
+func _grass_instances(district: Node) -> int:
+	var grass := district.get_node_or_null(^"GrassField") as GrassField
+	if grass == null:
+		return _cover_instances(district, "GrassTufts")
+	var total := 0
+	for node in grass.particle_nodes:
+		total += node.amount
+	return total
 
 
 ## Istanze totali di una copertura divisa in porzioni (audit V-01).

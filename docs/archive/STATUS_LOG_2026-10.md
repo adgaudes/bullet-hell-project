@@ -258,3 +258,19 @@ Usare sempre `godot_console`, mai `godot`, per i comandi non interattivi: il sec
 - **Specifica approvata, niente codice:** `docs/DAY_NIGHT_SPEC.md` (D-058). Una notte per livello, nemici piu forti al buio, torcia e faro con upgrade, lampioni piazzabili. Due tappe: (1) notte giocabile, (2) lampioni.
 - **Piano della tappa 1 scritto** (7 ottobre 2026, `docs/DAY_NIGHT_PLAN.md`): file, funzioni, valori, 11 casi di test e ordine di 5 commit; scritto senza Godot, nessun codice ancora.
 - **Prossimo passo:** implementare la tappa 1 seguendo il piano, con il gate verde a ogni commit.
+
+## Audit e correzioni (14 ottobre 2026, dal MIGRATION_STATUS)
+
+Audit generale in `docs/REVIEWS/FULL_AUDIT_2026-10-14.md`, con lo stato riga per riga in testa. Fatte, con un test ciascuna:
+
+- **Dati:** salvataggi con `.bak`, `.tmp` conservato, recupero e copia del file illeggibile (S-01..S-03).
+- **Gioco:** spinta della Trivella, terremoto sotto giocatore e compagno, annuncio con priorita, Esci con conferma e incasso, pennello dopo Alt-Tab, zainetto, frammenti e corone sul rilievo, mira col mouse sul rilievo, compagno e argini, mappa con barricate, terremoto senza faglia.
+- **Prestazioni (PC, i7-13620H e RTX 4050 Laptop, 70 nemici):**
+  - frame Alto 6,8 → 4,8 ms; frame Deck 5,4 → 4,1 ms;
+  - primitive 2,06 M → 0,76 M (prato a porzioni);
+  - ricentro del campo di percorso 51-64 → 0,5-1,4 ms;
+  - martello del Demolitore 557 → 18 aggiornamenti del terreno al secondo;
+  - primo frame del caricamento circa 3,1 → 2,7 s;
+  - exe 246 → 196 MB.
+- **Gate:** seme fisso, log delle suite fallite in `output/gate/`, allowlist per suite, passo con finestra.
+

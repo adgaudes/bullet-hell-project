@@ -37,7 +37,7 @@ Principio guida:
 
 **Prossimi passi (in ordine):**
 
-1. **Agente: piano del playtest del 14 ottobre**, nei quattro blocchi di `docs/PLAYTESTS/OWNER_PLAYTEST_2026-10-14.md`: gioco leggibile e giusto (salute, terra, buca, sparo, frecce, impostazioni), grafica, profondita di gioco (armi, da progettare col proprietario), audio e musica. Le voci rimaste dell'audit passano dopo, salvo quelle che toccano gli stessi file.
+1. **Agente: piano del playtest del 14 ottobre** (`docs/PLAYTESTS/OWNER_PLAYTEST_2026-10-14.md`), nell'ordine scelto dal proprietario (D-089): grafica (in corso: luce, terreno CC0, prato a particelle e rovine fatti il 14 ottobre, D-090; restano menu, Officina, alberi), poi gioco leggibile e giusto (salute, terra, buca, mira commutabile, impostazioni), armi (da progettare col proprietario), musica (rosa da ascoltare). Le voci rimaste dell'audit passano dopo, salvo quelle che toccano gli stessi file.
    - Ancora aperti per il proprietario: giudizio sull'Ingegnere (D-088, branch `feature/engineer-restyle`) e playtest di boss, notte, ferrovia e controller.
 2. **Proprietario: misura sul Steam Deck** con il Debug Menu (F3). Serve per il preset Deck e per le voci GPU dell'audit (V-02, V-03, V-06, Q-01, Q-03, Q-04).
 3. **Agente: voci rimaste dell'audit**, nell'ordine della sua sezione 1 (caricamento, collisione del terreno, cursore, test, strumenti, documenti, voci B).

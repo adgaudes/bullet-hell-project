@@ -146,6 +146,8 @@ func _create_grid() -> void:
 		node.fixed_fps = 30
 		node.preprocess = 1.0 / 30.0
 		node.use_fixed_seed = true
+		# Le celle saltano al nuovo centro: niente interpolazione fisica fra due posizioni.
+		node.physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
 		node.seed = 7
 		add_child(node)
 		node.emitting = true
@@ -173,7 +175,6 @@ func _restart(center: Vector3) -> void:
 	for i in particle_nodes.size():
 		var node := particle_nodes[i]
 		node.global_position = ((snapped + _offsets[i]) / spacing).round() * spacing
-		node.reset_physics_interpolation()
 		node.restart(true)
 	restarts += 1
 
