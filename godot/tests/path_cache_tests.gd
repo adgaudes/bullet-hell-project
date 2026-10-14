@@ -64,6 +64,11 @@ func _mismatches() -> int:
 	_path._refresh_slopes()
 	var n := _path.columns
 	var bad := 0
+	# Celle bloccate (audit N-02: ricombinate solo nel rettangolo cambiato) su tutta la finestra.
+	for i in n * n:
+		var expected := 1 if _path._static_blocked[i] != 0 or slope[i] != 0 else 0
+		if _path._blocked[i] != expected:
+			bad += 1
 	for y in range(2, n - 2):
 		for x in range(2, n - 2):
 			var i := y * n + x

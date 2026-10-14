@@ -82,6 +82,11 @@ var _step_mask := PackedByteArray()
 var _dirty_rect := Rect2()
 var _has_dirty_rect := false
 var _slopes_all := true
+## Celle la cui pendenza e stata ricalcolata nell'ultimo `_refresh_slopes` (vuoto se lo > hi);
+## `_blocked_all` = ricombinare tutta la finestra (riempimento, ricentro).
+var _slope_lo := Vector2i.ZERO
+var _slope_hi := Vector2i(-1, -1)
+var _blocked_all := true
 ## Chunk -> PackedByteArray(CHUNK * CHUNK) di ostacoli statici.
 var _static_chunks: Dictionary[Vector2i, PackedByteArray] = {}
 ## Pendenze e passi per chunk mondo (audit N-01): 2 byte per cella, pendenza e maschera dei
@@ -332,6 +337,7 @@ func _world_inside(wc: Vector2i) -> bool:
 
 func _fill_window() -> void:
 	_slopes_all = terrain_field == null
+	_blocked_all = true
 	# Chunk per chunk: una sola lettura della cache (gli array impacchettati si copiano
 	# per valore: 4096 letture singole costavano quanto la soluzione intera).
 	var first_chunk := Vector2i(origin.x / CHUNK, origin.y / CHUNK)
@@ -422,15 +428,25 @@ func _flush_terrain() -> void:
 
 func _refresh_blocked() -> void:
 	_terrain_dirty = false
+	var lo := Vector2i.ZERO
+	var hi := Vector2i(columns - 1, columns - 1)
 	if terrain_field != null:
 		_refresh_slopes()
 		_write_back_touched()
+		# Dopo una pennellata cambia solo il rettangolo ricalcolato (audit N-02): non le
+		# 4096 celle a ogni passo con il tool premuto.
+		if not _blocked_all:
+			lo = _slope_lo
+			hi = _slope_hi
+	_blocked_all = false
 	_next.fill(NEXT_UNKNOWN)
-	for i in _blocked.size():
-		var blocked := _static_blocked[i]
-		if blocked == 0 and _slope_blocked[i] != 0:
-			blocked = 1
-		_blocked[i] = blocked
+	for y in range(lo.y, hi.y + 1):
+		for x in range(lo.x, hi.x + 1):
+			var i := y * columns + x
+			var blocked := _static_blocked[i]
+			if blocked == 0 and _slope_blocked[i] != 0:
+				blocked = 1
+			_blocked[i] = blocked
 	_dirty = true
 
 
@@ -594,6 +610,9 @@ func _refresh_slopes() -> void:
 	var any := _has_dirty_rect
 	_slopes_all = false
 	_has_dirty_rect = false
+	# Nessun ricalcolo: rettangolo vuoto per `_refresh_blocked`.
+	_slope_lo = Vector2i(1, 1)
+	_slope_hi = Vector2i.ZERO
 	if columns == 0 or not (all or any):
 		return
 	var lo := Vector2i.ZERO
@@ -603,6 +622,8 @@ func _refresh_slopes() -> void:
 		hi = _world_cell_of(Vector3(rect.end.x, 0.0, rect.end.y)) - origin
 	var r1_lo := Vector2i(maxi(lo.x - 1, 0), maxi(lo.y - 1, 0))
 	var r1_hi := Vector2i(mini(hi.x + 1, columns - 1), mini(hi.y + 1, columns - 1))
+	_slope_lo = r1_lo
+	_slope_hi = r1_hi
 	for y in range(r1_lo.y, r1_hi.y + 1):
 		for x in range(r1_lo.x, r1_hi.x + 1):
 			var i := y * columns + x
