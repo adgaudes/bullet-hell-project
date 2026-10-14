@@ -18,6 +18,8 @@ signal died
 ## Lo strumento terreno non ha potuto agire: cella non valida o niente rottami.
 signal terrain_tool_rejected
 signal terrain_mode_changed(mode: int)
+## Rampa d'uscita ritagliata nella parete di una buca (playtest O-03).
+signal escape_ramp_carved
 
 enum AimDevice { GAMEPAD, MOUSE }
 
@@ -278,6 +280,7 @@ func _physics_process(delta: float) -> void:
 	# Dopo il movimento, come il TimerManager Unreal che avanza a fine tick.
 	_update_dash_timers(delta)
 	_update_hit_flash(delta)
+	_update_pit_escape(delta, move_direction)
 	_invulnerable_left = maxf(_invulnerable_left - delta, 0.0)
 	_dig_anim_left = maxf(_dig_anim_left - delta, 0.0)
 	_update_terrain_target()
@@ -291,6 +294,51 @@ func _physics_process(delta: float) -> void:
 	else:
 		_brush_was_blocked = false
 	_update_motion(delta)
+
+
+## Buca senza uscita (playtest O-03): se si spinge contro una parete troppo ripida e si
+## resta fermi per ESCAPE_STUCK_SECONDS, la parete si ritaglia in una rampa percorribile
+## nella direzione spinta. Scavare resta libero ovunque; uscire non richiede di sapere
+## che si puo alzare terra.
+const ESCAPE_STUCK_SECONDS := 0.9
+const ESCAPE_RAMP_GRADE := 0.5
+const ESCAPE_RAMP_STEP := 0.7
+const ESCAPE_RAMP_STEPS := 7
+const ESCAPE_RAMP_RADIUS := 1.2
+## Profondita minima sotto la base perche la rampa scatti (m).
+const ESCAPE_MIN_DEPTH := 0.5
+var _stuck_seconds := 0.0
+var escape_ramps := 0
+
+
+func _update_pit_escape(delta: float, move_direction: Vector3) -> void:
+	if terrain_field == null or is_dashing or move_direction.length() < 0.5 or not is_alive():
+		_stuck_seconds = 0.0
+		return
+	var dir := Vector3(move_direction.x, 0.0, move_direction.z).normalized()
+	var ahead := global_position + dir * 0.6
+	var steep := terrain_field.grade_between(global_position, ahead) > terrain_field.tuning.max_grade
+	var slow := Vector2(velocity.x, velocity.z).length() < 0.6
+	# Solo dentro uno scavo (sotto la base del livello): spingere contro un proprio argine
+	# non lo deve tagliare.
+	steep = steep and terrain_field.delta_at(global_position) < -ESCAPE_MIN_DEPTH
+	_stuck_seconds = _stuck_seconds + delta if steep and slow else 0.0
+	if _stuck_seconds >= ESCAPE_STUCK_SECONDS:
+		_stuck_seconds = 0.0
+		carve_escape_ramp(dir)
+
+
+## Ritaglia una rampa (pendenza ESCAPE_RAMP_GRADE) dal piede del giocatore lungo [param dir].
+func carve_escape_ramp(dir: Vector3) -> void:
+	var ground := terrain_field.height_at(global_position)
+	for k in range(1, ESCAPE_RAMP_STEPS + 1):
+		var p := global_position + dir * (k * ESCAPE_RAMP_STEP)
+		var target := ground + k * ESCAPE_RAMP_STEP * ESCAPE_RAMP_GRADE
+		if terrain_field.height_at(p) > target:
+			terrain_field.level(p, ESCAPE_RAMP_RADIUS, target, 1.0)
+	escape_ramps += 1
+	print("PROTOTYPE01_ESCAPE_RAMP n=%d" % escape_ramps)
+	escape_ramp_carved.emit()
 
 
 ## In salita la velocita massima cala con la pendenza davanti (rilievo continuo).

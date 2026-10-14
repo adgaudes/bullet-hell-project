@@ -41,6 +41,7 @@ func _initialize() -> void:
 	await _test_sealed_courtyard()
 	await _test_contact_damage()
 	await _test_hit_shove_and_dash()
+	await _test_pit_escape_ramp()
 	await _test_weapon_kills_and_drops_xp()
 	await _test_xp_follows_relief()
 	await _test_wall_blocks_line_of_fire()
@@ -252,6 +253,29 @@ func _test_hit_shove_and_dash() -> void:
 	_player.pack.give(5.0)
 	_check(hud.gauge_text().contains("%d/" % roundi(_player.pack.amount)), "la terra nel HUD segue lo zaino: %s" % hud.gauge_text())
 	_player.pack.take(5.0)
+
+
+## Playtest O-03: da una buca con le pareti troppo ripide si esce spingendo contro la
+## parete: dopo un attimo si ritaglia una rampa e il giocatore risale.
+func _test_pit_escape_ramp() -> void:
+	print("pit escape")
+	_clear_enemies()
+	var spot := Vector3(-30.0, 0.0, 22.0)
+	_field.set_protected(spot, 8.0, false)
+	for i in 10:
+		_field.sculpt(spot, 2.6, -0.3)
+	_place_player(Vector3(spot.x, _field.height_at(spot) + 0.9, spot.z))
+	await _frames(20)
+	var bottom := _field.height_at(spot)
+	_check(_field.grade_between(spot, spot + Vector3(1.8, 0.0, 0.0)) > _field.tuning.max_grade, "buca con le pareti troppo ripide (fondo %.2f)" % bottom)
+	var start_x := _player.global_position.x
+	Input.action_press(&"move_right")
+	for i in 240:
+		await physics_frame
+	Input.action_release(&"move_right")
+	_check(_player.escape_ramps >= 1, "spingendo contro la parete si ritaglia una rampa (%d)" % _player.escape_ramps)
+	_check(_player.global_position.x > start_x + 2.5, "il giocatore esce dalla buca (%.1f m)" % (_player.global_position.x - start_x))
+	_place_player(Vector3.ZERO)
 
 
 ## Audit P-01: i frammenti di esperienza stanno sopra il rilievo, non a quota fissa: su un
