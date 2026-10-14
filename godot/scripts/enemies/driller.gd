@@ -38,6 +38,10 @@ const BIT_SPIN_RATE := 24.0
 const NO_WALL := Vector3.INF
 ## Raggio del solco e del varco aperto in un argine.
 const FURROW_RADIUS := 1.2
+## Il solco si scava ogni tanti metri percorsi e gli schizzi escono al massimo ogni tanti
+## secondi (audit E-13): prima una pennellata e un nodo di particelle a ogni passo fisico.
+const FURROW_STEP_M := 0.3
+const FURROW_DEBRIS_SECONDS := 0.15
 const BREACH_RADIUS := 2.4
 const ACCELERATION := 30.0
 const TURN_RATE := 3.0
@@ -92,6 +96,9 @@ var charge_start := Vector3.ZERO
 var charges := 0
 ## Metri di solco scavati e argini aperti.
 var furrow_length_m := 0.0
+## Strada fatta dall'ultimo scavo del solco e attesa del prossimo schizzo.
+var _furrow_travel := 0.0
+var _furrow_debris_left := 0.0
 var walls_broken := 0
 ## Punto dell'argine appena aperto dall'ultima carica, NO_WALL se nessuno.
 var last_wall := NO_WALL
@@ -283,6 +290,9 @@ func _start_charge() -> void:
 	charges += 1
 	charge_start = global_position
 	last_wall = NO_WALL
+	# Il primo passo della carica scava subito.
+	_furrow_travel = FURROW_STEP_M
+	_furrow_debris_left = 0.0
 	_charge_stall = 0.0
 	_hit_this_charge.clear()
 	_aim_strip.visible = false
@@ -308,12 +318,17 @@ func _tick_charge(delta: float) -> void:
 		return
 	# Solco: la punta scava fino a furrow_depth_m sotto la base, mai oltre e mai in su
 	# (un fossato del giocatore piu profondo resta com'e).
-	if terrain_field.height_at(tip) > terrain_field.base_height_at(tip) - furrow_depth_m + 0.05:
+	_furrow_travel += Vector2(velocity.x, velocity.z).length() * delta
+	_furrow_debris_left -= delta
+	if _furrow_travel >= FURROW_STEP_M and terrain_field.height_at(tip) > terrain_field.base_height_at(tip) - furrow_depth_m + 0.05:
 		var volume := terrain_field.dig_to_base_offset(Vector3(tip.x, 0.0, tip.z), FURROW_RADIUS, furrow_depth_m)
 		if volume < -0.01:
-			furrow_length_m += Vector2(velocity.x, velocity.z).length() * delta
-			DebrisBurst.spawn(get_parent(), Vector3(tip.x, terrain_field.height_at(tip) + 0.3, tip.z), EARTH_COLOR, 6, 3.0, 0.16)
+			furrow_length_m += _furrow_travel
+			if _furrow_debris_left <= 0.0:
+				_furrow_debris_left = FURROW_DEBRIS_SECONDS
+				DebrisBurst.spawn(get_parent(), Vector3(tip.x, terrain_field.height_at(tip) + 0.3, tip.z), EARTH_COLOR, 6, 3.0, 0.16)
 			furrowed.emit(Vector3(tip.x, 0.0, tip.z))
+		_furrow_travel = 0.0
 	_hit_in_the_way(player, true)
 	if companion != null:
 		_hit_in_the_way(companion, false)

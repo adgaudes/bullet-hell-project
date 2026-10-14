@@ -90,6 +90,10 @@ func _place_boss(at: Vector3, phase: Driller.Phase, left: float) -> void:
 	_boss.reset_physics_interpolation()
 
 
+func _count_bursts() -> int:
+	return _scene.find_children("*", "CPUParticles3D", true, false).size()
+
+
 func _planar(v: Vector3) -> Vector2:
 	return Vector2(v.x, v.z)
 
@@ -147,7 +151,16 @@ func _test_aim_and_charge() -> void:
 	_check(await _wait_phase(Driller.Phase.CHARGE, int(_boss.aim_seconds * 60.0) + 20), "finita la mira parte la carica")
 	_check(not _boss.get_node(^"AimStrip").visible and _audio.play_count(&"driller_charge") == charges + 1, "striscia nascosta e suono della carica")
 	var start := _boss.global_position
+	# Audit E-13: in carica scavava e creava un nodo di particelle a ogni passo fisico.
+	var updates := [0]
+	var counter := func(_aabb: AABB) -> void: updates[0] += 1
+	_field.region_changed.connect(counter)
+	var bursts_before := _count_bursts()
 	await _frames(60)
+	_field.region_changed.disconnect(counter)
+	var bursts := _count_bursts() - bursts_before
+	var furrow := maxf(_boss.furrow_length_m, 0.1)
+	_check(updates[0] / furrow <= 5.0 and bursts <= 8, "solco a rate: %.1f aggiornamenti per metro, %d schizzi in 1 s" % [updates[0] / furrow, bursts])
 	var moved := _boss.global_position - start
 	_check(moved.x < -3.0 and absf(moved.z) < 0.5, "avanza dritta verso ovest (%.1f m)" % -moved.x)
 	var speed := _planar(_boss.velocity).length()
