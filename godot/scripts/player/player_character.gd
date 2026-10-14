@@ -414,7 +414,11 @@ func _apply_brush(delta: float) -> void:
 			var wanted := PI * radius * radius / 3.0 * rate
 			var got := pack.take(wanted)
 			if got > 0.0:
-				terrain_field.player_sculpt(terrain_target, radius, rate * got / wanted, terrain_tool_mode)
+				var placed := terrain_field.player_sculpt(terrain_target, radius, rate * got / wanted, terrain_tool_mode)
+				# Aree protette, quota massima e bordo posano meno della pennellata: la terra
+				# non posata torna nello zaino (audit G-01: lo zaino scambia terra, non la perde).
+				if got > placed:
+					pack.give(got - placed)
 		TerrainField.ToolMode.LEVEL:
 			# La terra per alzare i dintorni viene dallo zaino: oltre quella la pennellata si scala.
 			var volume := terrain_field.player_level_budget(terrain_target, radius, terrain_field.tuning.level_rate * delta, pack.amount)

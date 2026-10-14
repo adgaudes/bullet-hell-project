@@ -81,6 +81,22 @@ func _test_raise_with_empty_pack() -> void:
 	await _hold(0.3)
 	_check(_field.height_at(target) > h0 + 0.2, "con terra nello zaino alza")
 	_check(_player.pack.amount < 10.0, "alzare consuma lo zaino (%.1f)" % _player.pack.amount)
+	# Audit G-01: con parte del disco protetta (centro libero) lo zaino paga solo la terra
+	# posata davvero, non quella della pennellata intera.
+	var heights_before := _field.height_at(target)
+	var guard := target + Vector3(1.6, 0.0, 0.0)
+	_field.set_protected(guard, 1.6, true)
+	var placed := [0.0]
+	var counter := func(_c: Vector3, _r: float, volume: float, _m: int) -> void: placed[0] += volume
+	_field.player_sculpted.connect(counter)
+	var before := _player.pack.amount
+	await _hold(0.3)
+	_field.player_sculpted.disconnect(counter)
+	_field.set_protected(guard, 1.6, false)
+	var paid := before - _player.pack.amount
+	_check(placed[0] > 0.01 and absf(paid - placed[0]) < 0.001, "zaino scalato quanto la terra posata (%.3f pagati, %.3f posati)" % [paid, placed[0]])
+	# Torna il rilievo di prima per le prove successive.
+	_field.level(target, 3.0, heights_before, 1.0)
 
 
 func _test_dig_with_full_pack() -> void:
