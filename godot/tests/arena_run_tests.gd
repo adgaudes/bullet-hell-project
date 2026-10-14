@@ -47,6 +47,7 @@ func _initialize() -> void:
 	await _test_dig_debris_throttled()
 	await _test_level_up_flow()
 	_test_companion_upgrades()
+	await _test_companion_skips_scrap_behind_rampart()
 	await _test_death_ends_run()
 	await _test_pause_quit_confirms_and_banks()
 	# T-12: i nodi messi in coda con queue_free vanno liberati prima di uscire, o
@@ -338,6 +339,31 @@ func _test_level_up_flow() -> void:
 	await _frames(2)
 	_check(not _menu.is_open and not paused, "scelta fatta: il gioco riparte")
 	_check(_run.progression.levels.size() == 1, "un upgrade acquisito %s" % [_run.progression.levels])
+
+
+## Audit C-01: un rottame raggiungibile solo aggirando un argine non e una meta in linea
+## retta: il compagno spingerebbe contro l'argine finche il giocatore non si allontana.
+func _test_companion_skips_scrap_behind_rampart() -> void:
+	print("companion and rampart")
+	var p := Vector3(-30.0, 0.0, 30.0)
+	_field.set_protected(p, 16.0, false)
+	_place_player(p)
+	for x in range(-10, 11, 2):
+		_field.sculpt(p + Vector3(x, 0.0, 3.5), 1.6, 1.6)
+	_companion.global_position = p + Vector3(0.0, _field.height_at(p) + 0.3, 1.0)
+	_path.solve()
+	var scrap := p + Vector3(0.0, 0.0, 6.0)
+	_scrap_field_node().spawn_on_ground(scrap)
+	await _frames(2)
+	var destination: Vector3 = _companion._choose_destination()
+	_check(Vector2(destination.x - scrap.x, destination.z - scrap.z).length() > 1.0,
+		"rottame dietro un argine: non e la meta del compagno (meta a %.1f m dal rottame)" % Vector2(destination.x - scrap.x, destination.z - scrap.z).length())
+	_scrap_field_node().take_near(scrap, 1.5, 10)
+	_field.reset_to_base(p + Vector3(0.0, 0.0, 3.5), Vector2(13.0, 3.0))
+
+
+func _scrap_field_node() -> ScrapField:
+	return _scene.get_node(^"ScrapField")
 
 
 func _test_companion_upgrades() -> void:

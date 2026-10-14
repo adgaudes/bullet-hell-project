@@ -47,6 +47,9 @@ const CARGO_WOBBLE_HZ := 4.5
 const CARGO_WOBBLE_HOP := 0.07
 const CARGO_WOBBLE_TWIST := 0.3
 
+## Passo di campionamento della linea dritta verso un rottame (audit C-01).
+const LINE_STEP_M := 0.6
+
 @export var tuning: CompanionTuning
 @export var player: PlayerCharacter
 @export var scrap_field: ScrapField
@@ -168,17 +171,39 @@ func _choose_destination() -> Vector3:
 ## Rottame piu vicino al giocatore che abbia una strada nel campo di percorso (R-05):
 ## uno oltre un muro chiuso farebbe spingere il compagno contro le mura per sempre.
 func _nearest_reachable_scrap() -> Variant:
-	var best: Variant = null
-	var best_distance := INF
 	var routed := path_field != null and path_field.is_ready()
+	var candidates: Array[Vector3] = []
 	for position in scrap_field.positions_near(player.global_position, tuning.pickup_radius_from_player):
 		if routed and path_field.cost_at(position) == PathField.UNREACHABLE:
 			continue
-		var distance := _planar_distance(position, player.global_position)
-		if distance < best_distance:
-			best_distance = distance
-			best = position
-	return best
+		candidates.append(position)
+	candidates.sort_custom(func(a: Vector3, b: Vector3) -> bool:
+		return _planar_distance(a, player.global_position) < _planar_distance(b, player.global_position))
+	# Verso il rottame il compagno va dritto: solo se la linea e percorribile, altrimenti
+	# spingerebbe contro un argine che il campo di percorso aggira (audit C-01).
+	for position in candidates:
+		if _line_walkable(global_position, position):
+			return position
+	return null
+
+
+## Vero se si va da [param from] a [param to] in linea retta: niente ostacoli statici e
+## nessuna salita oltre la pendenza del campo di percorso, campionando ogni 0,6 m.
+func _line_walkable(from: Vector3, to: Vector3) -> bool:
+	if path_field == null or not path_field.is_ready():
+		return true
+	var field := path_field.terrain_field
+	var run := _planar_distance(from, to)
+	var steps := maxi(int(ceil(run / LINE_STEP_M)), 1)
+	var previous := Vector3(from.x, 0.0, from.z)
+	for i in range(1, steps + 1):
+		var point := Vector3(from.x, 0.0, from.z).lerp(Vector3(to.x, 0.0, to.z), float(i) / steps)
+		if not path_field.is_walkable(point):
+			return false
+		if field != null and not field.can_step(previous, point, path_field.max_grade):
+			return false
+		previous = point
+	return true
 
 
 func _collect_scrap() -> void:
