@@ -27,8 +27,13 @@ Audit generale in `docs/REVIEWS/FULL_AUDIT_2026-10-14.md`, con lo stato riga per
   - exe 246 → 196 MB.
 - **Gate:** seme fisso, log delle suite fallite in `output/gate/`, allowlist per suite, passo con finestra.
 
+## Playtest del proprietario (14 ottobre 2026, sera)
+
+Esito **Modifica**: 14 osservazioni (salute, terra senza indicatore, buca senza uscita, sparo dalle spalle, armi, frecce viola, ombre e AO, terreno a quadrati, erba, rovine, impostazioni, menu, Officina, musica). Cause e piano in `docs/PLAYTESTS/OWNER_PLAYTEST_2026-10-14.md`. **Il piano di quel documento viene prima delle voci dell'audit qui sotto.**
+
 ## Prossimo passo (agente)
 
+0. **Blocco 1 del playtest del 14 ottobre** (vedi sopra), poi i blocchi 2-4.
 1. **Voci rimaste dell'audit**, nell'ordine della sua sezione 1:
    - PF-03, caricamento: prato sul rilievo 850 ms, pittura del terreno 460 ms;
    - T-01 e T-02: collisione copiata dal campo, ferrovia allineata;
@@ -46,7 +51,7 @@ Audit generale in `docs/REVIEWS/FULL_AUDIT_2026-10-14.md`, con lo stato riga per
 
 1. **Ascolto dei suoni** (D-084): `output/audio/sfx_preview.wav` oppure in gioco.
 2. **Giudizio sull'Ingegnere** (D-088): catture in `../Videogame-engineer/output/engineer/`. Dopo il si si integra.
-3. **Playtest dei due livelli:** promemoria in `docs/PLAYTESTS/ARENA_RUN_LEVEL_2026-10-07.md`.
+3. **Playtest dei due livelli:** primo giro fatto il 14 ottobre (livello 1, tastiera, breve). Restano boss, notte, ferrovia e controller: promemoria in `docs/PLAYTESTS/ARENA_RUN_LEVEL_2026-10-07.md`.
 4. **Misura sul Steam Deck** con la build in `LocalBuilds/` e il Debug Menu (F3).
 5. **Decisioni:**
    - direttore dei nemici (PF-01): sfera −20 %, 60 Hz −50 %, oppure movimento cinematico;

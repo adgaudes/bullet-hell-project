@@ -82,6 +82,7 @@ Legenda stato: **vivo** = aggiornato e autorevole; **riferimento** = stabile, si
 
 | File | Contenuto | Leggilo quando | Stato |
 |---|---|---|---|
+| `docs/PLAYTESTS/OWNER_PLAYTEST_2026-10-14.md` | Primo playtest del proprietario dopo l'audit (esito Modifica): 14 osservazioni con la causa trovata nel codice e il piano a quattro blocchi | **per sapere cosa fare dopo il playtest** e per lavorare su una delle osservazioni | vivo |
 | `docs/PLAYTESTS/ARENA_RUN_LEVEL_2026-10-07.md` | Promemoria per il playtest del livello completo: come avviare, problemi gia noti dalla review (da spuntare, non da riscoprire), cosa annotare, esito | **prima di giocare il livello**; dopo, per registrare l'esito | vivo |
 | `docs/PLAYTESTS/GODOT_PARITY_PLAYTEST.md` | Playtest di parita Godot: feel, Test A, Steam Deck, preset; esiti registrati | per esiti del feel e test in sospeso | vivo |
 | `docs/PLAYTESTS/TERRAIN_GRID_SLICE_A_2026-09-22.md` | Protocollo e esito (Continua) della Terrain Slice A, legenda controlli, Test B Steam Deck | per i protocolli di test terreno e Deck | riferimento |

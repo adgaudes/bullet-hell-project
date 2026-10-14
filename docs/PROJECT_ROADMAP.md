@@ -32,17 +32,13 @@ Principio guida:
   - audio Sonniss (D-084);
   - restyling dell'ambiente (D-077, D-083).
 
-  Il 14 ottobre: audit generale con performance e correzioni (`docs/REVIEWS/FULL_AUDIT_2026-10-14.md`). **Nessun playtest del proprietario dal 7 ottobre; Steam Deck mai misurato.**
+  Il 14 ottobre: audit generale con performance e correzioni (`docs/REVIEWS/FULL_AUDIT_2026-10-14.md`), poi **primo playtest del proprietario, esito Modifica** (`docs/PLAYTESTS/OWNER_PLAYTEST_2026-10-14.md`): gameplay piatto, grafica scialba, 14 osservazioni. Steam Deck mai misurato.
 - **Fasi 4-14:** non iniziate formalmente.
 
 **Prossimi passi (in ordine):**
 
-1. **Proprietario:**
-   - playtest dei due livelli (`docs/PLAYTESTS/ARENA_RUN_LEVEL_2026-10-07.md`);
-   - ascolto dei suoni (D-084);
-   - giudizio sull'Ingegnere (D-088, branch `feature/engineer-restyle`).
-
-   Esito atteso: Continua / Modifica / Scarta.
+1. **Agente: piano del playtest del 14 ottobre**, nei quattro blocchi di `docs/PLAYTESTS/OWNER_PLAYTEST_2026-10-14.md`: gioco leggibile e giusto (salute, terra, buca, sparo, frecce, impostazioni), grafica, profondita di gioco (armi, da progettare col proprietario), audio e musica. Le voci rimaste dell'audit passano dopo, salvo quelle che toccano gli stessi file.
+   - Ancora aperti per il proprietario: giudizio sull'Ingegnere (D-088, branch `feature/engineer-restyle`) e playtest di boss, notte, ferrovia e controller.
 2. **Proprietario: misura sul Steam Deck** con il Debug Menu (F3). Serve per il preset Deck e per le voci GPU dell'audit (V-02, V-03, V-06, Q-01, Q-03, Q-04).
 3. **Agente: voci rimaste dell'audit**, nell'ordine della sua sezione 1 (caricamento, collisione del terreno, cursore, test, strumenti, documenti, voci B).
 4. **Agente, dopo le decisioni del proprietario:**
