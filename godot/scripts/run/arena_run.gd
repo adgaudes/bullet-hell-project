@@ -79,6 +79,10 @@ var elapsed := 0.0
 var is_over := false
 var run_seed := 0
 var companion_weapon: AutoWeapon
+## Classe del giocatore (D-092) e i suoi slot d'arma; la chiodatrice della scena e `weapon`.
+var class_id: StringName = ClassCatalog.DEFAULT
+var loadout: WeaponLoadout
+var write_queue: TerrainWriteQueue
 ## Luci logiche della notte: torcia del giocatore, faro del compagno (e lampioni, tappa 2).
 var light_field := LightField.new()
 var torch_light_id := 0
@@ -159,14 +163,11 @@ func _ready() -> void:
 
 	player.invulnerability_seconds = tuning.player_invulnerability
 	player.set_max_health(tuning.player_max_health)
-	weapon.fire_interval = tuning.fire_interval
-	# Il chiodo parte dalla canna, all'altezza della mano (O-04).
+	# Il chiodo parte dalla canna, all'altezza della mano (O-04); i valori vengono dal catalogo.
 	weapon.muzzle_height = 0.15
 	weapon.muzzle_forward = 0.55
+	_setup_loadout()
 	_setup_aim_mode()
-	weapon.weapon_range = tuning.weapon_range
-	weapon.damage = tuning.weapon_damage
-	weapon.projectile_speed = tuning.projectile_speed
 	xp_field.player_radius = tuning.pickup_radius
 	xp_field.terrain_field = terrain_field
 	_death_scrap_share = tuning.death_scrap_share
@@ -195,7 +196,7 @@ func _ready() -> void:
 	var title := LevelCatalog.title_of(level_id)
 	if not title.is_empty():
 		hud.show_notice("LIVELLO %d: %s" % [LevelCatalog.index_of(level_id) + 1, title.to_upper()], 4.0, RunHud.TITLE_COLOR)
-	print("PROTOTYPE01_RUN_START seed=%d level=%s" % [run_seed, level_id])
+	print("PROTOTYPE01_RUN_START seed=%d level=%s class=%s" % [run_seed, level_id, class_id])
 
 
 func _physics_process(delta: float) -> void:
@@ -918,12 +919,6 @@ func _on_upgrade_chosen(id: StringName) -> void:
 ## Effetto di un upgrade al suo nuovo livello.
 func apply_upgrade(id: StringName, new_level: int) -> void:
 	match id:
-		&"nail_rate":
-			weapon.fire_interval /= 1.0 + UpgradeCatalog.value(id, &"rate_percent") / 100.0
-		&"nail_pierce":
-			weapon.pierce += 1
-		&"nail_spread":
-			weapon.projectiles += 1
 		&"companion_turret":
 			_upgrade_companion_turret(new_level)
 		&"companion_magnet":
@@ -1100,6 +1095,28 @@ func _refresh_xp() -> void:
 	hud.set_xp(progression.xp, progression.xp_to_next(), progression.level)
 
 
+## Armi (D-092): la classe viene da `--class=` (la scelta nella campagna arriva col piano 4),
+## il loadout adotta la chiodatrice della scena e crea le altre armi del kit. Coda delle
+## scritture e loadout entrano subito nell'albero: la Torretta fissa e le carte li usano.
+func _setup_loadout() -> void:
+	var requested := RunLaunchOptions.class_id()
+	if not ClassCatalog.find(requested).is_empty():
+		class_id = requested
+	write_queue = TerrainWriteQueue.new()
+	write_queue.name = "WeaponTerrainQueue"
+	write_queue.terrain_field = terrain_field
+	add_child(write_queue)
+	loadout = WeaponLoadout.new()
+	loadout.name = "WeaponLoadout"
+	loadout.player = player
+	loadout.director = director
+	loadout.terrain_field = terrain_field
+	loadout.write_queue = write_queue
+	add_child(loadout)
+	loadout.adopt(weapon)
+	loadout.setup_class(class_id)
+
+
 ## Mira commutabile (D-089): la scelta del giocatore resta nelle impostazioni.
 func _setup_aim_mode() -> void:
 	var settings := get_node_or_null(^"/root/GameSettings") as GameSettingsService
@@ -1119,6 +1136,8 @@ func _on_settings_aim() -> void:
 
 func _on_aim_mode_changed(mode: int) -> void:
 	weapon.manual_aim = mode == PlayerCharacter.AimMode.MANUAL
+	if loadout != null:
+		loadout.set_manual_aim(weapon.manual_aim)
 	if hud != null:
 		hud.set_aim_mode(weapon.manual_aim)
 	var settings := get_node_or_null(^"/root/GameSettings") as GameSettingsService

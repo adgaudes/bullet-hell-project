@@ -33,6 +33,8 @@ func _initialize() -> void:
 	await _test_mouse_aim_switch()
 	await _reload_scene()
 	await _test_tool_released_without_event()
+	await _reload_scene()
+	await _test_active_weapon_keys()
 	# T-12: i nodi messi in coda con queue_free vanno liberati prima di uscire, o
 	# il motore segnala istanze ObjectDB perse all'uscita.
 	await _frames(2)
@@ -295,6 +297,41 @@ func _test_tool_released_without_event() -> void:
 	release.pressed = false
 	Input.parse_input_event(release)
 	await _frames(1)
+
+
+## Armi attive (D-092): E e grilletto sinistro per lo slot 1, F e dorsale destro per lo slot 2;
+## un comando per pressione, il grilletto analogico non ripete finche resta tirato.
+func _test_active_weapon_keys() -> void:
+	print("active weapons")
+	var pressed: Array[int] = []
+	_player.active_weapon_pressed.connect(func(slot: int) -> void: pressed.append(slot))
+	for keycode in [KEY_E, KEY_F]:
+		var key := InputEventKey.new()
+		key.physical_keycode = keycode
+		key.pressed = true
+		Input.parse_input_event(key)
+		await _frames(2)
+		key = key.duplicate()
+		key.pressed = false
+		Input.parse_input_event(key)
+		await _frames(1)
+	_check(pressed == ([0, 1] as Array[int]), "E usa lo slot 1, F lo slot 2 (%s)" % [pressed])
+	pressed.clear()
+	for value in [0.3, 0.7, 0.9, 1.0, 0.8]:
+		_joy_motion(JOY_AXIS_TRIGGER_LEFT, value)
+		await _frames(1)
+	_joy_motion(JOY_AXIS_TRIGGER_LEFT, 0.0)
+	await _frames(1)
+	var shoulder := InputEventJoypadButton.new()
+	shoulder.button_index = JOY_BUTTON_RIGHT_SHOULDER
+	shoulder.pressed = true
+	Input.parse_input_event(shoulder)
+	await _frames(2)
+	shoulder = shoulder.duplicate()
+	shoulder.pressed = false
+	Input.parse_input_event(shoulder)
+	await _frames(1)
+	_check(pressed == ([0, 1] as Array[int]), "grilletto sinistro una volta sola per pressione, dorsale destro per lo slot 2 (%s)" % [pressed])
 
 
 func _mouse_button(button: MouseButton, pressed: bool) -> void:

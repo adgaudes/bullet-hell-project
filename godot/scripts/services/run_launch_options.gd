@@ -5,7 +5,8 @@ extends RefCounted
 ## aggiunta qui e, se deve saltare il menu, in AUTOSTART_PREFIXES.
 
 ## Opzioni che fanno saltare il menu iniziale e avviano subito il livello.
-const AUTOSTART_PREFIXES: Array[String] = ["--autostart", "--seed=", "--boss-at=", "--night-at=", "--quake-at=", "--capture=", "--level="]
+const AUTOSTART_PREFIXES: Array[String] = ["--autostart", "--seed=", "--boss-at=", "--night-at=", "--quake-at=", "--capture=", "--level=",
+	"--class="]
 
 
 static func wants_autostart(args: PackedStringArray = OS.get_cmdline_user_args()) -> bool:
@@ -24,6 +25,11 @@ static func wants_intro_test(args: PackedStringArray = OS.get_cmdline_user_args(
 ## Livello da avviare subito: `--level=<id>` (D-066: `district`, `railway`), altrimenti vuoto.
 static func level_id(args: PackedStringArray = OS.get_cmdline_user_args()) -> StringName:
 	return StringName(_value_of("--level=", args))
+
+
+## Classe del giocatore (D-092): `--class=<id>` (`engineer`, `sapper`, `mechanic`, `weeder`), altrimenti vuoto.
+static func class_id(args: PackedStringArray = OS.get_cmdline_user_args()) -> StringName:
+	return StringName(_value_of("--class=", args))
 
 
 ## Seme della run: `--seed=N`, altrimenti la variabile d'ambiente `PROTOTYPE01_SEED` (il gate

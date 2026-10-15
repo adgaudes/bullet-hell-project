@@ -22,6 +22,8 @@ signal terrain_mode_changed(mode: int)
 signal escape_ramp_carved
 ## Mira della chiodatrice cambiata (D-089): AimMode.AUTO o AimMode.MANUAL.
 signal aim_mode_changed(mode: int)
+## Tasto di un'arma attiva premuto (D-092): slot 0 (E, grilletto sinistro) o 1 (F, dorsale destro).
+signal active_weapon_pressed(slot: int)
 
 enum AimMode { AUTO, MANUAL }
 ## Dopo un colpo in mira automatica il corpo guarda il bersaglio per questo tempo (O-04).
@@ -34,7 +36,8 @@ var _shot_facing_left := 0.0
 enum AimDevice { GAMEPAD, MOUSE }
 
 ## Azioni con semantica Started di Unreal: un comando per pressione.
-const STARTED_ACTIONS: Array[StringName] = [&"dash", &"terrain_tool", &"terrain_mode", &"weapon_aim_mode"]
+const STARTED_ACTIONS: Array[StringName] = [&"dash", &"terrain_tool", &"terrain_mode", &"weapon_aim_mode",
+	&"weapon_active_1", &"weapon_active_2"]
 
 const BODY_COLOR_LINEAR := Color(1.0, 0.35, 0.02)
 const HIT_COLOR_LINEAR := Color(1.0, 0.02, 0.02)
@@ -254,6 +257,10 @@ func _run_pending_actions() -> void:
 				_toggle_terrain_mode()
 			&"weapon_aim_mode":
 				toggle_aim_mode()
+			&"weapon_active_1":
+				active_weapon_pressed.emit(0)
+			&"weapon_active_2":
+				active_weapon_pressed.emit(1)
 	_pending_actions.clear()
 
 
