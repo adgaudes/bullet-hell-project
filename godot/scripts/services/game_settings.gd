@@ -28,6 +28,9 @@ const DEFAULT_MASTER_VOLUME := 1.0
 const DEFAULT_SFX_VOLUME := 0.8
 const MASTER_BUS := &"Master"
 const SFX_BUS := &"SFX"
+## Eventi del mondo per livello (D-097): scelte possibili e predefinita.
+const WORLD_EVENT_COUNTS: Array[int] = [1, 2, 3, 4, 5]
+const DEFAULT_WORLD_EVENT_COUNT := 1
 ## 0 = Illimitato, in cima alla scala (scelta del proprietario, 11 ottobre 2026).
 const FPS_CAPS: Array[int] = [30, 60, 90, 120, 144, 165, 240, 0]
 const MSAA_MODES: Array[int] = [Viewport.MSAA_DISABLED, Viewport.MSAA_2X, Viewport.MSAA_4X, Viewport.MSAA_8X]
@@ -46,6 +49,7 @@ const KNOWN_KEYS: Dictionary = {
 		"volumetric_fog", "texture_quality", "vegetation_density", "fsr_upscaling"],
 	"controls": ["invert_aim_x", "invert_aim_y", "camera_distance", "manual_aim"],
 	"audio": ["master_volume", "sfx_volume"],
+	"gameplay": ["world_event_count", "quake_enabled", "train_enabled", "night_enabled"],
 }
 
 var settings_path := "user://settings.cfg"
@@ -81,6 +85,12 @@ var invert_aim_y := false
 var manual_aim := false
 ## Preset di distanza della camera (D-078): 0 vicina, 1 normale, 2 lontana.
 var camera_distance := 1
+## Scheda Gameplay (D-097): quanti eventi del mondo per livello (tipo e istante casuali),
+## quali eventi possono capitare, e se arriva la notte. Valgono dalla prossima partenza.
+var world_event_count := DEFAULT_WORLD_EVENT_COUNT
+var quake_enabled := true
+var train_enabled := true
+var night_enabled := true
 ## Volumi lineari 0.0-1.0; 0 silenzia il bus.
 var master_volume := DEFAULT_MASTER_VOLUME
 var sfx_volume := DEFAULT_SFX_VOLUME
@@ -120,6 +130,10 @@ func reset_to_defaults() -> void:
 	invert_aim_y = false
 	manual_aim = false
 	camera_distance = 1
+	world_event_count = DEFAULT_WORLD_EVENT_COUNT
+	quake_enabled = true
+	train_enabled = true
+	night_enabled = true
 	master_volume = DEFAULT_MASTER_VOLUME
 	sfx_volume = DEFAULT_SFX_VOLUME
 	_unknown = {}
@@ -168,6 +182,10 @@ func load_settings(path_override: String = "") -> Error:
 	invert_aim_y = _validated_bool(config.get_value("controls", "invert_aim_y", invert_aim_y), false)
 	manual_aim = _validated_bool(config.get_value("controls", "manual_aim", manual_aim), false)
 	camera_distance = _validated_int(config.get_value("controls", "camera_distance", camera_distance), [0, 1, 2], 1)
+	world_event_count = _validated_int(config.get_value("gameplay", "world_event_count", world_event_count), WORLD_EVENT_COUNTS, DEFAULT_WORLD_EVENT_COUNT)
+	quake_enabled = _validated_bool(config.get_value("gameplay", "quake_enabled", quake_enabled), true)
+	train_enabled = _validated_bool(config.get_value("gameplay", "train_enabled", train_enabled), true)
+	night_enabled = _validated_bool(config.get_value("gameplay", "night_enabled", night_enabled), true)
 	master_volume = _validated_volume(config.get_value("audio", "master_volume", master_volume), DEFAULT_MASTER_VOLUME)
 	sfx_volume = _validated_volume(config.get_value("audio", "sfx_volume", sfx_volume), DEFAULT_SFX_VOLUME)
 	_collect_unknown(config)
@@ -208,6 +226,10 @@ func save_settings(path_override: String = "") -> Error:
 	config.set_value("controls", "invert_aim_y", invert_aim_y)
 	config.set_value("controls", "manual_aim", manual_aim)
 	config.set_value("controls", "camera_distance", camera_distance)
+	config.set_value("gameplay", "world_event_count", world_event_count)
+	config.set_value("gameplay", "quake_enabled", quake_enabled)
+	config.set_value("gameplay", "train_enabled", train_enabled)
+	config.set_value("gameplay", "night_enabled", night_enabled)
 	config.set_value("audio", "master_volume", master_volume)
 	config.set_value("audio", "sfx_volume", sfx_volume)
 	save_count += 1
@@ -343,6 +365,39 @@ func set_invert_aim_y(value: bool) -> void:
 func set_manual_aim(value: bool) -> void:
 	manual_aim = value
 	_save_and_emit()
+
+
+func set_world_event_count(value: int) -> void:
+	var clamped := clampi(value, WORLD_EVENT_COUNTS[0], WORLD_EVENT_COUNTS[-1])
+	if clamped == world_event_count:
+		return
+	world_event_count = clamped
+	_save_and_emit()
+
+
+func set_quake_enabled(value: bool) -> void:
+	quake_enabled = value
+	_save_and_emit()
+
+
+func set_train_enabled(value: bool) -> void:
+	train_enabled = value
+	_save_and_emit()
+
+
+func set_night_enabled(value: bool) -> void:
+	night_enabled = value
+	_save_and_emit()
+
+
+## Vero se l'evento [param kind] (`&"quake"`, `&"train"`) e acceso nella scheda Gameplay.
+func world_event_enabled(kind: StringName) -> bool:
+	match kind:
+		&"quake":
+			return quake_enabled
+		&"train":
+			return train_enabled
+	return true
 
 
 func set_camera_distance(value: int) -> void:

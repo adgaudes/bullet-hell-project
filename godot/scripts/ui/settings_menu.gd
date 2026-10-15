@@ -36,12 +36,18 @@ signal back_requested
 @onready var _back_button: Button = %BackButton
 @onready var _settings: GameSettingsService = get_node(^"/root/GameSettings")
 
-const TABS: Array[Array] = [["Grafica", &"GraphicsHeader"], ["Audio", &"AudioHeader"], ["Controlli", &"ControlsHeader"]]
+const TABS: Array[Array] = [["Gameplay", &"GameplayHeader"], ["Grafica", &"GraphicsHeader"], ["Audio", &"AudioHeader"],
+	["Controlli", &"ControlsHeader"]]
 const LABEL_WIDTH := 300.0
 var _tab_buttons: Array[Button] = []
-var _tab_rows: Array[Array] = [[], [], []]
+var _tab_rows: Array[Array] = [[], [], [], []]
 var current_tab := 0
 var _manual_aim_check: CheckButton
+## Scheda Gameplay (D-097), costruita nel codice come la mira manuale.
+var _world_events_option: OptionButton
+var _quake_check: CheckButton
+var _train_check: CheckButton
+var _night_check: CheckButton
 
 const RENDER_SCALES: Array[float] = [0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
 const PRESET_LABELS: Array[String] = ["Steam Deck", "Basso", "Medio", "Alto (predefinito)", "Massimo", "Personalizzato"]
@@ -76,15 +82,9 @@ func _ready() -> void:
 ## Righe in colonna e schede (O-11).
 func _build_tabs() -> void:
 	var content: VBoxContainer = %Content
-	# La mira manuale va nei Controlli, prima delle inversioni.
-	_manual_aim_check = CheckButton.new()
-	_manual_aim_check.name = "ManualAim"
-	_manual_aim_check.text = "Mira manuale della chiodatrice"
-	_manual_aim_check.custom_minimum_size = Vector2(0, 40)
-	content.add_child(_manual_aim_check)
-	content.move_child(_manual_aim_check, _invert_x.get_index())
-	_manual_aim_check.toggled.connect(_settings.set_manual_aim)
-	for check: CheckButton in [_volumetric_check, _fsr_check, _manual_aim_check, _invert_x, _invert_y]:
+	_build_gameplay_rows(content)
+	for check: CheckButton in [_volumetric_check, _fsr_check, _manual_aim_check, _quake_check, _train_check, _night_check,
+			_invert_x, _invert_y]:
 		_wrap_check(content, check)
 	for row in content.get_children():
 		if row is HBoxContainer:
@@ -131,6 +131,56 @@ func _on_focus_changed(control: Control) -> void:
 			if row == control or row.is_ancestor_of(control):
 				show_tab(i)
 				return
+
+
+## Scheda Gameplay (D-097), prima delle altre: quanti eventi del mondo per livello, quali
+## possono capitare, la notte e la mira manuale (spostata dai Controlli: e una scelta di gioco).
+func _build_gameplay_rows(content: VBoxContainer) -> void:
+	var at := content.get_node(^"GraphicsHeader").get_index()
+	var header := Label.new()
+	header.name = "GameplayHeader"
+	header.theme_type_variation = &"SectionLabel"
+	header.text = "Gameplay"
+	var count_row := HBoxContainer.new()
+	count_row.name = "WorldEventsRow"
+	var count_label := Label.new()
+	count_label.name = "Label"
+	count_label.text = "Eventi del mondo per livello"
+	count_row.add_child(count_label)
+	_world_events_option = OptionButton.new()
+	_world_events_option.name = "WorldEventsOption"
+	_world_events_option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	for count in GameSettingsService.WORLD_EVENT_COUNTS:
+		_world_events_option.add_item("%d%s" % [count, " (predefinito)" if count == GameSettingsService.DEFAULT_WORLD_EVENT_COUNT else ""])
+	_world_events_option.item_selected.connect(_on_world_events_selected)
+	count_row.add_child(_world_events_option)
+	_quake_check = _new_check("QuakeCheck", "Terremoto", _settings.set_quake_enabled)
+	_train_check = _new_check("TrainCheck", "Treno (ferrovia)", _settings.set_train_enabled)
+	_night_check = _new_check("NightCheck", "Notte", _settings.set_night_enabled)
+	_manual_aim_check = _new_check("ManualAim", "Mira manuale della chiodatrice", _settings.set_manual_aim)
+	var note := Label.new()
+	note.name = "GameplayNote"
+	note.theme_type_variation = &"MutedLabel"
+	note.text = "Eventi casuali: tipo e momento cambiano a ogni livello. Le scelte valgono dalla prossima partenza."
+	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	var nodes: Array[Control] = [header, count_row, _quake_check, _train_check, _night_check, _manual_aim_check, note]
+	for node in nodes:
+		content.add_child(node)
+		content.move_child(node, at)
+		at += 1
+
+
+func _new_check(node_name: String, text: String, setter: Callable) -> CheckButton:
+	var check := CheckButton.new()
+	check.name = node_name
+	check.text = text
+	check.custom_minimum_size = Vector2(0, 40)
+	check.toggled.connect(setter)
+	return check
+
+
+func _on_world_events_selected(index: int) -> void:
+	_settings.set_world_event_count(GameSettingsService.WORLD_EVENT_COUNTS[index])
 
 
 ## Un interruttore diventa una riga come le altre: etichetta a sinistra, levetta a destra.
@@ -200,7 +250,7 @@ func open() -> void:
 	_sync_from_settings()
 	show()
 	show_tab(0)
-	_preset_option.grab_focus()
+	_world_events_option.grab_focus()
 
 
 func focused_control() -> Control:
@@ -253,6 +303,10 @@ func _sync_from_settings() -> void:
 	_invert_y.set_pressed_no_signal(_settings.invert_aim_y)
 	if _manual_aim_check != null:
 		_manual_aim_check.set_pressed_no_signal(_settings.manual_aim)
+		_world_events_option.select(GameSettingsService.WORLD_EVENT_COUNTS.find(_settings.world_event_count))
+		_quake_check.set_pressed_no_signal(_settings.quake_enabled)
+		_train_check.set_pressed_no_signal(_settings.train_enabled)
+		_night_check.set_pressed_no_signal(_settings.night_enabled)
 
 
 ## Un preset riscrive tutte le opzioni di qualita: si risincronizzano le righe.

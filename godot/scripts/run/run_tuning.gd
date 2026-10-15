@@ -79,11 +79,19 @@ extends Resource
 ## Level-up consecutivi senza carte Rare prima della garanzia (regola 4).
 @export var pity_level_ups := 4
 
+@export_group("World events")
+## Eventi del mondo (D-097): quanti ne arrivano lo decidono le impostazioni di Gameplay
+## (`world_events_count` vale quando il servizio manca); istanti e tipi sono casuali fra
+## `world_events_start_seconds` e la chiamata del boss meno `world_events_boss_margin`,
+## distanziati di almeno `world_events_min_gap` secondi.
+@export var world_events_count := 1
+@export var world_events_start_seconds := 90.0
+@export var world_events_boss_margin := 30.0
+@export var world_events_min_gap := 60.0
+
 @export_group("Train")
-## Treno della ferrovia (D-066), solo dove la scena ha un nodo TrainEvent: primo passaggio,
-## intervallo, preavviso, velocita, vagoni, danno al giocatore e al boss travolti.
-@export var train_first_seconds := 90.0
-@export var train_interval_seconds := 150.0
+## Treno della ferrovia (D-066), solo dove la scena ha un nodo TrainEvent: preavviso,
+## velocita, vagoni, danno al giocatore e al boss travolti.
 @export var train_warning_seconds := 10.0
 @export var train_speed := 18.0
 @export var train_carriages := 5
@@ -91,11 +99,8 @@ extends Resource
 @export var train_boss_damage := 30
 
 @export_group("Quake")
-## Terremoto del quartiere (D-075), solo dove la scena ha un nodo QuakeEvent: primo
-## terremoto, intervallo, preavviso, lunghezza della faglia in celle, distanza del suo
+## Terremoto del quartiere (D-075), solo dove la scena ha un nodo QuakeEvent: preavviso, lunghezza della faglia in celle, distanza del suo
 ## centro dal giocatore, danno a chi sta su una cella della faglia.
-@export var quake_first_seconds := 100.0
-@export var quake_interval_seconds := 140.0
 @export var quake_warning_seconds := 6.0
 @export var quake_length_cells := 18
 @export var quake_distance_min := 7.0

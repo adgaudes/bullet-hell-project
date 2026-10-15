@@ -1,7 +1,7 @@
 class_name QuakeEvent
-extends Node3D
-## Il terremoto del quartiere (D-075, idea 2 di FEATURE_IDEAS.md): a intervalli regolari
-## una **faglia** annunciata attraversa il campo vicino al giocatore. Dopo il preavviso
+extends WorldEvent
+## Il terremoto del quartiere (D-075, idea 2 di FEATURE_IDEAS.md): quando lo programma
+## ArenaRun (D-097: istanti casuali, quanti ne chiedono le impostazioni) una **faglia** annunciata attraversa il campo vicino al giocatore. Dopo il preavviso
 ## (freccia e conto alla rovescia nell'HUD, polvere lungo la linea) il fronte corre da un
 ## capo all'altro della faglia. Sul rilievo continuo (D-085) ogni pennellata alza una
 ## **cresta** e scava un **solco** a fianco; sulla griglia (ferrovia) le celle Normal si
@@ -38,6 +38,8 @@ const HIT_RADIUS := 1.2
 ## Tentativi di scegliere una faglia con almeno un punto valido.
 const FAULT_ATTEMPTS := 4
 const BOSS_SPARE_RADIUS := 3.0
+## Faglia impossibile (tutta fuori campo o protetta): si riprova dopo questi secondi.
+const SKIP_RETRY_SECONDS := 8.0
 
 ## Rilievo continuo (D-085): la faglia e una fila di pennellate.
 @export var terrain_field: TerrainField
@@ -48,9 +50,6 @@ const BOSS_SPARE_RADIUS := 3.0
 @export var hud: RunHud
 @export var flow_preview: FlowPreview
 
-## Secondi di livello del primo terremoto, poi uno ogni `interval_seconds`; 0 = mai.
-var first_seconds := 120.0
-var interval_seconds := 150.0
 var warning_seconds := 6.0
 ## Lunghezza della faglia in celle e distanza del suo centro dal giocatore.
 var length_cells := 18
@@ -64,8 +63,6 @@ var boss: Enemy
 var rng := RandomNumberGenerator.new()
 
 var state := State.IDLE
-## Secondi di livello del prossimo terremoto.
-var next_at := 0.0
 var quakes := 0
 ## Celle della faglia, da un capo all'altro, e il suo centro nel mondo.
 ## Pennellate della faglia sul rilievo (XZ, y = 0), da un capo all'altro.
@@ -84,12 +81,12 @@ var _front_progress := 0.0
 var _dust_left := 0.0
 
 
-func _ready() -> void:
-	next_at = first_seconds
+func event_kind() -> StringName:
+	return &"quake"
 
 
 func is_enabled() -> bool:
-	return first_seconds > 0.0 and terrain_field != null
+	return terrain_field != null
 
 
 ## Perpendicolare alla faglia (XZ): da che lato sta il solco.
@@ -112,10 +109,6 @@ func fault_direction() -> Vector3:
 	var d := fault_center - player.global_position
 	d.y = 0.0
 	return d.normalized() if d.length_squared() > 0.01 else Vector3.FORWARD
-
-
-func seconds_to_next(elapsed: float) -> float:
-	return next_at - elapsed
 
 
 ## Un passo, dal tempo di livello.
@@ -145,7 +138,7 @@ func _start_warning() -> void:
 		if not fault_points.is_empty():
 			break
 	if fault_points.is_empty():
-		next_at += interval_seconds
+		next_at += SKIP_RETRY_SECONDS
 		print("PROTOTYPE01_QUAKE_SKIPPED next=%.1f" % next_at)
 		return
 	state = State.WARNING
@@ -305,7 +298,7 @@ static func _planar_distance(a: Vector3, b: Vector3) -> float:
 func _finish() -> void:
 	state = State.IDLE
 	quakes += 1
-	next_at += interval_seconds
+	_advance_schedule()
 	print("PROTOTYPE01_QUAKE_DONE n=%d raised=%d filled=%d enemies=%d player_hits=%d volume=%.1f"
 		% [quakes, cells_raised, cells_filled, enemies_hit, player_hits, volume_moved])
 	if flow_preview != null:

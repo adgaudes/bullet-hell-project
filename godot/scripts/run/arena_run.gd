@@ -104,6 +104,8 @@ var boss_direction := Vector3.ZERO
 var boss_direction_name := ""
 ## Secondi di livello a cui il boss viene chiamato (tuning o riga di comando); 0 = mai.
 var boss_call_at := 0.0
+## Eventi del mondo di questo livello (D-097): `[{at, kind}]` scelti a caso alla partenza.
+var world_event_plan: Array[Dictionary] = []
 var _boss_warning_left := 0.0
 var _boss_rng := RandomNumberGenerator.new()
 var _pending_level_ups := 0
@@ -170,6 +172,7 @@ func _ready() -> void:
 	_setup_extraction()
 	_setup_camera_distance()
 	boss_call_at = _boss_call_from_command_line(tuning.boss_call_seconds)
+	_schedule_world_events()
 
 	player.invulnerability_seconds = tuning.player_invulnerability
 	player.set_max_health(tuning.player_max_health)
@@ -761,9 +764,6 @@ func start_next_level() -> void:
 func _setup_train() -> void:
 	if train_event == null:
 		return
-	train_event.first_seconds = tuning.train_first_seconds
-	train_event.next_at = tuning.train_first_seconds
-	train_event.interval_seconds = tuning.train_interval_seconds
 	train_event.warning_seconds = tuning.train_warning_seconds
 	train_event.speed = tuning.train_speed
 	train_event.carriages = tuning.train_carriages
@@ -782,15 +782,42 @@ func _setup_extraction() -> void:
 func _setup_quake() -> void:
 	if quake_event == null:
 		return
-	quake_event.first_seconds = RunLaunchOptions.quake_seconds(tuning.quake_first_seconds)
-	quake_event.next_at = quake_event.first_seconds
-	quake_event.interval_seconds = tuning.quake_interval_seconds
 	quake_event.warning_seconds = tuning.quake_warning_seconds
 	quake_event.length_cells = tuning.quake_length_cells
 	quake_event.distance_min = tuning.quake_distance_min
 	quake_event.distance_max = tuning.quake_distance_max
 	quake_event.player_damage = tuning.quake_player_damage
 	quake_event.rng.seed = run_seed + 4
+
+
+## Eventi del mondo (D-097): quanti ne dice la scheda Gameplay, di tipo e istante casuali fra
+## gli eventi che la scena ha e che sono accesi, prima della chiamata del boss.
+## `--quake-at=S` mette un terremoto a S secondi al posto della scelta (prove e catture).
+func _schedule_world_events() -> void:
+	var settings := get_node_or_null(^"/root/GameSettings") as GameSettingsService
+	var count := settings.world_event_count if settings != null else tuning.world_events_count
+	var events: Array[WorldEvent] = []
+	for event: WorldEvent in [train_event, quake_event]:
+		if event != null and event.is_enabled() and (settings == null or settings.world_event_enabled(event.event_kind())):
+			events.append(event)
+	var kinds: Array[StringName] = []
+	for event in events:
+		kinds.append(event.event_kind())
+	var end := (boss_call_at if boss_call_at > 0.0 else tuning.boss_call_seconds) - tuning.world_events_boss_margin
+	var rng := RandomNumberGenerator.new()
+	rng.seed = run_seed + 5
+	world_event_plan = WorldEventScheduler.plan(kinds, count, tuning.world_events_start_seconds, end,
+		tuning.world_events_min_gap, rng)
+	for event: WorldEvent in [train_event, quake_event]:
+		if event != null:
+			event.schedule(WorldEventScheduler.times_of(world_event_plan, event.event_kind()))
+	var forced_quake := RunLaunchOptions.quake_seconds()
+	if quake_event != null and forced_quake >= 0.0:
+		var forced: Array[float] = []
+		if forced_quake > 0.0:
+			forced.append(forced_quake)
+		quake_event.schedule(forced)
+	print("PROTOTYPE01_WORLD_EVENTS count=%d plan=%s" % [world_event_plan.size(), world_event_plan])
 
 
 # --- Ciclo giorno/notte (D-058, tappa 1) -----------------------------------------
@@ -816,7 +843,10 @@ func _setup_night() -> void:
 		hud.set_pack(player.pack.amount, player.pack.capacity)
 	if day_night == null:
 		return
-	day_night.night_start_seconds = RunLaunchOptions.night_start_seconds(tuning.night_start_seconds)
+	# Notte spenta nella scheda Gameplay (D-097): 0 = niente notte; `--night-at=` vince comunque.
+	var settings := get_node_or_null(^"/root/GameSettings") as GameSettingsService
+	var night_default := tuning.night_start_seconds if settings == null or settings.night_enabled else 0.0
+	day_night.night_start_seconds = RunLaunchOptions.night_start_seconds(night_default)
 	day_night.dusk_seconds = tuning.dusk_seconds
 	if day_night.district == null:
 		day_night.district = district

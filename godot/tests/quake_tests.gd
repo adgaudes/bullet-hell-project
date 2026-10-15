@@ -76,7 +76,11 @@ func _place(body: Node3D, at: Vector3, y: float) -> void:
 func _test_setup() -> void:
 	print("setup")
 	_check(_run.quake_event == _quake and _quake.is_enabled(), "il terremoto e collegato alla regia")
-	_check(is_equal_approx(_quake.next_at, _run.tuning.quake_first_seconds), "primo terremoto a %.0f s" % _quake.next_at)
+	# D-097: un solo evento di serie, a un istante casuale nella finestra prima del boss.
+	var end := _run.boss_call_at - _run.tuning.world_events_boss_margin
+	_check(_run.world_event_plan.size() == 1 and _quake.next_at >= _run.tuning.world_events_start_seconds and _quake.next_at <= end,
+		"un terremoto casuale fra %.0f e %.0f s (%.0f)" % [_run.tuning.world_events_start_seconds, end, _quake.next_at])
+	_check(_quake.queued_times().is_empty(), "nessun altro terremoto dopo il primo")
 	_check(_quake.state == QuakeEvent.State.IDLE and not _hud.is_boss_warning_visible(), "all'inizio nessun terremoto e nessun annuncio")
 	_check(_audio.has_sound(&"quake_rumble"), "il brontolio esiste nella libreria")
 
@@ -182,7 +186,7 @@ func _test_shake() -> void:
 	for position in _scrap.positions_near(scrap_point, 8.0):
 		resting = resting and absf(position.y - (_field.height_at(position) + ScrapField.SCRAP_SIZE)) < 0.1
 	_check(_scrap.count() >= scrap_before and resting, "rottami in superficie, nessuno sepolto (%d)" % _scrap.count())
-	_check(is_equal_approx(_quake.next_at, next_before + _quake.interval_seconds), "prossimo terremoto fra %.0f s" % _quake.interval_seconds)
+	_check(_quake.next_at == INF and next_before > 0.0, "finito il terremoto, nessun altro in programma")
 	_check(_audio.play_count(&"quake_rumble") >= 2, "brontolio anche alla scossa")
 
 
@@ -215,17 +219,16 @@ func _test_crest_lifts_player_and_companion() -> void:
 
 func _test_options() -> void:
 	print("options")
-	_check(is_equal_approx(RunLaunchOptions.quake_seconds(120.0, ["--quake-at=5"]), 5.0), "--quake-at=5 anticipa il terremoto")
-	_check(is_equal_approx(RunLaunchOptions.quake_seconds(120.0, ["--seed=3"]), 120.0), "senza opzione vale il tuning")
-	_quake.first_seconds = 0.0
-	_check(not _quake.is_enabled(), "con 0 secondi il terremoto e spento")
+	_check(is_equal_approx(RunLaunchOptions.quake_seconds(["--quake-at=5"]), 5.0), "--quake-at=5 forza il terremoto a 5 s")
+	_check(is_equal_approx(RunLaunchOptions.quake_seconds(["--seed=3"]), -1.0), "senza opzione decide il pianificatore")
+	_quake.schedule([])
+	_check(_quake.next_at == INF, "senza istanti nessun terremoto in programma")
 
 
 ## Audit R-06: con tutto il campo protetto nessuna faglia e possibile: niente annuncio,
 ## il ciclo si salta.
 func _test_empty_fault_is_skipped() -> void:
 	print("empty fault")
-	_quake.first_seconds = 120.0
 	_field.set_protected(Vector3.ZERO, 400.0, true)
 	_quake.state = QuakeEvent.State.IDLE
 	_quake.next_at = _run.elapsed + 1.0

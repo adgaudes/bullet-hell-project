@@ -34,7 +34,7 @@ func _initialize() -> void:
 	# Il terremoto (D-075) ha la sua suite: qui il tempo salta e il suo annuncio coprirebbe
 	# quello della notte. Dopo i primi passi: la regia imposta l'evento al suo _ready.
 	if _run.quake_event != null:
-		_run.quake_event.first_seconds = 0.0
+		_run.quake_event.schedule([])
 	_test_phases_and_times()
 	_test_cycle_off()
 	_test_launch_option()

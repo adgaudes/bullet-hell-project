@@ -59,10 +59,11 @@ static func night_start_seconds(default_seconds: float, args: PackedStringArray 
 	return value.to_float() if not value.is_empty() else default_seconds
 
 
-## Secondi al primo terremoto: `--quake-at=S` (0 = mai), altrimenti il tuning.
-static func quake_seconds(default_seconds: float, args: PackedStringArray = OS.get_cmdline_user_args()) -> float:
+## Terremoto forzato per prove e catture: `--quake-at=S` lo mette a S secondi al posto della
+## scelta casuale (0 = nessun terremoto); senza opzione -1, cioe decide il pianificatore (D-097).
+static func quake_seconds(args: PackedStringArray = OS.get_cmdline_user_args()) -> float:
 	var value := _value_of("--quake-at=", args)
-	return value.to_float() if not value.is_empty() else default_seconds
+	return value.to_float() if not value.is_empty() else -1.0
 
 
 ## Percorso del PNG da salvare al primo frame utile (`--capture=<file>`), o vuoto.

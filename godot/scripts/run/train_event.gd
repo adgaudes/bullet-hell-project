@@ -1,7 +1,7 @@
 class_name TrainEvent
-extends Node3D
-## Il treno della ferrovia (D-066, D-087, docs/RAILWAY_LEVEL_SPEC.md sezione 3): a
-## intervalli regolari un convoglio attraversa tutta l'arena lungo uno dei due binari e
+extends WorldEvent
+## Il treno della ferrovia (D-066, D-087, docs/RAILWAY_LEVEL_SPEC.md sezione 3): quando lo
+## programma ArenaRun (D-097: istanti casuali) un convoglio attraversa tutta l'arena lungo uno dei due binari e
 ## **riporta la fascia alla base** (7,2 m attorno a z = 0): argini, barricate e vagoni
 ## spariscono senza lasciare rottami (le vene dei vagoni si azzerano), i solchi si
 ## riempiono, i rottami a terra e i lampioni spariscono. Chi sta sulla fascia viene travolto:
@@ -51,9 +51,6 @@ const DIRECTION_NAMES: Dictionary[int, String] = {-1: "EST", 1: "OVEST"}
 ## Casse sepolte nei vagoni (D-092): il treno le spazza via come le vene, senza aprirle.
 var buried_caches: BuriedCaches
 
-## Secondi di livello del primo passaggio, poi uno ogni `interval_seconds`; 0 = mai.
-var first_seconds := 90.0
-var interval_seconds := 150.0
 var warning_seconds := 10.0
 var speed := 18.0
 var carriages := 5
@@ -64,8 +61,6 @@ var boss: Enemy
 var rng := RandomNumberGenerator.new()
 
 var state := State.IDLE
-## Secondi di livello del prossimo passaggio.
-var next_at := 0.0
 ## +1: il treno va verso +X (viene da ovest); -1: verso -X (viene da est).
 var heading := -1
 var track_z := 0.0
@@ -84,12 +79,12 @@ var _hit: Dictionary[Node, bool] = {}
 var _first_warning := true
 
 
-func _ready() -> void:
-	next_at = first_seconds
+func event_kind() -> StringName:
+	return &"train"
 
 
 func is_enabled() -> bool:
-	return first_seconds > 0.0 and district != null and terrain_field != null
+	return district != null and terrain_field != null
 
 
 func is_passing() -> bool:
@@ -113,10 +108,6 @@ func train_length() -> float:
 ## Posizione X del muso; la coda e `train_length()` dietro.
 func head_x() -> float:
 	return _head_x
-
-
-func seconds_to_next(elapsed: float) -> float:
-	return next_at - elapsed
 
 
 ## Un passo, dal tempo di livello.
@@ -187,7 +178,7 @@ func _tick_passing(delta: float) -> void:
 func _finish_pass() -> void:
 	state = State.IDLE
 	passes += 1
-	next_at += interval_seconds
+	_advance_schedule()
 	if _train != null:
 		_train.queue_free()
 		_train = null

@@ -88,7 +88,10 @@ func _wagons() -> Array[Dictionary]:
 func _test_setup() -> void:
 	print("setup")
 	_check(_run.train_event == _train and _train.is_enabled(), "il treno e collegato alla regia")
-	_check(is_equal_approx(_train.next_at, _run.tuning.train_first_seconds), "primo passaggio a %.0f s" % _train.next_at)
+	# D-097: un solo evento di serie, a un istante casuale nella finestra prima del boss.
+	var end := _run.boss_call_at - _run.tuning.world_events_boss_margin
+	_check(_run.world_event_plan.size() == 1 and _train.next_at >= _run.tuning.world_events_start_seconds and _train.next_at <= end,
+		"un passaggio casuale fra %.0f e %.0f s (%.0f)" % [_run.tuning.world_events_start_seconds, end, _train.next_at])
 	_check(_train.state == TrainEvent.State.IDLE and not _hud.is_boss_warning_visible(), "all'inizio nessun treno e nessun annuncio")
 	_check(_audio.has_sound(&"train_horn"), "il fischio esiste nella libreria")
 
@@ -172,8 +175,7 @@ func _test_pass_flattens_and_hits() -> void:
 	var cp := _companion.global_position
 	_check(not RailwayDistrict.is_on_tracks(Vector2(cp.x, cp.z)), "compagno spinto fuori (z=%.1f)" % cp.z)
 	_check(_train.player_hits == 1 and _train.enemies_hit == 1, "un colpo al giocatore, un rottamatore (%d, %d)" % [_train.player_hits, _train.enemies_hit])
-	_check(_train.next_at > _run.elapsed and _train.next_at - _run.elapsed <= _run.tuning.train_interval_seconds,
-		"prossimo treno fra %.0f s" % (_train.next_at - _run.elapsed))
+	_check(_train.next_at == INF, "passato il treno, nessun altro in programma")
 	_check(_audio.play_count(&"train_horn") >= 2, "fischio anche all'ingresso")
 	bystander.queue_free()
 	_director.enemies.clear()

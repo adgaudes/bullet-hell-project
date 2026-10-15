@@ -209,12 +209,15 @@ func _test_volume_sliders() -> void:
 	var master_label: Label = pause_menu.get_node("%SettingsPanel").get_node("%MasterVolumeValue")
 	_check(is_equal_approx(master.value, 1.0) and is_equal_approx(sfx.value, 0.8), "i cursori mostrano i valori correnti")
 	_check(master.focus_mode == Control.FOCUS_ALL and sfx.focus_mode == Control.FOCUS_ALL, "i cursori prendono il focus")
-	# I volumi stanno nella scheda Audio (playtest O-11): ci si passa con il dorsale destro.
-	_send_joypad_button(JOY_BUTTON_RIGHT_SHOULDER, true)
-	await process_frame
-	_send_joypad_button(JOY_BUTTON_RIGHT_SHOULDER, false)
-	await process_frame
-	_check((pause_menu.get_node("%SettingsPanel") as SettingsMenu).current_tab == 1, "il dorsale destro passa alla scheda Audio")
+	# I volumi stanno nella scheda Audio (playtest O-11): ci si passa con il dorsale destro,
+	# due volte da Gameplay (D-097) passando per Grafica.
+	_check((pause_menu.get_node("%SettingsPanel") as SettingsMenu).current_tab == 0, "le impostazioni si aprono sulla scheda Gameplay")
+	for i in 2:
+		_send_joypad_button(JOY_BUTTON_RIGHT_SHOULDER, true)
+		await process_frame
+		_send_joypad_button(JOY_BUTTON_RIGHT_SHOULDER, false)
+		await process_frame
+	_check((pause_menu.get_node("%SettingsPanel") as SettingsMenu).current_tab == 2, "il dorsale destro passa a Grafica e poi ad Audio")
 	master.grab_focus()
 	_send_joypad_button(JOY_BUTTON_DPAD_LEFT, true)
 	await process_frame
@@ -271,7 +274,7 @@ func _test_pause_and_focus() -> void:
 	pause_menu.open_settings()
 	await process_frame
 	focused = pause_menu.focused_control()
-	_check(focused != null and focused.name == &"PresetOption", "focus sulla prima impostazione (il preset)")
+	_check(focused != null and focused.name == &"WorldEventsOption", "focus sulla prima impostazione (eventi del mondo, scheda Gameplay)")
 	_check_settings_menu_rows(pause_menu)
 	# R-13: Esc dalle Impostazioni torna al pannello di pausa, come B; non riprende il gioco.
 	_send_pause_key()
@@ -420,19 +423,40 @@ func _check_settings_menu_rows(pause_menu: Node) -> void:
 	_check(volumetric.button_pressed == settings.volumetric_fog, "la spunta della volumetrica segue il servizio")
 	_check(menu.get_node("%Content").get_parent() is ScrollContainer, "il contenuto scorre")
 	settings.set_preset(before)
-	# Playtest O-11: tre schede; ogni scheda mostra solo le sue righe; mira manuale nei Controlli.
+	# Playtest O-11 e D-097: quattro schede (Gameplay, Grafica, Audio, Controlli); ogni scheda
+	# mostra solo le sue righe; mira manuale ed eventi del mondo in Gameplay.
 	var panel := menu as SettingsMenu
-	panel.show_tab(0)
-	_check(menu.get_node("%PresetOption").is_visible_in_tree() == menu.is_visible_in_tree() and not menu.get_node("%MasterVolume").get_parent().visible, "scheda Grafica: niente volumi")
+	_check(panel.TABS.size() == 4 and panel.TABS[0][0] == "Gameplay", "quattro schede, Gameplay per prima")
 	panel.show_tab(1)
-	_check(menu.get_node("%MasterVolume").get_parent().visible and not menu.get_node("%PresetOption").get_parent().visible, "scheda Audio: solo i volumi")
+	_check(menu.get_node("%PresetOption").is_visible_in_tree() == menu.is_visible_in_tree() and not menu.get_node("%MasterVolume").get_parent().visible, "scheda Grafica: niente volumi")
 	panel.show_tab(2)
+	_check(menu.get_node("%MasterVolume").get_parent().visible and not menu.get_node("%PresetOption").get_parent().visible, "scheda Audio: solo i volumi")
+	panel.show_tab(3)
+	_check(menu.get_node("%InvertX").get_parent().visible and menu.find_child("ManualAim", true, false).get_parent().visible == false, "scheda Controlli: inversioni, non la mira manuale")
+	panel.show_tab(0)
 	var aim: CheckButton = menu.find_child("ManualAim", true, false)
-	_check(aim != null and aim.get_parent().visible and not menu.get_node("%MasterVolume").get_parent().visible, "scheda Controlli con la mira manuale")
+	var events: OptionButton = menu.find_child("WorldEventsOption", true, false)
+	var quake: CheckButton = menu.find_child("QuakeCheck", true, false)
+	var train: CheckButton = menu.find_child("TrainCheck", true, false)
+	var night: CheckButton = menu.find_child("NightCheck", true, false)
+	_check(aim != null and aim.get_parent().visible and events != null and events.get_parent().visible and quake.get_parent().visible
+		and train.get_parent().visible and night.get_parent().visible and not menu.get_node("%PresetOption").get_parent().visible,
+		"scheda Gameplay: eventi per livello, terremoto, treno, notte, mira manuale")
+	_check(events.item_count == GameSettingsService.WORLD_EVENT_COUNTS.size() and events.selected == GameSettingsService.WORLD_EVENT_COUNTS.find(settings.world_event_count),
+		"il numero di eventi mostra il valore corrente")
 	var was := settings.manual_aim
 	aim.button_pressed = not was
 	_check(settings.manual_aim == not was, "la spunta della mira cambia l'impostazione")
 	settings.set_manual_aim(was)
+	var count_was := settings.world_event_count
+	events.select(2)
+	events.item_selected.emit(2)
+	_check(settings.world_event_count == GameSettingsService.WORLD_EVENT_COUNTS[2], "scegliere 3 eventi dal menu imposta il servizio")
+	settings.set_world_event_count(count_was)
+	var quake_was := settings.quake_enabled
+	quake.button_pressed = not quake_was
+	_check(settings.quake_enabled == not quake_was, "la levetta del terremoto cambia l'impostazione")
+	settings.set_quake_enabled(quake_was)
 	var volumetric_row := menu.get_node("%VolumetricCheck").get_parent()
 	_check(volumetric_row is HBoxContainer and (volumetric_row.get_node("Label") as Label).text.begins_with("Nebbia"), "gli interruttori stanno in colonna con un'etichetta")
 	panel.show_tab(0)
