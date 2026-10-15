@@ -1,8 +1,9 @@
 class_name ActiveWeapon
 extends Weapon
 ## Base delle armi attive su tasto (spec D-092, par. 3): ricarica a tempo, punto di mira secondo
-## la mira manuale (davanti a chi spara, alla portata) o automatica (centro del gruppo di nemici
-## piu fitto entro la portata; senza nemici, davanti a meta portata).
+## la mira manuale (col mouse il cursore, entro la portata; con lo stick davanti a chi spara, alla
+## portata) o automatica (centro del gruppo di nemici piu fitto entro la portata; senza nemici,
+## davanti alla portata piena: a meta l'anello del picchetto passava sotto i piedi).
 
 signal triggered(at: Vector3)
 
@@ -37,13 +38,18 @@ func trigger() -> bool:
 func aim_point() -> Vector3:
 	var reach := stat(&"aim_range")
 	var origin := shooter.global_position
+	if manual_aim and shooter.has_method(&"cursor_ground_point"):
+		var cursor: Variant = shooter.cursor_ground_point()
+		if cursor != null:
+			var offset := Vector3(cursor.x - origin.x, 0.0, cursor.z - origin.z)
+			return origin + offset.limit_length(reach)
 	if not manual_aim and director != null:
 		var cluster: Variant = densest_cluster(origin, reach)
 		if cluster != null:
 			return cluster
 	var forward: Vector3 = shooter.facing_direction() if shooter.has_method(&"facing_direction") else -shooter.global_basis.z
 	forward = Vector3(forward.x, 0.0, forward.z).normalized()
-	return origin + forward * reach * (1.0 if manual_aim else 0.5)
+	return origin + forward * reach
 
 
 ## Centro dei nemici della cella di CLUSTER_CELL metri piu affollata entro [param reach], o null.

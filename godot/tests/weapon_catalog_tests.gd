@@ -32,6 +32,8 @@ func _test_nailgun_stats() -> void:
 	_check(WeaponCatalog.stat(&"nailgun", &"bounces", 5, {3: &"a", 5: &"a"}) == 1.0, "Rimbalzanti al 5: un rimbalzo")
 	_check(WeaponCatalog.stat(&"nailgun", &"bounces", 5, {3: &"a", 5: &"b"}) == 0.0, "Incandescenti al 5: nessun rimbalzo")
 	_check(WeaponCatalog.stat(&"missing", &"damage", 1, {}) == 0.0, "arma sconosciuta: 0")
+	# Review I-2: stat() gira a ogni passo, il catalogo non va ricostruito a ogni chiamata.
+	_check(is_same(WeaponCatalog.find(&"nailgun"), WeaponCatalog.find(&"nailgun")), "il catalogo e costruito una volta sola")
 
 
 func _test_branches() -> void:

@@ -15,6 +15,7 @@ func _initialize() -> void:
 	_test_rarity_weights()
 	_test_class_decks()
 	_test_weapon_card_first()
+	_test_owned_card_of_other_deck()
 	print("PROTOTYPE01_TESTS %s failures=%d" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -73,6 +74,20 @@ func _test_weapon_card_first() -> void:
 	var none := _new(23)
 	none.weapon_cards = func() -> Array[Dictionary]: return [] as Array[Dictionary]
 	_check(none.roll_offer().size() == 3, "senza carte arma restano tre carte normali")
+
+
+## Review: una carta gia posseduta (la Torretta fissa dell'Officina) resta potenziabile anche
+## se e del mazzo di un'altra classe.
+func _test_owned_card_of_other_deck() -> void:
+	print("owned card of other deck")
+	var p := _new(24)
+	p.class_id = &"engineer"
+	p.levels[&"companion_turret"] = 1
+	var seen := false
+	for i in 300:
+		for u in p.roll_offer():
+			seen = seen or u.id == &"companion_turret"
+	_check(seen, "la Torretta gia montata si potenzia anche da Ingegnere")
 
 
 func _test_xp_curve() -> void:

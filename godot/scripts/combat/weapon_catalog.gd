@@ -12,7 +12,21 @@ const MAX_LEVEL := 5
 const BRANCH_LEVELS: Array[int] = [3, 5]
 
 
+## Costruito una volta sola (review I-2: `stat` gira a ogni passo). Le voci sono condivise:
+## chi le legge non le modifica.
+static var _entries: Array[Dictionary] = []
+static var _by_id: Dictionary[StringName, Dictionary] = {}
+
+
 static func all() -> Array[Dictionary]:
+	if _entries.is_empty():
+		_entries = _build()
+		for entry in _entries:
+			_by_id[entry.id] = entry
+	return _entries
+
+
+static func _build() -> Array[Dictionary]:
 	return [
 		{id = &"nailgun", name = "Chiodatrice", deck = &"engineer", slot = &"auto", partner = &"seismic_stake",
 			fusion = &"fort", unlock_cost = 0, icon = &"nail",
@@ -58,10 +72,9 @@ static func all() -> Array[Dictionary]:
 
 
 static func find(id: StringName) -> Dictionary:
-	for entry in all():
-		if entry.id == id:
-			return entry
-	return {}
+	if _entries.is_empty():
+		all()
+	return _by_id.get(id, {})
 
 
 ## Valore [param key] dell'arma al livello dato, coi bivi presi ({3: &"a"|&"b", 5: ...}).

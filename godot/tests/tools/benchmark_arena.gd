@@ -202,7 +202,6 @@ func _initialize() -> void:
 	weapon.set_physics_process(true)
 	print("PROTOTYPE01_ARENA_BENCH step enemies=%d director_ms=%.2f weapon_ms=%.2f solve_ms=%.2f"
 		% [director.enemies.size(), director_ms, weapon_ms, path.last_solve_usec / 1000.0])
-	await _bench_loadout(scene, step)
 	var physics_total := 0.0
 	var process_total := 0.0
 	var frame_total := 0.0
@@ -255,4 +254,6 @@ func _initialize() -> void:
 		ActorMotion.enabled = true
 		print("PROTOTYPE01_ARENA_BENCH motion_ab enemies=%d director_on_ms=%.3f director_off_ms=%.3f delta=%.1f%%"
 			% [director.enemies.size(), totals[0] / 600000.0, totals[1] / 600000.0, (float(totals[0]) / totals[1] - 1.0) * 100.0])
+	# Ultima: aggiunge nemici e scrive anelli permanenti, non deve sporcare le misure sopra.
+	await _bench_loadout(scene, 1.0 / Engine.physics_ticks_per_second)
 	quit()

@@ -611,6 +611,14 @@ func facing_direction() -> Vector3:
 	return forward.normalized() if not forward.is_zero_approx() else Vector3.FORWARD
 
 
+## Punto del terreno sotto il cursore quando si mira col mouse (armi attive, D-092), altrimenti null.
+func cursor_ground_point() -> Variant:
+	if aim_device != AimDevice.MOUSE or not is_inside_tree():
+		return null
+	var offset := aim_direction_at_screen(get_viewport().get_mouse_position())
+	return global_position + offset if not offset.is_zero_approx() else null
+
+
 ## Un colpo automatico verso [param direction]: il corpo si gira verso il bersaglio, cosi il
 ## chiodo esce dalla canna e non dalle spalle (playtest O-04).
 func face_shot(direction: Vector3) -> void:

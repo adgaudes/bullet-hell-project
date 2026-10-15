@@ -36,6 +36,8 @@ func _initialize() -> void:
 	await _test_stake_shock()
 	await _test_stake_spiked()
 	await _test_active_auto_aim()
+	await _test_active_fallback_and_cursor()
+	await _test_shock_keeps_trapped_inside()
 	print("PROTOTYPE01_TESTS %s failures=%d" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -295,6 +297,42 @@ func _test_stake_spiked() -> void:
 	stake.trigger()
 	await _seconds(2.5)
 	_check(enemy.health <= 48, "chi sta contro l'anello si fa male (vita %d)" % enemy.health)
+	await _clear()
+	_reset_field()
+
+
+## Review: senza nemici la mira automatica pianta alla portata piena (a meta l'anello passava
+## sotto i piedi); col mouse il punto e il cursore, limitato alla portata.
+func _test_active_fallback_and_cursor() -> void:
+	print("Attive: senza nemici e col cursore")
+	var stake := _stake()
+	stake.manual_aim = false
+	await physics_frame
+	var at := stake.aim_point()
+	_check(is_equal_approx(Vector2(at.x, at.z).length(), 6.0), "senza nemici alla portata piena (%.2f m)" % Vector2(at.x, at.z).length())
+	stake.shooter.set_script(preload("res://tests/support/cursor_shooter.gd"))
+	stake.manual_aim = true
+	stake.shooter.cursor = Vector3(2.0, 0.0, -2.0)
+	at = stake.aim_point()
+	_check(Vector2(at.x, at.z).is_equal_approx(Vector2(2.0, -2.0)), "col mouse pianta sul cursore (%s)" % at)
+	stake.shooter.cursor = Vector3(20.0, 0.0, 0.0)
+	at = stake.aim_point()
+	_check(Vector2(at.x, at.z).is_equal_approx(Vector2(6.0, 0.0)), "cursore lontano: alla portata (%s)" % at)
+	await _clear()
+	_reset_field()
+
+
+## Review I-3: la Scossa scaglia fuori chi sta sull'anello, non chi e chiuso dentro.
+func _test_shock_keeps_trapped_inside() -> void:
+	print("Picchetto: Scossa e chi e dentro")
+	var inside := _enemy_at(Vector3(0.0, 0.0, -6.0))
+	var on_ring := _enemy_at(Vector3(3.0, 0.0, -6.0))
+	var stake := _stake(5, {3: &"b", 5: &"b"})
+	await physics_frame
+	stake.trigger()
+	await _seconds(0.7)
+	_check(inside.velocity.length() < 0.1, "chi e dentro non viene spinto (%.2f m/s)" % inside.velocity.length())
+	_check(on_ring.velocity.x > 1.0, "chi sta sull'anello e scagliato fuori (%.2f m/s)" % on_ring.velocity.x)
 	await _clear()
 	_reset_field()
 

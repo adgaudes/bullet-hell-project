@@ -68,9 +68,11 @@ func eligible() -> Array[Dictionary]:
 	return result
 
 
+## Carte comuni e della classe; piu quelle gia possedute (la Torretta fissa dell'Officina resta
+## potenziabile anche da Ingegnere).
 func _in_deck(upgrade: Dictionary) -> bool:
 	var deck: StringName = upgrade.get(&"deck", &"common")
-	return class_id == &"" or deck == &"common" or deck == class_id
+	return class_id == &"" or deck == &"common" or deck == class_id or level_of(upgrade.id) > 0
 
 
 ## Carte ripetibili: riempiono l'offerta quando gli upgrade veri stanno finendo,

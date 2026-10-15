@@ -74,9 +74,14 @@ func _raise(ring: Dictionary) -> void:
 			write_queue.push_level(p, stat(&"ring_width") + 0.1, terrain_field.base_height_at(p) + height)
 	var shock := int(stat(&"shock_damage"))
 	if shock > 0 and director != null:
+		# Solo chi sta sull'anello, scagliato fuori; chi e dentro resta chiuso (review I-3).
 		for enemy in _enemies_on_ring(ring, stat(&"ring_width")):
 			enemy.take_damage(shock)
-		director.shove_from(ring.center, ring.radius + 1.0, SHOCK_SHOVE_SPEED)
+			if enemy.self_driven:
+				continue
+			var away := Vector3(enemy.global_position.x - ring.center.x, 0.0, enemy.global_position.z - ring.center.z)
+			away = away.normalized() if away.length_squared() > 1e-6 else Vector3.FORWARD
+			enemy.velocity = Vector3(away.x * SHOCK_SHOVE_SPEED, enemy.velocity.y, away.z * SHOCK_SHOVE_SPEED)
 	print("PROTOTYPE01_STAKE_RAISED at=(%.1f, %.1f) radius=%.1f" % [ring.center.x, ring.center.z, ring.radius])
 
 
