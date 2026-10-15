@@ -40,7 +40,7 @@ var _ring_left := 0.0
 func _ready() -> void:
 	_rng.seed = 11
 	var mesh := TorusMesh.new()
-	mesh.inner_radius = 0.92
+	mesh.inner_radius = 0.84
 	mesh.outer_radius = 1.0
 	mesh.rings = 32
 	mesh.ring_segments = 6
@@ -168,7 +168,7 @@ func _tick_ring(delta: float) -> void:
 		return
 	_ring_left -= delta
 	var t := 1.0 - clampf(_ring_left / WAVE_SHOW_SECONDS, 0.0, 1.0)
-	var r := lerpf(0.4, wave_radius, t)
+	var r := lerpf(wave_radius * 0.5, wave_radius, t)
 	_ring.scale = Vector3(r, 1.0, r)
 	_ring.transparency = t
 	if _ring_left <= 0.0:

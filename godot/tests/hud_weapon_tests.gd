@@ -28,6 +28,8 @@ func _initialize() -> void:
 	hud.set_weapons([{icon = &"nail", level = 2, branches = ""}], [])
 	_check(hud.weapon_strip() != null and hud.weapon_strip().slot_text(0).contains("2"), "il HUD inoltra le armi alla striscia")
 	_check(UiIcon.KINDS.has(&"stake"), "icona del picchetto")
+	var missing := WeaponCatalog.all().filter(func(e: Dictionary) -> bool: return not UiIcon.KINDS.has(e.icon))
+	_check(missing.is_empty(), "ogni arma e fusione del catalogo ha la sua icona (%s)" % [missing.map(func(e: Dictionary) -> StringName: return e.icon)])
 	await process_frame
 	print("PROTOTYPE01_TESTS %s failures=%d" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)

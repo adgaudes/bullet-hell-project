@@ -7,6 +7,7 @@ extends Control
 const KINDS: Array[StringName] = [
 	&"nail", &"shovel", &"boot", &"wrench", &"scrap", &"bolt", &"skull", &"clock",
 	&"lamp", &"arrow_right", &"check", &"lock", &"stake",
+	&"blade", &"hammer", &"ram", &"mixer", &"dozer", &"compactor",
 ]
 
 @export var kind: StringName = &"nail":
@@ -94,6 +95,16 @@ func _dot(center: Array, radius_units: float, color: Color) -> void:
 	draw_circle(p, s * radius_units, color)
 
 
+## Profilo dentato attorno a (cx, cy) in unita: denti fra raggio esterno e interno.
+func _saw(cx: float, cy: float, outer: float, inner: float, teeth: int) -> Array:
+	var points := []
+	for k in teeth * 2:
+		var angle := TAU * k / (teeth * 2)
+		var r := outer if k % 2 == 0 else inner
+		points.append([cx + cos(angle) * r, cy + sin(angle) * r])
+	return points
+
+
 func _draw() -> void:
 	var dark := tint.darkened(0.35)
 	match kind:
@@ -177,6 +188,37 @@ func _draw() -> void:
 			_stroke([[0.1, 0.78], [0.22, 0.66], [0.5, 0.6], [0.78, 0.66], [0.9, 0.78]], dark, 0.08)
 			_shape([[0.42, 0.08], [0.58, 0.08], [0.58, 0.62], [0.5, 0.86], [0.42, 0.62]], tint)
 			_shape([[0.36, 0.08], [0.64, 0.08], [0.64, 0.18], [0.36, 0.18]], dark)
+		&"blade":
+			# Lama circolare dentata col mozzo.
+			_shape(_saw(0.5, 0.5, 0.42, 0.32, 12), tint)
+			_dot([0.5, 0.5], 0.1, dark)
+		&"hammer":
+			# Martello pneumatico: maniglie, corpo e punta.
+			_shape([[0.18, 0.12], [0.82, 0.12], [0.82, 0.24], [0.18, 0.24]], dark)
+			_shape([[0.36, 0.22], [0.64, 0.22], [0.64, 0.66], [0.36, 0.66]], tint)
+			_shape([[0.44, 0.64], [0.56, 0.64], [0.56, 0.84], [0.5, 0.94], [0.44, 0.84]], dark)
+		&"ram":
+			# Ariete: trave con la testa a cuneo e le linee della corsa.
+			_stroke([[0.08, 0.36], [0.26, 0.36]], dark, 0.06)
+			_stroke([[0.08, 0.64], [0.26, 0.64]], dark, 0.06)
+			_shape([[0.24, 0.38], [0.66, 0.38], [0.66, 0.62], [0.24, 0.62]], tint)
+			_shape([[0.64, 0.26], [0.92, 0.5], [0.64, 0.74]], dark)
+		&"mixer":
+			# Betoniera: tamburo inclinato sul telaio.
+			_shape([[0.18, 0.3], [0.62, 0.14], [0.86, 0.46], [0.42, 0.66]], tint)
+			_shape([[0.2, 0.66], [0.82, 0.66], [0.82, 0.76], [0.2, 0.76]], dark)
+			_dot([0.3, 0.86], 0.08, dark)
+			_dot([0.72, 0.86], 0.08, dark)
+		&"dozer":
+			# Ruspa a dischi: pala e due lame che spianano.
+			_shape([[0.1, 0.22], [0.3, 0.22], [0.34, 0.78], [0.1, 0.78]], dark)
+			_shape(_saw(0.6, 0.34, 0.2, 0.15, 10), tint)
+			_shape(_saw(0.66, 0.72, 0.2, 0.15, 10), tint)
+		&"compactor":
+			# Costipatore: piastra che batte con le frecce verso il basso.
+			_shape([[0.2, 0.62], [0.8, 0.62], [0.8, 0.8], [0.2, 0.8]], tint)
+			_shape([[0.42, 0.14], [0.58, 0.14], [0.58, 0.62], [0.42, 0.62]], dark)
+			_stroke([[0.1, 0.9], [0.9, 0.9]], dark, 0.06)
 		&"check":
 			_stroke([[0.16, 0.52], [0.4, 0.78], [0.86, 0.26]], outline, 0.2)
 			_stroke([[0.16, 0.52], [0.4, 0.78], [0.86, 0.26]], tint, 0.1)

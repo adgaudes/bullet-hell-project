@@ -33,6 +33,7 @@ func _initialize() -> void:
 	await _test_ram_base()
 	await _test_ram_trench_and_blast()
 	await _test_ram_blocked()
+	await _test_ram_ploughs_bank()
 	await _seconds(0.1)
 	print("PROTOTYPE01_TESTS %s failures=%d" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
@@ -186,6 +187,23 @@ func _test_ram_blocked() -> void:
 	_check(not ram.trigger() and is_zero_approx(ram.cooldown_left), "durante lo scatto non parte e non consuma la ricarica")
 	ram.queue_free()
 	await _seconds(1.5)
+
+
+## La carica spiana davanti a se: un argine basso sul percorso non la ferma (cattura del 15
+## ottobre: l'Ariete restava fermo contro il bordo del cortile).
+func _test_ram_ploughs_bank() -> void:
+	print("Ariete contro un argine")
+	await _reset_player()
+	var start := _player.global_position
+	for x in range(-3, 4):
+		_field.level(start + Vector3(x, 0.0, -2.5), 0.9, 1.0, 1.0)
+	var ram := _ram()
+	await physics_frame
+	ram.trigger()
+	await _seconds(1.2)
+	_check(start.z - _player.global_position.z > 5.0, "attraversa l'argine spianandolo (%.2f m)" % (start.z - _player.global_position.z))
+	ram.queue_free()
+	await _seconds(0.5)
 
 
 func _test_charge_into_wall() -> void:

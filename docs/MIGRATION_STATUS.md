@@ -9,26 +9,22 @@
 - **Engine** Godot 4.7.2 (GDScript). La migrazione da Unreal e chiusa; il codice Unreal sta nel tag `unreal-prototype-final`.
 - **Prodotto:** fase 3, prototipo della promessa A. Due livelli giocabili, quartiere e ferrovia, su terreno continuo (Terrain3D), con boss (Demolitore, Trivella), treno, terremoto, giorno e notte con lampioni, estrazione, Officina, campagna, interfaccia "fatta a mano", audio Sonniss. Primo playtest del proprietario il 14 ottobre (vedi sotto).
 - **Branch di lavoro:** `feature/arena-run`. Non integrato: `feature/engineer-restyle` (Ingegnere D-088, worktree `../Videogame-engineer`), in attesa del giudizio del proprietario.
-- **Gate:** `tools/godot/Invoke-GodotChecks.ps1`: check-only, 43 suite con seme fisso, passo con finestra (Terrain3D e shader), smoke test. Verde.
+- **Gate:** `tools/godot/Invoke-GodotChecks.ps1`: check-only, 44 suite con seme fisso, passo con finestra (Terrain3D e shader), smoke test. Verde.
 - **Build:** `LocalBuilds/Prototype01-Godot-Win64/` e `-Linux/` (exe 196 MB).
 
-## Audit (14 ottobre 2026)
-
-`docs/REVIEWS/FULL_AUDIT_2026-10-14.md`; riepilogo di cosa e stato corretto in `docs/archive/STATUS_LOG_2026-10.md`. Frame di riferimento prima del blocco grafica (RTX 4050, 70 nemici): Alto 4,8 ms, Deck 4,1 ms.
+**Audit del 14 ottobre:** `docs/REVIEWS/FULL_AUDIT_2026-10-14.md` (frame prima del blocco grafica, RTX 4050, 70 nemici: Alto 4,8 ms, Deck 4,1 ms).
 
 ## Playtest del proprietario (14 ottobre 2026, sera)
 
 Esito **Modifica**: 14 osservazioni (salute, terra senza indicatore, buca senza uscita, sparo dalle spalle, armi, frecce viola, ombre e AO, terreno a quadrati, erba, rovine, impostazioni, menu, Officina, musica). Cause e piano in `docs/PLAYTESTS/OWNER_PLAYTEST_2026-10-14.md`. **Il piano di quel documento viene prima delle voci dell'audit.** Ordine scelto (D-089): grafica, gioco, armi, audio.
 
-**Blocco grafica, fatto il 14 ottobre (D-090, catture in `output/lighting/`):** luce (nebbia del Massimo 0,003, ambiente 0,4, AO di contatto), terreno con texture CC0 a 1024 e bordi sfumati, prato a particelle (`GrassField`, +0,7 ms Deck), rovine a moduli (`RuinModules`), frecce viola spente.
+**Blocchi 1 e 2 (14 ottobre, D-090, D-091):** luce, terreno CC0, prato a particelle, rovine a moduli, menu 3D, Officina a carte, vita 10, terra nel HUD, rampa d'uscita, mira commutabile, impostazioni a schede (catture `output/lighting/`).
 
-**Blocco 3, armi e classi (D-092), 15 ottobre:** design approvato a voce (spec `docs/superpowers/specs/2026-10-15-weapons-classes-design.md`: quattro classi giocabili, 6 automatiche, 6 attive, 6 fusioni, bivi al 3 e al 5, casse sepolte, Officina a sezioni). **Piano 1, impianto, fatto** (`docs/superpowers/plans/2026-10-15-weapons-foundation.md`): catalogo e classi, chiodatrice coi quattro bivi, Picchetto sismico, `WeaponLoadout`, comandi E/F e LT/RB, carte arma e schermata della trasformazione, mazzi di classe, striscia nel HUD, `--class=`. Armi 0,09 ms per passo, 0,84 ms mentre un anello sale (budget 1,0). Catture `output/weapons/`.
-
-**Secondo giro (14 ottobre, notte):** menu 3D, Officina a carte; blocco di gioco D-091 (vita 10, terra nel HUD, rampa d'uscita, mira commutabile, impostazioni a schede).
+**Blocco 3, armi e classi (D-092), 15 ottobre:** design approvato a voce (spec `docs/superpowers/specs/2026-10-15-weapons-classes-design.md`: quattro classi giocabili, 6 automatiche, 6 attive, 6 fusioni, bivi al 3 e al 5, casse sepolte, Officina a sezioni). **Piano 1, impianto, fatto** (`docs/superpowers/plans/2026-10-15-weapons-foundation.md`): catalogo e classi, chiodatrice coi quattro bivi, Picchetto sismico, `WeaponLoadout`, comandi E/F e LT/RB, carte arma e schermata della trasformazione, mazzi di classe, striscia nel HUD, `--class=`. **Piano 2, kit comune, fatto** (`docs/superpowers/plans/2026-10-15-weapons-common-kit.md`): Lama da cantiere, Martello pneumatico, Ariete (carica che sfonda gli argini), Betoniera, coi bivi; fusioni (carta Leggendaria, Ruspa a dischi, Costipatore); stordimento e carica. Le armi comuni sono sbloccate per prova finche l'Officina non le vende (piano 4). Cinque slot pieni: 0,23 ms per passo, 0,89 ms mentre la coda scrive (budget 1,0). Catture `output/weapons/`.
 
 ## Prossimo passo (agente)
 
-0. **Blocchi 1 e 2 del playtest fatti** (grafica, menu, Officina, salute, terra, buca, mira, impostazioni; D-090, D-091). **Blocco 3, armi (O-05): design approvato a voce il 15 ottobre** (D-092): quattro classi giocabili, 6 automatiche, 6 attive su tasto, 6 fusioni, bivi, casse sepolte; spec `docs/superpowers/specs/2026-10-15-weapons-classes-design.md`. Piano 1 (impianto) fatto. Prossimo: **piano 2, kit comune** (Lama, Martello, Ariete, Betoniera e le due fusioni comuni), poi le tre classi (piani 3, anche in parallelo con Codex), casse/Officina/scelta della classe (4), effetti (5), bilanciamento coi bot (6). Poi la musica scelta da lui (candidati in `Videogame-assets/music-candidates/`). ProtonScatter approvato (D-090) ma non installato: serve quando si spargono oggetti.
+0. **Blocchi 1 e 2 del playtest fatti** (grafica, menu, Officina, salute, terra, buca, mira, impostazioni; D-090, D-091). **Blocco 3, armi (O-05): design approvato a voce il 15 ottobre** (D-092): quattro classi giocabili, 6 automatiche, 6 attive su tasto, 6 fusioni, bivi, casse sepolte; spec `docs/superpowers/specs/2026-10-15-weapons-classes-design.md`. Piani 1 (impianto) e 2 (kit comune) fatti. Prossimo: **piano 3, le tre classi** (Guastatore, Meccanico, Erbacciaia: armi, fusioni, mazzi, segnaposto; anche in parallelo con Codex), poi la fusione Fortino dell'Ingegnere, casse/Officina/scelta della classe (4), effetti (5), bilanciamento coi bot (6). Poi la musica scelta da lui (candidati in `Videogame-assets/music-candidates/`). ProtonScatter approvato (D-090) ma non installato: serve quando si spargono oggetti.
 1. **Voci rimaste dell'audit**, nell'ordine della sua sezione 1:
    - PF-03, caricamento: prato sul rilievo 850 ms, pittura del terreno 460 ms;
    - T-01 e T-02: collisione copiata dal campo, ferrovia allineata;

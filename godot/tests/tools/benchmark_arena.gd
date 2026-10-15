@@ -19,9 +19,10 @@ const PRESET_ARGS := {"deck": GameSettingsService.Preset.STEAM_DECK, "low": Game
 	"medium": GameSettingsService.Preset.MEDIUM, "high": GameSettingsService.Preset.HIGH, "max": GameSettingsService.Preset.MAX}
 
 
-## Caso peggiore delle armi (D-092, budget 1,0 ms per passo): chiodatrice al 5 con Raffica e
-## Incandescenti, picchetto al 5 con anello permanente e chiodato appena alzato; si misura il
-## passo di tutte le armi del loadout e della coda delle scritture (riga `weapons`).
+## Caso peggiore delle armi (D-092, budget 1,0 ms per passo): cinque slot pieni al livello 5,
+## chiodatrice (Raffica, Incandescenti), Ruspa a dischi (Lama fusa con l'Ariete), Martello,
+## picchetto (permanente, chiodato) e Betoniera appena usati; si misura il passo di tutte le
+## armi del loadout e della coda delle scritture (riga `weapons`).
 func _bench_loadout(scene: Node, step: float) -> void:
 	var run: ArenaRun = scene.get_node(^"Run")
 	var loadout := run.loadout
@@ -32,6 +33,12 @@ func _bench_loadout(scene: Node, step: float) -> void:
 		loadout.choose_branch(id, &"a" if id == &"nailgun" else &"b")
 		loadout.level_up(id)
 		loadout.choose_branch(id, &"b" if id == &"nailgun" else &"a")
+	for id in [&"site_blade", &"jackhammer", &"ram"]:
+		loadout.add(id)
+		_max_out(loadout, id)
+	loadout.fuse(&"site_blade")
+	loadout.add(&"cement_mixer")
+	_max_out(loadout, &"cement_mixer")
 	# L'orda nasce oltre la portata: per il caso peggiore 20 nemici robusti entro 6 m.
 	var player: Node3D = scene.get_node(^"Player")
 	for i in 20:
@@ -40,6 +47,7 @@ func _bench_loadout(scene: Node, step: float) -> void:
 		enemy.health = 1000
 		enemy.max_health = 1000
 	loadout.trigger_active(0)
+	loadout.trigger_active(1)
 	for i in 120:
 		await physics_frame
 	var nodes: Array[Node] = []
@@ -70,8 +78,17 @@ func _bench_loadout(scene: Node, step: float) -> void:
 		queue._physics_process(step)
 	var raise_ms := (Time.get_ticks_usec() - t0) / 1000.0 / maxf(jobs, 1.0)
 	queue.set_physics_process(true)
-	print("PROTOTYPE01_ARENA_BENCH weapons worst_ms=%.3f ring_write_ms=%.3f nails=%d patches=%d rings=%d"
-		% [weapons_ms, raise_ms, nailgun.nail_count(), nailgun.fire_patch_count(), (loadout.weapon(&"seismic_stake") as SeismicStake).ring_count()])
+	print("PROTOTYPE01_ARENA_BENCH weapons worst_ms=%.3f ring_write_ms=%.3f slots=%s nails=%d patches=%d rings=%d"
+		% [weapons_ms, raise_ms, ",".join(PackedStringArray(loadout.all_ids())), nailgun.nail_count(), nailgun.fire_patch_count(),
+			(loadout.weapon(&"seismic_stake") as SeismicStake).ring_count()])
+
+
+static func _max_out(loadout: WeaponLoadout, id: StringName) -> void:
+	while loadout.level_of(id) > 0 and loadout.level_of(id) < WeaponCatalog.MAX_LEVEL:
+		if loadout.needs_branch(id):
+			loadout.choose_branch(id, &"a")
+		else:
+			loadout.level_up(id)
 
 
 func _initialize() -> void:

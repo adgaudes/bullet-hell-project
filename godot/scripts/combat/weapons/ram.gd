@@ -2,14 +2,16 @@ class_name Ram
 extends ActiveWeapon
 ## Ariete (spec D-092, par. 4.5), attiva del kit comune: chi spara carica verso il punto di mira
 ## (`charge_distance` metri in `charge_seconds`, intoccabile: PlayerCharacter.start_charge). Chi
-## sta sul percorso prende `damage` ed e spinto di lato; ogni metro la coda spiana il terreno
-## verso la base. Bivi: Rincorsa, Scudo (intoccabile all'arrivo), Trincea (scava invece di
-## spianare), Botto (onda all'arrivo). Se la carica non puo partire la ricarica non si consuma.
+## sta sul percorso prende `damage` ed e spinto di lato; la coda spiana il terreno verso la base
+## un metro e mezzo davanti (un argine basso sul percorso si apre). Bivi: Rincorsa, Scudo
+## (intoccabile all'arrivo), Trincea (scava un fossato dietro), Botto (onda all'arrivo). Se la
+## carica non puo partire la ricarica non si consuma.
 
-## Spianata (o trincea) ogni tanti metri di carica, raggio e forza.
-const WRITE_EVERY := 1.0
+## Spianata (o trincea) ogni tanti metri di carica, raggio, forza e anticipo sul giocatore.
+const WRITE_EVERY := 0.8
 const WRITE_RADIUS := 1.2
-const FLATTEN_STRENGTH := 0.6
+const FLATTEN_STRENGTH := 1.0
+const FLATTEN_AHEAD := 1.5
 const TRENCH_DEPTH := 0.6
 const BLAST_RADIUS := 3.0
 
@@ -39,6 +41,7 @@ func trigger() -> bool:
 	_hit.clear()
 	_direction = direction
 	_last_write = origin
+	_flatten_ahead(origin)
 	triggered.emit(at)
 	changed.emit()
 	return true
@@ -80,11 +83,18 @@ func _write_path() -> void:
 	if Vector2(p.x - _last_write.x, p.z - _last_write.z).length() < WRITE_EVERY:
 		return
 	_last_write = p
-	var base := terrain_field.base_height_at(p)
 	if stat(&"trench") > 0.0:
-		write_queue.push_level(p, WRITE_RADIUS, base - TRENCH_DEPTH, 1.0)
-	else:
-		write_queue.push_level(p, WRITE_RADIUS, base, FLATTEN_STRENGTH)
+		write_queue.push_level(p, WRITE_RADIUS, terrain_field.base_height_at(p) - TRENCH_DEPTH, 1.0)
+	_flatten_ahead(p)
+
+
+## Spiana davanti alla carica: anche la Trincea, che scava dietro, ha bisogno di passare.
+func _flatten_ahead(p: Vector3) -> void:
+	if write_queue == null or terrain_field == null:
+		return
+	var ahead := p + _direction * FLATTEN_AHEAD
+	if terrain_field.height_at(ahead) > terrain_field.base_height_at(ahead) + 0.05:
+		write_queue.push_level(ahead, WRITE_RADIUS, terrain_field.base_height_at(ahead), FLATTEN_STRENGTH)
 
 
 func _arrive() -> void:
