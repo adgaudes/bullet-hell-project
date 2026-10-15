@@ -25,6 +25,12 @@ const IDS: Array[StringName] = [
 	&"boss_spawn", &"boss_demolish", &"boss_barricade", &"carrier_pickup",
 	&"dusk", &"nightfall", &"train_horn", &"driller_charge", &"quake_rumble",
 	&"ui_move", &"ui_confirm", &"ui_back", &"ui_open",
+	# Armi (piano 5 di D-092): campioni Sonniss, nessuna sintesi di riserva.
+	&"w_seismic_stake_fire", &"w_seismic_stake_hit", &"w_scrap_launcher_fire", &"w_scrap_launcher_hit",
+	&"w_dig_charge_fire", &"w_dig_charge_hit", &"w_welder_fire", &"w_crane_magnet_fire",
+	&"w_crane_magnet_hit", &"w_scythe_hit", &"w_bramble_fire", &"w_bramble_hit",
+	&"w_site_blade_fire", &"w_site_blade_hit", &"w_jackhammer_fire", &"w_ram_fire",
+	&"w_ram_hit", &"w_cement_mixer_fire", &"w_cement_mixer_hit",
 ]
 
 static var _cache: Dictionary[StringName, AudioStream] = {}

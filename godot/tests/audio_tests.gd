@@ -16,6 +16,13 @@ const EXPECTED_IDS: Array[StringName] = [
 	&"ui_move", &"ui_confirm", &"ui_back", &"ui_open",
 ]
 const FREQUENT_IDS: Array[StringName] = [&"nail_shot", &"enemy_death", &"xp_pickup", &"scrap_pickup"]
+## Piano 5 delle armi: suoni che ogni arma chiede (`fire` allo sparo, `hit` all'impatto); solo
+## campioni, nessuna sintesi di riserva.
+const WEAPON_SOUNDS: Dictionary[StringName, Array] = {
+	&"seismic_stake": [&"fire", &"hit"], &"scrap_launcher": [&"fire", &"hit"], &"dig_charge": [&"fire", &"hit"],
+	&"welder": [&"fire"], &"crane_magnet": [&"fire", &"hit"], &"scythe": [&"hit"], &"bramble": [&"fire", &"hit"],
+	&"site_blade": [&"fire", &"hit"], &"jackhammer": [&"fire"], &"ram": [&"fire", &"hit"], &"cement_mixer": [&"fire", &"hit"],
+}
 
 var _failures := 0
 var _scene: Node3D
@@ -77,6 +84,14 @@ func _check(condition: bool, label: String) -> void:
 		print("  FAIL %s" % label)
 
 
+func _weapon_ids() -> Array[StringName]:
+	var ids: Array[StringName] = []
+	for weapon_id: StringName in WEAPON_SOUNDS:
+		for kind: StringName in WEAPON_SOUNDS[weapon_id]:
+			ids.append(StringName("w_%s_%s" % [weapon_id, kind]))
+	return ids
+
+
 func _frames(n: int) -> void:
 	for i in n:
 		await physics_frame
@@ -124,7 +139,7 @@ func _test_precache() -> void:
 	var build_us := Time.get_ticks_usec() - start
 	print("PROTOTYPE01_SFX_PRECACHE sync_us=%d thread_wait_ms=%d build_all_us=%d" % [sync_us, wait_ms, build_us])
 	_check(build_us < 5000, "dopo il precaricamento build_all costa < 5 ms (%d us)" % build_us)
-	_check(streams.size() == EXPECTED_IDS.size() and streams[&"nail_shot"] == SfxLibrary.build(&"nail_shot"),
+	_check(streams.size() == EXPECTED_IDS.size() + _weapon_ids().size() and streams[&"nail_shot"] == SfxLibrary.build(&"nail_shot"),
 		"gli stream precaricati sono le stesse risorse di un caricamento diretto")
 	_check(SfxLibrary.build_all() == streams, "build_all restituisce sempre la stessa cache")
 
@@ -133,7 +148,18 @@ func _test_precache() -> void:
 func _test_library() -> void:
 	print("library")
 	var streams := SfxLibrary.build_all()
-	_check(streams.size() == EXPECTED_IDS.size(), "%d suoni nella libreria (%d)" % [EXPECTED_IDS.size(), streams.size()])
+	var expected := EXPECTED_IDS.size() + _weapon_ids().size()
+	_check(streams.size() == expected, "%d suoni nella libreria (%d)" % [expected, streams.size()])
+	for id in _weapon_ids():
+		var stream := streams.get(id) as AudioStreamOggVorbis
+		var seconds := SfxLibrary.duration_of(stream) if stream != null else 0.0
+		_check(SfxLibrary.has_sample(id) and stream != null and not stream.loop and seconds >= 0.05 and seconds <= 1.2,
+			"%s: campione OGG dell'arma, %.2f s" % [id, seconds])
+	var uncovered: Array[String] = []
+	for entry in WeaponCatalog.all():
+		if entry.slot != &"fusion" and entry.id != &"nailgun" and not WEAPON_SOUNDS.has(entry.id):
+			uncovered.append(String(entry.id))
+	_check(uncovered.is_empty(), "ogni arma del catalogo ha i suoi suoni (senza: %s)" % ", ".join(uncovered))
 	for id in EXPECTED_IDS:
 		var stream: AudioStream = streams.get(id)
 		if stream == null:
@@ -167,9 +193,9 @@ func _test_node_setup() -> void:
 	print("node")
 	_check(_audio.process_mode == Node.PROCESS_MODE_ALWAYS, "RunAudio lavora anche a gioco fermo")
 	var has_all := true
-	for id in EXPECTED_IDS:
+	for id in EXPECTED_IDS + _weapon_ids():
 		has_all = has_all and _audio.has_sound(id) and _audio.stream_for(id) != null
-	_check(has_all and _audio.sound_ids().size() == EXPECTED_IDS.size(), "tutti gli id disponibili sul nodo")
+	_check(has_all and _audio.sound_ids().size() == EXPECTED_IDS.size() + _weapon_ids().size(), "tutti gli id disponibili sul nodo")
 	var players := 0
 	var on_bus := true
 	for child in _audio.get_children():
@@ -328,6 +354,12 @@ func _test_weapon_sounds() -> void:
 			if _count(sound) != before + 1:
 				silent.append("%s/%s" % [entry.id, kind])
 	_check(silent.is_empty(), "ogni arma suona allo sparo e all'impatto (muti: %s)" % ", ".join(silent))
+	var fallback: Array[String] = []
+	for weapon_id: StringName in WEAPON_SOUNDS:
+		for kind: StringName in WEAPON_SOUNDS[weapon_id]:
+			if _audio.weapon_sound_id(weapon_id, kind) != StringName("w_%s_%s" % [weapon_id, kind]):
+				fallback.append("%s/%s" % [weapon_id, kind])
+	_check(fallback.is_empty(), "i suoni chiesti dalle armi hanno il loro campione (in ripiego: %s)" % ", ".join(fallback))
 	_check(_audio.weapon_sound_id(&"nobody", &"fire") == &"nail_shot" and _audio.weapon_sound_id(&"nobody", &"hit") == &"terrain_raise",
 		"arma senza campioni: ripiego su nail_shot e terrain_raise")
 	# Un'arma vera del loadout: il suo segnale arriva fino a RunAudio.
