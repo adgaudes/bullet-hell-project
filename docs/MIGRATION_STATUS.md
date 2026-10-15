@@ -2,7 +2,7 @@
 
 > **Breve per scelta** (audit D-06, 14 ottobre 2026): dove siamo, prossimo passo, cosa aspetta il proprietario. Va aggiornato a ogni avanzamento e tenuto **sotto 8 KB**: quando cresce, il vecchio va in `docs/archive/`. Storia delle sessioni fino al 14 ottobre 2026: `docs/archive/STATUS_LOG_2026-10.md`. Decisioni: `DECISIONS.md`. Piano di prodotto: `PROJECT_ROADMAP.md`. Per trovare un documento: `INDEX.md`.
 
-**Ultimo aggiornamento:** 15 ottobre 2026 (armi e classi: piano 4, casse, Officina, classe).
+**Ultimo aggiornamento:** 15 ottobre 2026 (piano 4 delle armi chiuso; progettazione della carovana di macchine, D-093).
 
 ## Dove siamo
 
@@ -24,7 +24,7 @@ Esito **Modifica**: 14 osservazioni (salute, terra senza indicatore, buca senza 
 
 ## Prossimo passo (agente)
 
-0. **Blocchi 1 e 2 del playtest fatti** (grafica, menu, Officina, salute, terra, buca, mira, impostazioni; D-090, D-091). **Blocco 3, armi (O-05): design approvato a voce il 15 ottobre** (D-092): quattro classi giocabili, 6 automatiche, 6 attive su tasto, 6 fusioni, bivi, casse sepolte; spec `docs/superpowers/specs/2026-10-15-weapons-classes-design.md`. Piani 1-4 fatti (impianto, kit comune, classi, casse/Officina/classe/profilo). Prossimo: **piano 5, effetti e suoni delle armi** (leggibilita da 15 m: archi, scoppi, cono del Fortino, telegrafi; una ricetta audio per arma in `tools/audio/build_sfx.py`), poi bilanciamento coi bot (6) e playtest. Poi la musica scelta da lui (candidati in `Videogame-assets/music-candidates/`). ProtonScatter approvato (D-090) ma non installato: serve quando si spargono oggetti.
+0. Blocchi 1-2 del playtest e piani 1-4 delle armi fatti (sopra). **In corso: progettazione della carovana di macchine e della fusione (D-093)** col proprietario: bozza `docs/superpowers/specs/2026-10-15-caravan-machines-design.md`; ripartire dalla Sezione 1 (telaio + moduli, in attesa del suo si), poi le sezioni aperte e la spec. **Non implementare prima.** Dopo: piano 5 armi (effetti e suoni), bilanciamento coi bot, playtest. Poi la musica scelta da lui (candidati in `Videogame-assets/music-candidates/`). ProtonScatter approvato (D-090) ma non installato: serve quando si spargono oggetti.
 1. **Voci rimaste dell'audit**, nell'ordine della sua sezione 1:
    - PF-03, caricamento: prato sul rilievo 850 ms, pittura del terreno 460 ms;
    - T-01 e T-02: collisione copiata dal campo, ferrovia allineata;
@@ -40,7 +40,7 @@ Esito **Modifica**: 14 osservazioni (salute, terra senza indicatore, buca senza 
 
 ## Cosa aspetta il proprietario
 
-0. **Armi e classi** (D-092): da provare a mano la scelta della classe in campagna, l'Officina a schede e le casse sepolte (luccichio sui cumuli).  la spec e da rileggere quando vuoi (si procede intanto, come chiesto); catture in `output/weapons/` (anello del picchetto, archi della Saldatrice, scoppi del Guastatore e cono del Fortino ancora discreti dalla camera alta: arrivano col piano 5; i rovi si leggono gia). Da provare a mano: `--class=sapper|mechanic|weeder`. Scelte da confermare (D-092): Fortino "al 70%" come cadenza, Polarita inversa che respinge di circa 2 m.
+0. **Carovana di macchine** (D-093): rispondere sulla Sezione 1 della bozza (struttura telaio + moduli). 0. **Armi e classi** (D-092): da provare a mano la scelta della classe in campagna, l'Officina a schede e le casse sepolte (luccichio sui cumuli).  la spec e da rileggere quando vuoi (si procede intanto, come chiesto); catture in `output/weapons/` (anello del picchetto, archi della Saldatrice, scoppi del Guastatore e cono del Fortino ancora discreti dalla camera alta: arrivano col piano 5; i rovi si leggono gia). Da provare a mano: `--class=sapper|mechanic|weeder`. Scelte da confermare (D-092): Fortino "al 70%" come cadenza, Polarita inversa che respinge di circa 2 m.
 1. **Musica:** ascoltare i candidati in `C:\Users\adgau\Desktop\Videogame-assets\music-candidates\` (LEGGIMI.md con licenze) e dire quali tenere (D-089). **Grafica:** giudicare il blocco grafica nella nuova build (catture in `output/lighting/`).
 2. **Giudizio sull'Ingegnere** (D-088): catture in `../Videogame-engineer/output/engineer/`. Dopo il si si integra.
 3. **Playtest dei due livelli:** primo giro fatto il 14 ottobre (livello 1, tastiera, breve). Restano boss, notte, ferrovia e controller: promemoria in `docs/PLAYTESTS/ARENA_RUN_LEVEL_2026-10-07.md`.
