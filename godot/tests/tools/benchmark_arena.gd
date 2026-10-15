@@ -19,6 +19,61 @@ const PRESET_ARGS := {"deck": GameSettingsService.Preset.STEAM_DECK, "low": Game
 	"medium": GameSettingsService.Preset.MEDIUM, "high": GameSettingsService.Preset.HIGH, "max": GameSettingsService.Preset.MAX}
 
 
+## Caso peggiore delle armi (D-092, budget 1,0 ms per passo): chiodatrice al 5 con Raffica e
+## Incandescenti, picchetto al 5 con anello permanente e chiodato appena alzato; si misura il
+## passo di tutte le armi del loadout e della coda delle scritture (riga `weapons`).
+func _bench_loadout(scene: Node, step: float) -> void:
+	var run: ArenaRun = scene.get_node(^"Run")
+	var loadout := run.loadout
+	if loadout == null or not loadout.has_weapon(&"nailgun") or not loadout.has_weapon(&"seismic_stake"):
+		return
+	for id in [&"nailgun", &"seismic_stake"]:
+		loadout.level_up(id)
+		loadout.choose_branch(id, &"a" if id == &"nailgun" else &"b")
+		loadout.level_up(id)
+		loadout.choose_branch(id, &"b" if id == &"nailgun" else &"a")
+	# L'orda nasce oltre la portata: per il caso peggiore 20 nemici robusti entro 6 m.
+	var player: Node3D = scene.get_node(^"Player")
+	for i in 20:
+		var angle := TAU * i / 20.0
+		var enemy := run.director.spawn_at(player.global_position + Vector3(cos(angle), 0.0, sin(angle)) * (3.0 + 3.0 * (i % 2)))
+		enemy.health = 1000
+		enemy.max_health = 1000
+	loadout.trigger_active(0)
+	for i in 120:
+		await physics_frame
+	var nodes: Array[Node] = []
+	nodes.append_array(loadout.autos())
+	nodes.append_array(loadout.actives())
+	nodes.append(run.write_queue)
+	for node in nodes:
+		node.set_physics_process(false)
+	var t0 := Time.get_ticks_usec()
+	for i in 240:
+		for node in nodes:
+			node._physics_process(step)
+	var weapons_ms := (Time.get_ticks_usec() - t0) / 240000.0
+	for node in nodes:
+		node.set_physics_process(true)
+	var nailgun := loadout.weapon(&"nailgun") as AutoWeapon
+	# Un anello che sale: una pennellata del picchetto (con collisione e segnale) per passo.
+	var queue := run.write_queue
+	queue.set_physics_process(false)
+	var center := player.global_position + Vector3(0.0, 0.0, -10.0)
+	for i in 40:
+		var angle := TAU * i / 40.0
+		var p := center + Vector3(cos(angle), 0.0, sin(angle)) * 3.0
+		queue.push_level(p, 0.9, run.terrain_field.base_height_at(p) + 1.2)
+	var jobs := queue.pending()
+	t0 = Time.get_ticks_usec()
+	while queue.pending() > 0:
+		queue._physics_process(step)
+	var raise_ms := (Time.get_ticks_usec() - t0) / 1000.0 / maxf(jobs, 1.0)
+	queue.set_physics_process(true)
+	print("PROTOTYPE01_ARENA_BENCH weapons worst_ms=%.3f ring_write_ms=%.3f nails=%d patches=%d rings=%d"
+		% [weapons_ms, raise_ms, nailgun.nail_count(), nailgun.fire_patch_count(), (loadout.weapon(&"seismic_stake") as SeismicStake).ring_count()])
+
+
 func _initialize() -> void:
 	var preset_name := "high"
 	var settings := root.get_node_or_null("GameSettings") as GameSettingsService
@@ -147,6 +202,7 @@ func _initialize() -> void:
 	weapon.set_physics_process(true)
 	print("PROTOTYPE01_ARENA_BENCH step enemies=%d director_ms=%.2f weapon_ms=%.2f solve_ms=%.2f"
 		% [director.enemies.size(), director_ms, weapon_ms, path.last_solve_usec / 1000.0])
+	await _bench_loadout(scene, step)
 	var physics_total := 0.0
 	var process_total := 0.0
 	var frame_total := 0.0

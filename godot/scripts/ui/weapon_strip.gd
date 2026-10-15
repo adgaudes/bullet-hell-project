@@ -85,9 +85,13 @@ class WeaponSlot:
 
 	func _ready() -> void:
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
-		_icon = UiIcon.make(&"nail", SLOT_SIZE * 0.62, UiPalette.BORDER)
-		_icon.set_anchors_and_offsets_preset(Control.PRESET_CENTER, Control.PRESET_MODE_MINSIZE)
-		_icon.position.y -= 4.0
+		_icon = UiIcon.make(&"nail", 0.0, UiPalette.BORDER)
+		# L'icona riempie lo slot sopra le tacche: UiIcon disegna nel quadrato centrale.
+		_icon.set_anchors_preset(Control.PRESET_FULL_RECT)
+		_icon.offset_left = 6.0
+		_icon.offset_top = 4.0
+		_icon.offset_right = -6.0
+		_icon.offset_bottom = -12.0
 		_icon.hide()
 		add_child(_icon)
 		_letters = Label.new()

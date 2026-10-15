@@ -2,14 +2,14 @@
 
 > **Breve per scelta** (audit D-06, 14 ottobre 2026): dove siamo, prossimo passo, cosa aspetta il proprietario. Va aggiornato a ogni avanzamento e tenuto **sotto 8 KB**: quando cresce, il vecchio va in `docs/archive/`. Storia delle sessioni fino al 14 ottobre 2026: `docs/archive/STATUS_LOG_2026-10.md`. Decisioni: `DECISIONS.md`. Piano di prodotto: `PROJECT_ROADMAP.md`. Per trovare un documento: `INDEX.md`.
 
-**Ultimo aggiornamento:** 15 ottobre 2026 (design di armi e classi).
+**Ultimo aggiornamento:** 15 ottobre 2026 (armi e classi: design e piano 1, impianto).
 
 ## Dove siamo
 
 - **Engine** Godot 4.7.2 (GDScript). La migrazione da Unreal e chiusa; il codice Unreal sta nel tag `unreal-prototype-final`.
 - **Prodotto:** fase 3, prototipo della promessa A. Due livelli giocabili, quartiere e ferrovia, su terreno continuo (Terrain3D), con boss (Demolitore, Trivella), treno, terremoto, giorno e notte con lampioni, estrazione, Officina, campagna, interfaccia "fatta a mano", audio Sonniss. Primo playtest del proprietario il 14 ottobre (vedi sotto).
 - **Branch di lavoro:** `feature/arena-run`. Non integrato: `feature/engineer-restyle` (Ingegnere D-088, worktree `../Videogame-engineer`), in attesa del giudizio del proprietario.
-- **Gate:** `tools/godot/Invoke-GodotChecks.ps1`: check-only, 37 suite con seme fisso, passo con finestra (Terrain3D e shader), smoke test. Verde.
+- **Gate:** `tools/godot/Invoke-GodotChecks.ps1`: check-only, 43 suite con seme fisso, passo con finestra (Terrain3D e shader), smoke test. Verde.
 - **Build:** `LocalBuilds/Prototype01-Godot-Win64/` e `-Linux/` (exe 196 MB).
 
 ## Audit (14 ottobre 2026)
@@ -20,18 +20,15 @@
 
 Esito **Modifica**: 14 osservazioni (salute, terra senza indicatore, buca senza uscita, sparo dalle spalle, armi, frecce viola, ombre e AO, terreno a quadrati, erba, rovine, impostazioni, menu, Officina, musica). Cause e piano in `docs/PLAYTESTS/OWNER_PLAYTEST_2026-10-14.md`. **Il piano di quel documento viene prima delle voci dell'audit.** Ordine scelto (D-089): grafica, gioco, armi, audio.
 
-**Blocco grafica, fatto il 14 ottobre (D-090, catture in `output/lighting/`):**
-- luce: nebbia volumetrica del Massimo da 0,012 a 0,003 (velava tutto), ambiente 0,4, AO di contatto, GI meno blu;
-- terreno: sette strati da texture CC0 (Poly Haven, ambientCG) a 1024, macerie e ghiaia nuovi, bordi degli strati sfumati, niente quadratoni; `tools/textures/fetch_terrain_textures.py`;
-- prato a particelle attorno al giocatore (`GrassField`), solo sulla terra dipinta di verde, sparisce da scavi e argini; +0,7 ms Deck, +1,2 ms Alto;
-- rovine: muri a moduli con la cima spezzata (`RuinModules`), texture CC0 con normal map in triplanare; `tools/textures/fetch_wall_textures.py`;
-- frecce viola spente; cespugli e auto meno verdi.
+**Blocco grafica, fatto il 14 ottobre (D-090, catture in `output/lighting/`):** luce (nebbia del Massimo 0,003, ambiente 0,4, AO di contatto), terreno con texture CC0 a 1024 e bordi sfumati, prato a particelle (`GrassField`, +0,7 ms Deck), rovine a moduli (`RuinModules`), frecce viola spente.
 
-**Secondo giro (14 ottobre, notte):** menu 3D al tramonto (`MenuDiorama`), Officina a carte, finestre vere e chiome piene; blocco di gioco D-091 (vita 10 e spinta, terra nel HUD, rampa d'uscita, mira commutabile V/rotella/R3, impostazioni a schede).
+**Blocco 3, armi e classi (D-092), 15 ottobre:** design approvato a voce (spec `docs/superpowers/specs/2026-10-15-weapons-classes-design.md`: quattro classi giocabili, 6 automatiche, 6 attive, 6 fusioni, bivi al 3 e al 5, casse sepolte, Officina a sezioni). **Piano 1, impianto, fatto** (`docs/superpowers/plans/2026-10-15-weapons-foundation.md`): catalogo e classi, chiodatrice coi quattro bivi, Picchetto sismico, `WeaponLoadout`, comandi E/F e LT/RB, carte arma e schermata della trasformazione, mazzi di classe, striscia nel HUD, `--class=`. Armi 0,09 ms per passo, 0,84 ms mentre un anello sale (budget 1,0). Catture `output/weapons/`.
+
+**Secondo giro (14 ottobre, notte):** menu 3D, Officina a carte; blocco di gioco D-091 (vita 10, terra nel HUD, rampa d'uscita, mira commutabile, impostazioni a schede).
 
 ## Prossimo passo (agente)
 
-0. **Blocchi 1 e 2 del playtest fatti** (grafica, menu, Officina, salute, terra, buca, mira, impostazioni; D-090, D-091). **Blocco 3, armi (O-05): design approvato a voce il 15 ottobre** (D-092): quattro classi giocabili, 6 automatiche, 6 attive su tasto, 6 fusioni, bivi, casse sepolte; spec `docs/superpowers/specs/2026-10-15-weapons-classes-design.md`. Prossimo: **revisione scritta del proprietario, poi piano** (`writing-plans`) e implementazione nell'ordine della spec, par. 11. Poi la musica scelta da lui (candidati in `Videogame-assets/music-candidates/`). ProtonScatter approvato (D-090) ma non installato: serve quando si spargono oggetti.
+0. **Blocchi 1 e 2 del playtest fatti** (grafica, menu, Officina, salute, terra, buca, mira, impostazioni; D-090, D-091). **Blocco 3, armi (O-05): design approvato a voce il 15 ottobre** (D-092): quattro classi giocabili, 6 automatiche, 6 attive su tasto, 6 fusioni, bivi, casse sepolte; spec `docs/superpowers/specs/2026-10-15-weapons-classes-design.md`. Piano 1 (impianto) fatto. Prossimo: **piano 2, kit comune** (Lama, Martello, Ariete, Betoniera e le due fusioni comuni), poi le tre classi (piani 3, anche in parallelo con Codex), casse/Officina/scelta della classe (4), effetti (5), bilanciamento coi bot (6). Poi la musica scelta da lui (candidati in `Videogame-assets/music-candidates/`). ProtonScatter approvato (D-090) ma non installato: serve quando si spargono oggetti.
 1. **Voci rimaste dell'audit**, nell'ordine della sua sezione 1:
    - PF-03, caricamento: prato sul rilievo 850 ms, pittura del terreno 460 ms;
    - T-01 e T-02: collisione copiata dal campo, ferrovia allineata;
@@ -47,7 +44,7 @@ Esito **Modifica**: 14 osservazioni (salute, terra senza indicatore, buca senza 
 
 ## Cosa aspetta il proprietario
 
-0. **Spec di armi e classi** (D-092): rileggerla e dire se va bene prima del piano.
+0. **Armi e classi** (D-092): la spec e da rileggere quando vuoi (si procede intanto, come chiesto); catture dell'impianto in `output/weapons/` (l'anello del picchetto dalla camera alta e ancora discreto: polvere e tinta arrivano col piano 5).
 1. **Musica:** ascoltare i candidati in `C:\Users\adgau\Desktop\Videogame-assets\music-candidates\` (LEGGIMI.md con licenze) e dire quali tenere (D-089). **Grafica:** giudicare il blocco grafica nella nuova build (catture in `output/lighting/`).
 2. **Giudizio sull'Ingegnere** (D-088): catture in `../Videogame-engineer/output/engineer/`. Dopo il si si integra.
 3. **Playtest dei due livelli:** primo giro fatto il 14 ottobre (livello 1, tastiera, breve). Restano boss, notte, ferrovia e controller: promemoria in `docs/PLAYTESTS/ARENA_RUN_LEVEL_2026-10-07.md`.
@@ -61,9 +58,7 @@ Esito **Modifica**: 14 osservazioni (salute, terra senza indicatore, buca senza 
 ## Rischi e limiti noti
 
 - **Gate, 14 ottobre notte:** `run_progression_tests` ha passato i controlli ma il processo non si e chiuso entro 300 s (exit 124) una volta su quattro; da sola esce sempre in 1 s. Blocco intermittente all'uscita di Godot, da tenere d'occhio.
-- **Steam Deck:** costo del prato a particelle e del menu 3D non misurato.
-
-- **Steam Deck mai misurato.** CPU: il direttore costa 2,6 ms per passo, e a 60 fps i passi sono due per frame. GPU: le stime vanno da 25 a 40 fps senza ulteriori ottimizzazioni.
+- **Steam Deck mai misurato.** CPU: il direttore costa 2,6 ms per passo (due passi per frame a 60 fps), un anello del picchetto che sale 0,75 ms per passo; GPU stimata 25-40 fps; prato a particelle e menu 3D non misurati.
 - **Registro minori di D-088** in `.superpowers/` (ignorato da Git): va portato in `docs/` all'integrazione (D-03).
 - **Bundle Sonniss:** lo zip 6 di 9 e in parte illeggibile; va riscaricato se servono quei suoni.
 
