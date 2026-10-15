@@ -5,6 +5,8 @@ extends SceneTree
 var _failures := 0
 var _root: Node3D
 var _director: EnemyDirector
+var _field: TerrainField
+var _queue: TerrainWriteQueue
 
 
 func _initialize() -> void:
@@ -13,6 +15,13 @@ func _initialize() -> void:
 	_director = EnemyDirector.new()
 	_director.spawning = false
 	_root.add_child(_director)
+	_field = TerrainField.new()
+	_field.render = false
+	_field.size_m = Vector2(40.0, 40.0)
+	get_root().add_child(_field)
+	_queue = TerrainWriteQueue.new()
+	_queue.terrain_field = _field
+	get_root().add_child(_queue)
 	await process_frame
 	await _test_nailgun_base()
 	await _test_nailgun_levels()
@@ -21,6 +30,12 @@ func _initialize() -> void:
 	await _test_incendiary()
 	await _test_legacy_turret()
 	await _test_no_node_per_nail()
+	await _test_stake_cooldown()
+	await _test_stake_ring()
+	await _test_stake_permanent()
+	await _test_stake_shock()
+	await _test_stake_spiked()
+	await _test_active_auto_aim()
 	print("PROTOTYPE01_TESTS %s failures=%d" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -187,3 +202,112 @@ func _test_no_node_per_nail() -> void:
 	await _seconds(2.0)
 	_check(weapon.get_child_count() == children, "sparando i figli dell'arma restano %d" % children)
 	await _clear()
+
+
+func _stake(level := 1, picks: Dictionary = {}) -> SeismicStake:
+	var stake := SeismicStake.new()
+	stake.weapon_id = &"seismic_stake"
+	stake.shooter = _shooter(Vector3.ZERO)
+	stake.director = _director
+	stake.terrain_field = _field
+	stake.write_queue = _queue
+	stake.manual_aim = true
+	_root.add_child(stake)
+	stake.set_level(level)
+	for at: int in picks:
+		stake.choose_branch(at, picks[at])
+	return stake
+
+
+func _reset_field() -> void:
+	_queue.clear()
+	_field.begin_batch()
+	_field.reset_to_base(Vector3.ZERO, Vector2(20.0, 20.0))
+	_field.end_batch()
+
+
+## Quota sull'anello del picchetto piantato a 6 m davanti (verso -Z), al punto a est.
+func _ring_height(radius := 3.0) -> float:
+	return _field.height_at(Vector3(radius, 0.0, -6.0))
+
+
+func _test_stake_cooldown() -> void:
+	print("Picchetto: ricarica")
+	var stake := _stake()
+	await physics_frame
+	_check(stake.can_trigger() and stake.trigger(), "carico: si pianta")
+	_check(not stake.can_trigger() and is_equal_approx(stake.cooldown_left, 15.0), "poi ricarica 15 s")
+	_check(not stake.trigger(), "scarico: non si pianta")
+	await _seconds(15.1)
+	_check(stake.can_trigger(), "dopo 15 s e di nuovo carico")
+	paused = true
+	_check(not stake.can_trigger(), "a gioco in pausa non si usa")
+	paused = false
+	await _clear()
+	_reset_field()
+
+
+func _test_stake_ring() -> void:
+	print("Picchetto: anello")
+	var stake := _stake()
+	await physics_frame
+	stake.trigger()
+	await _seconds(1.2)
+	_check(_ring_height() > 1.0, "dopo il ritardo l'anello e alto (%.2f m)" % _ring_height())
+	_check(_field.height_at(Vector3(0.0, 0.0, -6.0)) < 0.3, "il centro resta basso: chi e dentro e chiuso")
+	_check(_field.height_at(Vector3(3.0 * cos(PI / 7.0), 0.0, -6.0 + 3.0 * sin(PI / 7.0))) > 0.9, "l'anello non ha buchi fra un disco e l'altro")
+	_check(stake.ring_count() == 1, "un anello vivo")
+	await _seconds(12.5)
+	_check(_ring_height() < 0.2, "dopo 12 s torna giu (%.2f m)" % _ring_height())
+	_check(stake.ring_count() == 0, "nessun anello vivo")
+	await _clear()
+	_reset_field()
+
+
+func _test_stake_permanent() -> void:
+	print("Picchetto: Argine permanente")
+	var stake := _stake(3, {3: &"b"})
+	await physics_frame
+	stake.trigger()
+	await _seconds(14.0)
+	_check(_ring_height() > 1.0, "dopo 14 s l'anello e ancora su")
+	await _clear()
+	_reset_field()
+
+
+func _test_stake_shock() -> void:
+	print("Picchetto: Scossa")
+	var enemy := _enemy_at(Vector3(3.0, 0.0, -6.0))
+	var stake := _stake(5, {3: &"b", 5: &"b"})
+	await physics_frame
+	stake.trigger()
+	await _seconds(0.8)
+	_check(enemy.health == 47, "3 danni a chi sta sull'anello (vita %d)" % enemy.health)
+	await _clear()
+	_reset_field()
+
+
+func _test_stake_spiked() -> void:
+	print("Picchetto: Argine chiodato")
+	var enemy := _enemy_at(Vector3(3.4, 0.0, -6.0))
+	var stake := _stake(5, {3: &"b", 5: &"a"})
+	await physics_frame
+	stake.trigger()
+	await _seconds(2.5)
+	_check(enemy.health <= 48, "chi sta contro l'anello si fa male (vita %d)" % enemy.health)
+	await _clear()
+	_reset_field()
+
+
+func _test_active_auto_aim() -> void:
+	print("Attive: mira automatica")
+	for offset in [Vector3(-0.3, 0, -0.2), Vector3(0.3, 0, 0.2), Vector3(0.1, 0, -0.1), Vector3(-0.2, 0, 0.25)]:
+		_enemy_at(Vector3(5.0, 0.0, 0.6) + offset)
+	_enemy_at(Vector3(0.0, 0.0, -4.0))
+	var stake := _stake()
+	stake.manual_aim = false
+	await physics_frame
+	var at := stake.aim_point()
+	_check(Vector2(at.x, at.z).distance_to(Vector2(5.0, 0.6)) < 0.6, "punta al gruppo piu fitto, non al nemico isolato (%s)" % at)
+	await _clear()
+	_reset_field()
