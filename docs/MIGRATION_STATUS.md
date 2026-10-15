@@ -24,7 +24,7 @@ Esito **Modifica**: 14 osservazioni, piu O-15 e O-16 del 15 ottobre. Cause e pia
 
 **Eventi del mondo, 15 ottobre (D-097):** niente orari fissi; quanti eventi per livello (1-5, di serie 1), quali e quando li sceglie a caso `WorldEventScheduler` prima della chiamata del boss. Nuova scheda **Gameplay** nelle Impostazioni: eventi per livello, Terremoto, Treno, Notte, mira manuale. Suite `world_event_tests`.
 
-**Luce, 15 ottobre (D-094):** il proprietario la giudicava piatta. Sole in controluce laterale, ombre blu, AgX, `FillLight`, `CloudShadows`, notte lunare; banco di prova `tests/tools/lighting_lab.gd` (varianti JSON, notte e tramonto veri). Costo PC +0,1-0,2 ms; catture `output/lighting_lab/`.
+**Luce, 15 ottobre (D-094):** controluce, ombre blu, AgX, riempimento, nuvole, notte lunare; banco `tests/tools/lighting_lab.gd`; +0,1-0,2 ms; catture `output/lighting_lab/`.
 
 ## Prossimo passo (agente)
 
