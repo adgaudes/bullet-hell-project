@@ -35,11 +35,22 @@ var manual_aim := false
 var _weapon_mods: Dictionary[StringName, Dictionary] = {}
 var _autos: Array[Weapon] = []
 var _actives: Array[ActiveWeapon] = []
+## Telegrafo a terra delle attive (piano 5).
+var telegraph: ActiveTelegraph
 
 
 func _ready() -> void:
 	if player != null and player.has_signal(&"active_weapon_pressed"):
 		player.active_weapon_pressed.connect(trigger_active)
+	telegraph = ActiveTelegraph.new()
+	telegraph.name = "ActiveTelegraph"
+	telegraph.loadout = self
+	add_child(telegraph)
+
+
+## Colore d'accento della classe, per il telegrafo; ocra se la classe non c'e.
+func class_color() -> Color:
+	return ClassCatalog.find(class_id).get(&"color", Color(1.0, 0.8, 0.35))
 
 
 ## Script di ogni arma del catalogo: `scripts/combat/weapons/<id>.gd` (la chiodatrice e
@@ -164,6 +175,9 @@ func add(id: StringName) -> Weapon:
 	if w is ActiveWeapon:
 		var active := w as ActiveWeapon
 		active.triggered.connect(func(at: Vector3) -> void: active_triggered.emit(_actives.find(active), at))
+		active.triggered.connect(func(at: Vector3) -> void:
+			if telegraph != null:
+				telegraph.flash(at, ActiveTelegraph.radius_of(active), class_color()))
 		_actives.append(active)
 	else:
 		_autos.append(w)
