@@ -14,10 +14,12 @@ enum Phase { DAY, DUSK, NIGHT }
 const PHASE_NAMES: Array[String] = ["DAY", "DUSK", "NIGHT"]
 
 ## Profilo di notte: energie sopra zero, cosi sagome e rilievo del terreno restano leggibili.
-const NIGHT_SUN_ENERGY := 0.12
-const NIGHT_SUN_COLOR := Color(0.55, 0.62, 0.85)
-const NIGHT_AMBIENT_ENERGY := 0.16
-const NIGHT_AMBIENT_COLOR := Color(0.32, 0.36, 0.5)
+## Luna blu e ambiente viola (D-094): con AgX i valori di prima (0,12 e 0,16) davano nero
+## pieno fuori dalla torcia; ora il campo si legge in blu e la torcia conta ancora.
+const NIGHT_SUN_ENERGY := 0.9
+const NIGHT_SUN_COLOR := Color(0.5, 0.6, 1.0)
+const NIGHT_AMBIENT_ENERGY := 0.5
+const NIGHT_AMBIENT_COLOR := Color(0.35, 0.3, 0.7)
 ## Notte blu-violacea (direzione artistica: mai monocromo freddo).
 const NIGHT_SKY_TOP := Color(0.04, 0.03, 0.10)
 const NIGHT_SKY_HORIZON := Color(0.16, 0.10, 0.22)

@@ -23,6 +23,13 @@
 | O-13 | Officina troppo confusionaria | Una lista di 8 righe con testo spostato di 10 spazi, livello scritto due volte, tutta la riga colorata, nessuna categoria ne pannello di dettaglio, acquisto immediato senza conferma, non spiega cosa sono i rottami | UI |
 | O-14 | Suoni banali, nessuna musica | Niente musica per scelta (D-048); effetti dal bundle Sonniss (D-084) | audio |
 
+## Osservazioni successive del proprietario (15 ottobre 2026)
+
+| # | Osservazione | Causa o stato | Dove |
+|---|---|---|---|
+| O-15 | Luce e ombre "pessime e piatte" | Sole da dietro la camera (luce frontale), ambiente debole e grigio, ACES che sbiancava, nessuna variazione sulle distese. Rifatta in D-094, da giudicare | `overgrown_arena.gd`, `fill_light.gd`, `cloud_shadows.gd`, `day_night_cycle.gd` |
+| O-16 | Carte degli upgrade: font del testo e layout troppo semplici e scialbi | Da progettare (D-096) | `level_up_menu.gd`, tema UI |
+
 ## Domande della specifica non coperte
 
 La partita breve non ha raggiunto il boss, la notte, la ferrovia ne il controller. Le domande 1-28 restano aperte per il prossimo playtest.

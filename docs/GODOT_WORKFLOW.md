@@ -263,6 +263,8 @@ Verificato: PNG 1280x800 (risoluzione Steam Deck), Vulkan Forward+, `err=0`.
 
 La verifica visiva e quindi **ripetibile, automatizzabile e versionabile**, e non richiede che il proprietario guardi al posto dell'agente.
 
+**Banco di prova della luce** (D-094): `tests/tools/lighting_lab.gd` carica un livello una volta e cattura le stesse inquadrature con piu varianti di Environment, sole, riempimento e nuvole lette da un JSON (uso in testa al file). `--night` e `--dusk` portano il ciclo al buio vero o a meta tramonto con torcia e lampioni: la run riconfigura il ciclo dopo il caricamento, quindi il banco lo anticipa a ogni passo. Per confrontare: affiancare i PNG in un foglio unico con Pillow.
+
 ### Trappola verificata: niente cattura in headless
 
 In `--headless` Godot usa un renderer *dummy*: i frame non vengono mai disegnati, quindi `await RenderingServer.frame_post_draw` **non si risolve mai** e il processo resta appeso a tempo indefinito. Osservato direttamente: due processi bloccati da terminare a mano.

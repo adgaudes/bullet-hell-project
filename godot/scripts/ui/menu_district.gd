@@ -12,7 +12,7 @@ const SUNSET_GROUND := Color(0.20, 0.15, 0.12)
 const SUNSET_AMBIENT := Color(0.56, 0.46, 0.58)
 ## Il sole sta dietro le rovine, a sinistra: sagome in controluce e ombre lunghe, ma il
 ## riflesso radente sul terreno cade fuori dall'inquadratura (di fronte sembrava acqua).
-const SUN_DIRECTION := Vector3(0.62, -0.26, 0.74)
+const MENU_SUN_DIRECTION := Vector3(0.62, -0.26, 0.74)
 
 
 func _init() -> void:
@@ -55,7 +55,7 @@ func _compose() -> void:
 func _golden_hour() -> void:
 	var sun := get_node_or_null(^"SunLight") as DirectionalLight3D
 	if sun != null:
-		sun.basis = Basis.looking_at(SUN_DIRECTION.normalized(), Vector3.UP)
+		sun.basis = Basis.looking_at(MENU_SUN_DIRECTION.normalized(), Vector3.UP)
 		sun.light_color = SUNSET_SUN
 		sun.light_energy = 1.35
 	var world := get_node_or_null(^"WorldEnvironment") as WorldEnvironment

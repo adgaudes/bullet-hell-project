@@ -194,9 +194,17 @@ func _test_sky_and_post() -> void:
 	var env: Environment = (_scene.get_node(^"District/WorldEnvironment") as WorldEnvironment).environment
 	var sky_material := env.sky.sky_material if env.sky != null else null
 	_check(sky_material is ShaderMaterial, "il cielo e dipinto (ShaderMaterial)")
-	_check(env.tonemap_mode == Environment.TONE_MAPPER_ACES, "tonemap ACES")
+	# D-094: AgX al posto di ACES, che sbiancava le alte luci.
+	_check(env.tonemap_mode == Environment.TONE_MAPPER_AGX, "tonemap AgX")
 	_check(env.adjustment_enabled and env.adjustment_saturation >= 1.2, "saturazione alzata")
 	_check(env.ambient_light_source == Environment.AMBIENT_SOURCE_COLOR and env.ambient_light_color.b > env.ambient_light_color.r, "ambiente freddo: ombre blu-viola")
+	# D-094: sole in controluce (la luce va verso la camera, +Z), riempimento senza ombre,
+	# ombre delle nuvole.
+	var key_light := _scene.get_node(^"District/SunLight") as DirectionalLight3D
+	_check(key_light != null and (-key_light.basis.z).z > 0.0, "sole in controluce: la luce scende verso la camera")
+	var fill := _scene.get_node_or_null(^"District/FillLight") as FillLight
+	_check(fill != null and not fill.shadow_enabled and fill.light_specular == 0.0, "luce di riempimento senza ombre ne riflessi")
+	_check(_scene.get_node_or_null(^"District/CloudShadows") is CloudShadows, "ombre delle nuvole presenti")
 	var sun: DirectionalLight3D = _scene.get_node(^"District/SunLight")
 	_check(sun.light_angular_distance > 0.0, "il sole ha un diametro angolare (ombre morbide)")
 	var day_night: DayNightCycle = _scene.get_node(^"Run").day_night

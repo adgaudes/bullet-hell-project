@@ -48,7 +48,8 @@ func _frames(n: int) -> void:
 func _snapshot() -> Array:
 	var result := []
 	for child in _arena.get_children():
-		if child is Node3D:
+		# Le ombre delle nuvole (D-094) scorrono col vento: non fanno parte della costruzione.
+		if child is Node3D and not child is CloudShadows:
 			result.append([child.name.rstrip("0123456789@"), (child as Node3D).position.snapped(Vector3.ONE * 0.001)])
 	return result
 

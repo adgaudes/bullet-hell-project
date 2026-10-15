@@ -2,7 +2,7 @@
 
 > **Breve per scelta** (audit D-06, 14 ottobre 2026): dove siamo, prossimo passo, cosa aspetta il proprietario. Va aggiornato a ogni avanzamento e tenuto **sotto 8 KB**: quando cresce, il vecchio va in `docs/archive/`. Storia delle sessioni fino al 14 ottobre 2026: `docs/archive/STATUS_LOG_2026-10.md`. Decisioni: `DECISIONS.md`. Piano di prodotto: `PROJECT_ROADMAP.md`. Per trovare un documento: `INDEX.md`.
 
-**Ultimo aggiornamento:** 15 ottobre 2026 (piano 4 delle armi chiuso; progettazione della carovana di macchine, D-093).
+**Ultimo aggiornamento:** 15 ottobre 2026 (luce rifatta, D-094; strumenti grafici approvati, D-095; carte degli upgrade da rifare, D-096).
 
 ## Dove siamo
 
@@ -16,15 +16,18 @@
 
 ## Playtest del proprietario (14 ottobre 2026, sera)
 
-Esito **Modifica**: 14 osservazioni (salute, terra senza indicatore, buca senza uscita, sparo dalle spalle, armi, frecce viola, ombre e AO, terreno a quadrati, erba, rovine, impostazioni, menu, Officina, musica). Cause e piano in `docs/PLAYTESTS/OWNER_PLAYTEST_2026-10-14.md`. **Il piano di quel documento viene prima delle voci dell'audit.** Ordine scelto (D-089): grafica, gioco, armi, audio.
+Esito **Modifica**: 14 osservazioni, piu O-15 e O-16 del 15 ottobre. Cause e piano in `docs/PLAYTESTS/OWNER_PLAYTEST_2026-10-14.md`. **Il piano di quel documento viene prima delle voci dell'audit.** Ordine scelto (D-089): grafica, gioco, armi, audio.
 
 **Blocchi 1 e 2 (14 ottobre, D-090, D-091):** luce, terreno CC0, prato a particelle, rovine a moduli, menu 3D, Officina a carte, vita 10, terra nel HUD, rampa d'uscita, mira commutabile, impostazioni a schede (catture `output/lighting/`).
 
-**Blocco 3, armi e classi (D-092), 15 ottobre:** design approvato a voce (spec `docs/superpowers/specs/2026-10-15-weapons-classes-design.md`). Fatti i piani 1 (impianto: catalogo, chiodatrice coi bivi, Picchetto, `WeaponLoadout`, E/F e LT/RB, carte arma, HUD, `--class=`), 2 (kit comune: Lama, Martello, Ariete, Betoniera, fusioni Ruspa e Costipatore), 3 (classi: Guastatore, Meccanico, Erbacciaia, Fortino, carte di classe, tuta di classe) e 4 (profilo v2, Officina a schede con sblocchi e ricettario, classe scelta nella campagna, casse sepolte). Benchmark Deck per classe 0,18-0,55 ms per passo (0,10-0,65 con la fusione; budget 1,0). Catture `output/weapons/`.
+**Blocco 3, armi e classi (D-092), 15 ottobre:** design approvato a voce (spec `docs/superpowers/specs/2026-10-15-weapons-classes-design.md`). Fatti i piani 1-4 (impianto, kit comune, classi, progressione: dettagli in `DECISIONS.md` D-092 e nei piani). Benchmark Deck per classe 0,18-0,55 ms per passo (0,10-0,65 con la fusione; budget 1,0). Catture `output/weapons/`.
+
+**Luce, 15 ottobre (D-094):** il proprietario la giudicava piatta. Sole in controluce laterale, ombre blu, AgX, `FillLight`, `CloudShadows`, notte lunare; banco di prova `tests/tools/lighting_lab.gd` (varianti JSON, notte e tramonto veri). Costo PC +0,1-0,2 ms; catture `output/lighting_lab/`.
 
 ## Prossimo passo (agente)
 
 0. Blocchi 1-2 del playtest e piani 1-4 delle armi fatti (sopra). **In corso: progettazione della carovana di macchine e della fusione (D-093)** col proprietario: bozza `docs/superpowers/specs/2026-10-15-caravan-machines-design.md`; ripartire dalla Sezione 1 (telaio + moduli, in attesa del suo si), poi le sezioni aperte e la spec. **Non implementare prima.** Dopo: piano 5 armi (effetti e suoni), bilanciamento coi bot, playtest. Poi la musica scelta da lui (candidati in `Videogame-assets/music-candidates/`). ProtonScatter approvato (D-090) ma non installato: serve quando si spargono oggetti.
+   **Grafica (richieste del proprietario del 15 ottobre):** strumenti di D-095 uno alla volta con misura e catture (Effekseer col piano 5, ProtonScatter, post-produzione, AreaLight3D di notte, Material Maker e Ucupaint per nemici e boss); **carte degli upgrade da rifare** (D-096: font e layout, prima bozze in cattura).
 1. **Voci rimaste dell'audit**, nell'ordine della sua sezione 1:
    - PF-03, caricamento: prato sul rilievo 850 ms, pittura del terreno 460 ms;
    - T-01 e T-02: collisione copiata dal campo, ferrovia allineata;
@@ -40,8 +43,9 @@ Esito **Modifica**: 14 osservazioni (salute, terra senza indicatore, buca senza 
 
 ## Cosa aspetta il proprietario
 
-0. **Carovana di macchine** (D-093): rispondere sulla Sezione 1 della bozza (struttura telaio + moduli). 0. **Armi e classi** (D-092): da provare a mano la scelta della classe in campagna, l'Officina a schede e le casse sepolte (luccichio sui cumuli).  la spec e da rileggere quando vuoi (si procede intanto, come chiesto); catture in `output/weapons/` (anello del picchetto, archi della Saldatrice, scoppi del Guastatore e cono del Fortino ancora discreti dalla camera alta: arrivano col piano 5; i rovi si leggono gia). Da provare a mano: `--class=sapper|mechanic|weeder`. Scelte da confermare (D-092): Fortino "al 70%" come cadenza, Polarita inversa che respinge di circa 2 m.
-1. **Musica:** ascoltare i candidati in `C:\Users\adgau\Desktop\Videogame-assets\music-candidates\` (LEGGIMI.md con licenze) e dire quali tenere (D-089). **Grafica:** giudicare il blocco grafica nella nuova build (catture in `output/lighting/`).
+0. **Carovana di macchine** (D-093): rispondere sulla Sezione 1 della bozza (struttura telaio + moduli). 0. **Armi e classi** (D-092): da provare a mano la scelta della classe in campagna, l'Officina a schede e le casse sepolte (luccichio sui cumuli).  Spec da rileggere quando vuoi; catture in `output/weapons/` (effetti ancora discreti: arrivano col piano 5). Da provare a mano: `--class=sapper|mechanic|weeder`. Scelte da confermare (D-092): Fortino "al 70%" come cadenza, Polarita inversa che respinge di circa 2 m.
+1. **Luce (D-094):** giudicare in gioco o sulle catture `output/lighting_lab/`. **Carte degli upgrade (D-096):** scegliere fra le bozze quando arrivano.
+1. **Musica:** ascoltare i candidati in `C:\Users\adgau\Desktop\Videogame-assets\music-candidates\` (LEGGIMI.md con licenze) e dire quali tenere (D-089).
 2. **Giudizio sull'Ingegnere** (D-088): catture in `../Videogame-engineer/output/engineer/`. Dopo il si si integra.
 3. **Playtest dei due livelli:** primo giro fatto il 14 ottobre (livello 1, tastiera, breve). Restano boss, notte, ferrovia e controller: promemoria in `docs/PLAYTESTS/ARENA_RUN_LEVEL_2026-10-07.md`.
 4. **Misura sul Steam Deck** con la build in `LocalBuilds/` e il Debug Menu (F3).

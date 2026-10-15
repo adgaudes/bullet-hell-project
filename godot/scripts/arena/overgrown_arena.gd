@@ -99,7 +99,11 @@ const SKY_SHADER := preload("res://resources/materials/sky_painted.gdshader")
 const SKY_DAY_TOP := Color(0.26, 0.46, 0.82)
 const SKY_DAY_HORIZON := Color(0.96, 0.80, 0.62)
 const SKY_DAY_GROUND := Color(0.42, 0.38, 0.28)
-const AMBIENT_COLOR := Color(0.46, 0.50, 0.72)
+const AMBIENT_COLOR := Color(0.38, 0.44, 0.95)
+const AMBIENT_ENERGY := 0.6
+## Sole di giorno (D-094): controluce laterale da nord-ovest, la camera guarda verso -Z.
+const SUN_DIRECTION := Vector3(0.7, -0.45, 0.55)
+const SUN_ENERGY := 3.0
 
 var _generated: Array[Node] = []
 var _rebuild_pending := false
@@ -1125,7 +1129,7 @@ func settle_on_relief() -> void:
 		return
 	var half := terrain_field.half_extents()
 	for node in _generated:
-		if not (node is Node3D) or node is MultiMeshInstance3D or node is DirectionalLight3D:
+		if not (node is Node3D) or node is MultiMeshInstance3D or node is DirectionalLight3D or node is CloudShadows:
 			continue
 		# Contenitori delle porzioni di copertura: si rifanno sotto, non si spostano.
 		if node.name in ["GrassTufts", "Flowers", "Litter"]:
@@ -1343,17 +1347,26 @@ static func _fbm(p: Vector2) -> float:
 func _add_sun() -> void:
 	var sun := DirectionalLight3D.new()
 	sun.name = "SunLight"
-	# Luce bassa e dorata da ovest-sud-ovest (circa 27 gradi sull'orizzonte): ombre lunghe
-	# verso est, leggibili dall'alto; il diametro angolare le ammorbidisce ai bordi.
-	var direction := Vector3(0.78, -0.50, -0.35).normalized()
-	sun.basis = Basis.looking_at(direction, Vector3.UP)
+	# Luce bassa e dorata in controluce laterale (D-094): il sole sta davanti alla camera,
+	# a nord-ovest, circa 27 gradi sull'orizzonte. Le ombre lunghe scendono verso lo
+	# spettatore e a destra, i rilievi hanno un lato acceso e uno in ombra, i bordi si
+	# accendono. Prima arrivava da dietro la camera: luce frontale, la piu piatta.
+	sun.basis = Basis.looking_at(SUN_DIRECTION.normalized(), Vector3.UP)
 	sun.light_color = SUN_COLOR
-	sun.light_energy = 1.9
+	sun.light_energy = SUN_ENERGY
+	# Riflesso del sole contenuto: in controluce le lastre lisce diventavano bianche.
+	sun.light_specular = 0.3
 	sun.light_angular_distance = 1.5
 	sun.shadow_enabled = true
 	sun.shadow_blur = 1.2
 	sun.directional_shadow_max_distance = 90.0
 	_add_generated(sun)
+	var fill := FillLight.new()
+	fill.sun = sun
+	_add_generated(fill)
+	var clouds := CloudShadows.new()
+	clouds.sun = sun
+	_add_generated(clouds)
 
 
 func _add_environment() -> void:
@@ -1371,15 +1384,16 @@ func _add_environment() -> void:
 	var environment := Environment.new()
 	environment.background_mode = Environment.BG_SKY
 	environment.sky = sky
-	# Ambiente freddo a colore fisso: le ombre del sole caldo diventano blu-viola.
+	# Ambiente freddo e saturo a colore fisso (D-094): le ombre del sole caldo diventano
+	# blu-viola invece che nere o grigie. L'ambiente dal cielo e stato provato: velava
+	# tutto di grigio.
 	environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	environment.ambient_light_color = AMBIENT_COLOR
-	# Playtest del 14 ottobre (O-07): a 0,55 l'ambiente piatto schiariva le ombre fino a
-	# farle sparire; il contrasto lo da il sole piu forte.
-	environment.ambient_light_energy = 0.4
+	environment.ambient_light_energy = AMBIENT_ENERGY
 	environment.reflected_light_source = Environment.REFLECTION_SOURCE_SKY
-	environment.tonemap_mode = Environment.TONE_MAPPER_ACES
-	environment.tonemap_white = 4.0
+	# AgX (D-094): tiene i colori saturi nelle alte luci, dove ACES li sbiancava.
+	environment.tonemap_mode = Environment.TONE_MAPPER_AGX
+	environment.tonemap_agx_contrast = 1.4
 	# Foschia del colore dell'orizzonte solo in lontananza: il campo di gioco resta nitido.
 	environment.fog_enabled = true
 	environment.fog_mode = Environment.FOG_MODE_DEPTH
@@ -1410,8 +1424,8 @@ func _add_environment() -> void:
 	environment.set_glow_level(5, 0.4)
 	# Gradazione decisa: contrasto e saturazione alla Hades II.
 	environment.adjustment_enabled = true
-	environment.adjustment_contrast = 1.12
-	environment.adjustment_saturation = 1.22
+	environment.adjustment_contrast = 1.15
+	environment.adjustment_saturation = 1.3
 
 	var camera_attributes := CameraAttributesPractical.new()
 	camera_attributes.auto_exposure_enabled = false
