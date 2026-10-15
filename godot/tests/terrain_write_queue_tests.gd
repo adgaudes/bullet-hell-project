@@ -44,6 +44,39 @@ func _initialize() -> void:
 	_check(is_equal_approx(field.height_at(Vector3(0.0, 0.0, -10.0)), 1.0), "il centro sale")
 	_check(is_zero_approx(field.height_at(Vector3(0.0, 0.0, -14.0))), "a 4 m dal centro non cambia: raggio ridotto a 2,5 m")
 
+	# Review I1: chi sta su un disco che sale viene sollevato, non resta incastrato.
+	print("corpi sollevati")
+	var director := EnemyDirector.new()
+	director.spawning = false
+	director.terrain_field = field
+	get_root().add_child(director)
+	queue.director = director
+	var body := Node3D.new()
+	get_root().add_child(body)
+	body.global_position = Vector3(6.0, field.height_at(Vector3(6.0, 0.0, 6.0)) + 0.5, 6.0)
+	queue.bodies = [body]
+	await physics_frame
+	var enemy := director.spawn_at(Vector3(-6.0, 0.0, 6.0))
+	queue.push_level(Vector3(-6.0, 0.0, 6.0), 1.0, 1.2)
+	queue.push_level(Vector3(6.0, 0.0, 6.0), 1.0, 1.2)
+	for i in 4:
+		await physics_frame
+	var ground := field.height_at(enemy.global_position)
+	_check(enemy.global_position.y >= ground + enemy.spawn_center_height() - 0.01, "il nemico sul disco sale col terreno (%.2f su %.2f)" % [enemy.global_position.y, ground])
+	_check(is_equal_approx(body.global_position.y - field.height_at(body.global_position), 0.5), "il giocatore resta alla stessa altezza sul suolo")
+
+	# Review I4: una scrittura urgente passa davanti alla coda.
+	print("scrittura urgente")
+	for i in 10:
+		queue.push_level(Vector3(-15.0 + i, 0.0, -15.0), 0.5, 0.5)
+	queue.push_level(Vector3(10.0, 0.0, -10.0), 1.0, 0.8, 1.0, true)
+	# Un passo solo, a mano: con i segnali i passi elaborati dipendono dal momento della chiamata.
+	queue.set_physics_process(false)
+	queue._physics_process(0.0)
+	queue.set_physics_process(true)
+	_check(is_equal_approx(field.height_at(Vector3(10.0, 0.0, -10.0)), 0.8) and queue.pending() == 10, "l'urgente e la prima a essere scritta (%.2f m, %d in coda)" % [field.height_at(Vector3(10.0, 0.0, -10.0)), queue.pending()])
+	queue.clear()
+
 	print("PROTOTYPE01_TESTS %s failures=%d" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
 

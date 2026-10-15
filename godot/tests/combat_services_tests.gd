@@ -34,6 +34,8 @@ func _initialize() -> void:
 	await _test_ram_trench_and_blast()
 	await _test_ram_blocked()
 	await _test_ram_ploughs_bank()
+	await _test_ram_ploughs_with_busy_queue()
+	await _test_stunned_do_not_gnaw()
 	await _seconds(0.1)
 	print("PROTOTYPE01_TESTS %s failures=%d" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
@@ -204,6 +206,43 @@ func _test_ram_ploughs_bank() -> void:
 	_check(start.z - _player.global_position.z > 5.0, "attraversa l'argine spianandolo (%.2f m)" % (start.z - _player.global_position.z))
 	ram.queue_free()
 	await _seconds(0.5)
+
+
+## Review I4: la spianata dell'Ariete passa davanti a una coda piena (anello, pozza).
+func _test_ram_ploughs_with_busy_queue() -> void:
+	print("Ariete con la coda piena")
+	await _reset_player()
+	var start := _player.global_position
+	for x in range(-3, 4):
+		_field.level(start + Vector3(x, 0.0, -2.5), 0.9, 1.0, 1.0)
+	for i in 60:
+		_queue.push_level(Vector3(-20.0 + i * 0.5, 0.0, -20.0), 0.5, 0.3)
+	var ram := _ram()
+	await physics_frame
+	ram.trigger()
+	await _seconds(1.2)
+	_check(start.z - _player.global_position.z > 5.0, "attraversa l'argine anche con 60 scritture in coda (%.2f m)" % (start.z - _player.global_position.z))
+	ram.queue_free()
+	_queue.clear()
+	await _seconds(0.5)
+
+
+## Review I6: un nemico stordito contro un argine non lo rosicchia.
+func _test_stunned_do_not_gnaw() -> void:
+	print("storditi non rosicchiano")
+	await _reset_player()
+	var start := _player.global_position
+	for x in range(-3, 4):
+		_field.level(start + Vector3(x, 0.0, -3.0), 0.9, 1.6, 1.0)
+	var enemy := _director.spawn_at(start + Vector3(0.0, 0.0, -4.4))
+	enemy.health = 50
+	await _seconds(2.6)
+	var before := _director.gnaws
+	enemy.stun(4.0)
+	await _seconds(3.8)
+	_check(_director.gnaws == before, "nessun morso mentre e stordito (%d)" % (_director.gnaws - before))
+	_director.clear_horde()
+	await _seconds(0.3)
 
 
 func _test_charge_into_wall() -> void:

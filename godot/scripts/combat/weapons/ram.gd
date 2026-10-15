@@ -94,7 +94,8 @@ func _flatten_ahead(p: Vector3) -> void:
 		return
 	var ahead := p + _direction * FLATTEN_AHEAD
 	if terrain_field.height_at(ahead) > terrain_field.base_height_at(ahead) + 0.05:
-		write_queue.push_level(ahead, WRITE_RADIUS, terrain_field.base_height_at(ahead), FLATTEN_STRENGTH)
+		# Urgente: con la coda piena (anello, pozza) arriverebbe dopo il giocatore.
+		write_queue.push_level(ahead, WRITE_RADIUS, terrain_field.base_height_at(ahead), FLATTEN_STRENGTH, true)
 
 
 func _arrive() -> void:

@@ -55,6 +55,10 @@ func _initialize() -> void:
 	await _test_mixer_double()
 	await _test_disc_dozer()
 	await _test_compactor()
+	await _test_groove_does_not_compound()
+	await _test_cracks_do_not_compound()
+	await _test_dozer_keeps_ditches()
+	await _test_mixer_lifts_bodies()
 	print("PROTOTYPE01_TESTS %s failures=%d" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -649,6 +653,68 @@ func _test_compactor() -> void:
 	_check(enemy.stun_left > 0.0, "ogni onda blocca")
 	await _seconds(4.5)
 	_check(hammer.waves >= 3 and _field.height_at(Vector3(0.0, 0.0, 3.0)) > 0.15, "la terza onda lascia un anello di cemento (%.2f m)" % _field.height_at(Vector3(0.0, 0.0, 3.0)))
+	await _clear()
+	_reset_field()
+
+
+# --- Correzioni della review del piano 2 -----------------------------------------------------
+
+func _test_groove_does_not_compound() -> void:
+	print("Solco: profondita fissa")
+	var blade := _blade(5, {3: &"b", 5: &"b"})
+	await physics_frame
+	blade._cooldown = 1000.0
+	for i in 3:
+		blade._launch(Vector3.FORWARD)
+		await _seconds(2.2)
+	var depth := _field.height_at(Vector3(0.0, 0.0, -4.0))
+	_check(depth < -0.15 and depth > -0.32, "tre passaggi lasciano un solco da 0,25 m (%.2f m)" % depth)
+	await _clear()
+	_reset_field()
+
+
+func _test_cracks_do_not_compound() -> void:
+	print("Crepe: profondita fissa")
+	_enemy_at(Vector3(2, 0, 0), 500)
+	_hammer(5, {3: &"a", 5: &"a"})
+	await _seconds(9.0)
+	var lowest := 0.0
+	for i in 64:
+		var angle := TAU * i / 64.0
+		lowest = minf(lowest, _field.height_at(Vector3(cos(angle) * 2.0, 0.0, sin(angle) * 2.0)))
+	_check(lowest > -0.4, "cinque onde ferme non scavano oltre 0,3 m (%.2f m)" % lowest)
+	await _clear()
+	_reset_field()
+
+
+func _test_dozer_keeps_ditches() -> void:
+	print("Ruspa: i fossati restano")
+	_field.sculpt(Vector3(0.0, 0.0, -5.0), 2.5, -1.6)
+	var blade := _blade()
+	blade.fusion_id = &"disc_dozer"
+	blade.set_level(1)
+	await physics_frame
+	blade._cooldown = 1000.0
+	blade._big_left = 1000.0
+	blade._launch(Vector3.FORWARD)
+	await _seconds(4.0)
+	_check(_field.height_at(Vector3(0.0, 0.0, -5.0)) < -1.0, "spiana i dossi ma non riempie il fossato (%.2f m)" % _field.height_at(Vector3(0.0, 0.0, -5.0)))
+	await _clear()
+	_reset_field()
+
+
+func _test_mixer_lifts_bodies() -> void:
+	print("Betoniera: chi e bloccato sale col dosso")
+	_queue.director = _director
+	var enemy := _enemy_at(Vector3(0.3, 0, -6))
+	var mixer := _mixer(3, {3: &"b"})
+	await physics_frame
+	mixer.trigger()
+	await _seconds(4.5)
+	var ground := _field.height_at(enemy.global_position)
+	_check(ground > 1.0 and enemy.global_position.y >= ground + enemy.spawn_center_height() - 0.01,
+		"il nemico sta sopra il muro di getto, non dentro (%.2f su %.2f)" % [enemy.global_position.y, ground])
+	_queue.director = null
 	await _clear()
 	_reset_field()
 

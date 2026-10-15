@@ -376,6 +376,11 @@ func _terrain_collision_body() -> StaticBody3D:
 ## Fermo contro il terreno da piu di gnaw_delay_s: rosicchia l'argine davanti a se.
 ## Solo scavo, mai rialzo: alzare sotto un corpo in piedi lo incastrerebbe nel campo.
 func _tick_gnaw(enemy: Enemy, direction: Vector3, moved: float, delta: float) -> void:
+	# Stordito (Martello, Betoniera): fermo per forza, non perche bloccato contro un argine.
+	if enemy.stun_left > 0.0:
+		enemy.stuck_seconds = 0.0
+		enemy.is_gnawing = false
+		return
 	var against_terrain := false
 	for i in enemy.get_slide_collision_count():
 		if enemy.get_slide_collision(i).get_collider() == _terrain_collision_body():

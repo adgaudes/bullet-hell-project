@@ -245,10 +245,16 @@ func _write_ground(disc: Dictionary) -> void:
 	if write_queue == null or terrain_field == null:
 		return
 	var p: Vector3 = disc.position
+	var base := terrain_field.base_height_at(p)
+	var here := terrain_field.height_at(p)
 	if fusion_id != &"":
-		write_queue.push_level(p, disc.radius + 0.4, terrain_field.base_height_at(p), 0.6)
+		# Spiana solo cio che sporge: i fossati del giocatore restano (come l'Ariete).
+		if here > base + 0.05:
+			write_queue.push_level(p, disc.radius + 0.4, base, 0.6)
 	elif groove:
-		write_queue.push_level(p, 0.5, terrain_field.height_at(p) - GROOVE_DEPTH)
+		# Solco a profondita fissa sotto la base: ripassare non scava di piu.
+		if here > base - GROOVE_DEPTH + 0.02:
+			write_queue.push_level(p, 0.5, base - GROOVE_DEPTH)
 
 
 func _ground(p: Vector3) -> float:

@@ -142,7 +142,10 @@ func _open_cracks(center: Vector3) -> void:
 	for i in CRACK_COUNT:
 		var angle := start + TAU * i / CRACK_COUNT
 		var p := center + Vector3(cos(angle), 0.0, sin(angle)) * CRACK_DISTANCE
-		write_queue.push_level(p, CRACK_RADIUS, terrain_field.height_at(p) - CRACK_DEPTH)
+		# Crateri a profondita fissa sotto la base: stando fermi non si scava un pozzo.
+		var floor_h := terrain_field.base_height_at(p) - CRACK_DEPTH
+		if terrain_field.height_at(p) > floor_h + 0.02:
+			write_queue.push_level(p, CRACK_RADIUS, floor_h)
 
 
 ## Costipatore: un anello basso di cemento sul bordo dell'onda.

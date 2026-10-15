@@ -1133,6 +1133,10 @@ func _setup_loadout() -> void:
 	write_queue = TerrainWriteQueue.new()
 	write_queue.name = "WeaponTerrainQueue"
 	write_queue.terrain_field = terrain_field
+	write_queue.director = director
+	for body: Node3D in [player, companion]:
+		if body != null:
+			write_queue.bodies.append(body)
 	add_child(write_queue)
 	loadout = WeaponLoadout.new()
 	loadout.name = "WeaponLoadout"

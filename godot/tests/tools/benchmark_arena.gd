@@ -77,7 +77,17 @@ func _bench_loadout(scene: Node, step: float) -> void:
 	while queue.pending() > 0:
 		queue._physics_process(step)
 	var raise_ms := (Time.get_ticks_usec() - t0) / 1000.0 / maxf(jobs, 1.0)
+	# Indurimento della Betoniera (review I5): la pittura dello strato e sincrona su Terrain3D
+	# (con finestra); le sue pennellate passano poi dalla coda, misurata sopra.
+	var mixer := loadout.weapon(&"cement_mixer") as CementMixer
+	var harden_ms := -1.0
+	if mixer != null:
+		t0 = Time.get_ticks_usec()
+		mixer._harden({center = center + Vector3(6.0, 0.0, 0.0), radius = 3.0, stuck = []})
+		harden_ms = (Time.get_ticks_usec() - t0) / 1000.0
+		queue.clear()
 	queue.set_physics_process(true)
+	print("PROTOTYPE01_ARENA_BENCH weapons_harden ms=%.3f (una volta per pozza)" % harden_ms)
 	print("PROTOTYPE01_ARENA_BENCH weapons worst_ms=%.3f ring_write_ms=%.3f slots=%s nails=%d patches=%d rings=%d"
 		% [weapons_ms, raise_ms, ",".join(PackedStringArray(loadout.all_ids())), nailgun.nail_count(), nailgun.fire_patch_count(),
 			(loadout.weapon(&"seismic_stake") as SeismicStake).ring_count()])
