@@ -44,6 +44,11 @@ func _initialize() -> void:
 	await _test_blade_twin()
 	await _test_blade_rebound()
 	await _test_blade_groove()
+	await _test_hammer_base()
+	await _test_hammer_wall()
+	await _test_hammer_wide_and_stun()
+	await _test_hammer_cracks()
+	await _test_hammer_echo()
 	print("PROTOTYPE01_TESTS %s failures=%d" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -448,6 +453,90 @@ func _test_blade_groove() -> void:
 	blade._launch(Vector3.FORWARD)
 	await _seconds(1.5)
 	_check(_field.height_at(Vector3(0.0, 0.0, -4.0)) < -0.1, "dietro il disco resta un solco (%.2f m)" % _field.height_at(Vector3(0.0, 0.0, -4.0)))
+	await _clear()
+	_reset_field()
+
+
+# --- Martello pneumatico (piano 2) --------------------------------------------------------
+
+func _hammer(level := 1, picks: Dictionary = {}) -> Jackhammer:
+	var hammer := Jackhammer.new()
+	hammer.weapon_id = &"jackhammer"
+	hammer.shooter = _shooter(Vector3.ZERO)
+	hammer.director = _director
+	hammer.terrain_field = _field
+	hammer.write_queue = _queue
+	_root.add_child(hammer)
+	hammer.set_level(level)
+	for pick_at: int in picks:
+		hammer.choose_branch(pick_at, picks[pick_at])
+	return hammer
+
+
+func _test_hammer_base() -> void:
+	print("Martello: onda")
+	var right := _enemy_at(Vector3(2, 0, 0))
+	var left := _enemy_at(Vector3(-2, 0, 0))
+	var far := _enemy_at(Vector3(0, 0, -6))
+	_hammer()
+	await _seconds(0.7)
+	_check(right.health == 49 and left.health == 49 and far.health == 50, "1 danno entro 3 m, niente oltre (%d, %d, %d)" % [right.health, left.health, far.health])
+	_check(right.velocity.x > 1.0 and left.velocity.x < -1.0, "e li spinge via")
+	await _clear()
+	_reset_field()
+
+
+func _test_hammer_wall() -> void:
+	print("Martello: contro l'argine")
+	for x in range(-3, 4):
+		_field.level(Vector3(x, 0.0, 3.0), 0.9, 1.5, 1.0)
+	var pinned := _enemy_at(Vector3(0, 0, 2))
+	var free := _enemy_at(Vector3(0, 0, -2))
+	_hammer()
+	await _seconds(0.7)
+	_check(pinned.health == 48 and free.health == 49, "chi ha un argine dietro prende il doppio (%d, %d)" % [pinned.health, free.health])
+	await _clear()
+	_reset_field()
+
+
+func _test_hammer_wide_and_stun() -> void:
+	print("Martello: Onda larga e Stordente")
+	var enemy := _enemy_at(Vector3(4.5, 0, 0))
+	_hammer(3, {3: &"a"})
+	await _seconds(0.7)
+	_check(enemy.health == 49, "Onda larga arriva a 4,5 m")
+	await _clear()
+	var stunned := _enemy_at(Vector3(2, 0, 0))
+	_hammer(3, {3: &"b"})
+	await _seconds(0.7)
+	_check(stunned.stun_left > 0.3, "Stordente ferma chi e colpito")
+	await _clear()
+	_reset_field()
+
+
+func _test_hammer_cracks() -> void:
+	print("Martello: Crepe")
+	_enemy_at(Vector3(2, 0, 0))
+	_hammer(5, {3: &"a", 5: &"a"})
+	await _seconds(1.0)
+	var lowest := 0.0
+	for i in 32:
+		var angle := TAU * i / 32.0
+		lowest = minf(lowest, _field.height_at(Vector3(cos(angle) * 2.0, 0.0, sin(angle) * 2.0)))
+	_check(lowest < -0.15, "attorno si aprono crateri (%.2f m)" % lowest)
+	await _clear()
+	_reset_field()
+
+
+func _test_hammer_echo() -> void:
+	print("Martello: Eco nei fossati")
+	_field.sculpt(Vector3(7.0, 0.0, 0.0), 2.5, -1.6)
+	var in_ditch := _enemy_at(Vector3(7, 0, 0))
+	var on_flat := _enemy_at(Vector3(0, 0, 7))
+	_enemy_at(Vector3(-2, 0, 0))
+	_hammer(5, {3: &"a", 5: &"b"})
+	await _seconds(0.7)
+	_check(in_ditch.health < 50 and on_flat.health == 50, "colpisce chi sta in basso a 7 m, non chi e in piano (%d, %d)" % [in_ditch.health, on_flat.health])
 	await _clear()
 	_reset_field()
 

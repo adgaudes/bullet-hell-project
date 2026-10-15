@@ -38,6 +38,8 @@ static func script_for(id: StringName) -> Script:
 			return SeismicStake
 		&"site_blade":
 			return SiteBlade
+		&"jackhammer":
+			return Jackhammer
 	return null
 
 
