@@ -95,11 +95,11 @@ func _test_pity_guarantee() -> void:
 func _test_maxed_upgrades_disappear() -> void:
 	print("max level")
 	var p := _new(3)
-	p.levels[&"nail_rate"] = 4
+	p.levels[&"reach"] = 3
 	var seen := false
 	for i in 200:
 		for u in p.roll_offer():
-			seen = seen or u.id == &"nail_rate"
+			seen = seen or u.id == &"reach"
 	_check(not seen, "upgrade al massimo mai offerto (regola 2)")
 	_check(p.choose(&"boots") == 1 and p.choose(&"boots") == 2, "choose incrementa il livello")
 	# R-15: i testi delle carte nascono dai valori, nessun segnaposto resta vuoto.
@@ -108,7 +108,7 @@ func _test_maxed_upgrades_disappear() -> void:
 		var text := UpgradeCatalog.describe(entry)
 		if text.contains("{") or text.contains("}"):
 			unresolved += 1
-	_check(unresolved == 0 and UpgradeCatalog.describe(UpgradeCatalog.all()[0]).contains("25%"),
+	_check(unresolved == 0 and UpgradeCatalog.describe(UpgradeCatalog.all().filter(func(u: Dictionary) -> bool: return u.id == &"boots")[0]).contains("10%"),
 		"testi delle carte formattati dai valori del catalogo (%d non risolti)" % unresolved)
 	_check(is_equal_approx(UpgradeCatalog.value(&"dig_blast", &"radius"), 2.4) and UpgradeCatalog.value(&"inesistente", &"x", 3.0) == 3.0,
 		"UpgradeCatalog.value legge i valori e ha un default")

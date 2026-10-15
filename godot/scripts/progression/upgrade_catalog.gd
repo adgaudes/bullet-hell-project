@@ -2,7 +2,9 @@ class_name UpgradeCatalog
 extends RefCounted
 ## Upgrade del primo prototipo (PROGRESSION_SPEC, sezione 6; D-038). Dati in
 ## un solo posto; gli effetti li applica ArenaRun. Ogni voce:
-## id, name, category, rarity, max_level, requires ("" o "companion"), text.
+## id, deck (&"common" o una classe di ClassCatalog: spec D-092, par. 5), name, category,
+## rarity, max_level, requires ("" o "companion"), text. Le vecchie carte della chiodatrice
+## (nail_*) sono diventate i suoi livelli e bivi in WeaponCatalog.
 ## Le voci con `filler = true` sono ripetibili senza limite (max_level 0) e
 ## compaiono solo quando le carte vere non bastano a riempire l'offerta (D-056).
 ## `values` (R-15): le grandezze dell'effetto, lette da `ArenaRun.apply_upgrade` e
@@ -42,45 +44,39 @@ static func describe(entry: Dictionary) -> String:
 
 static func all() -> Array[Dictionary]:
 	return [
-		{id = &"nail_rate", name = "Grilletto limato", category = &"weapon", rarity = Rarity.COMMON, max_level = 4,
-			requires = "", values = {rate_percent = 25}, text = "La chiodatrice spara il {rate_percent}% piu spesso."},
-		{id = &"nail_pierce", name = "Chiodi da carpentiere", category = &"weapon", rarity = Rarity.UNCOMMON, max_level = 3,
-			requires = "", text = "Ogni chiodo trapassa un rottamatore in piu."},
-		{id = &"nail_spread", name = "Canna doppia", category = &"weapon", rarity = Rarity.RARE, max_level = 2,
-			requires = "", text = "Un chiodo in piu a ogni colpo, a ventaglio."},
-		{id = &"companion_turret", name = "Torretta sul cassone", category = &"companion", rarity = Rarity.RARE, max_level = 3,
+		{id = &"companion_turret", deck = &"mechanic", name = "Torretta sul cassone", category = &"companion", rarity = Rarity.RARE, max_level = 3,
 			requires = "companion", values = {fire_interval = 0.9, weapon_range = 8.0, rate_per_level = 1.35},
 			text = "Il compagno monta una chiodatrice (portata {weapon_range} m). Ai livelli successivi spara piu spesso."},
-		{id = &"companion_magnet", name = "Calamita", category = &"companion", rarity = Rarity.UNCOMMON, max_level = 2,
+		{id = &"companion_magnet", deck = &"common", name = "Calamita", category = &"companion", rarity = Rarity.UNCOMMON, max_level = 2,
 			requires = "companion", values = {radius = 2.5, radius_per_level = 1.5},
 			text = "Il compagno attira i frammenti di esperienza entro {radius} m, piu {radius_per_level} m per livello."},
-		{id = &"companion_cargo", name = "Cassone rinforzato", category = &"companion", rarity = Rarity.UNCOMMON, max_level = 2,
+		{id = &"companion_cargo", deck = &"common", name = "Cassone rinforzato", category = &"companion", rarity = Rarity.UNCOMMON, max_level = 2,
 			requires = "companion", values = {capacity = 2, scrap_now = 1},
 			text = "Il compagno porta {capacity} rottami in piu e ne trova {scrap_now} subito."},
-		{id = &"dig_blast", name = "Scavo esplosivo", category = &"terrain", rarity = Rarity.UNCOMMON, max_level = 3,
+		{id = &"dig_blast", deck = &"sapper", name = "Scavo esplosivo", category = &"terrain", rarity = Rarity.UNCOMMON, max_level = 3,
 			requires = "", values = {damage = 2, radius = 2.4, radius_per_level = 0.8, every_seconds = 0.5},
 			text = "Ogni {every_seconds} s di scavo colpisce i rottamatori entro {radius} m ({damage} danni), piu {radius_per_level} m per livello."},
-		{id = &"spiked_wall", name = "Argini spinati", category = &"terrain", rarity = Rarity.UNCOMMON, max_level = 2,
+		{id = &"spiked_wall", deck = &"engineer", name = "Argini spinati", category = &"terrain", rarity = Rarity.UNCOMMON, max_level = 2,
 			requires = "", values = {damage = 1, interval = 0.8, interval_level_2 = 0.5},
 			text = "I rottamatori che spingono contro un argine si fanno male ({damage} danno ogni {interval} s)."},
-		{id = &"brush_size", name = "Pala larga", category = &"terrain", rarity = Rarity.COMMON, max_level = 3,
+		{id = &"brush_size", deck = &"engineer", name = "Pala larga", category = &"terrain", rarity = Rarity.COMMON, max_level = 3,
 			requires = "", values = {radius_per_level = 0.4},
 			text = "Il pennello del tool e piu largo di {radius_per_level} m per livello."},
-		{id = &"boots", name = "Scarponi slacciati", category = &"character", rarity = Rarity.COMMON, max_level = 3,
+		{id = &"boots", deck = &"common", name = "Scarponi slacciati", category = &"character", rarity = Rarity.COMMON, max_level = 3,
 			requires = "", values = {speed_percent = 10}, text = "Corri il {speed_percent}% piu veloce."},
-		{id = &"patch", name = "Toppa", category = &"character", rarity = Rarity.COMMON, max_level = 3,
+		{id = &"patch", deck = &"common", name = "Toppa", category = &"character", rarity = Rarity.COMMON, max_level = 3,
 			requires = "", values = {health = 1}, text = "Un punto vita in piu e ti rimetti in sesto del tutto."},
-		{id = &"reach", name = "Tasche larghe", category = &"character", rarity = Rarity.COMMON, max_level = 3,
+		{id = &"reach", deck = &"common", name = "Tasche larghe", category = &"character", rarity = Rarity.COMMON, max_level = 3,
 			requires = "", values = {radius_percent = 40}, text = "Raggio di raccolta dei frammenti piu ampio del {radius_percent}%."},
-		{id = &"torch_range", name = "Torcia", category = &"character", rarity = Rarity.COMMON, max_level = 3,
+		{id = &"torch_range", deck = &"common", name = "Torcia", category = &"character", rarity = Rarity.COMMON, max_level = 3,
 			requires = "", values = {radius_per_level = 1.5}, text = "La tua luce arriva {radius_per_level} metri piu lontano."},
-		{id = &"beacon_range", name = "Faro", category = &"companion", rarity = Rarity.UNCOMMON, max_level = 3,
+		{id = &"beacon_range", deck = &"mechanic", name = "Faro", category = &"companion", rarity = Rarity.UNCOMMON, max_level = 3,
 			requires = "companion", values = {radius_per_level = 2.0}, text = "Il faro del compagno illumina {radius_per_level} metri piu lontano."},
-		{id = &"field_patch", name = "Rattoppo al volo", category = &"character", rarity = Rarity.COMMON, max_level = 0,
+		{id = &"field_patch", deck = &"common", name = "Rattoppo al volo", category = &"character", rarity = Rarity.COMMON, max_level = 0,
 			requires = "", filler = true, values = {heal = 1}, text = "Recuperi un punto vita."},
-		{id = &"lucky_scrap", name = "Rottame di fortuna", category = &"companion", rarity = Rarity.COMMON, max_level = 0,
+		{id = &"lucky_scrap", deck = &"common", name = "Rottame di fortuna", category = &"companion", rarity = Rarity.COMMON, max_level = 0,
 			requires = "companion", filler = true, values = {scrap_now = 1}, text = "Un rottame in piu nel cassone, se c'e posto."},
-		{id = &"nail_jar", name = "Barattolo di chiodi", category = &"weapon", rarity = Rarity.COMMON, max_level = 0,
+		{id = &"nail_jar", deck = &"common", name = "Barattolo di chiodi", category = &"weapon", rarity = Rarity.COMMON, max_level = 0,
 			requires = "", filler = true, values = {damage = 2, radius = 7.0},
 			text = "Scoppia un barattolo: {damage} danni a tutti i rottamatori entro {radius} metri."},
 	]
