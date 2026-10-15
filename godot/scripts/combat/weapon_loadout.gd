@@ -42,6 +42,8 @@ static func script_for(id: StringName) -> Script:
 			return Jackhammer
 		&"ram":
 			return Ram
+		&"cement_mixer":
+			return CementMixer
 	return null
 
 

@@ -49,6 +49,10 @@ func _initialize() -> void:
 	await _test_hammer_wide_and_stun()
 	await _test_hammer_cracks()
 	await _test_hammer_echo()
+	await _test_mixer_base()
+	await _test_mixer_wall_and_quickset()
+	await _test_mixer_pavement()
+	await _test_mixer_double()
 	print("PROTOTYPE01_TESTS %s failures=%d" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -537,6 +541,77 @@ func _test_hammer_echo() -> void:
 	_hammer(5, {3: &"a", 5: &"b"})
 	await _seconds(0.7)
 	_check(in_ditch.health < 50 and on_flat.health == 50, "colpisce chi sta in basso a 7 m, non chi e in piano (%d, %d)" % [in_ditch.health, on_flat.health])
+	await _clear()
+	_reset_field()
+
+
+# --- Betoniera (piano 2) -------------------------------------------------------------------
+
+func _mixer(level := 1, picks: Dictionary = {}) -> CementMixer:
+	var mixer := CementMixer.new()
+	mixer.weapon_id = &"cement_mixer"
+	mixer.shooter = _shooter(Vector3.ZERO)
+	mixer.director = _director
+	mixer.terrain_field = _field
+	mixer.write_queue = _queue
+	mixer.manual_aim = true
+	_root.add_child(mixer)
+	mixer.set_level(level)
+	for at: int in picks:
+		mixer.choose_branch(at, picks[at])
+	return mixer
+
+
+func _test_mixer_base() -> void:
+	print("Betoniera: pozza e dosso")
+	var enemy := _enemy_at(Vector3(0.5, 0, -6))
+	var mixer := _mixer()
+	await physics_frame
+	_check(mixer.trigger(), "si getta")
+	await _seconds(1.0)
+	_check(enemy.stun_left > 0.0, "chi e nella pozza e bloccato")
+	await _seconds(1.7)
+	_check(enemy.stun_left > 0.0, "e lo resta per 3 s")
+	await _seconds(1.2)
+	_check(_field.height_at(Vector3(0, 0, -6)) > 0.3, "poi indurisce in un dosso (%.2f m)" % _field.height_at(Vector3(0, 0, -6)))
+	_check(mixer.pool_count() == 0, "la pozza non c'e piu")
+	await _clear()
+	_reset_field()
+
+
+func _test_mixer_wall_and_quickset() -> void:
+	print("Betoniera: Muro di getto e Presa rapida")
+	var enemy := _enemy_at(Vector3(0.5, 0, -6))
+	var mixer := _mixer(5, {3: &"b", 5: &"a"})
+	await physics_frame
+	mixer.trigger()
+	# Al livello 4 il blocco dura 4 s, poi le scritture.
+	await _seconds(5.0)
+	_check(_field.height_at(Vector3(0, 0, -6)) > 1.0, "il dosso sale oltre il metro (%.2f m)" % _field.height_at(Vector3(0, 0, -6)))
+	_check(enemy.health == 47, "all'indurimento 3 danni ai bloccati (%d)" % enemy.health)
+	await _clear()
+	_reset_field()
+
+
+func _test_mixer_pavement() -> void:
+	print("Betoniera: Pavimento")
+	_field.level(Vector3(0, 0, -6), 1.5, 0.8, 1.0)
+	var mixer := _mixer(5, {3: &"b", 5: &"b"})
+	await physics_frame
+	mixer.trigger()
+	# Al livello 4 il blocco dura 4 s, poi le scritture.
+	await _seconds(5.0)
+	_check(_field.height_at(Vector3(0, 0, -6)) < 0.15, "spiana alla base invece di alzare (%.2f m)" % _field.height_at(Vector3(0, 0, -6)))
+	await _clear()
+	_reset_field()
+
+
+func _test_mixer_double() -> void:
+	print("Betoniera: Doppia colata")
+	var mixer := _mixer(3, {3: &"a"})
+	await physics_frame
+	mixer.trigger()
+	_check(mixer.pool_count() == 2, "due pozze")
 	await _clear()
 	_reset_field()
 
