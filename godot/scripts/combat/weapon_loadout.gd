@@ -8,6 +8,8 @@ extends Node
 
 signal changed
 signal active_triggered(slot: int, at: Vector3)
+## Una fusione fatta (ricettario dell'Officina).
+signal fused(fusion_id: StringName)
 
 const AUTO_SLOTS := 3
 const ACTIVE_SLOTS := 2
@@ -27,6 +29,8 @@ var class_id: StringName
 ## La chiodatrice della scena: entra negli slot solo se la classe la usa.
 var adopted: Weapon
 var manual_aim := false
+## Modifiche permanenti per arma (Officina): valgono anche per le armi aggiunte dopo.
+var _weapon_mods: Dictionary[StringName, Dictionary] = {}
 var _autos: Array[Weapon] = []
 var _actives: Array[ActiveWeapon] = []
 
@@ -54,6 +58,16 @@ func give_services(w: Weapon) -> void:
 			w.set(key, get(key))
 	if w is ActiveWeapon:
 		(w as ActiveWeapon).cooldown_scale = active_cooldown_scale
+
+
+## Modifiche permanenti di un'arma (chiavi dei bivi, es. `{cooldown_mul = 0.9}`), per quella
+## presente e per quella aggiunta dopo.
+func set_weapon_mods(id: StringName, mods: Dictionary) -> void:
+	_weapon_mods[id] = mods
+	var w := weapon(id)
+	if w != null:
+		w.extra_mods = mods
+		w.set_level(w.level)
 
 
 func set_active_cooldown_scale(scale: float) -> void:
@@ -136,6 +150,9 @@ func add(id: StringName) -> Weapon:
 	w.terrain_field = terrain_field
 	w.manual_aim = manual_aim
 	give_services(w)
+	if _weapon_mods.has(id):
+		w.extra_mods = _weapon_mods[id]
+		w.set_level(w.level)
 	if w is ActiveWeapon:
 		var active := w as ActiveWeapon
 		active.triggered.connect(func(at: Vector3) -> void: active_triggered.emit(_actives.find(active), at))
@@ -199,6 +216,7 @@ func fuse(auto_id: StringName) -> bool:
 	auto.fusion_id = WeaponCatalog.fusion_of(auto_id)
 	auto.set_level(auto.level)
 	print("PROTOTYPE01_WEAPON_FUSED id=%s fusion=%s" % [auto_id, auto.fusion_id])
+	fused.emit(auto.fusion_id)
 	changed.emit()
 	return true
 

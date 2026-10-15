@@ -17,6 +17,8 @@ var level := 1
 var branches: Dictionary = {}
 ## Fusione (WeaponCatalog, `slot == &"fusion"`) se l'arma e stata fusa con la sua compagna.
 var fusion_id: StringName = &""
+## Modifiche permanenti (Officina, piano 4): stesse chiavi dei bivi, applicate dopo il catalogo.
+var extra_mods: Dictionary = {}
 
 
 func _ready() -> void:
@@ -25,7 +27,7 @@ func _ready() -> void:
 
 
 func stat(key: StringName) -> float:
-	return WeaponCatalog.stat(weapon_id, key, level, branches)
+	return WeaponCatalog.apply_mods(WeaponCatalog.stat(weapon_id, key, level, branches), key, extra_mods)
 
 
 ## Vero se la trasformazione [param option_id] (es. &"burst") e fra quelle prese.

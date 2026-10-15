@@ -33,6 +33,9 @@ var _engine_left := 0.0
 var _weld_time := 0.0
 var _bush_time := 0.0
 var _engine_base_speed := -1.0
+## Olio buono (Officina): frazione di velocita in piu del compagno, sotto Motore truccato.
+var _oil := 0.0
+var _engine_level := 0
 var _seed_left := 0.0
 ## Valori letti in `apply` (UpgradeCatalog.value ricostruisce il catalogo: non a ogni passo).
 var _engine_damage := 1
@@ -66,7 +69,8 @@ func apply(id: StringName, level: int) -> void:
 				director.enemy_killed.connect(_on_enemy_killed)
 		&"tuned_engine":
 			_engine_damage = int(UpgradeCatalog.value(id, &"damage", 1.0))
-			_tune_engine(level)
+			_engine_level = level
+			_tune_companion()
 		&"field_weld":
 			_weld_range = UpgradeCatalog.value(id, &"range", 4.0)
 			_weld_every = UpgradeCatalog.value(id, &"seconds", 45.0)
@@ -99,8 +103,14 @@ func _physics_process(delta: float) -> void:
 		_tick_bush(delta)
 
 
-## Motore truccato: velocita massima del compagno (sulla sua copia della taratura).
-func _tune_engine(level: int) -> void:
+## Olio buono (Officina): il compagno va [param fraction] piu veloce (0,15 = +15%).
+func boost_companion_speed(fraction: float) -> void:
+	_oil = fraction
+	_tune_companion()
+
+
+## Velocita massima del compagno con Olio buono e Motore truccato, sulla sua copia della taratura.
+func _tune_companion() -> void:
 	if companion == null or not &"tuning" in companion or companion.get(&"tuning") == null:
 		return
 	var tuning: Resource = companion.get(&"tuning")
@@ -110,7 +120,7 @@ func _tune_engine(level: int) -> void:
 		companion.set(&"tuning", tuning)
 		_engine_base_speed = tuning.get(&"max_speed")
 	var bonus := UpgradeCatalog.value(&"tuned_engine", &"speed_percent") / 100.0
-	tuning.set(&"max_speed", _engine_base_speed * (1.0 + bonus * level))
+	tuning.set(&"max_speed", _engine_base_speed * (1.0 + _oil) * (1.0 + bonus * _engine_level))
 
 
 func _tick_engine(delta: float) -> void:

@@ -298,6 +298,12 @@ static func stat(id: StringName, key: StringName, level: int, branches: Dictiona
 	return value
 
 
+## Applica a [param value] le modifiche di [param mods] per [param key] (`_set`, `_mul`, `_add`):
+## le stesse dei bivi, usate anche per gli upgrade permanenti dell'Officina.
+static func apply_mods(value: float, key: StringName, mods: Dictionary) -> float:
+	return _apply(value, key, mods) if not mods.is_empty() else value
+
+
 static func _apply(value: float, key: StringName, mods: Dictionary) -> float:
 	var set_key := StringName("%s_set" % key)
 	if mods.has(set_key):

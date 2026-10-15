@@ -24,6 +24,7 @@ func _initialize() -> void:
 	await _test_fusion_slot_shift()
 	_test_script_for()
 	await _test_services()
+	await _test_weapon_mods_and_fused()
 	print("PROTOTYPE01_TESTS %s failures=%d" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -210,4 +211,23 @@ func _test_services() -> void:
 	loadout.add(&"cement_mixer")
 	var mixer := loadout.weapon(&"cement_mixer") as ActiveWeapon
 	_check(mixer != null and is_equal_approx(mixer.cooldown_scale, 0.9), "e di quelle aggiunte dopo")
+	await _clear()
+
+
+## Piano 4: modifiche permanenti alle armi (Officina) e segnale della fusione (ricettario).
+func _test_weapon_mods_and_fused() -> void:
+	print("modifiche permanenti e fusione")
+	var loadout := await _loadout(&"engineer")
+	loadout.set_weapon_mods(&"seismic_stake", {cooldown_mul = 0.9})
+	var stake := loadout.weapon(&"seismic_stake") as ActiveWeapon
+	_check(is_equal_approx(stake.cooldown_total(), 13.5), "Picchetti di scorta: ricarica 13,5 s (%.2f)" % stake.cooldown_total())
+	loadout.set_weapon_mods(&"cement_mixer", {block_seconds_add = 1.0})
+	loadout.add(&"cement_mixer")
+	_check(loadout.weapon(&"cement_mixer").stat(&"block_seconds") == 4.0, "un'arma aggiunta dopo ha gia le modifiche")
+	var fused: Array[StringName] = []
+	loadout.fused.connect(func(id: StringName) -> void: fused.append(id))
+	_max_out(loadout, &"nailgun")
+	_max_out(loadout, &"seismic_stake")
+	loadout.fuse(&"nailgun")
+	_check(fused == ([&"fort"] as Array[StringName]), "fused emesso con l'id della fusione")
 	await _clear()

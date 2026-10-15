@@ -18,6 +18,8 @@ func _initialize() -> void:
 	_test_save_recovery()
 	await _test_new_profile_changes_nothing()
 	await _test_permanent_upgrades_apply()
+	await _test_class_permanents()
+	await _test_unlocks_and_recipes()
 	await _test_banking_and_workshop_flow()
 	_remove_profile_files(TEMP_PATH)
 	# T-12: i nodi messi in coda con queue_free vanno liberati prima di uscire, o
@@ -236,6 +238,8 @@ func _test_permanent_upgrades_apply() -> void:
 	var profile := _profile()
 	profile.reset()
 	profile.levels = {&"tool_reach": 1, &"base_health": 2, &"reflexes": 1, &"cargo": 1, &"stock": 1, &"fixed_turret": 1, &"salvage": 1, &"pack_size": 1}
+	# La Torretta fissa e del Meccanico (D-092, piano 4).
+	profile.last_class = &"mechanic"
 	var scene := _start_run()
 	await _frames(3)
 	var run: ArenaRun = scene.get_node(^"Run")
@@ -254,6 +258,80 @@ func _test_permanent_upgrades_apply() -> void:
 	_check(run.progression.level_of(&"companion_turret") == 1, "la carta Torretta parte dal livello 1")
 	_check(run.scrap_out(false) == int(floor(companion.carried * 0.75)), "Paracadute: morendo si salvano tre quarti (%d)" % run.scrap_out(false))
 	await _end_run(scene)
+
+
+## Piano 4: gli upgrade di una classe valgono solo giocandola.
+func _test_class_permanents() -> void:
+	print("upgrade permanenti di classe")
+	var profile := _profile()
+	profile.reset()
+	profile.levels = {&"fixed_turret": 1, &"toolbox": 2, &"spare_stakes": 1}
+	profile.last_class = &"engineer"
+	var scene := _start_run()
+	await _frames(3)
+	var run: ArenaRun = scene.get_node(^"Run")
+	_check(run.class_id == &"engineer", "la classe viene dal profilo")
+	_check(run.companion_weapon == null, "Torretta fissa: non la monta l'Ingegnere")
+	_check(run.loadout.level_of(&"nailgun") == 2 and run.loadout.level_of(&"seismic_stake") == 2, "Cassetta degli attrezzi 2: chiodatrice e picchetto al livello 2")
+	var stake := run.loadout.weapon(&"seismic_stake") as ActiveWeapon
+	_check(is_equal_approx(stake.cooldown_total(), 15.0 * 0.85 * 0.9), "Picchetti di scorta: ricarica -10%% (%.2f s)" % stake.cooldown_total())
+	await _end_run(scene)
+	profile.levels = {&"fixed_turret": 1, &"good_oil": 1, &"toolbox": 2}
+	profile.last_class = &"mechanic"
+	scene = _start_run()
+	await _frames(3)
+	run = scene.get_node(^"Run")
+	var companion: Companion = scene.get_node(^"Companion")
+	_check(run.class_id == &"mechanic" and run.companion_weapon != null, "Torretta fissa: la monta il Meccanico")
+	_check(run.loadout.level_of(&"nailgun") == 0, "la Cassetta dell'Ingegnere non vale per il Meccanico")
+	var base_speed: float = (load("res://resources/tuning/companion_default.tres") as CompanionTuning).max_speed if ResourceLoader.exists("res://resources/tuning/companion_default.tres") else 5.0
+	_check(is_equal_approx(companion.tuning.max_speed, base_speed * 1.15), "Olio buono: compagno +15%% (%.2f)" % companion.tuning.max_speed)
+	await _end_run(scene)
+	profile.levels = {&"dry_powder": 2, &"charge_pack": 1}
+	profile.last_class = &"sapper"
+	scene = _start_run()
+	await _frames(3)
+	run = scene.get_node(^"Run")
+	_check(run.loadout.weapon(&"dig_charge").stat(&"damage") == 6.0, "Polvere asciutta 2: la carica fa 6 danni")
+	_check(run.progression.level_of(&"dig_blast") == 1 and run.dig_blast_radius > 0.0, "Zaino di cariche: Scavo esplosivo al livello 1")
+	await _end_run(scene)
+	profile.levels = {&"green_thumb": 1, &"good_seeds": 2}
+	profile.last_class = &"weeder"
+	scene = _start_run()
+	await _frames(3)
+	run = scene.get_node(^"Run")
+	_check(run.progression.level_of(&"tall_grass") == 2, "Pollice verde: Erba alta al livello 2")
+	_check(run.loadout.weapon(&"bramble").stat(&"hedge_seconds") == 21.0, "Semi buoni 2: il roveto dura 21 s")
+	await _end_run(scene)
+	profile.reset()
+
+
+func _test_unlocks_and_recipes() -> void:
+	print("sblocchi e ricette")
+	var profile := _profile()
+	profile.reset()
+	var scene := _start_run()
+	await _frames(3)
+	var run: ArenaRun = scene.get_node(^"Run")
+	var has_blade := func(r: ArenaRun) -> bool:
+		return WeaponOffers.cards(r.loadout, r.class_id, r._unlocked_weapons()).any(func(c: Dictionary) -> bool: return c.weapon_id == &"site_blade")
+	_check(not has_blade.call(run), "senza sblocco la Lama non compare fra le carte")
+	await _end_run(scene)
+	profile.levels = {&"unlock_site_blade": 1}
+	scene = _start_run()
+	await _frames(3)
+	run = scene.get_node(^"Run")
+	_check(has_blade.call(run), "sbloccata in Officina, la Lama compare")
+	for id in [&"nailgun", &"seismic_stake"]:
+		while run.loadout.level_of(id) < WeaponCatalog.MAX_LEVEL:
+			if run.loadout.needs_branch(id):
+				run.loadout.choose_branch(id, &"a")
+			else:
+				run.loadout.level_up(id)
+	run.loadout.fuse(&"nailgun")
+	_check(profile.has_recipe(&"fort"), "una fusione fatta in partita entra nel ricettario")
+	await _end_run(scene)
+	profile.reset()
 
 
 func _test_banking_and_workshop_flow() -> void:

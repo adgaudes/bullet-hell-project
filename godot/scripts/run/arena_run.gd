@@ -584,7 +584,8 @@ func _apply_permanent_upgrades() -> void:
 	for entry in PermanentCatalog.all():
 		var id: StringName = entry.id
 		var owned := _profile.level_of(id)
-		if owned <= 0:
+		# Gli upgrade di una classe valgono solo giocandola (D-092, par. 6.2).
+		if owned <= 0 or (entry.group != &"common" and entry.group != class_id):
 			continue
 		applied.append("%s=%d" % [id, owned])
 		match id:
@@ -609,6 +610,22 @@ func _apply_permanent_upgrades() -> void:
 					apply_upgrade(&"companion_turret", progression.choose(&"companion_turret"))
 			&"salvage":
 				_death_scrap_share = maxf(_death_scrap_share, 0.75)
+			&"toolbox":
+				loadout.level_up(&"nailgun")
+				if owned >= 2:
+					loadout.level_up(&"seismic_stake")
+			&"spare_stakes":
+				loadout.set_weapon_mods(&"seismic_stake", {cooldown_mul = 0.9})
+			&"dry_powder":
+				loadout.set_weapon_mods(&"dig_charge", {damage_add = float(owned)})
+			&"charge_pack":
+				apply_upgrade(&"dig_blast", progression.choose(&"dig_blast"))
+			&"good_oil":
+				class_perks.boost_companion_speed(0.15)
+			&"good_seeds":
+				loadout.set_weapon_mods(&"bramble", {hedge_seconds_add = 3.0 * owned})
+			&"green_thumb":
+				apply_upgrade(&"tall_grass", progression.choose(&"tall_grass"))
 	if not applied.is_empty():
 		print("PROTOTYPE01_PERMANENT_APPLIED %s" % ",".join(applied))
 
@@ -1136,7 +1153,11 @@ func _refresh_xp() -> void:
 ## il loadout adotta la chiodatrice della scena e crea le altre armi del kit. Coda delle
 ## scritture e loadout entrano subito nell'albero: la Torretta fissa e le carte li usano.
 func _setup_loadout() -> void:
+	# `--class=` (test, catture) vince sulla classe scelta nella campagna (profilo).
 	var requested := RunLaunchOptions.class_id()
+	var profile := get_node_or_null(^"/root/PlayerProfile") as PlayerProfileService
+	if ClassCatalog.find(requested).is_empty() and profile != null:
+		requested = profile.last_class
 	if not ClassCatalog.find(requested).is_empty():
 		class_id = requested
 	write_queue = TerrainWriteQueue.new()
@@ -1181,17 +1202,15 @@ func _setup_loadout() -> void:
 		apply_upgrade(card, progression.choose(card))
 	progression.weapon_cards = func() -> Array[Dictionary]: return WeaponOffers.cards(loadout, class_id, _unlocked_weapons())
 	loadout.changed.connect(_refresh_weapon_hud)
+	if profile != null:
+		loadout.fused.connect(func(fusion_id: StringName) -> void: profile.discover_recipe(fusion_id))
 	_refresh_weapon_hud()
 
 
-## Armi comprate in Officina. Provvisorio (piano 2): finche l'Officina non le vende (piano 4)
-## sono tutte sbloccate, cosi il kit comune si prova in partita.
+## Armi comuni sbloccate in Officina (D-092, par. 6.2); senza profilo nessuna.
 func _unlocked_weapons() -> Array[StringName]:
-	var ids: Array[StringName] = []
-	for entry in WeaponCatalog.all():
-		if int(entry.get(&"unlock_cost", 0)) > 0:
-			ids.append(entry.id)
-	return ids
+	var profile := get_node_or_null(^"/root/PlayerProfile") as PlayerProfileService
+	return profile.unlocked_weapons() if profile != null else ([] as Array[StringName])
 
 
 ## Striscia delle armi del HUD (D-092): slot ricostruiti quando il loadout cambia, ricarica
