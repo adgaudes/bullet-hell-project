@@ -311,6 +311,8 @@ func _test_markers() -> void:
 	var heap := _at(nearest_center)
 	var scrap_field: ScrapField = _scene.get_node(^"ScrapField")
 	_check(scrap_field.vein_scrap_left(heap) >= 6, "il deposito ha una vena (%d rottami)" % scrap_field.vein_scrap_left(heap))
+	# La cassa sepolta del cumulo si aprirebbe e il suo menu fermerebbe il gioco (piano 4).
+	run.caches.discard_in_rect(Rect2(heap.x - nearest_radius, heap.z - nearest_radius, nearest_radius * 2.0, nearest_radius * 2.0))
 	_field.sculpt(heap, nearest_radius, -2.0)
 	scrap_field.extract_from_veins(heap, nearest_radius, 100.0)
 	_check(scrap_field.vein_scrap_left(heap) == 0, "vena esaurita")
