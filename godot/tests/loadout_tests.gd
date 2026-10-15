@@ -20,6 +20,8 @@ func _initialize() -> void:
 	await _test_actives()
 	await _test_manual_aim()
 	_test_class_option()
+	await _test_fusion()
+	await _test_fusion_slot_shift()
 	print("PROTOTYPE01_TESTS %s failures=%d" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -115,6 +117,46 @@ func _test_class_option() -> void:
 	_check(RunLaunchOptions.class_id(PackedStringArray(["--class=sapper"])) == &"sapper", "--class=sapper sceglie il Guastatore")
 	_check(RunLaunchOptions.class_id(PackedStringArray([])) == &"", "senza opzione: vuoto")
 	_check(RunLaunchOptions.wants_autostart(PackedStringArray(["--class=weeder"])), "--class= avvia subito il livello")
+
+
+## Porta l'arma al livello 5 scegliendo sempre la trasformazione A.
+func _max_out(loadout: WeaponLoadout, id: StringName) -> void:
+	while loadout.level_of(id) < WeaponCatalog.MAX_LEVEL:
+		if loadout.needs_branch(id):
+			loadout.choose_branch(id, &"a")
+		else:
+			loadout.level_up(id)
+
+
+func _test_fusion() -> void:
+	print("fusione")
+	var loadout := await _loadout(&"engineer")
+	loadout.add(&"site_blade")
+	loadout.add(&"ram")
+	_max_out(loadout, &"site_blade")
+	_check(not loadout.can_fuse(&"site_blade"), "con l'Ariete sotto il 5 non si fonde")
+	_max_out(loadout, &"ram")
+	_check(loadout.can_fuse(&"site_blade") and not loadout.can_fuse(&"ram"), "automatica e compagna al 5: si fonde (dall'automatica)")
+	var blade := loadout.weapon(&"site_blade")
+	_check(loadout.fuse(&"site_blade"), "fusione fatta")
+	_check(not loadout.has_weapon(&"ram") and loadout.actives().size() == 1, "l'Ariete esce dagli slot")
+	_check(blade.fusion_id == &"disc_dozer" and blade.level == 5 and blade.branches.get(3) == &"a", "la Lama resta, coi bivi, e diventa Ruspa")
+	_check(not loadout.can_fuse(&"site_blade") and not loadout.fuse(&"site_blade"), "non si fonde due volte")
+	await _clear()
+
+
+func _test_fusion_slot_shift() -> void:
+	print("fusione e slot attivi")
+	var loadout := await _loadout(&"sapper")
+	loadout.add(&"jackhammer")
+	loadout.add(&"cement_mixer")
+	loadout.add(&"ram")
+	_max_out(loadout, &"jackhammer")
+	_max_out(loadout, &"cement_mixer")
+	loadout.fuse(&"jackhammer")
+	_check(loadout.actives().size() == 1 and loadout.actives()[0].weapon_id == &"ram", "l'Ariete passa allo slot 1")
+	_check(loadout.free_slots(&"active") == 1, "uno slot attivo si libera")
+	await _clear()
 
 
 func _test_manual_aim() -> void:

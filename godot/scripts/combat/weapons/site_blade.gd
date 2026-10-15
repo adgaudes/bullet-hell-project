@@ -36,6 +36,8 @@ var bounces := 0
 var groove := false
 var _cooldown := 0.3
 var _big_left := 0.0
+## Dischi enormi della Ruspa lanciati finora.
+var big_launched := 0
 ## Dischi: {position, direction, speed, travelled, ditch_left, bounces, hit, radius, big, write_left}.
 var _discs: Array[Dictionary] = []
 var _view: MultiMeshInstance3D
@@ -154,6 +156,7 @@ func _launch(direction: Vector3) -> void:
 func _launch_big(direction: Vector3) -> void:
 	if direction == Vector3.ZERO or _discs.size() >= MAX_DISCS:
 		return
+	big_launched += 1
 	_add_disc(direction, fusion_stat(&"big_radius"), fusion_stat(&"big_travel"), true)
 
 

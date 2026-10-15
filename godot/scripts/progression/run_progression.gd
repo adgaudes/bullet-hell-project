@@ -102,7 +102,12 @@ func roll_offer() -> Array[Dictionary]:
 		weapons.assign(weapon_cards.call())
 	if not weapons.is_empty():
 		var weapon_pool: Array = weapons
-		if force_rare:
+		# La fusione, quando c'e, e sempre la carta arma (spec par. 6.3).
+		var fusions := weapons.filter(func(u: Dictionary) -> bool: return u.rarity >= UpgradeCatalog.Rarity.LEGENDARY)
+		if not fusions.is_empty():
+			weapon_pool = fusions
+			force_rare = false
+		elif force_rare:
 			var rare := weapons.filter(func(u: Dictionary) -> bool: return u.rarity >= UpgradeCatalog.Rarity.RARE)
 			if not rare.is_empty():
 				weapon_pool = rare

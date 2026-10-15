@@ -16,6 +16,7 @@ func _initialize() -> void:
 	_test_class_decks()
 	_test_weapon_card_first()
 	_test_owned_card_of_other_deck()
+	_test_fusion_card_wins()
 	print("PROTOTYPE01_TESTS %s failures=%d" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -88,6 +89,21 @@ func _test_owned_card_of_other_deck() -> void:
 		for u in p.roll_offer():
 			seen = seen or u.id == &"companion_turret"
 	_check(seen, "la Torretta gia montata si potenzia anche da Ingegnere")
+
+
+## D-092: la carta fusione, quando c'e, e sempre la carta arma dell'offerta.
+func _test_fusion_card_wins() -> void:
+	print("fusion card wins")
+	var p := _new(25)
+	var level := {id = &"w:level:jackhammer", name = "Martello", category = &"weapon", rarity = UpgradeCatalog.Rarity.COMMON,
+		max_level = 0, requires = "", deck = &"common", text = "", weapon_id = &"jackhammer", kind = &"level", shown_level = 2}
+	var fusion := {id = &"w:fusion:site_blade", name = "Ruspa a dischi", category = &"weapon", rarity = UpgradeCatalog.Rarity.LEGENDARY,
+		max_level = 0, requires = "", deck = &"common", text = "", weapon_id = &"site_blade", kind = &"fusion", shown_level = 5}
+	p.weapon_cards = func() -> Array[Dictionary]: return [level, fusion] as Array[Dictionary]
+	var always := true
+	for i in 100:
+		always = always and p.roll_offer()[0].id == &"w:fusion:site_blade"
+	_check(always, "la fusione e sempre la prima carta")
 
 
 func _test_xp_curve() -> void:

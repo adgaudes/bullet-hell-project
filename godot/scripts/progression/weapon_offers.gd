@@ -2,7 +2,8 @@ class_name WeaponOffers
 extends RefCounted
 ## Carte arma (spec D-092, par. 6.3), costruite dallo stato degli slot: arma nuova (Non comune,
 ## se c'e uno slot libero e l'arma e del mazzo comune o della classe, sbloccata e implementata),
-## livello 2 o 4 (Comune), bivio 3 o 5 (Raro: sceglierla apre le due trasformazioni). Le carte
+## livello 2 o 4 (Comune), bivio 3 o 5 (Raro: sceglierla apre le due trasformazioni), fusione
+## (Leggendaria: automatica e compagna al livello 5). Le carte
 ## hanno la stessa forma delle voci di UpgradeCatalog, piu weapon_id, kind e shown_level.
 ## Identificatori: `w:<new|level|branch>:<arma>` e `wb:<arma>:<livello>:<a|b>`.
 
@@ -27,6 +28,13 @@ static func parse(id: StringName) -> Dictionary:
 ## Carte arma possibili adesso. [param unlocked]: armi comprate in Officina.
 static func cards(loadout: WeaponLoadout, class_id: StringName, unlocked: Array) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
+	for auto in loadout.autos():
+		if loadout.can_fuse(auto.weapon_id):
+			var fusion := WeaponCatalog.find(WeaponCatalog.fusion_of(auto.weapon_id))
+			out.append({id = StringName("w:fusion:%s" % auto.weapon_id), name = fusion.name, category = &"weapon",
+				rarity = UpgradeCatalog.Rarity.LEGENDARY, max_level = 0, requires = "", deck = fusion.deck,
+				text = "Fusione. %s" % fusion.text, weapon_id = auto.weapon_id, kind = &"fusion",
+				shown_level = WeaponCatalog.MAX_LEVEL, icon = fusion.icon})
 	for entry in WeaponCatalog.all():
 		var id: StringName = entry.id
 		if entry.slot == &"fusion" or (entry.deck != &"common" and entry.deck != class_id):

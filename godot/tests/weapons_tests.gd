@@ -53,6 +53,8 @@ func _initialize() -> void:
 	await _test_mixer_wall_and_quickset()
 	await _test_mixer_pavement()
 	await _test_mixer_double()
+	await _test_disc_dozer()
+	await _test_compactor()
 	print("PROTOTYPE01_TESTS %s failures=%d" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -612,6 +614,41 @@ func _test_mixer_double() -> void:
 	await physics_frame
 	mixer.trigger()
 	_check(mixer.pool_count() == 2, "due pozze")
+	await _clear()
+	_reset_field()
+
+
+# --- Fusioni comuni (piano 2) ---------------------------------------------------------------
+
+func _test_disc_dozer() -> void:
+	print("Ruspa a dischi")
+	_field.sculpt(Vector3(0.0, 0.0, -4.0), 1.5, 0.35)
+	var blade := _blade()
+	blade.fusion_id = &"disc_dozer"
+	blade.set_level(1)
+	_check(is_equal_approx(blade.disc_radius, 0.8), "dischi grandi il doppio")
+	await physics_frame
+	blade._cooldown = 1000.0
+	blade._launch(Vector3.FORWARD)
+	await _seconds(1.5)
+	_check(_field.height_at(Vector3(0.0, 0.0, -4.0)) < 0.15, "spianano dove passano (%.2f m)" % _field.height_at(Vector3(0.0, 0.0, -4.0)))
+	_enemy_at(Vector3(0.0, 0.0, -6.0), 500)
+	await _seconds(10.5)
+	_check(blade.big_launched >= 1, "ogni 10 s un disco enorme")
+	await _clear()
+	_reset_field()
+
+
+func _test_compactor() -> void:
+	print("Costipatore")
+	var enemy := _enemy_at(Vector3(2, 0, 0), 500)
+	var hammer := _hammer()
+	hammer.fusion_id = &"compactor"
+	hammer.set_level(1)
+	await _seconds(0.7)
+	_check(enemy.stun_left > 0.0, "ogni onda blocca")
+	await _seconds(4.5)
+	_check(hammer.waves >= 3 and _field.height_at(Vector3(0.0, 0.0, 3.0)) > 0.15, "la terza onda lascia un anello di cemento (%.2f m)" % _field.height_at(Vector3(0.0, 0.0, 3.0)))
 	await _clear()
 	_reset_field()
 

@@ -162,6 +162,32 @@ func choose_branch(id: StringName, pick: StringName) -> void:
 	_log_level(w)
 
 
+## Vero se l'automatica [param auto_id] e la sua attiva compagna sono al livello 5 e non e gia fusa.
+func can_fuse(auto_id: StringName) -> bool:
+	var auto := weapon(auto_id)
+	if auto == null or auto is ActiveWeapon or auto.fusion_id != &"" or auto.level < WeaponCatalog.MAX_LEVEL:
+		return false
+	var fusion := WeaponCatalog.fusion_of(auto_id)
+	var partner: StringName = WeaponCatalog.find(auto_id).get(&"partner", &"")
+	return fusion != &"" and level_of(partner) >= WeaponCatalog.MAX_LEVEL
+
+
+## Fonde l'automatica con la compagna (spec par. 3): l'automatica resta coi suoi bivi e prende
+## l'effetto della fusione, l'attiva esce dagli slot (la seconda attiva passa al primo).
+func fuse(auto_id: StringName) -> bool:
+	if not can_fuse(auto_id):
+		return false
+	var auto := weapon(auto_id)
+	var partner := weapon(WeaponCatalog.find(auto_id).partner) as ActiveWeapon
+	_actives.erase(partner)
+	partner.queue_free()
+	auto.fusion_id = WeaponCatalog.fusion_of(auto_id)
+	auto.set_level(auto.level)
+	print("PROTOTYPE01_WEAPON_FUSED id=%s fusion=%s" % [auto_id, auto.fusion_id])
+	changed.emit()
+	return true
+
+
 ## Usa l'attiva dello slot [param slot] (0 o 1); vero se e partita.
 func trigger_active(slot: int) -> bool:
 	if slot < 0 or slot >= _actives.size():

@@ -15,6 +15,7 @@ func _initialize() -> void:
 	_test_maxed_weapon()
 	_test_branch_cards_and_parse()
 	_test_sapper_sees_nothing_of_engineer()
+	_test_fusion_card()
 	print("PROTOTYPE01_TESTS %s failures=%d" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -82,6 +83,24 @@ func _test_branch_cards_and_parse() -> void:
 	_check(parsed.kind == &"choose" and parsed.weapon_id == &"nailgun" and parsed.at == 3 and parsed.pick == &"b", "parse della trasformazione")
 	_check(WeaponOffers.parse(&"w:new:nailgun").kind == &"new", "parse di una carta arma")
 	_check(WeaponOffers.is_weapon_card(&"w:level:nailgun") and not WeaponOffers.is_weapon_card(&"boots"), "riconosce le carte arma")
+
+
+func _test_fusion_card() -> void:
+	print("carta fusione")
+	var loadout := _loadout(&"sapper")
+	loadout.add(&"site_blade")
+	loadout.add(&"ram")
+	for id in [&"site_blade", &"ram"]:
+		while loadout.level_of(id) < 5:
+			if loadout.needs_branch(id):
+				loadout.choose_branch(id, &"b")
+			else:
+				loadout.level_up(id)
+	var cards := WeaponOffers.cards(loadout, &"sapper", [&"site_blade", &"ram"])
+	var fusion := cards.filter(func(c: Dictionary) -> bool: return c.kind == &"fusion")
+	_check(fusion.size() == 1 and fusion[0].id == &"w:fusion:site_blade", "carta della fusione dalla Lama")
+	_check(fusion[0].rarity == UpgradeCatalog.Rarity.LEGENDARY and fusion[0].name == "Ruspa a dischi", "Leggendaria, col nome della fusione")
+	_check(WeaponOffers.parse(&"w:fusion:site_blade").kind == &"fusion", "parse della fusione")
 
 
 func _test_sapper_sees_nothing_of_engineer() -> void:

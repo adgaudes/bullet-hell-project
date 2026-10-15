@@ -937,6 +937,8 @@ func _on_weapon_card(id: StringName) -> void:
 			return
 		&"choose":
 			loadout.choose_branch(card.weapon_id, card.pick)
+		&"fusion":
+			loadout.fuse(card.weapon_id)
 	_pending_level_ups -= 1
 	print("PROTOTYPE01_UPGRADE_CHOSEN id=%s level=%d" % [id, loadout.level_of(card.get(&"weapon_id", &""))])
 	_open_next_level_up.call_deferred()
@@ -1170,7 +1172,8 @@ func _weapon_entry(w: Weapon) -> Dictionary:
 	for at in WeaponCatalog.BRANCH_LEVELS:
 		if w.branches.has(at):
 			letters += String(w.branches[at]).to_upper()
-	var entry := {icon = WeaponCatalog.find(w.weapon_id).get(&"icon", &"nail"), level = w.level, branches = letters}
+	var shown := w.fusion_id if w.fusion_id != &"" else w.weapon_id
+	var entry := {icon = WeaponCatalog.find(shown).get(&"icon", &"nail"), level = w.level, branches = letters}
 	if w is ActiveWeapon:
 		entry.cooldown = (w as ActiveWeapon).cooldown_left / maxf((w as ActiveWeapon).cooldown_total(), 0.01)
 	return entry
