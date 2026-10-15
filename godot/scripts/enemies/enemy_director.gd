@@ -292,6 +292,8 @@ func _move_enemies(delta: float) -> void:
 				direction = to_player.normalized()
 		direction += _separation(enemy) * SEPARATION_WEIGHT
 		var speed := tuning.enemy_speed * enemy.speed_scale
+		if enemy.stun_left > 0.0:
+			speed = 0.0
 		# Una sola domanda alla luce per nemico e per passo: vale per velocita e contatto.
 		var in_dark := night_active and light_field != null and not light_field.is_lit(pos)
 		# I nemici in commissione (portatori del boss) restano come sono (specifica, sezione 5).

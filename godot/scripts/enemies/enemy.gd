@@ -69,6 +69,8 @@ var gnaw_left := 0.0
 var is_gnawing := false
 ## Raggio in piu rispetto a un rottamatore, per i colpi (corpi grandi).
 var hit_radius_bonus := 0.0
+## Secondi di stordimento (Martello, Betoniera: D-092): il direttore non lo fa camminare.
+var stun_left := 0.0
 ## Commissione (D-045): il direttore lo porta a `errand_point` invece che dal giocatore.
 var has_errand := false
 var errand_point := Vector3.ZERO
@@ -168,8 +170,19 @@ func drive(_delta: float) -> void:
 	pass
 
 
+## Ferma il nemico per [param seconds] (il piu lungo vince), subito: la velocita si azzera, ma
+## una spinta data dopo (Martello) resta. I boss (`self_driven`) non si stordiscono.
+func stun(seconds: float) -> void:
+	if self_driven:
+		return
+	stun_left = maxf(stun_left, seconds)
+	velocity.x = 0.0
+	velocity.z = 0.0
+
+
 func tick_visuals(delta: float) -> void:
 	spike_cooldown = maxf(spike_cooldown - delta, 0.0)
+	stun_left = maxf(stun_left - delta, 0.0)
 	if _flash_left > 0.0:
 		_flash_left -= delta
 		if _flash_left <= 0.0:

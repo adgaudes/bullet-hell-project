@@ -22,6 +22,8 @@ signal terrain_mode_changed(mode: int)
 signal escape_ramp_carved
 ## Mira della chiodatrice cambiata (D-089): AimMode.AUTO o AimMode.MANUAL.
 signal aim_mode_changed(mode: int)
+## Fine della carica dell'Ariete (D-092).
+signal charge_finished
 ## Tasto di un'arma attiva premuto (D-092): slot 0 (E, grilletto sinistro) o 1 (F, dorsale destro).
 signal active_weapon_pressed(slot: int)
 
@@ -88,6 +90,9 @@ var invulnerability_seconds := 0.8
 ## Moltiplicatore permanente della velocita (upgrade), combinato col terreno.
 var speed_bonus := 1.0
 var _invulnerable_left := 0.0
+## Carica dell'Ariete (D-092): secondi rimasti e velocita imposta, intoccabile finche dura.
+var _charge_left := 0.0
+var _charge_velocity := Vector3.ZERO
 
 var _movement := PlanarMovement.new()
 ## Ultima direzione di movimento valida (normalizzata): direzione del dash.
@@ -287,6 +292,8 @@ func _physics_process(delta: float) -> void:
 	else:
 		requested = move_direction.limit_length(1.0)
 	planar = _movement.calc_velocity(planar, requested, delta, speed_multiplier)
+	if _charge_left > 0.0:
+		planar = _charge_velocity
 
 	velocity.x = planar.x
 	velocity.z = planar.z
@@ -301,6 +308,7 @@ func _physics_process(delta: float) -> void:
 	_update_hit_flash(delta)
 	_update_pit_escape(delta, move_direction)
 	_invulnerable_left = maxf(_invulnerable_left - delta, 0.0)
+	_update_charge(delta)
 	_dig_anim_left = maxf(_dig_anim_left - delta, 0.0)
 	_update_terrain_target()
 	# Rete di sicurezza (audit I-01): un rilascio che non e arrivato come evento. Solo per le
@@ -611,6 +619,38 @@ func facing_direction() -> Vector3:
 	return forward.normalized() if not forward.is_zero_approx() else Vector3.FORWARD
 
 
+## Carica dell'Ariete (D-092): [param distance] metri in [param seconds] secondi verso
+## [param direction], intoccabile. Falso se morto, gia in carica o in scatto.
+func start_charge(direction: Vector3, distance: float, seconds: float) -> bool:
+	if not is_alive() or is_dashing or _charge_left > 0.0 or seconds <= 0.0:
+		return false
+	var planar := Vector3(direction.x, 0.0, direction.z)
+	planar = planar.normalized() if planar.length_squared() > 1e-6 else facing_direction()
+	_charge_velocity = planar * distance / seconds
+	_charge_left = seconds
+	return true
+
+
+func is_charging() -> bool:
+	return _charge_left > 0.0
+
+
+## Intoccabile per almeno [param seconds] (bivio Scudo dell'Ariete).
+func grant_invulnerability(seconds: float) -> void:
+	_invulnerable_left = maxf(_invulnerable_left, seconds)
+
+
+func _update_charge(delta: float) -> void:
+	if _charge_left <= 0.0:
+		return
+	_charge_left -= delta
+	if _charge_left <= 0.0:
+		_charge_left = 0.0
+		velocity.x = 0.0
+		velocity.z = 0.0
+		charge_finished.emit()
+
+
 ## Punto del terreno sotto il cursore quando si mira col mouse (armi attive, D-092), altrimenti null.
 func cursor_ground_point() -> Variant:
 	if aim_device != AimDevice.MOUSE or not is_inside_tree():
@@ -758,7 +798,7 @@ func is_alive() -> bool:
 ## Danno con breve invulnerabilita. Restituisce true se il colpo e andato a segno.
 func take_damage(amount: int) -> bool:
 	# Lo scatto rende intoccabili (playtest O-01): e la mossa per uscire dall'accerchiamento.
-	if max_health <= 0 or health <= 0 or _invulnerable_left > 0.0 or is_dashing:
+	if max_health <= 0 or health <= 0 or _invulnerable_left > 0.0 or is_dashing or _charge_left > 0.0:
 		return false
 	health = maxi(health - amount, 0)
 	_invulnerable_left = invulnerability_seconds
