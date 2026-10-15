@@ -6,6 +6,8 @@ extends Weapon
 ## Con `weapon_id` i valori vengono da WeaponCatalog (livelli e bivi: Raffica, Chiodi da ponte,
 ## Rimbalzanti, Incandescenti); senza (la Torretta del compagno) restano quelli impostati.
 ## Chiodi e macchie di fuoco sono istanze di due MultiMesh: nessun nodo per colpo.
+## Fusa col Picchetto diventa Fortino (par. 4.1): ogni tanto alza un cono di argine verso i
+## nemici e ci mette sopra una torretta, una chiodatrice figlia coi suoi livelli e bivi.
 
 signal fired(count: int)
 
@@ -24,6 +26,17 @@ const FIRE_SECONDS := 2.0
 const FIRE_TICK := 0.5
 const FIRE_DAMAGE := 1
 const MAX_PATCHES := 16
+## Fortino: dischi del cono (raggio, quota in frazioni di `turret_height`), dal piu largo.
+const FORT_DISCS: Array[Vector2] = [Vector2(1.0, 0.4), Vector2(0.7, 1.1 / 1.5), Vector2(0.4, 1.0)]
+## Per riportarlo alla base i dischi sono un po' piu larghi: la campana del pennello lascerebbe
+## un gradino sui fianchi.
+const FORT_LOWER_RADII: Array[float] = [1.4, 1.0, 0.7]
+## Distanza minima del cono dal giocatore, distanza lasciata fra cono e nemico, e fra due coni.
+const FORT_MIN_DISTANCE := 1.5
+const FORT_ENEMY_GAP := 2.0
+const FORT_SPACING := 2.0
+const FORT_MUZZLE := 0.3
+const FORT_COLOR := Color(0.55, 0.5, 0.42)
 
 ## Altezza di sparo rispetto all'origine di chi spara.
 @export var muzzle_height := 0.0
@@ -44,6 +57,8 @@ var bounces := 0
 var fire_patches := false
 ## Deviazione casuale massima di ogni colpo, in gradi (bivio Raffica).
 var spread_jitter := 0.0
+## Coda delle scritture del terreno (dal loadout, dopo `add_child`): serve al Fortino.
+var write_queue: TerrainWriteQueue
 
 ## Direzione planare (unitaria) dell'ultimo colpo: chi ascolta `fired` la usa per il rinculo.
 var last_fire_direction := Vector3.ZERO
@@ -55,6 +70,9 @@ var _patches: Array[Dictionary] = []
 var _nail_view: MultiMeshInstance3D
 var _patch_view: MultiMeshInstance3D
 var _rng := RandomNumberGenerator.new()
+## Fortino: torrette vive {weapon, center, left} e tempo al prossimo cono.
+var _turrets: Array[Dictionary] = []
+var _fort_left := -1.0
 
 
 func _ready() -> void:
@@ -92,6 +110,8 @@ func _physics_process(delta: float) -> void:
 	_tick_patches(delta)
 	if shooter == null or director == null:
 		return
+	if fusion_id == &"fort":
+		_tick_fort(delta)
 	_cooldown -= delta
 	if _cooldown > 0.0:
 		return
@@ -238,6 +258,121 @@ func _move_nails(delta: float) -> void:
 				_spawn_patch(to)
 			_nails.remove_at(k)
 	_refresh_nail_view()
+
+
+# --- Fortino --------------------------------------------------------------------------------
+
+## Torrette vive del Fortino.
+func fort_turrets() -> Array[AutoWeapon]:
+	var out: Array[AutoWeapon] = []
+	for turret in _turrets:
+		out.append(turret.weapon)
+	return out
+
+
+func _tick_fort(delta: float) -> void:
+	for k in range(_turrets.size() - 1, -1, -1):
+		var turret: Dictionary = _turrets[k]
+		turret.left -= delta
+		if turret.left <= 0.0:
+			_drop_turret(k)
+	if _fort_left < 0.0:
+		_fort_left = fusion_stat(&"every")
+	_fort_left -= delta
+	if _fort_left > 0.0:
+		return
+	# Piena o senza nemici: la prossima attende, riprovando poco dopo.
+	_fort_left = BLOCKED_RETRY
+	if write_queue == null or terrain_field == null or _turrets.size() >= int(fusion_stat(&"max_turrets")):
+		return
+	var spot: Variant = _fort_spot()
+	if spot == null:
+		return
+	_fort_left = fusion_stat(&"every")
+	_raise_turret(spot)
+
+
+## Centro del cono: verso il nemico vivo piu vicino, entro `reach`, lontano da zone protette e
+## dagli altri coni; null se non ci sono nemici in portata o posto libero.
+func _fort_spot() -> Variant:
+	var origin := shooter.global_position
+	var nearest: Enemy = null
+	for enemy in director.enemies_near(origin, weapon_range):
+		if not enemy.is_dead and (nearest == null or origin.distance_squared_to(enemy.global_position) < origin.distance_squared_to(nearest.global_position)):
+			nearest = enemy
+	if nearest == null:
+		return null
+	var toward := Vector3(nearest.global_position.x - origin.x, 0.0, nearest.global_position.z - origin.z)
+	var span := toward.length()
+	toward = toward / span if span > 1e-3 else Vector3.FORWARD
+	var distance := clampf(span - FORT_ENEMY_GAP, FORT_MIN_DISTANCE, fusion_stat(&"reach"))
+	var half := terrain_field.half_extents()
+	for degrees: float in [0.0, 30.0, -30.0, 60.0, -60.0, 90.0, -90.0]:
+		var p := origin + toward.rotated(Vector3.UP, deg_to_rad(degrees)) * distance
+		if absf(p.x) > half.x - 1.0 or absf(p.z) > half.y - 1.0 or terrain_field.is_protected(p):
+			continue
+		var crowded := false
+		for turret in _turrets:
+			var other: Vector3 = turret.center
+			if Vector2(p.x - other.x, p.z - other.z).length() < FORT_SPACING:
+				crowded = true
+				break
+		if not crowded:
+			return Vector3(p.x, terrain_field.base_height_at(p), p.z)
+	return null
+
+
+func _raise_turret(center: Vector3) -> void:
+	var height := fusion_stat(&"turret_height")
+	for disc in FORT_DISCS:
+		write_queue.push_level(center, disc.x, center.y + height * disc.y)
+	var turret := AutoWeapon.new()
+	turret.name = "FortTurret"
+	turret.weapon_id = &"nailgun"
+	turret.level = level
+	turret.branches = branches.duplicate()
+	turret.director = director
+	turret.terrain_field = terrain_field
+	# Ferma sul cono, non segue il giocatore.
+	turret.top_level = true
+	var marker := Marker3D.new()
+	marker.name = "Muzzle"
+	marker.add_child(_turret_mesh())
+	turret.add_child(marker)
+	turret.shooter = marker
+	turret.muzzle_height = FORT_MUZZLE
+	add_child(turret)
+	turret.global_position = center + Vector3(0.0, height, 0.0)
+	turret.fire_interval /= maxf(fusion_stat(&"rate"), 0.05)
+	_turrets.append({weapon = turret, center = center, left = fusion_stat(&"turret_seconds")})
+	print("PROTOTYPE01_FORT_RAISED at=(%.1f, %.1f) turrets=%d" % [center.x, center.z, _turrets.size()])
+
+
+## Libera la torretta e riporta il cono alla base.
+func _drop_turret(index: int) -> void:
+	var turret: Dictionary = _turrets[index]
+	var center: Vector3 = turret.center
+	if write_queue != null:
+		for radius in FORT_LOWER_RADII:
+			write_queue.push_level(center, radius, center.y)
+	(turret.weapon as Node).queue_free()
+	_turrets.remove_at(index)
+
+
+func _turret_mesh() -> MeshInstance3D:
+	var mesh := CylinderMesh.new()
+	mesh.top_radius = 0.14
+	mesh.bottom_radius = 0.22
+	mesh.height = 0.4
+	mesh.radial_segments = 8
+	mesh.rings = 1
+	var material := StandardMaterial3D.new()
+	material.albedo_color = FORT_COLOR.linear_to_srgb()
+	mesh.material = material
+	var view := MeshInstance3D.new()
+	view.mesh = mesh
+	view.position = Vector3(0.0, 0.2, 0.0)
+	return view
 
 
 func _spawn_patch(at: Vector3) -> void:

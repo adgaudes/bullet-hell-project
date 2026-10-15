@@ -59,6 +59,7 @@ func _initialize() -> void:
 	await _test_cracks_do_not_compound()
 	await _test_dozer_keeps_ditches()
 	await _test_mixer_lifts_bodies()
+	await _test_fort()
 	print("PROTOTYPE01_TESTS %s failures=%d" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -729,5 +730,110 @@ func _test_active_auto_aim() -> void:
 	await physics_frame
 	var at := stake.aim_point()
 	_check(Vector2(at.x, at.z).distance_to(Vector2(5.0, 0.6)) < 0.6, "punta al gruppo piu fitto, non al nemico isolato (%s)" % at)
+	await _clear()
+	_reset_field()
+
+
+# --- Fusioni di classe (piano 3) -------------------------------------------------------------
+
+## Chiodatrice della scena adottata da un loadout dell'Ingegnere (come in ArenaRun), portata al
+## 5 col picchetto (bivi "a": Raffica e Rimbalzanti) e fusa in Fortino.
+func _fort() -> AutoWeapon:
+	var shooter := _shooter(Vector3.ZERO)
+	var scene_weapon := AutoWeapon.new()
+	scene_weapon.shooter = shooter
+	scene_weapon.director = _director
+	_root.add_child(scene_weapon)
+	var loadout := WeaponLoadout.new()
+	loadout.player = shooter
+	loadout.director = _director
+	loadout.terrain_field = _field
+	loadout.write_queue = _queue
+	_root.add_child(loadout)
+	loadout.adopt(scene_weapon)
+	loadout.setup_class(&"engineer")
+	for id: StringName in [&"nailgun", &"seismic_stake"]:
+		while loadout.level_of(id) < WeaponCatalog.MAX_LEVEL:
+			if loadout.needs_branch(id):
+				loadout.choose_branch(id, &"a")
+			else:
+				loadout.level_up(id)
+	loadout.fuse(&"nailgun")
+	return scene_weapon
+
+
+func _health_of(enemies: Array[Enemy]) -> int:
+	var total := 0
+	for enemy in enemies:
+		total += enemy.health
+	return total
+
+
+## Scarto massimo della quota dalla base nell'area davanti a chi spara (dove nascono i coni).
+func _fort_residual() -> float:
+	var worst := 0.0
+	for iz in 41:
+		for ix in 49:
+			var p := Vector3(-6.0 + ix * 0.25, 0.0, -9.0 + iz * 0.25)
+			worst = maxf(worst, absf(_field.height_at(p) - _field.base_height_at(p)))
+	return worst
+
+
+func _test_fort() -> void:
+	print("Fortino")
+	var gun := _fort()
+	_check(gun.fusion_id == &"fort" and gun.write_queue == _queue, "fusa dal loadout, con la coda delle scritture")
+	await physics_frame
+	var children := gun.get_child_count()
+	var enemies: Array[Enemy] = []
+	for x: float in [-0.4, 0.0, 0.4]:
+		enemies.append(_enemy_at(Vector3(x, 0.0, -6.0), 5000))
+	var turret: AutoWeapon = null
+	for i in 11 * Engine.physics_ticks_per_second:
+		await physics_frame
+		if not gun.fort_turrets().is_empty():
+			turret = gun.fort_turrets()[0]
+			break
+	_check(turret != null, "entro 11 s nasce una torretta")
+	if turret == null:
+		await _clear()
+		_reset_field()
+		return
+	await _seconds(0.2)
+	var top := turret.global_position
+	var rise := _field.height_at(top) - _field.base_height_at(top)
+	_check(rise > 1.0, "la quota sotto la torretta sale di oltre 1 m (%.2f m)" % rise)
+	_check(Vector2(top.x, top.z).length() <= 5.01, "il cono e entro 5 m da chi spara (%.2f m)" % Vector2(top.x, top.z).length())
+	_check(turret.level == 5 and turret.has_branch(&"burst") and turret.has_branch(&"ricochet") and turret.fusion_id == &"",
+		"la torretta ha livello e bivi della chiodatrice, senza fusione")
+	_check(is_equal_approx(turret.fire_interval, gun.fire_interval / 0.7), "spara al 70%% (un colpo ogni %.2f s)" % turret.fire_interval)
+	# Chi spara si allontana: la chiodatrice principale non ha piu nemici in portata.
+	gun.shooter.global_position = Vector3(0.0, 0.0, 16.0)
+	await _seconds(0.5)
+	var shots := [0]
+	turret.fired.connect(func(count: int) -> void: shots[0] += count)
+	var before := _health_of(enemies)
+	await _seconds(2.0)
+	var after := _health_of(enemies)
+	_check(shots[0] > 0 and after < before, "la torretta colpisce da sola (%d chiodi, vita %d -> %d)" % [shots[0], before, after])
+	_check(turret.global_position.is_equal_approx(top), "la torretta non segue chi spara")
+	await _seconds(8.0 - 2.7 + 0.5)
+	_check(gun.fort_turrets().is_empty() and not is_instance_valid(turret), "dopo 8 s la torretta sparisce")
+	var back := _field.height_at(top) - _field.base_height_at(top)
+	_check(absf(back) < 0.2, "il cono torna alla base (%.2f m)" % back)
+	_check(gun.get_child_count() == children, "i figli tornano %d (%d)" % [children, gun.get_child_count()])
+	print("Fortino: al massimo due torrette")
+	gun.shooter.global_position = Vector3.ZERO
+	var most := 0
+	for i in 40 * Engine.physics_ticks_per_second:
+		gun._fort_left = 0.0
+		await physics_frame
+		most = maxi(most, gun.fort_turrets().size())
+	_check(most == 2, "chiamate di continuo per 40 s, mai piu di due torrette (%d)" % most)
+	gun.shooter.global_position = Vector3(0.0, 0.0, 16.0)
+	await _seconds(8.5)
+	_check(gun.fort_turrets().is_empty() and gun.get_child_count() == children,
+		"dopo oltre 60 s nessun nodo in piu (%d figli)" % gun.get_child_count())
+	_check(_fort_residual() < 0.2, "nessun cono resta nel terreno (%.2f m)" % _fort_residual())
 	await _clear()
 	_reset_field()
