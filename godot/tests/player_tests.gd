@@ -18,6 +18,7 @@ func _initialize() -> void:
 	_test_movement_model()
 	await _test_player_in_scene()
 	await _test_pack_gauge()
+	await _test_class_color()
 	# T-12: i nodi messi in coda con queue_free vanno liberati prima di uscire, o
 	# il motore segnala istanze ObjectDB perse all'uscita.
 	await _frames(2)
@@ -47,6 +48,23 @@ func _test_pack_gauge() -> void:
 	_check(sack != null and sack.scale.x > 1.1, "a zaino pieno la sacca si gonfia")
 	player.queue_free()
 	field.queue_free()
+
+
+## Segnaposto delle classi (D-092): la tuta prende il colore di classe e ci torna dopo il colpo.
+func _test_class_color() -> void:
+	print("class color")
+	var player: PlayerCharacter = PlayerScene.instantiate()
+	root.add_child(player)
+	await _frames(2)
+	var suit := player._body_material
+	var teal := Color(0.1, 0.75, 0.72).srgb_to_linear()
+	player.set_class_color(teal)
+	_check(suit.albedo_color.is_equal_approx(teal.linear_to_srgb()), "la tuta prende il colore di classe")
+	player.on_hit()
+	_check(not suit.albedo_color.is_equal_approx(teal.linear_to_srgb()), "il colpo lampeggia")
+	await _frames(60)
+	_check(suit.albedo_color.is_equal_approx(teal.linear_to_srgb()), "dopo il lampo torna al colore di classe")
+	player.queue_free()
 
 
 func _check(condition: bool, label: String) -> void:

@@ -76,6 +76,8 @@ var pack: SoilPack
 var brush_radius_bonus_m := 0.0
 ## Terra chiesta allo zaino per metro cubo alzato (Getto rapido: 0,8 al primo livello).
 var raise_cost_scale := 1.0
+## Colore della tuta a riposo (lineare): l'arancio dell'Ingegnere o quello della classe.
+var body_color_linear := BODY_COLOR_LINEAR
 var tool_range_bonus_m := 0.0
 var _preview: BrushPreview
 var _brush_was_blocked := false
@@ -169,7 +171,7 @@ func _ready() -> void:
 	ActorModel.apply_materials(_body, overrides)
 	ActorModel.outline_remaining_surfaces(_body)
 	_base_body_scale = _body.scale
-	_set_body_color(BODY_COLOR_LINEAR)
+	_set_body_color(body_color_linear)
 	_model_rest = _model.transform
 	_setup_pack_sack()
 	if recoil_source != null and recoil_source.has_signal(&"fired"):
@@ -776,7 +778,7 @@ func _end_dash() -> void:
 
 func _end_dash_cooldown() -> void:
 	is_dash_on_cooldown = false
-	_set_state_color(BODY_COLOR_LINEAR)
+	_set_state_color(body_color_linear)
 	print("PROTOTYPE01_DASH_READY")
 	dash_ready.emit()
 
@@ -832,12 +834,20 @@ func _update_hit_flash(delta: float) -> void:
 		return
 	_hit_flash_left -= delta
 	if _hit_flash_left <= 0.0:
-		var color := BODY_COLOR_LINEAR
+		var color := body_color_linear
 		if is_dashing:
 			color = tuning.dash_color_linear
 		elif is_dash_on_cooldown:
 			color = tuning.dash_cooldown_color_linear
 		_set_body_color(color)
+
+
+## Tuta del colore di classe (D-092: segnaposto delle classi senza modello). Diventa il
+## colore di riposo; scatto e colpo restano gli stessi.
+func set_class_color(linear_color: Color) -> void:
+	body_color_linear = linear_color
+	if _body_material != null and not is_dashing and not is_dash_on_cooldown:
+		_set_state_color(linear_color)
 
 
 func _set_body_color(linear_color: Color) -> void:

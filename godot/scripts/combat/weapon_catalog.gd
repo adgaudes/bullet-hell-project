@@ -328,6 +328,7 @@ static func branch_options(id: StringName, at_level: int) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	if entry.is_empty():
 		return out
-	for option: Dictionary in (entry.branches as Dictionary).get(at_level, []):
+	# Le fusioni non hanno bivi.
+	for option: Dictionary in (entry.get(&"branches", {}) as Dictionary).get(at_level, []):
 		out.append(option)
 	return out

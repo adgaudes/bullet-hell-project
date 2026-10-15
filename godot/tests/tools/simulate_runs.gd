@@ -113,6 +113,8 @@ var _lamps_bought := 0
 var _move := Vector2.ZERO
 var _aim := Vector2.ZERO
 var _dig_cooldown := 0.0
+## Armi attive usate nella run (D-092): il bot le usa appena cariche con un nemico in portata.
+var _actives_used := 0
 var _stuck_seconds := 0.0
 var _escape_left := 0.0
 var _digs := 0
@@ -224,6 +226,7 @@ func _simulate(bot: StringName, run_seed: int) -> Dictionary:
 	_stuck_seconds = 0.0
 	_escape_left = 0.0
 	_digs = 0
+	_actives_used = 0
 	_hits = 0
 	_dark_samples = 0
 	_lamps_bought = 0
@@ -274,10 +277,10 @@ func _simulate(bot: StringName, run_seed: int) -> Dictionary:
 	}
 	var outcome := "victory_at" if victory else ("timeout_at" if timed_out else "died_at")
 	var night_phase := DayNightCycle.PHASE_NAMES[_run.day_night.phase] if _run.day_night != null else "DAY"
-	print("PROTOTYPE01_SIM seed=%d bot=%s %s=%.1f level=%d kills=%d boss=%s boss_hp=%d hp=%d hits=%d hp_at_boss=%d level_at_boss=%d digs=%d scrap_carried=%d capacity=%d scrap_out=%d upgrades=%s night=%s dark_contacts=%d dark_decisions=%d lamps=%d wall_s=%.1f"
+	print("PROTOTYPE01_SIM seed=%d bot=%s %s=%.1f level=%d kills=%d boss=%s boss_hp=%d hp=%d hits=%d hp_at_boss=%d level_at_boss=%d digs=%d scrap_carried=%d capacity=%d scrap_out=%d upgrades=%s night=%s dark_contacts=%d dark_decisions=%d lamps=%d actives=%d class=%s wall_s=%.1f"
 		% [run_seed, bot, outcome, result.time, result.level, result.kills, boss_state, boss_health, result.health,
 			_hits, _health_at_boss, _level_at_boss, _digs, result.carried, result.capacity, result.scrap_out, ",".join(upgrades),
-			night_phase, _director.dark_contacts, _dark_samples, _lamps_bought,
+			night_phase, _director.dark_contacts, _dark_samples, _lamps_bought, _actives_used, _run.class_id,
 			(Time.get_ticks_msec() - wall_start) / 1000.0])
 
 	paused = false
@@ -315,7 +318,21 @@ func _tick_bot(step: float) -> void:
 				_move = _choose_direction()
 		if _params.digs and not _tick_lamps():
 			_tick_relief_brush(step)
+		_tick_actives()
 	_apply_inputs()
+
+
+## Attive appena cariche, se un nemico e entro la loro portata (il punto lo sceglie la mira).
+func _tick_actives() -> void:
+	if _run.loadout == null:
+		return
+	var actives := _run.loadout.actives()
+	for slot in actives.size():
+		var active := actives[slot]
+		if active.cooldown_left > 0.0 or _nearest_enemy_distance() > active.stat(&"aim_range"):
+			continue
+		if _run.loadout.trigger_active(slot):
+			_actives_used += 1
 
 
 ## Fermo contro un ostacolo mentre vuole muoversi: per mezzo secondo prova una

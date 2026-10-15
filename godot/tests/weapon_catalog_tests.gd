@@ -110,6 +110,7 @@ func _test_class_kits() -> void:
 		_check(WeaponCatalog.fusion_of(auto_id) == kits[class_id][2], "%s si fonde in %s" % [auto_id, kits[class_id][2]])
 		_check(int(auto.unlock_cost) == 0 and int(active.unlock_cost) == 0, "%s: armi di classe sempre disponibili" % class_id)
 		_check(ClassCatalog.find(class_id).kit == [auto_id, active_id], "%s: kit della classe" % class_id)
+	_check(WeaponCatalog.branch_options(&"fort", 3).is_empty(), "una fusione non ha bivi (e non da errori)")
 	_check(WeaponCatalog.fusion_of(&"nailgun") == &"fort", "la chiodatrice si fonde nel Fortino")
 	_check(WeaponCatalog.find(&"fort").parts == [&"nailgun", &"seismic_stake"], "Fortino: chiodatrice e picchetto")
 	_check(WeaponCatalog.find(&"scythe_bramble").name == "Falciarovi", "nome della fusione dell'Erbacciaia")

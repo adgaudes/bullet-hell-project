@@ -1165,6 +1165,9 @@ func _setup_loadout() -> void:
 	loadout.adopt(weapon)
 	loadout.setup_class(class_id)
 	progression.class_id = class_id
+	# Segnaposto (spec par. 8): le classi senza modello usano l'Ingegnere con la tuta tinta.
+	if class_id != ClassCatalog.DEFAULT:
+		player.set_class_color((ClassCatalog.find(class_id).color as Color).srgb_to_linear())
 	class_perks = ClassPerks.new()
 	class_perks.name = "ClassPerks"
 	class_perks.director = director
