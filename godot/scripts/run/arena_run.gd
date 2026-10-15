@@ -1142,9 +1142,19 @@ func _setup_loadout() -> void:
 	loadout.adopt(weapon)
 	loadout.setup_class(class_id)
 	progression.class_id = class_id
-	progression.weapon_cards = func() -> Array[Dictionary]: return WeaponOffers.cards(loadout, class_id, [])
+	progression.weapon_cards = func() -> Array[Dictionary]: return WeaponOffers.cards(loadout, class_id, _unlocked_weapons())
 	loadout.changed.connect(_refresh_weapon_hud)
 	_refresh_weapon_hud()
+
+
+## Armi comprate in Officina. Provvisorio (piano 2): finche l'Officina non le vende (piano 4)
+## sono tutte sbloccate, cosi il kit comune si prova in partita.
+func _unlocked_weapons() -> Array[StringName]:
+	var ids: Array[StringName] = []
+	for entry in WeaponCatalog.all():
+		if int(entry.get(&"unlock_cost", 0)) > 0:
+			ids.append(entry.id)
+	return ids
 
 
 ## Striscia delle armi del HUD (D-092): slot ricostruiti quando il loadout cambia, ricarica

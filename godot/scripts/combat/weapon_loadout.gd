@@ -93,7 +93,7 @@ func free_slots(slot: StringName) -> int:
 ## Aggiunge l'arma al livello 1; null se sconosciuta, non implementata, gia presa o senza slot.
 func add(id: StringName) -> Weapon:
 	var entry := WeaponCatalog.find(id)
-	if entry.is_empty() or has_weapon(id) or free_slots(entry.slot) <= 0:
+	if entry.is_empty() or entry.slot == &"fusion" or has_weapon(id) or free_slots(entry.slot) <= 0:
 		return null
 	var w: Weapon
 	if adopted != null and adopted.weapon_id == id:

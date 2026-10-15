@@ -68,6 +68,83 @@ static func _build() -> Array[Dictionary]:
 						mods = {shock_damage_set = 3.0}},
 				],
 			}},
+		# --- Kit comune (spec par. 4.5): si sblocca in Officina -------------------------------
+		{id = &"site_blade", name = "Lama da cantiere", deck = &"common", slot = &"auto", partner = &"ram",
+			fusion = &"disc_dozer", unlock_cost = 15, icon = &"blade",
+			text = "Lancia un disco che rotola: in discesa accelera, nei fossati gira sul fondo.",
+			base = {fire_interval = 2.5, damage = 2.0, weapon_range = 10.0, projectile_speed = 8.0, travel = 10.0,
+				disc_radius = 0.4, discs = 1.0, twin_angle = 15.0, ditch_seconds = 3.0},
+			levels = {2: {damage_add = 1.0}, 4: {fire_interval_mul = 0.8}},
+			level_texts = {2: "Un danno in piu.", 4: "Lancia il 25% piu spesso."},
+			branches = {
+				3: [
+					{id = &"twin", name = "Due lame", text = "Due dischi per lancio, a ventaglio.", mods = {discs_set = 2.0}},
+					{id = &"serrated", name = "Lama dentata", text = "Disco piu grande, ma piu lento.",
+						mods = {disc_radius_mul = 1.6, projectile_speed_mul = 0.7}},
+				],
+				5: [
+					{id = &"rebound", name = "Rimbalzo", text = "Rimbalza sugli argini fino a tre volte.", mods = {bounces_set = 3.0}},
+					{id = &"groove", name = "Solco", text = "Dove passa scava un solco.", mods = {groove_set = 1.0}},
+				],
+			}},
+		{id = &"jackhammer", name = "Martello pneumatico", deck = &"common", slot = &"auto", partner = &"cement_mixer",
+			fusion = &"compactor", unlock_cost = 15, icon = &"hammer",
+			text = "Un'onda attorno a te spinge via l'orda; chi sbatte contro un argine prende il doppio.",
+			base = {fire_interval = 2.0, damage = 1.0, wave_radius = 3.0, shove_speed = 6.0},
+			levels = {2: {wave_radius_add = 0.5}, 4: {damage_add = 1.0}},
+			level_texts = {2: "Onda piu larga di mezzo metro.", 4: "Un danno in piu."},
+			branches = {
+				3: [
+					{id = &"wide", name = "Onda larga", text = "L'onda arriva a 5 m.", mods = {wave_radius_set = 5.0}},
+					{id = &"stunning", name = "Stordente", text = "Chi e colpito resta fermo 0,8 s.", mods = {stun_set = 0.8}},
+				],
+				5: [
+					{id = &"cracks", name = "Crepe", text = "Ogni onda apre tre crateri attorno a te.", mods = {cracks_set = 1.0}},
+					{id = &"echo", name = "Eco nei fossati", text = "L'onda colpisce anche chi sta in basso fino a 8 m.", mods = {echo_set = 1.0}},
+				],
+			}},
+		{id = &"ram", name = "Ariete", deck = &"common", slot = &"active", partner = &"site_blade",
+			fusion = &"disc_dozer", unlock_cost = 20, icon = &"ram",
+			text = "Carichi in avanti, intoccabile: travolgi l'orda e spiani il terreno.",
+			base = {cooldown = 10.0, aim_range = 8.0, charge_distance = 8.0, charge_seconds = 0.5, damage = 3.0,
+				hit_radius = 1.2, shove_speed = 7.0},
+			levels = {2: {damage_add = 1.0}, 4: {cooldown_mul = 0.85}},
+			level_texts = {2: "Un danno in piu.", 4: "Si ricarica il 15% prima."},
+			branches = {
+				3: [
+					{id = &"long", name = "Rincorsa", text = "La carica arriva a 12 m.", mods = {charge_distance_set = 12.0}},
+					{id = &"shield", name = "Scudo", text = "All'arrivo resti intoccabile 1,5 s.", mods = {shield_set = 1.5}},
+				],
+				5: [
+					{id = &"trench", name = "Trincea", text = "Invece di spianare scava un fossato lungo la carica.", mods = {trench_set = 1.0}},
+					{id = &"blast", name = "Botto", text = "All'arrivo un'onda: 3 danni entro 3 m.", mods = {blast_set = 3.0}},
+				],
+			}},
+		{id = &"cement_mixer", name = "Betoniera", deck = &"common", slot = &"active", partner = &"jackhammer",
+			fusion = &"compactor", unlock_cost = 20, icon = &"mixer",
+			text = "Una pozza di cemento blocca chi c'e dentro, poi indurisce in un dosso.",
+			base = {cooldown = 12.0, aim_range = 6.0, pool_radius = 2.5, block_seconds = 3.0, bump_height = 0.4, pools = 1.0},
+			levels = {2: {pool_radius_add = 0.5}, 4: {block_seconds_add = 1.0}},
+			level_texts = {2: "Pozza piu larga di mezzo metro.", 4: "Blocca un secondo in piu."},
+			branches = {
+				3: [
+					{id = &"double", name = "Doppia colata", text = "Due pozze affiancate.", mods = {pools_set = 2.0}},
+					{id = &"wall", name = "Muro di getto", text = "Il dosso sale a 1,2 m: un argine.", mods = {bump_height_set = 1.2}},
+				],
+				5: [
+					{id = &"quickset", name = "Presa rapida", text = "Quando indurisce fa 3 danni a chi e bloccato.", mods = {set_damage_set = 3.0}},
+					{id = &"pavement", name = "Pavimento", text = "Invece del dosso spiana alla base: una piazzola liscia.", mods = {flatten_set = 1.0}},
+				],
+			}},
+		# --- Fusioni comuni (par. 4.5): l'automatica resta e aggiunge questo effetto -----------
+		{id = &"disc_dozer", name = "Ruspa a dischi", deck = &"common", slot = &"fusion", parts = [&"site_blade", &"ram"],
+			icon = &"dozer", unlock_cost = 0,
+			text = "Dischi grandi il doppio che spianano dove passano; ogni 10 s un disco enorme dritto per 20 m.",
+			base = {radius_mul = 2.0, big_every = 10.0, big_travel = 20.0, big_radius = 1.6}},
+		{id = &"compactor", name = "Costipatore", deck = &"common", slot = &"fusion", parts = [&"jackhammer", &"cement_mixer"],
+			icon = &"compactor", unlock_cost = 0,
+			text = "Ogni onda blocca per un attimo; ogni terza lascia un anello di cemento.",
+			base = {stun = 0.6, ring_every = 3.0, ring_height = 0.3}},
 	]
 
 
@@ -110,6 +187,17 @@ static func _apply(value: float, key: StringName, mods: Dictionary) -> float:
 	if mods.has(add_key):
 		value += float(mods[add_key])
 	return value
+
+
+## Fusione dell'automatica [param auto_id] (voce con `slot == &"fusion"` che la contiene), o &"".
+static func fusion_of(auto_id: StringName) -> StringName:
+	var entry := find(auto_id)
+	if entry.is_empty() or entry.slot != &"auto":
+		return &""
+	for candidate in all():
+		if candidate.slot == &"fusion" and (candidate.parts as Array).has(auto_id):
+			return candidate.id
+	return &""
 
 
 ## Le due trasformazioni al livello [param at_level] (3 o 5), vuoto altrove.

@@ -9,6 +9,7 @@ func _initialize() -> void:
 	_test_nailgun_stats()
 	_test_branches()
 	_test_classes()
+	_test_common_kit()
 	_test_upgrade_decks()
 	print("PROTOTYPE01_TESTS %s failures=%d" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
@@ -46,8 +47,27 @@ func _test_branches() -> void:
 	_check(WeaponCatalog.branch_options(&"nailgun", 2).is_empty(), "nessun bivio al livello 2")
 	_check(WeaponCatalog.branch_options(&"seismic_stake", 5).size() == 2, "il picchetto ha il bivio al 5")
 	for entry in WeaponCatalog.all():
+		if entry.slot == &"fusion":
+			continue
 		for at in WeaponCatalog.BRANCH_LEVELS:
 			_check(WeaponCatalog.branch_options(entry.id, at).size() == 2, "%s: due bivi al %d" % [entry.id, at])
+
+
+## Piano 2: kit comune (spec par. 4.5) e fusioni comuni.
+func _test_common_kit() -> void:
+	print("common kit")
+	for id in [&"site_blade", &"jackhammer", &"ram", &"cement_mixer"]:
+		var entry := WeaponCatalog.find(id)
+		_check(not entry.is_empty() and entry.deck == &"common" and int(entry.unlock_cost) > 0, "%s: comune, da sbloccare" % id)
+	_check(WeaponCatalog.find(&"site_blade").slot == &"auto" and WeaponCatalog.find(&"ram").slot == &"active", "Lama automatica, Ariete attiva")
+	_check(WeaponCatalog.find(&"site_blade").partner == &"ram" and WeaponCatalog.find(&"jackhammer").partner == &"cement_mixer", "coppie di fusione")
+	_check(WeaponCatalog.fusion_of(&"site_blade") == &"disc_dozer" and WeaponCatalog.fusion_of(&"jackhammer") == &"compactor", "fusioni delle automatiche")
+	_check(WeaponCatalog.fusion_of(&"ram") == &"" and WeaponCatalog.fusion_of(&"missing") == &"", "solo le automatiche hanno una fusione")
+	_check(WeaponCatalog.find(&"disc_dozer").slot == &"fusion" and WeaponCatalog.find(&"compactor").parts == [&"jackhammer", &"cement_mixer"], "voci delle fusioni")
+	_check(is_equal_approx(WeaponCatalog.stat(&"site_blade", &"disc_radius", 3, {3: &"b"}), 0.64), "Lama dentata: raggio x1,6")
+	_check(is_equal_approx(WeaponCatalog.stat(&"jackhammer", &"wave_radius", 2, {}), 3.5), "Martello liv. 2: onda 3,5 m")
+	_check(WeaponCatalog.stat(&"ram", &"charge_distance", 3, {3: &"a"}) == 12.0, "Rincorsa: 12 m")
+	_check(WeaponCatalog.stat(&"cement_mixer", &"block_seconds", 4, {3: &"a"}) == 4.0, "Betoniera liv. 4: blocco 4 s")
 
 
 func _test_classes() -> void:

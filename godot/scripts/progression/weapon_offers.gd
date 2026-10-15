@@ -29,7 +29,7 @@ static func cards(loadout: WeaponLoadout, class_id: StringName, unlocked: Array)
 	var out: Array[Dictionary] = []
 	for entry in WeaponCatalog.all():
 		var id: StringName = entry.id
-		if entry.deck != &"common" and entry.deck != class_id:
+		if entry.slot == &"fusion" or (entry.deck != &"common" and entry.deck != class_id):
 			continue
 		var level := loadout.level_of(id)
 		if level > 0:
