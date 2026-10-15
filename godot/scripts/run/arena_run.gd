@@ -909,10 +909,35 @@ func _open_next_level_up() -> void:
 
 
 func _on_upgrade_chosen(id: StringName) -> void:
+	if WeaponOffers.is_weapon_card(id):
+		_on_weapon_card(id)
+		return
 	_pending_level_ups -= 1
 	var new_level := progression.choose(id)
 	apply_upgrade(id, new_level)
 	print("PROTOTYPE01_UPGRADE_CHOSEN id=%s level=%d" % [id, new_level])
+	_open_next_level_up.call_deferred()
+
+
+## Carta arma (D-092): arma nuova, livello, bivio (apre le due trasformazioni senza consumare
+## il level-up) o trasformazione scelta.
+func _on_weapon_card(id: StringName) -> void:
+	var card := WeaponOffers.parse(id)
+	match card.get(&"kind", &""):
+		&"new":
+			loadout.add(card.weapon_id)
+		&"level":
+			loadout.level_up(card.weapon_id)
+		&"branch":
+			var at := loadout.level_of(card.weapon_id) + 1
+			var title := String(WeaponCatalog.find(card.weapon_id).get(&"name", "")).to_upper()
+			print("PROTOTYPE01_WEAPON_BRANCH id=%s at=%d" % [card.weapon_id, at])
+			level_up_menu.open(WeaponOffers.branch_cards(card.weapon_id, at), {}, progression.level, title, "scegli una trasformazione")
+			return
+		&"choose":
+			loadout.choose_branch(card.weapon_id, card.pick)
+	_pending_level_ups -= 1
+	print("PROTOTYPE01_UPGRADE_CHOSEN id=%s level=%d" % [id, loadout.level_of(card.get(&"weapon_id", &""))])
 	_open_next_level_up.call_deferred()
 
 
@@ -1115,6 +1140,8 @@ func _setup_loadout() -> void:
 	add_child(loadout)
 	loadout.adopt(weapon)
 	loadout.setup_class(class_id)
+	progression.class_id = class_id
+	progression.weapon_cards = func() -> Array[Dictionary]: return WeaponOffers.cards(loadout, class_id, [])
 
 
 ## Mira commutabile (D-089): la scelta del giocatore resta nelle impostazioni.

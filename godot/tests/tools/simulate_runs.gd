@@ -55,14 +55,15 @@ const LOOKAHEAD := 3.0
 ## Distanza dal boss che i bot cercano di tenere: dentro la portata della chiodatrice.
 const BOSS_ORBIT_DISTANCE := 5.5
 const BOSS_TOO_CLOSE := 3.0
-## Priorita fissa delle carte: prima il danno, poi la vita, poi il resto.
+## Priorita fissa delle carte dopo le armi (D-092: carte arma e trasformazioni vincono
+## sempre): prima il danno, poi la vita, poi il resto.
 const CARD_PRIORITY: Array[StringName] = [
-	&"nail_spread", &"nail_rate", &"companion_turret", &"nail_pierce", &"patch", &"boots",
+	&"companion_turret", &"patch", &"boots",
 	&"companion_magnet", &"reach", &"companion_cargo", &"dig_blast", &"spiked_wall",
 ]
 ## Lo scrapper vuole il cassone grande subito dopo le armi.
 const CARD_PRIORITY_SCRAPPER: Array[StringName] = [
-	&"nail_spread", &"nail_rate", &"companion_cargo", &"companion_turret", &"nail_pierce", &"patch",
+	&"companion_cargo", &"companion_turret", &"patch",
 	&"boots", &"companion_magnet", &"reach", &"dig_blast", &"spiked_wall",
 ]
 ## Secondi fra due decisioni, raggio entro cui vede i nemici, peso dell'esperienza.
@@ -589,18 +590,33 @@ func _pick_card() -> void:
 	var priority := CARD_PRIORITY_SCRAPPER if _bot == &"scrapper" else CARD_PRIORITY
 	var best_index := 0
 	var best_rank := priority.size()
-	for i in (0 if _params.first_card else _menu._buttons.size()):
-		# Il nome dell'upgrade e la terza riga della carta.
-		var lines := _menu._buttons[i].text.split("\n")
-		var rank := priority.size()
-		for upgrade in UpgradeCatalog.all():
-			if lines.size() > 2 and upgrade.name == lines[2]:
-				rank = priority.find(upgrade.id)
-				break
-		if rank >= 0 and rank < best_rank:
+	for i in (0 if _params.first_card else _menu.card_count()):
+		# Righe della carta: rarita, nome, tipo, testo. Un'arma o una sua trasformazione (D-092)
+		# vince su tutto; le altre seguono la priorita (spostata di uno).
+		var lines := _menu.card_text(i).split("\n")
+		var card_name := lines[1] if lines.size() > 1 else ""
+		var rank := 0 if _is_weapon_card_name(card_name) else priority.size()
+		if rank > 0:
+			for upgrade in UpgradeCatalog.all():
+				if upgrade.name == card_name:
+					var found := priority.find(upgrade.id)
+					rank = found + 1 if found >= 0 else priority.size()
+					break
+		if rank < best_rank:
 			best_rank = rank
 			best_index = i
 	_menu.press(best_index)
+
+
+static func _is_weapon_card_name(card_name: String) -> bool:
+	for entry in WeaponCatalog.all():
+		if entry.name == card_name:
+			return true
+		for at in WeaponCatalog.BRANCH_LEVELS:
+			for option in WeaponCatalog.branch_options(entry.id, at):
+				if option.name == card_name:
+					return true
+	return false
 
 
 # --- Riepilogo ---------------------------------------------------------------------

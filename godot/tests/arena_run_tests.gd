@@ -49,6 +49,7 @@ func _initialize() -> void:
 	await _test_uphill_slows_enemies()
 	await _test_dig_debris_throttled()
 	await _test_level_up_flow()
+	await _test_weapon_branch_flow()
 	_test_companion_upgrades()
 	await _test_companion_skips_scrap_behind_rampart()
 	await _test_death_ends_run()
@@ -437,10 +438,33 @@ func _test_level_up_flow() -> void:
 	_menu.press(0)
 	_check(_menu.is_open, "carte inattive subito dopo l'apertura")
 	await create_timer(0.6, true).timeout
-	_menu.press(0)
+	# La prima carta e un'arma (D-092): si prende la seconda, una carta del mazzo.
+	_menu.press(1)
 	await _frames(2)
 	_check(not _menu.is_open and not paused, "scelta fatta: il gioco riparte")
 	_check(_run.progression.levels.size() == 1, "un upgrade acquisito %s" % [_run.progression.levels])
+
+
+## D-092: la carta bivio apre la scelta fra due trasformazioni; il livello sale solo dopo,
+## e un secondo level-up in coda si apre dopo la trasformazione.
+func _test_weapon_branch_flow() -> void:
+	print("weapon branch")
+	var loadout := _run.loadout
+	_check(loadout != null and loadout.has_weapon(&"nailgun") and loadout.has_weapon(&"seismic_stake"), "kit dell'Ingegnere nella run")
+	loadout.level_up(&"nailgun")
+	_run._pending_level_ups = 2
+	_run._on_upgrade_chosen(&"w:branch:nailgun")
+	_check(_menu.is_open and _menu.card_count() == 2 and _menu.title_text() == "CHIODATRICE", "si apre la scelta della trasformazione")
+	_check(loadout.level_of(&"nailgun") == 2 and _run._pending_level_ups == 2, "il livello non e ancora salito")
+	await create_timer(0.6, true).timeout
+	_menu.press(1)
+	await _frames(3)
+	_check(loadout.level_of(&"nailgun") == 3 and loadout.weapon(&"nailgun").has_branch(&"bridge"), "scelta: Chiodi da ponte al livello 3")
+	_check(_menu.is_open and _menu.card_count() == 3 and _run._pending_level_ups == 1, "poi si apre il level-up rimasto")
+	await create_timer(0.6, true).timeout
+	_menu.press(1)
+	await _frames(2)
+	_check(not _menu.is_open and not paused, "finite le scelte il gioco riparte")
 
 
 ## Audit C-01: un rottame raggiungibile solo aggirando un argine non e una meta in linea

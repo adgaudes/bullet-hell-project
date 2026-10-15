@@ -52,8 +52,10 @@ func _ready() -> void:
 	_overlay.hide()
 
 
-## [param offer]: voci di UpgradeCatalog; [param levels]: livello attuale per id.
-func open(offer: Array[Dictionary], levels: Dictionary, player_level: int) -> void:
+## [param offer]: voci di UpgradeCatalog o carte arma (WeaponOffers); [param levels]: livello
+## attuale per id (le carte arma lo portano in `shown_level`). Titolo e sottotitolo cambiano
+## per la scelta della trasformazione di un'arma (D-092).
+func open(offer: Array[Dictionary], levels: Dictionary, player_level: int, title := "", subtitle := "") -> void:
 	for button in _buttons:
 		# Tolte subito dall'albero: le carte vecchie non restano un frame accanto alle nuove (U-07).
 		_cards.remove_child(button)
@@ -61,9 +63,10 @@ func open(offer: Array[Dictionary], levels: Dictionary, player_level: int) -> vo
 	_buttons.clear()
 	_icons.clear()
 	_ribbons.clear()
-	_title.text = "LIVELLO %d" % player_level
+	_title.text = title if not title.is_empty() else "LIVELLO %d" % player_level
+	_subtitle.text = subtitle if not subtitle.is_empty() else "scegli un pezzo"
 	for upgrade in offer:
-		_buttons.append(_make_card(upgrade, int(levels.get(upgrade.id, 0))))
+		_buttons.append(_make_card(upgrade, int(upgrade.get(&"shown_level", levels.get(upgrade.id, 0)))))
 	for i in _buttons.size():
 		var left := _buttons[(i - 1 + _buttons.size()) % _buttons.size()]
 		var right := _buttons[(i + 1) % _buttons.size()]
@@ -180,7 +183,7 @@ func _make_card(upgrade: Dictionary, current_level: int) -> Button:
 	spacer.custom_minimum_size = Vector2(0, 10)
 	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	column.add_child(spacer)
-	var icon := UiIcon.make(UiIcon.for_category(upgrade.category), 48.0, UiPalette.BORDER)
+	var icon := UiIcon.make(upgrade.get(&"icon", UiIcon.for_category(upgrade.category)), 48.0, UiPalette.BORDER)
 	icon.name = "Icon"
 	icon.outline = INK
 	icon.size_flags_horizontal = Control.SIZE_SHRINK_CENTER

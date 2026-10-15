@@ -13,6 +13,8 @@ func _initialize() -> void:
 	_test_maxed_upgrades_disappear()
 	_test_companion_parts_need_companion()
 	_test_rarity_weights()
+	_test_class_decks()
+	_test_weapon_card_first()
 	print("PROTOTYPE01_TESTS %s failures=%d" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -33,6 +35,44 @@ func _new(run_seed: int) -> RunProgression:
 
 func _ids(offer: Array[Dictionary]) -> String:
 	return ",".join(PackedStringArray(offer.map(func(u: Dictionary) -> String: return str(u.id))))
+
+
+## D-092: con una classe compaiono solo le carte comuni e quelle del suo mazzo.
+func _test_class_decks() -> void:
+	print("class decks")
+	var p := _new(21)
+	p.class_id = &"engineer"
+	var foreign := 0
+	var own := 0
+	for i in 500:
+		for u in p.roll_offer():
+			if u.deck != &"common" and u.deck != &"engineer":
+				foreign += 1
+			if u.deck == &"engineer":
+				own += 1
+	_check(foreign == 0, "nessuna carta di un'altra classe in 500 offerte")
+	_check(own > 0, "le carte dell'Ingegnere compaiono")
+
+
+## D-092: se ci sono carte arma la prima carta e un'arma; le altre restano carte normali.
+func _test_weapon_card_first() -> void:
+	print("weapon card first")
+	var p := _new(22)
+	p.class_id = &"engineer"
+	var card := {id = &"w:level:nailgun", name = "Chiodatrice", category = &"weapon", rarity = UpgradeCatalog.Rarity.COMMON,
+		max_level = 0, requires = "", deck = &"engineer", text = "", weapon_id = &"nailgun", kind = &"level", shown_level = 1}
+	p.weapon_cards = func() -> Array[Dictionary]: return [card] as Array[Dictionary]
+	var first := true
+	var others_plain := true
+	for i in 200:
+		var offer := p.roll_offer()
+		first = first and offer.size() == 3 and offer[0].id == &"w:level:nailgun"
+		others_plain = others_plain and not offer.slice(1).any(func(u: Dictionary) -> bool: return String(u.id).begins_with("w:"))
+	_check(first, "la carta arma e sempre la prima")
+	_check(others_plain, "le altre due non sono carte arma")
+	var none := _new(23)
+	none.weapon_cards = func() -> Array[Dictionary]: return [] as Array[Dictionary]
+	_check(none.roll_offer().size() == 3, "senza carte arma restano tre carte normali")
 
 
 func _test_xp_curve() -> void:

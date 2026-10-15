@@ -20,6 +20,12 @@ var pity_level_ups := 4
 var level_ups_without_rare := 0
 var has_companion := true
 var seed_value := 0
+## Classe del giocatore (D-092): con un valore compaiono solo le carte comuni e quelle del suo
+## mazzo; vuota, tutte (test e simulazioni vecchie).
+var class_id: StringName = &""
+## Carte arma possibili (WeaponOffers.cards), chiamata a ogni offerta; se ne restituisce, la
+## prima carta dell'offerta e un'arma (spec D-092, par. 6.3).
+var weapon_cards: Callable
 
 
 func setup(run_seed: int, upgrades: Array[Dictionary] = []) -> void:
@@ -56,8 +62,15 @@ func eligible() -> Array[Dictionary]:
 			continue
 		if upgrade.requires == "companion" and not has_companion:
 			continue
+		if not _in_deck(upgrade):
+			continue
 		result.append(upgrade)
 	return result
+
+
+func _in_deck(upgrade: Dictionary) -> bool:
+	var deck: StringName = upgrade.get(&"deck", &"common")
+	return class_id == &"" or deck == &"common" or deck == class_id
 
 
 ## Carte ripetibili: riempiono l'offerta quando gli upgrade veri stanno finendo,
@@ -69,26 +82,46 @@ func fillers() -> Array[Dictionary]:
 			continue
 		if upgrade.requires == "companion" and not has_companion:
 			continue
+		if not _in_deck(upgrade):
+			continue
 		result.append(upgrade)
 	return result
 
 
 ## Tre carte distinte. Regola 3: categorie diverse finche il pool lo permette.
 ## Regola 4: dopo pity_level_ups scelte senza Rari, la prima carta e Rara o superiore.
+## D-092: con carte arma la prima e un'arma, la seconda preferisce il mazzo della classe.
 func roll_offer() -> Array[Dictionary]:
-	var pool := eligible()
-	if pool.size() < CARDS:
-		pool.append_array(fillers())
 	var offer: Array[Dictionary] = []
 	var used_categories: Array[StringName] = []
 	var force_rare := level_ups_without_rare >= pity_level_ups
-	for i in CARDS:
+	var weapons: Array[Dictionary] = []
+	if weapon_cards.is_valid():
+		weapons.assign(weapon_cards.call())
+	if not weapons.is_empty():
+		var weapon_pool: Array = weapons
+		if force_rare:
+			var rare := weapons.filter(func(u: Dictionary) -> bool: return u.rarity >= UpgradeCatalog.Rarity.RARE)
+			if not rare.is_empty():
+				weapon_pool = rare
+				force_rare = false
+		var pick := _weighted_pick(weapon_pool)
+		offer.append(pick)
+		used_categories.append(pick.category)
+	var pool := eligible()
+	if pool.size() < CARDS - offer.size():
+		pool.append_array(fillers())
+	for i in CARDS - offer.size():
 		var candidates := pool.filter(func(u: Dictionary) -> bool: return not offer.has(u))
 		if candidates.is_empty():
 			break
 		var fresh := candidates.filter(func(u: Dictionary) -> bool: return not used_categories.has(u.category))
 		if not fresh.is_empty():
 			candidates = fresh
+		if class_id != &"" and offer.size() == 1:
+			var own := candidates.filter(func(u: Dictionary) -> bool: return u.get(&"deck", &"common") == class_id)
+			if not own.is_empty():
+				candidates = own
 		if force_rare:
 			var rare := candidates.filter(func(u: Dictionary) -> bool: return u.rarity >= UpgradeCatalog.Rarity.RARE)
 			if rare.is_empty():
