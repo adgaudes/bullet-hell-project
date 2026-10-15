@@ -101,6 +101,8 @@ func _exit_tree() -> void:
 
 ## Fine dell'attrazione; con [param finished] gli effetti finali dei bivi.
 func _release(finished: bool) -> void:
+	if finished:
+		_sound(&"hit")
 	_pull_left = 0.0
 	_return_xp_attractor()
 	_ring.hide()

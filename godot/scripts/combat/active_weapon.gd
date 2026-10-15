@@ -32,6 +32,7 @@ func trigger() -> bool:
 	cooldown_left = cooldown_total()
 	var at := aim_point()
 	_fire(at)
+	_sound(&"fire")
 	triggered.emit(at)
 	changed.emit()
 	return true

@@ -55,6 +55,7 @@ func _physics_process(delta: float) -> void:
 
 
 func _harden(pool: Dictionary) -> void:
+	_sound(&"hit")
 	var set_damage := int(stat(&"set_damage"))
 	if set_damage > 0 and director != null:
 		for enemy: Enemy in director.enemies_near(pool.center, pool.radius):

@@ -5,6 +5,9 @@ extends Node3D
 ## compagno) l'arma usa i valori impostati a mano.
 
 signal changed
+## Suono chiesto dall'arma (piano 5): `&"fire"` allo sparo, `&"hit"` all'impatto. WeaponLoadout
+## lo rilancia col proprio id e RunAudio suona `w_<arma>_<kind>`.
+signal sound_requested(kind: StringName)
 
 @export var weapon_id: StringName
 @export var shooter: Node3D
@@ -24,6 +27,10 @@ var extra_mods: Dictionary = {}
 func _ready() -> void:
 	if weapon_id != &"":
 		_apply_stats()
+
+
+func _sound(kind: StringName) -> void:
+	sound_requested.emit(kind)
 
 
 func stat(key: StringName) -> float:

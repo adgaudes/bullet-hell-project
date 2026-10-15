@@ -125,6 +125,8 @@ func discharge() -> Array[Enemy]:
 	for source in sources:
 		for i in arcs:
 			_chain(source.global_position, hit)
+	if not hit.is_empty():
+		_sound(&"fire")
 	return hit
 
 

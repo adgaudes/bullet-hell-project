@@ -64,6 +64,7 @@ func _fire(at: Vector3) -> void:
 
 ## Pianta la siepe in [param at] (di traverso alla direzione da chi spara); restituisce l'id.
 func plant(at: Vector3) -> int:
+	_sound(&"hit")
 	_sync_field()
 	var points := ring_points(at, stat(&"ring")) if stat(&"ring") > 0.0 else _line_points(at)
 	var id := _field.add_hedge(points, stat(&"hedge_seconds"), stat(&"slow"), int(stat(&"damage")),

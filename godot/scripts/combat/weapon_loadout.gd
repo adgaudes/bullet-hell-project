@@ -10,6 +10,8 @@ signal changed
 signal active_triggered(slot: int, at: Vector3)
 ## Una fusione fatta (ricettario dell'Officina).
 signal fused(fusion_id: StringName)
+## Suono chiesto da un'arma (piano 5), con l'id dell'arma: lo ascolta RunAudio.
+signal weapon_sound(id: StringName, kind: StringName)
 
 const AUTO_SLOTS := 3
 const ACTIVE_SLOTS := 2
@@ -86,6 +88,10 @@ func adopt(weapon: Weapon) -> void:
 	_set_enabled(weapon, false)
 
 
+func _on_weapon_sound(kind: StringName, w: Weapon) -> void:
+	weapon_sound.emit(w.weapon_id, kind)
+
+
 func setup_class(id: StringName) -> void:
 	class_id = id
 	for weapon_id in ClassCatalog.start_weapons(id):
@@ -150,6 +156,8 @@ func add(id: StringName) -> Weapon:
 	w.terrain_field = terrain_field
 	w.manual_aim = manual_aim
 	give_services(w)
+	if not w.sound_requested.is_connected(_on_weapon_sound):
+		w.sound_requested.connect(_on_weapon_sound.bind(w))
 	if _weapon_mods.has(id):
 		w.extra_mods = _weapon_mods[id]
 		w.set_level(w.level)

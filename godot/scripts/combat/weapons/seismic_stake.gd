@@ -67,6 +67,7 @@ func _physics_process(delta: float) -> void:
 
 
 func _raise(ring: Dictionary) -> void:
+	_sound(&"hit")
 	ring.raised = true
 	var height := stat(&"ring_height")
 	for p in _ring_points(ring):

@@ -44,6 +44,8 @@ const SOUND_SETTINGS: Dictionary[StringName, Array] = {
 }
 ## Suoni che un player occupato non cede mai a un altro (R-36): sono rari e
 ## portano un'informazione che il giocatore deve sentire fino in fondo.
+## Suoni delle armi (piano 5): `w_<arma>_<kind>`; senza campione si ripiega su questi.
+const WEAPON_FALLBACK: Dictionary[StringName, StringName] = {&"fire": &"nail_shot", &"hit": &"terrain_raise"}
 const PROTECTED_IDS: Array[StringName] = [&"boss_warning", &"victory", &"train_horn", &"quake_rumble"]
 
 @export var player: PlayerCharacter
@@ -172,6 +174,8 @@ func _connect_signals() -> void:
 		player.terrain_tool_rejected.connect(play.bind(&"tool_reject", 0.0))
 	if weapon != null:
 		weapon.fired.connect(_on_weapon_fired)
+	# Il loadout nasce nel _ready della regia, che puo venire dopo il nostro.
+	_connect_loadout.call_deferred()
 	if director != null:
 		director.enemy_killed.connect(_on_enemy_killed)
 	if xp_field != null:
@@ -211,6 +215,23 @@ func _on_health_changed(health: int, _max_health: int) -> void:
 	if health < _last_health and health > 0:
 		play(&"player_hurt")
 	_last_health = health
+
+
+func _connect_loadout() -> void:
+	if run != null and run.loadout != null and not run.loadout.weapon_sound.is_connected(_on_loadout_weapon_sound):
+		run.loadout.weapon_sound.connect(_on_loadout_weapon_sound)
+
+
+## Id del campione per il suono [param kind] dell'arma [param id], ripiego compreso.
+func weapon_sound_id(id: StringName, kind: StringName) -> StringName:
+	var wanted := StringName("w_%s_%s" % [id, kind])
+	return wanted if _streams.has(wanted) else WEAPON_FALLBACK.get(kind, &"nail_shot")
+
+
+func _on_loadout_weapon_sound(id: StringName, kind: StringName) -> void:
+	if not is_inside_tree() or get_tree().paused:
+		return
+	play(weapon_sound_id(id, kind))
 
 
 func _on_weapon_fired(_count: int) -> void:

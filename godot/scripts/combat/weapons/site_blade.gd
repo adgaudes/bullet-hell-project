@@ -146,6 +146,7 @@ func _aim_direction() -> Vector3:
 
 
 func _launch(direction: Vector3) -> void:
+	_sound(&"fire")
 	for i in discs:
 		if _discs.size() >= MAX_DISCS:
 			break
@@ -154,6 +155,7 @@ func _launch(direction: Vector3) -> void:
 
 
 func _launch_big(direction: Vector3) -> void:
+	_sound(&"fire")
 	if direction == Vector3.ZERO or _discs.size() >= MAX_DISCS:
 		return
 	big_launched += 1
@@ -238,6 +240,7 @@ func _hit_enemies(disc: Dictionary) -> void:
 		if d <= disc.radius + HIT_RADIUS + enemy.hit_radius_bonus:
 			disc.hit.append(enemy)
 			enemy.take_damage(damage)
+			_sound(&"hit")
 
 
 ## Solco (scava) o Ruspa (spiana verso la base) dove passa il disco.

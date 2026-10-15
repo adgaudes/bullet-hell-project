@@ -128,6 +128,7 @@ func _physics_process(delta: float) -> void:
 ## Colpi delle falci e, con le Pale da scavo, l'anello che rallenta: una sola ricerca.
 func _cut(center: Vector3, positions: Array[Vector3]) -> void:
 	var reach := orbit_radius + maxf(BLADE_REACH, FURROW_HALF_WIDTH) + 1.0
+	var cut := false
 	for enemy in director.enemies_near(center, reach):
 		if enemy.is_dead:
 			continue
@@ -142,7 +143,10 @@ func _cut(center: Vector3, positions: Array[Vector3]) -> void:
 			if Vector2(p.x - blade.x, p.z - blade.z).length() <= limit:
 				_cooldowns[id] = hit_interval
 				enemy.take_damage(damage)
+				cut = true
 				break
+	if cut:
+		_sound(&"hit")
 
 
 ## Il segnale delle uccisioni segue il direttore (il loadout lo passa dopo `add_child`).

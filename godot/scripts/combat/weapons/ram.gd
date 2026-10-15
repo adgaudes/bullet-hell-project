@@ -42,6 +42,7 @@ func trigger() -> bool:
 	_direction = direction
 	_last_write = origin
 	_flatten_ahead(origin)
+	_sound(&"fire")
 	triggered.emit(at)
 	changed.emit()
 	return true
@@ -99,6 +100,7 @@ func _flatten_ahead(p: Vector3) -> void:
 
 
 func _arrive() -> void:
+	_sound(&"hit")
 	var shield := stat(&"shield")
 	if shield > 0.0 and shooter.has_method(&"grant_invulnerability"):
 		shooter.grant_invulnerability(shield)

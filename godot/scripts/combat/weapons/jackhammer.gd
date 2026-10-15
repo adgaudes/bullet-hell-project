@@ -87,6 +87,7 @@ func _physics_process(delta: float) -> void:
 		return
 	_cooldown = fire_interval
 	wave(center)
+	_sound(&"fire")
 
 
 ## Un'onda centrata in [param center]; restituisce i nemici colpiti.

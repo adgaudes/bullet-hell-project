@@ -87,6 +87,7 @@ func trigger() -> bool:
 		cooldown_left = cooldown_total()
 	var at := aim_point()
 	_fire(at)
+	_sound(&"fire")
 	triggered.emit(at)
 	changed.emit()
 	return true
@@ -131,6 +132,7 @@ func _physics_process(delta: float) -> void:
 
 
 func _blow(charge: Dictionary) -> void:
+	_sound(&"hit")
 	(charge.view as Node).queue_free()
 	explode(director, write_queue, terrain_field, charge.position, charge.damage, stat(&"blast_radius"),
 		stat(&"crater_radius"), stat(&"crater_depth"), stat(&"pit") > 0.0)

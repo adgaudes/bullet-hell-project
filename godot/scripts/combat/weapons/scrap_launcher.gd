@@ -154,6 +154,7 @@ func _aim_point() -> Variant:
 
 ## Lancia un rottame verso [param target] (sul suolo di quel punto).
 func launch(target: Vector3) -> void:
+	_sound(&"fire")
 	if _scraps.size() >= MAX_SCRAPS:
 		return
 	var from := shooter.global_position + Vector3(0.0, HAND_HEIGHT, 0.0) if shooter != null else target
@@ -181,6 +182,7 @@ func _move_scraps(delta: float) -> void:
 
 ## Scoppio del rottame in [param at]; [param direction] e la direzione del volo (piana).
 func _burst(at: Vector3, direction: Vector3) -> void:
+	_sound(&"hit")
 	shots += 1
 	var charge_shot := fusion_id != &"" and shots % maxi(int(fusion_stat(&"charge_every")), 1) == 0
 	# Crateri dal meno profondo al piu profondo: nella coda vince l'ultimo, il piu basso.

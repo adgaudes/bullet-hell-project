@@ -56,6 +56,7 @@ func _initialize() -> void:
 	await _test_pool()
 	_test_buses_and_volume()
 	await _test_combat_events()
+	await _test_weapon_sounds()
 	await _test_player_events()
 	await _test_terrain_events()
 	await _test_scrap_events()
@@ -307,6 +308,46 @@ func _test_combat_events() -> void:
 	await _frames(40)
 	_check(_count(&"xp_pickup") > pickups, "frammento raccolto: xp_pickup")
 	_director.set_physics_process(true)
+
+
+## Piano 5 delle armi: ogni arma chiede i suoi suoni al loadout, RunAudio suona `w_<arma>_<kind>`
+## o ripiega sui suoni di oggi; in pausa niente.
+func _test_weapon_sounds() -> void:
+	print("weapon sounds")
+	var loadout := _run.loadout
+	_check(loadout != null and loadout.weapon_sound.is_connected(_audio._on_loadout_weapon_sound), "RunAudio ascolta i suoni del loadout")
+	var silent: Array[String] = []
+	for entry in WeaponCatalog.all():
+		if entry.slot == &"fusion" or entry.id == &"nailgun":
+			continue
+		for kind: StringName in [&"fire", &"hit"]:
+			var sound := _audio.weapon_sound_id(entry.id, kind)
+			var before := _count(sound)
+			_audio._next_allowed.clear()
+			loadout.weapon_sound.emit(entry.id, kind)
+			if _count(sound) != before + 1:
+				silent.append("%s/%s" % [entry.id, kind])
+	_check(silent.is_empty(), "ogni arma suona allo sparo e all'impatto (muti: %s)" % ", ".join(silent))
+	_check(_audio.weapon_sound_id(&"nobody", &"fire") == &"nail_shot" and _audio.weapon_sound_id(&"nobody", &"hit") == &"terrain_raise",
+		"arma senza campioni: ripiego su nail_shot e terrain_raise")
+	# Un'arma vera del loadout: il suo segnale arriva fino a RunAudio.
+	var added := loadout.add(&"seismic_stake")
+	var stake: Weapon = added if added != null else loadout.weapon(&"seismic_stake")
+	if stake != null:
+		var sound := _audio.weapon_sound_id(&"seismic_stake", &"fire")
+		var before := _count(sound)
+		_audio._next_allowed.clear()
+		stake.sound_requested.emit(&"fire")
+		_check(_count(sound) == before + 1, "il picchetto nel loadout suona attraverso il loadout")
+		_audio._next_allowed.clear()
+		paused = true
+		before = _count(sound)
+		stake.sound_requested.emit(&"fire")
+		paused = false
+		_check(_count(sound) == before, "in pausa le armi non suonano")
+	else:
+		_check(false, "picchetto aggiunto al loadout")
+	await _frames(1)
 
 
 func _test_player_events() -> void:
