@@ -1,7 +1,7 @@
-# Carovana di macchine e fusione — design (bozza in corso)
+# Carovana di macchine e fusione — design
 
-Data: 15 ottobre 2026. Stato: **in progettazione col proprietario: Sezioni 1-6 approvate, 7 da presentare. Niente implementazione finche il design non e approvato per sezioni e la spec scritta non e rivista.**
-Decisione: **D-093** (in progettazione). Contesto: D-011 (costruire, fondere, pilotare macchine), D-012 (primo compagno autonomo), D-033 (promessa A; la carovana come struttura, la macchina sempre piu assurda come payoff), D-035 (la build si vede nel mondo), roadmap sezione 2 ("carovana di macchine... agganciarsi e separarsi; fusione in configurazioni crescenti e forma colossale"), D-092 (armi e classi: casse, carte, Officina, ricettario gia esistono).
+Data: 15 ottobre 2026. Stato: **design approvato a sezioni dal proprietario il 15 ottobre 2026 (Sezioni 1-7); spec scritta da rileggere. Niente implementazione prima della sua rilettura e del piano A.**
+Decisione: **D-093**. Contesto: D-011 (costruire, fondere, pilotare macchine), D-012 (primo compagno autonomo), D-033 (promessa A; la carovana come struttura, la macchina sempre piu assurda come payoff), D-035 (la build si vede nel mondo), roadmap sezione 2 ("carovana di macchine... agganciarsi e separarsi; fusione in configurazioni crescenti e forma colossale"), D-092 (armi e classi: casse, carte, Officina, ricettario gia esistono).
 
 ## Perche
 
@@ -15,7 +15,7 @@ Il proprietario (15 ottobre): "e una meccanica fondamentale del gameplay, che lo
 | Come si ottiene una macchina | **Relitti sepolti** (si scavano, come le casse), **carte del level-up**, **sblocco in Officina** |
 | Regola della fusione | **Moduli che si sommano liberamente**, piu **bonus di combinazione** da scoprire nel ricettario |
 | Agganciare e sganciare | **Entrambi costano rottami**; solo su una **piazzola fissa che arriva a meta livello**; **gli eventi (terremoto, treno) possono staccare moduli** |
-| Colosso | **Si puo sia pilotare sia lasciare autonomo**, ognuna con pro e contro (da definire) |
+| Colosso | **Si puo sia pilotare sia lasciare autonomo**, ognuna con pro e contro (definiti nella Sezione 3) |
 | Danni | Le macchine **si guastano e si riparano coi rottami** (non si distruggono) |
 | Approccio | **Approccio 1, macchine a moduli** (telaio + modulo; fusione = una macchina con piu moduli) |
 | Protezione della carovana | **Grappolo attorno al giocatore** (2-4 m, dentro la portata delle armi), **fuse piu robuste**, **ritirata automatica** sotto il 30% di vita, e (aggiunta del proprietario) **rigenerazione lenta della vita dopo un periodo senza danni**. Scartate per ora: "bersaglio solo se isolate", comando di richiamo. I rottamatori inseguono il giocatore come oggi e feriscono le macchine che toccano |
@@ -71,15 +71,89 @@ Il proprietario (15 ottobre): "e una meccanica fondamentale del gameplay, che lo
 
 ## Sezione 6 — comandi, HUD, prestazioni, bot (APPROVATA dal proprietario il 15 ottobre 2026)
 
-- **Comandi:** nessun tasto nuovo. Il tasto azione esistente, secondo il contesto, ripara la macchina guasta vicina (tenuto), apre il banco sulla piazzola, fa salire e scendere dal colosso; controller e tastiera equivalenti. Le macchine sono autonome, niente ordini.
+- **Comandi:** una sola azione nuova, **Interagisci** (`interact`: X del controller, R della tastiera, entrambi liberi oggi; correzione dell'agente dopo l'approvazione: il gioco non aveva un tasto azione, le casse si aprono scavando). Secondo il contesto ripara la macchina guasta vicina (tenuto), apre il banco sulla piazzola, fa salire e scendere dal colosso; controller e tastiera equivalenti. Le macchine sono autonome, niente ordini. Nelle Sezioni 2-4 "tasto azione" significa Interagisci.
 - **HUD:** striscia di icone sopra la barra delle armi, una per macchina, con taglia, vita e segno di guasto. Nel mondo un anello colorato a terra sotto ogni macchina per staccarla dall'orda; la guasta fuma e ha un'icona sopra.
 - **Prestazioni:** al piu 6 corpi; budget 0,5 ms per passo sul preset Deck, misurato col benchmark come le armi; se si sfora si riducono prima gli effetti.
 - **Bot:** il simulatore raccoglie i relitti, fonde sulla piazzola e ripara, per bilanciare i numeri.
 
-## Ancora da progettare (sezioni successive)
+## Sezione 7 — ordine dei piani e verifica (APPROVATA dal proprietario il 15 ottobre 2026)
 
-- Verifica, piani di implementazione e ordine rispetto al piano 5 delle armi (effetti e suoni).
+1. **Piano 5 delle armi** (effetti e suoni, D-092), gia pronto: prima della carovana.
+2. **Piano A, macchine:** catalogo dei moduli, `Machine` e `Caravan`, il compagno di oggi diventa la prima macchina (Cassone), grappolo attorno al giocatore, danni dai rottamatori, guasto, riparazione, ritirata, rigenerazione, Saldatore, azione Interagisci, relitti sepolti, carte "Nuova macchina", HUD della carovana. Moduli: Cassone, Torretta, Calamita, Faro, Trivella, Pala, Saldatore, Sirena.
+3. **Piano B, fusione:** piazzola di fusione, banco in pausa, taglie, travolgere, combinazioni, ricettario, profilo v3.
+4. **Piano C, colosso e resto:** colosso pilotato, eventi che staccano moduli e relitto del modulo, Meccanico (partenza a due, Officina mobile, armi che usano la macchina col Cassone), scheda Macchine in Officina.
+5. **Bilanciamento coi bot**, poi playtest del proprietario.
 
-## Prossimo passo
+Ogni piano si chiude con gate verde, suite nuove, benchmark Deck della carovana e catture.
 
-Sezioni 1-6 approvate il 15 ottobre 2026. Riprendere dalla **Sezione 7** (verifica, piani di implementazione, ordine rispetto al piano 5 delle armi), poi la spec definitiva al posto di questa bozza.
+## Architettura del codice
+
+Nuova cartella `godot/scripts/caravan/`. `ArenaRun` e gia lungo (circa 1400 righe): la carovana vive nei suoi nodi e `ArenaRun` la collega soltanto.
+
+| Unita | File | Compito | Dipende da |
+|---|---|---|---|
+| `MachineCatalog` | `caravan/machine_catalog.gd` | dati dei moduli (id, nome, colore, icona, valori, sbloccato di serie) e delle combinazioni; logica pura | niente |
+| `MachineModule` | `caravan/modules/*.gd` | un nodo per modulo dentro la macchina (`cargo`, `turret`, `magnet`, `beacon`, `drill`, `shovel`, `welder`, `siren`); `power` impostato dalla macchina; `tick(delta)`; spento quando la macchina e guasta | servizi passati dalla carovana (come `WeaponLoadout.give_services`) |
+| `Machine` | `caravan/machine.gd` (`CharacterBody3D`) | telaio: PV, moduli, taglia, stato (`OK`, `RETREAT`, `BROKEN`), posto nel grappolo, movimento su `PathField` come il compagno, rigenerazione, modello (carretto di oggi + pezzi impilati per modulo), anello a terra | `MachineCatalog`, `PathField`, `TerrainField` |
+| `Caravan` | `caravan/caravan.gd` (`Node3D`) | elenco delle macchine, limite moduli (6, 7 con Officina mobile), posti del grappolo (2-4 m), rottami totali dei Cassoni, `add_machine(module)`, `fuse(a, b)`, `detach(machine, module)`, `repair(machine)`, `detach_random(machine)`, segnali per HUD e audio; espone `can_supply()`/`spend()`/`can_supply_count()`/`spend_count()` con la firma del `Companion` di oggi, cosi tool, lampioni e armi non cambiano chiamata | `Machine` |
+| `MachineWrecks` | `caravan/machine_wrecks.gd` | relitti sepolti (due per livello, sotto cumuli e vagoni, luccichio arancione) e moduli staccati a terra; sul modello di `BuriedCaches` | `TerrainField`, `RuinsDistrict` |
+| `FusionPad` | `caravan/fusion_pad.gd` | arrivo a meta della chiamata del boss, annuncio, pedana 4x4 con gru e faro, chiusura alla chiamata | `RunHud`, `TerrainField` |
+| `FusionBench` | `ui/fusion_bench.gd` | banco in pausa: scegliere, anteprima, costi, "???", conferma; controller prima | `Caravan`, `MachineCatalog`, profilo |
+| `CaravanStrip` | `ui/caravan_strip.gd` | icone delle macchine sopra la barra delle armi | `Caravan` |
+| Pilotaggio | `Caravan` + `PlayerCharacter` | salire e scendere, armi e attrezzo spenti, carburante, sbalzo fuori | `WeaponLoadout`, `PlayerCharacter` |
+
+**Il compagno di oggi.** `Companion` (`scripts/companion/companion.gd`) diventa `Machine` col modulo Cassone; la raccolta dei rottami passa nel modulo `cargo`. I 18 file che leggono `companion` (soprattutto `arena_run.gd`, `upgrade_catalog.gd`, `welder.gd`, `class_perks.gd`, `crane_magnet.gd`, eventi, lampioni) passano a `caravan`, o alla macchina col Cassone piu vicina per le armi del Meccanico. Le scene `arena_run.tscn` e `railway_run.tscn` cambiano il nodo `Companion` in `Caravan` (da dire al proprietario prima di toccarle).
+
+**Danni.** Oggi il compagno non prende danni. Il direttore dei nemici (`EnemyDirector`) controlla gia il contatto col giocatore: si aggiunge il contatto con le macchine (1 danno, ricarica 0,8 s per macchina), senza un secondo giro sui nemici (si riusa la griglia spaziale del direttore). I nemici non scelgono le macchine come bersaglio: inseguono il giocatore come oggi.
+
+**Profilo v3.** Sezione `[machines]`: moduli sbloccati e combinazioni scoperte. Un profilo v2 si carica intatto (stessa via di v1 → v2 del piano 4 delle armi).
+
+## Valori di partenza (non bilanciati, in `CaravanTuning`)
+
+| Valore | Partenza |
+|---|---|
+| Telaio | 6 PV; limite 6 moduli (7 con Officina mobile) |
+| Taglie | 1 piccola, 2-3 media, 4-5 grande, 6 colosso |
+| Forza per modulo oltre il primo | +15% a tutti i moduli della macchina |
+| Vita della fusa | somma dei telai +25% per taglia sopra la piccola |
+| Velocita | quella del compagno di oggi, -10% per taglia |
+| Travolgere | da media in su, 1 danno al contatto in movimento (colosso pilotato anche i medi) |
+| Cassone | 5 rottami (come oggi) |
+| Torretta | chiodatrice del compagno di oggi (0,9 s, 8 m) |
+| Calamita | raggio 2,5 m (come oggi) |
+| Faro | raggio del faro di oggi |
+| Trivella | buca di 1,2 m ogni 4 s entro 5 m dal grappolo; su una vena estrae 1 rottame |
+| Pala | argine di 1 m davanti al nemico piu vicino ogni 5 s, 1 rottame |
+| Saldatore | 1 PV ogni 3 s entro 4 m; guaste in 6 s |
+| Sirena | attira i rottamatori entro 8 m per 3 s ogni 6 s |
+| Combinazioni | doppio danno o meta danno o costo zero come nella Sezione 1 |
+| Guasto e riparazione | 2 rottami, 1,5 s tenendo Interagisci entro 2 m, riparte a meta vita |
+| Ritirata | sotto 30%, torna sopra 50%; 4-6 m dietro al giocatore |
+| Rigenerazione | dopo 8 s senza danni, 1 PV ogni 4 s |
+| Piazzola | a meta della chiamata del boss, preavviso 15 s, 20-30 m dal giocatore, fino alla chiamata |
+| Costi di fusione | 1 rottame per modulo assorbito; sgancio 1 per modulo |
+| Colosso pilotato | moduli +50%, velocita -30% del giocatore, 1 rottame ogni 10 s, sbalzo sotto 30% |
+| Relitti | 2 per livello; scelta fra 2 moduli; a carovana piena 3 rottami |
+| Officina | Trivella, Pala, Saldatore, Sirena: 15-25 rottami l'uno |
+
+## Verifica
+
+- **Suite nuove:** `caravan_tests` (aggiunta, limite, grappolo, rottami condivisi, firma `can_supply`/`spend`), `machine_modules_tests` (un controllo per modulo e per combinazione), `machine_damage_tests` (contatto, guasto, riparazione, ritirata, rigenerazione, Saldatore), `fusion_tests` (piazzola, banco, costi, taglie, anteprima, ricettario, profilo v3 e caricamento di un v2), `colossus_tests` (salire, scendere, armi spente, carburante, sbalzo, eventi che staccano moduli). Le suite di oggi che usano `companion` vanno adattate, non indebolite.
+- **Benchmark:** riga `caravan` in `benchmark_arena.gd` col preset Deck, sei macchine piccole e un colosso, 70 nemici; budget 0,5 ms per passo.
+- **Bot:** `simulate_runs.gd` raccoglie i relitti, ripara e fonde (una regola semplice: colosso se ci sono 6 moduli e rottami).
+- **Catture:** grappolo con l'orda di giorno e di notte, piazzola, banco, colosso pilotato, relitto e modulo staccato; `output/caravan/`.
+- **Controller:** banco, riparazione e pilotaggio provati a controller nei test (eventi di input), come le Impostazioni.
+
+## Rischi
+
+- **Costo sul Deck:** sei corpi che si muovono e sparano piu l'orda; mitigazione: moduli senza fisica propria, un solo `move_and_slide` per macchina, effetti ridotti per primi.
+- **Migrazione del compagno:** 18 file e due scene; si fa nel piano A con le suite di oggi come rete.
+- **Leggibilita:** grappolo e orda si confondono; anello a terra e striscia nel HUD, da giudicare sulle catture.
+- **Bilanciamento:** tutti i valori sono di partenza; i bot non sanno tenere la piazzola di estrazione (D-076) e per ora non sapranno pilotare il colosso.
+
+## Domande per il playtest
+
+- La piazzola a meta livello arriva troppo presto o troppo tardi?
+- Il colosso pilotato vale i rottami che consuma?
+- Sei moduli bastano? Il grappolo resta leggibile con 70 nemici sul Deck?
+- La riparazione a 2 rottami e il guasto del colosso sono una punizione giusta?
