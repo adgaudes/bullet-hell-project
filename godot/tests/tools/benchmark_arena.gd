@@ -19,20 +19,32 @@ const PRESET_ARGS := {"deck": GameSettingsService.Preset.STEAM_DECK, "low": Game
 	"medium": GameSettingsService.Preset.MEDIUM, "high": GameSettingsService.Preset.HIGH, "max": GameSettingsService.Preset.MAX}
 
 
-## Caso peggiore delle armi (D-092, budget 1,0 ms per passo): cinque slot pieni al livello 5,
-## chiodatrice (Raffica, Incandescenti), Ruspa a dischi (Lama fusa con l'Ariete), Martello,
-## picchetto (permanente, chiodato) e Betoniera appena usati; si misura il passo di tutte le
-## armi del loadout e della coda delle scritture (riga `weapons`).
+## Bivi del caso peggiore per le armi di classe (i piu pesanti: piu colpi, piu oggetti a terra).
+const HEAVY_PICKS := {
+	&"nailgun": [&"a", &"b"], &"seismic_stake": [&"b", &"a"],
+	&"scrap_launcher": [&"a", &"a"], &"dig_charge": [&"a", &"b"],
+	&"welder": [&"a", &"a"], &"crane_magnet": [&"b", &"a"],
+	&"scythe": [&"a", &"b"], &"bramble": [&"a", &"a"],
+}
+
+
+## Caso peggiore delle armi (D-092, budget 1,0 ms per passo), per la classe di `--class=`:
+## cinque slot pieni al livello 5, kit della classe coi bivi di HEAVY_PICKS, Ruspa a dischi
+## (Lama fusa con l'Ariete), Martello e Betoniera; attive appena usate; si misura il passo di
+## tutte le armi del loadout e della coda delle scritture (riga `weapons`). Poi la classe si
+## fonde e si rimisura (riga `weapons_fused`).
 func _bench_loadout(scene: Node, step: float) -> void:
 	var run: ArenaRun = scene.get_node(^"Run")
 	var loadout := run.loadout
-	if loadout == null or not loadout.has_weapon(&"nailgun") or not loadout.has_weapon(&"seismic_stake"):
+	var kit := ClassCatalog.start_weapons(run.class_id)
+	if loadout == null or kit.size() < 2:
 		return
-	for id in [&"nailgun", &"seismic_stake"]:
+	for id in kit:
+		var picks: Array = HEAVY_PICKS.get(id, [&"a", &"a"])
 		loadout.level_up(id)
-		loadout.choose_branch(id, &"a" if id == &"nailgun" else &"b")
+		loadout.choose_branch(id, picks[0])
 		loadout.level_up(id)
-		loadout.choose_branch(id, &"b" if id == &"nailgun" else &"a")
+		loadout.choose_branch(id, picks[1])
 	for id in [&"site_blade", &"jackhammer", &"ram"]:
 		loadout.add(id)
 		_max_out(loadout, id)
@@ -50,9 +62,29 @@ func _bench_loadout(scene: Node, step: float) -> void:
 	loadout.trigger_active(1)
 	for i in 120:
 		await physics_frame
+	var weapons_ms := _time_weapons(run, step)
+	var auto_id := kit[0]
+	var fused_ms := -1.0
+	if loadout.fuse(auto_id):
+		# Il Fortino alza la prima torretta dopo 10 s.
+		for i in int(12.0 * Engine.physics_ticks_per_second):
+			await physics_frame
+		fused_ms = _time_weapons(run, step)
+	print("PROTOTYPE01_ARENA_BENCH weapons_fused class=%s worst_ms=%.3f slots=%s"
+		% [run.class_id, fused_ms, ",".join(PackedStringArray(loadout.all_ids()))])
+	_bench_writes(run, player, step, weapons_ms)
+
+
+## Passo medio (ms) di tutte le armi del loadout e della coda delle scritture, su 240 passi.
+func _time_weapons(run: ArenaRun, step: float) -> float:
+	var loadout := run.loadout
+	# Anche i figli che hanno un passo proprio: torrette del Fortino, rovi del Roveto e della Falciarovi.
 	var nodes: Array[Node] = []
-	nodes.append_array(loadout.autos())
-	nodes.append_array(loadout.actives())
+	for weapon: Node in loadout.autos() + loadout.actives():
+		nodes.append(weapon)
+		for child in weapon.find_children("*", "", true, false):
+			if child.is_physics_processing():
+				nodes.append(child)
 	nodes.append(run.write_queue)
 	for node in nodes:
 		node.set_physics_process(false)
@@ -60,10 +92,16 @@ func _bench_loadout(scene: Node, step: float) -> void:
 	for i in 240:
 		for node in nodes:
 			node._physics_process(step)
-	var weapons_ms := (Time.get_ticks_usec() - t0) / 240000.0
+	var ms := (Time.get_ticks_usec() - t0) / 240000.0
 	for node in nodes:
 		node.set_physics_process(true)
-	var nailgun := loadout.weapon(&"nailgun") as AutoWeapon
+	return ms
+
+
+## Anello che sale e indurimento della Betoniera, poi la riga `weapons`.
+func _bench_writes(run: ArenaRun, player: Node3D, step: float, weapons_ms: float) -> void:
+	var loadout := run.loadout
+	var t0 := 0
 	# Un anello che sale: una pennellata del picchetto (con collisione e segnale) per passo.
 	var queue := run.write_queue
 	queue.set_physics_process(false)
@@ -88,9 +126,8 @@ func _bench_loadout(scene: Node, step: float) -> void:
 		queue.clear()
 	queue.set_physics_process(true)
 	print("PROTOTYPE01_ARENA_BENCH weapons_harden ms=%.3f (una volta per pozza)" % harden_ms)
-	print("PROTOTYPE01_ARENA_BENCH weapons worst_ms=%.3f ring_write_ms=%.3f slots=%s nails=%d patches=%d rings=%d"
-		% [weapons_ms, raise_ms, ",".join(PackedStringArray(loadout.all_ids())), nailgun.nail_count(), nailgun.fire_patch_count(),
-			(loadout.weapon(&"seismic_stake") as SeismicStake).ring_count()])
+	print("PROTOTYPE01_ARENA_BENCH weapons class=%s worst_ms=%.3f ring_write_ms=%.3f"
+		% [run.class_id, weapons_ms, raise_ms])
 
 
 static func _max_out(loadout: WeaponLoadout, id: StringName) -> void:
