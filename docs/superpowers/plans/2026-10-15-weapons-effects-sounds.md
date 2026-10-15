@@ -8,7 +8,7 @@
 
 **Tech Stack:** Godot 4.7.2 GDScript, Python 3 + ffmpeg per i suoni, bundle Sonniss GDC 2024 fuori repo.
 
-**Stato (15 ottobre 2026):** task 1-3 fatti (`e4277c7`, `cd3ee10`, `8e77fe2`); task 4 iniziato (kit `godot/scripts/effects/weapon_fx.gd`: `burst`, `shockwave`, `dust`, tetto di 40 nodi vivi, gruppo `weapon_fx`; non ancora applicato alle armi); task 5 affidato a un agente su `spike/effekseer`.
+**Stato (15 ottobre 2026):** task 1-3 fatti (`e4277c7`, `cd3ee10`, `8e77fe2`); task 4 iniziato (kit `godot/scripts/effects/weapon_fx.gd`: `burst`, `shockwave`, `dust`, tetto di 40 nodi vivi, gruppo `weapon_fx`; non ancora applicato alle armi); task 5 interrotto su richiesta del proprietario prima del gate: branch locale `spike/effekseer` (`58f55fe`, worktree `.claude/worktrees/agent-aab9726008e91510e`) con plugin 1.80.7 MIT (Windows e Linux x86_64, si carica e disegna su 4.7.2 Windows), campione `ef_fire03`, strumento `tests/tools/effekseer_spike.gd` e catture affiancate in `output/effekseer/` del worktree. Mancano: gate, misura del frame col preset Deck, prova su Linux/Deck, decisione. Gli `.efkefc` si fanno solo con l'editor Effekseer (app desktop).
 
 **Spec:** `docs/superpowers/specs/2026-10-15-weapons-classes-design.md` (par. "Effetti", "Suoni", ordine dei piani punto 5); D-095 per Effekseer.
 

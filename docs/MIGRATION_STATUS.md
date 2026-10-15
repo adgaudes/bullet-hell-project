@@ -22,7 +22,7 @@ Esito **Modifica**: 14 osservazioni, piu O-15 e O-16 del 15 ottobre. Cause e pia
 
 **Eventi del mondo (D-097):** casuali, quanti ne sceglie la nuova scheda **Gameplay** (1-5, di serie 1), prima del boss.
 
-**Armi, piano 5 (in corso):** task 1-3 fatti (suoni delle armi, anteprima `output/audio/weapons_preview.wav`; telegrafo delle attive). Task 4 iniziato: kit `scripts/effects/weapon_fx.gd`, non ancora usato ne testato. Task 5 (Effekseer) su branch `spike/effekseer`: esito da controllare.
+**Armi, piano 5 (in corso):** task 1-3 fatti (suoni delle armi, anteprima `output/audio/weapons_preview.wav`; telegrafo delle attive). Task 4 iniziato: kit `scripts/effects/weapon_fx.gd`, non ancora usato ne testato. Task 5 (Effekseer) **interrotto dal proprietario** durante il gate: branch locale `spike/effekseer` (`58f55fe`, worktree in `.claude/worktrees/`), plugin installato e catture fatte; mancano gate, misura sul preset Deck, Linux e decisione (dettagli nel piano).
 
 ## Prossimo passo (agente)
 
