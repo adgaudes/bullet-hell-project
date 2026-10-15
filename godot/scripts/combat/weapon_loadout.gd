@@ -16,6 +16,13 @@ var player: Node3D
 var director: EnemyDirector
 var terrain_field: TerrainField
 var write_queue: TerrainWriteQueue
+## Servizi facoltativi (piano 3): passano alle armi che hanno una proprieta con lo stesso nome.
+var companion: Node3D
+var xp_field: XpField
+var scrap_field: ScrapField
+var meadow: MeadowMap
+## Moltiplica la ricarica delle attive (Miccia corta).
+var active_cooldown_scale := 1.0
 var class_id: StringName
 ## La chiodatrice della scena: entra negli slot solo se la classe la usa.
 var adopted: Weapon
@@ -29,22 +36,31 @@ func _ready() -> void:
 		player.active_weapon_pressed.connect(trigger_active)
 
 
-## Script di ogni arma del catalogo; null se l'arma non e ancora implementata.
+## Script di ogni arma del catalogo: `scripts/combat/weapons/<id>.gd` (la chiodatrice e
+## AutoWeapon); null se l'arma non e ancora implementata.
 static func script_for(id: StringName) -> Script:
-	match id:
-		&"nailgun":
-			return AutoWeapon
-		&"seismic_stake":
-			return SeismicStake
-		&"site_blade":
-			return SiteBlade
-		&"jackhammer":
-			return Jackhammer
-		&"ram":
-			return Ram
-		&"cement_mixer":
-			return CementMixer
-	return null
+	if id == &"nailgun":
+		return AutoWeapon
+	if id == &"":
+		return null
+	var path := "res://scripts/combat/weapons/%s.gd" % id
+	return load(path) as Script if ResourceLoader.exists(path) else null
+
+
+## Passa all'arma i servizi del loadout che lei dichiara (proprieta con lo stesso nome).
+func give_services(w: Weapon) -> void:
+	for key: StringName in [&"write_queue", &"companion", &"xp_field", &"scrap_field", &"meadow"]:
+		if key in w:
+			w.set(key, get(key))
+	if w is ActiveWeapon:
+		(w as ActiveWeapon).cooldown_scale = active_cooldown_scale
+
+
+func set_active_cooldown_scale(scale: float) -> void:
+	active_cooldown_scale = scale
+	for active in _actives:
+		active.cooldown_scale = scale
+		active.changed.emit()
 
 
 ## La chiodatrice della scena (senza `weapon_id` diventa la chiodatrice del catalogo).
@@ -119,8 +135,7 @@ func add(id: StringName) -> Weapon:
 	w.director = director
 	w.terrain_field = terrain_field
 	w.manual_aim = manual_aim
-	if &"write_queue" in w:
-		w.set(&"write_queue", write_queue)
+	give_services(w)
 	if w is ActiveWeapon:
 		var active := w as ActiveWeapon
 		active.triggered.connect(func(at: Vector3) -> void: active_triggered.emit(_actives.find(active), at))

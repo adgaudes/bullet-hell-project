@@ -13,10 +13,12 @@ const CLUSTER_CELL := 2.0
 ## Coda delle scritture sul terreno condivisa dalle armi (TerrainWriteQueue).
 var write_queue: TerrainWriteQueue
 var cooldown_left := 0.0
+## Moltiplica la ricarica (Miccia corta: 0,9 al primo livello), dal WeaponLoadout.
+var cooldown_scale := 1.0
 
 
 func cooldown_total() -> float:
-	return stat(&"cooldown")
+	return stat(&"cooldown") * cooldown_scale
 
 
 func can_trigger() -> bool:

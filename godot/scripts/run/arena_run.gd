@@ -83,6 +83,8 @@ var companion_weapon: AutoWeapon
 var class_id: StringName = ClassCatalog.DEFAULT
 var loadout: WeaponLoadout
 var write_queue: TerrainWriteQueue
+## Prato logico (Falce rotante, Erba alta): riempito dal distretto con il rilievo.
+var meadow: MeadowMap
 ## Luci logiche della notte: torcia del giocatore, faro del compagno (e lampioni, tappa 2).
 var light_field := LightField.new()
 var torch_light_id := 0
@@ -643,6 +645,8 @@ func _build_terrain_relief() -> void:
 	_start_protect_left = terrain_field.tuning.start_protected_seconds
 	terrain_field.set_protected(Vector3.ZERO, terrain_field.tuning.start_protected_radius_m, true)
 	_initial_heights = RunMap.snapshot_heights(terrain_field)
+	if meadow != null:
+		district.fill_meadow(meadow, terrain_field)
 	# Prato, prop e rovine sulle quote; strati e tinte quando Terrain3D e pronto (con finestra).
 	district.settle_on_relief()
 	terrain_field.render_ready.connect(district.paint_surface.bind(terrain_field))
@@ -1144,6 +1148,14 @@ func _setup_loadout() -> void:
 	loadout.director = director
 	loadout.terrain_field = terrain_field
 	loadout.write_queue = write_queue
+	loadout.companion = companion
+	loadout.xp_field = xp_field
+	loadout.scrap_field = _scrap_field()
+	if terrain_field != null:
+		meadow = MeadowMap.new()
+		meadow.setup(terrain_field)
+		director.meadow = meadow
+	loadout.meadow = meadow
 	add_child(loadout)
 	loadout.adopt(weapon)
 	loadout.setup_class(class_id)

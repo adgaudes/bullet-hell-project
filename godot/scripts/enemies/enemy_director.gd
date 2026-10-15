@@ -51,6 +51,11 @@ var night_active := false
 var dark_contacts := 0
 var spike_damage := 0
 var spike_interval := 0.8
+## Prato logico (piano 3 delle armi): sul prato i nemici vanno a 1 - `meadow_slow` (Erba alta).
+var meadow: MeadowMap
+var meadow_slow := 0.0
+## Moltiplica l'attesa fra due morsi agli argini (Argini rinforzati: piu alta, morsi piu radi).
+var gnaw_scale := 1.0
 var rng := RandomNumberGenerator.new()
 var _spawn_timer := 1.0
 var _body_mesh: Mesh
@@ -294,6 +299,10 @@ func _move_enemies(delta: float) -> void:
 		var speed := tuning.enemy_speed * enemy.speed_scale
 		if enemy.stun_left > 0.0:
 			speed = 0.0
+		if enemy.slow_left > 0.0:
+			speed *= enemy.slow_factor
+		if meadow != null and meadow_slow > 0.0 and meadow.is_meadow(pos):
+			speed *= 1.0 - meadow_slow
 		# Una sola domanda alla luce per nemico e per passo: vale per velocita e contatto.
 		var in_dark := night_active and light_field != null and not light_field.is_lit(pos)
 		# I nemici in commissione (portatori del boss) restano come sono (specifica, sezione 5).
@@ -303,7 +312,9 @@ func _move_enemies(delta: float) -> void:
 			# In salita si rallenta in proporzione alla pendenza davanti, fino a uphill_min_speed.
 			var ahead := pos + direction.normalized() * 0.6 if not direction.is_zero_approx() else pos
 			speed *= uphill_speed_scale(enemy, terrain_field.grade_between(pos, ahead))
-		var desired := direction.limit_length(1.0) * speed
+		# Lo stordito resta fermo anche sotto una calamita.
+		var desired := direction.limit_length(1.0) * speed + (enemy.drift if enemy.stun_left <= 0.0 else Vector3.ZERO)
+		enemy.drift = Vector3.ZERO
 		var planar := Vector3(enemy.velocity.x, 0.0, enemy.velocity.z).move_toward(desired, ACCELERATION * delta)
 		enemy.velocity = Vector3(planar.x, 0.0 if enemy.is_on_floor() else enemy.velocity.y - 9.8 * delta, planar.z)
 		enemy.move_and_slide()
@@ -397,7 +408,7 @@ func _tick_gnaw(enemy: Enemy, direction: Vector3, moved: float, delta: float) ->
 	enemy.gnaw_left -= delta
 	if enemy.gnaw_left > 0.0:
 		return
-	enemy.gnaw_left = 1.0
+	enemy.gnaw_left = gnaw_scale
 	var point := enemy.global_position + direction.normalized() * 1.0
 	terrain_field.sculpt(point, tuning.gnaw_radius_m, -tuning.gnaw_depth_m)
 	gnaws += 1

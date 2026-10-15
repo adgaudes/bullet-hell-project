@@ -10,6 +10,7 @@ func _initialize() -> void:
 	_test_branches()
 	_test_classes()
 	_test_common_kit()
+	_test_class_kits()
 	_test_upgrade_decks()
 	print("PROTOTYPE01_TESTS %s failures=%d" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
@@ -74,7 +75,8 @@ func _test_classes() -> void:
 	print("classes")
 	_check(ClassCatalog.all().size() == 4, "quattro classi")
 	_check(ClassCatalog.start_weapons(&"engineer") == ([&"nailgun", &"seismic_stake"] as Array[StringName]), "kit dell'Ingegnere")
-	_check(ClassCatalog.start_weapons(&"sapper").is_empty(), "kit del Guastatore non ancora implementato: vuoto")
+	for id: StringName in ClassCatalog.start_weapons(&"sapper"):
+		_check(WeaponLoadout.script_for(id) != null, "kit di partenza: solo armi con uno script (%s)" % id)
 	_check(ClassCatalog.find(&"nobody").is_empty(), "classe sconosciuta: vuota")
 
 
@@ -90,3 +92,32 @@ func _test_upgrade_decks() -> void:
 	_check(mechanic.size() == 2, "mazzo Meccanico: Torretta e Faro")
 	var sapper := UpgradeCatalog.all().filter(func(u: Dictionary) -> bool: return u.get(&"deck") == &"sapper")
 	_check(sapper.size() == 1, "mazzo Guastatore: Scavo esplosivo")
+
+
+## Piano 3: kit delle tre classi (spec par. 4.1-4.4) e loro fusioni.
+func _test_class_kits() -> void:
+	print("class kits")
+	var kits := {&"sapper": [&"scrap_launcher", &"dig_charge", &"mortar"], &"mechanic": [&"welder", &"crane_magnet", &"tesla_coil"],
+		&"weeder": [&"scythe", &"bramble", &"scythe_bramble"]}
+	for class_id: StringName in kits:
+		var auto_id: StringName = kits[class_id][0]
+		var active_id: StringName = kits[class_id][1]
+		var auto := WeaponCatalog.find(auto_id)
+		var active := WeaponCatalog.find(active_id)
+		_check(not auto.is_empty() and auto.slot == &"auto" and auto.deck == class_id, "%s: automatica della classe" % auto_id)
+		_check(not active.is_empty() and active.slot == &"active" and active.deck == class_id, "%s: attiva della classe" % active_id)
+		_check(auto.partner == active_id and active.partner == auto_id, "%s e %s compagne" % [auto_id, active_id])
+		_check(WeaponCatalog.fusion_of(auto_id) == kits[class_id][2], "%s si fonde in %s" % [auto_id, kits[class_id][2]])
+		_check(int(auto.unlock_cost) == 0 and int(active.unlock_cost) == 0, "%s: armi di classe sempre disponibili" % class_id)
+		_check(ClassCatalog.find(class_id).kit == [auto_id, active_id], "%s: kit della classe" % class_id)
+	_check(WeaponCatalog.fusion_of(&"nailgun") == &"fort", "la chiodatrice si fonde nel Fortino")
+	_check(WeaponCatalog.find(&"fort").parts == [&"nailgun", &"seismic_stake"], "Fortino: chiodatrice e picchetto")
+	_check(WeaponCatalog.find(&"scythe_bramble").name == "Falciarovi", "nome della fusione dell'Erbacciaia")
+	_check(is_equal_approx(WeaponCatalog.stat(&"scrap_launcher", &"blast_radius", 2, {}), 2.2), "Lanciarottami liv. 2: scoppio 2,2 m")
+	_check(WeaponCatalog.stat(&"dig_charge", &"crater_depth", 3, {3: &"b"}) == 1.6, "Pozzo: cratere 1,6 m")
+	_check(WeaponCatalog.stat(&"dig_charge", &"damage", 2, {}) == 5.0, "Carica liv. 2: 5 danni")
+	_check(WeaponCatalog.stat(&"welder", &"jumps", 3, {3: &"b"}) == 1.0, "Punto di fusione: un solo bersaglio")
+	_check(WeaponCatalog.stat(&"crane_magnet", &"pull_seconds", 4, {3: &"a"}) == 4.0, "Calamita liv. 4: 4 s")
+	_check(WeaponCatalog.stat(&"scythe", &"blades", 2, {}) == 3.0, "Falce liv. 2: tre falci")
+	_check(is_equal_approx(WeaponCatalog.stat(&"bramble", &"cooldown", 4, {3: &"a"}), 10.2), "Roveto liv. 4: ricarica 10,2 s")
+	_check(WeaponCatalog.stat(&"bramble", &"roots", 5, {3: &"a", 5: &"a"}) == 1.5, "Radici: 1,5 s")

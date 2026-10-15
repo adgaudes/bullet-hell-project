@@ -71,6 +71,12 @@ var is_gnawing := false
 var hit_radius_bonus := 0.0
 ## Secondi di stordimento (Martello, Betoniera: D-092): il direttore non lo fa camminare.
 var stun_left := 0.0
+## Rallentamento (Roveto, triboli, Pale da scavo): velocita x `slow_factor` finche `slow_left > 0`.
+var slow_left := 0.0
+var slow_factor := 1.0
+## Deriva planare in m/s (calamite, campi): il direttore la somma alla velocita del passo e
+## poi la azzera; chi la vuole la rimette a ogni passo. I boss la ignorano.
+var drift := Vector3.ZERO
 ## Commissione (D-045): il direttore lo porta a `errand_point` invece che dal giocatore.
 var has_errand := false
 var errand_point := Vector3.ZERO
@@ -180,9 +186,22 @@ func stun(seconds: float) -> void:
 	velocity.z = 0.0
 
 
+## Rallenta il nemico a [param factor] (0..1) per [param seconds]; fra piu rallentamenti
+## insieme vale il piu forte. I boss (`self_driven`) non rallentano.
+func slow(factor: float, seconds: float) -> void:
+	if self_driven:
+		return
+	slow_factor = minf(slow_factor, factor) if slow_left > 0.0 else factor
+	slow_left = maxf(slow_left, seconds)
+
+
 func tick_visuals(delta: float) -> void:
 	spike_cooldown = maxf(spike_cooldown - delta, 0.0)
 	stun_left = maxf(stun_left - delta, 0.0)
+	if slow_left > 0.0:
+		slow_left = maxf(slow_left - delta, 0.0)
+		if slow_left <= 0.0:
+			slow_factor = 1.0
 	if _flash_left > 0.0:
 		_flash_left -= delta
 		if _flash_left <= 0.0:

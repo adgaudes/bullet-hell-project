@@ -236,6 +236,13 @@ func paint_surface(field: TerrainField) -> void:
 	field.end_batch()
 
 
+## Niente prato sulla massicciata (la tinta di ghiaia lo copre comunque).
+func _grass_points(field: TerrainField) -> Array[Vector3]:
+	var out: Array[Vector3] = []
+	out.assign(super(field).filter(func(p: Vector3) -> bool: return absf(p.z) > TRACK_HALF_WIDTH + 0.5))
+	return out
+
+
 ## Massicciata, rotaie e traversine: solo mesh, nessuna collisione. Sporgono oltre
 ## il perimetro fino dentro i portali.
 func _build_tracks() -> void:

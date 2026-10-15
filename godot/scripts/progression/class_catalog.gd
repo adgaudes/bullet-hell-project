@@ -1,8 +1,8 @@
 class_name ClassCatalog
 extends RefCounted
 ## Le quattro classi del roster (D-077, D-092): nome, colore d'accento, kit iniziale e mazzo.
-## Il kit elenca le armi della spec; `start_weapons` restituisce solo quelle gia nel catalogo,
-## cosi una classe senza armi implementate parte comunque.
+## Il kit elenca le armi della spec; `start_weapons` restituisce solo quelle gia implementate
+## (con uno script), cosi una classe senza armi pronte parte comunque.
 
 const DEFAULT := &"engineer"
 
@@ -30,6 +30,6 @@ static func find(id: StringName) -> Dictionary:
 static func start_weapons(id: StringName) -> Array[StringName]:
 	var out: Array[StringName] = []
 	for weapon_id: StringName in find(id).get(&"kit", []):
-		if not WeaponCatalog.find(weapon_id).is_empty():
+		if not WeaponCatalog.find(weapon_id).is_empty() and WeaponLoadout.script_for(weapon_id) != null:
 			out.append(weapon_id)
 	return out

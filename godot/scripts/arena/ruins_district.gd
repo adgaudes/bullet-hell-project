@@ -50,6 +50,8 @@ const TRENCH_DEPTH := -0.8
 const NO_TINT := Color(0.0, 0.0, 0.0, 0.0)
 ## Verde del prato dipinto sul color map di Terrain3D (sotto i ciuffi).
 const GRASS_PAINT := Color(0.42, 0.55, 0.22)
+## Passo delle pennellate di prato dipinto.
+const GRASS_PITCH := 3.0
 ## Direzione mondo (XZ) dei varchi 0..3.
 const GATE_DIRECTIONS: Array[Vector2] = [Vector2(0.0, -1.0), Vector2(0.0, 1.0), Vector2(1.0, 0.0), Vector2(-1.0, 0.0)]
 ## Tipi di pennellata che sono cortili (anelli di argini).
@@ -582,19 +584,30 @@ func paint_surface(field: TerrainField) -> void:
 		if stroke.tint.a > 0.0:
 			field.tint(Vector3(stroke.center.x, 0.0, stroke.center.y), stroke.radius, stroke.tint, 1.0)
 	# Prato dipinto dove cresce il verde (stessa formula dei ciuffi), fuori dalla piazza.
+	field.tint_points(_grass_points(field), GRASS_PITCH * 0.9, GRASS_PAINT, 0.55)
+	field.end_batch()
+
+
+## Prato logico (MeadowMap, piano 3 delle armi): le stesse pennellate della pittura verde di
+## `paint_surface`, anche in headless.
+func fill_meadow(map: MeadowMap, field: TerrainField) -> void:
+	for p in _grass_points(field):
+		map.mark(p, GRASS_PITCH * 0.6)
+
+
+## Centri delle pennellate di prato: fuori dalla piazza, dove la copertura verde e piena.
+func _grass_points(field: TerrainField) -> Array[Vector3]:
 	var green: Array[Vector3] = []
-	var pitch := 3.0
 	var half := field.half_extents()
 	var k := 0
-	for z in range(int(-half.y / pitch), int(half.y / pitch) + 1):
-		for x in range(int(-half.x / pitch), int(half.x / pitch) + 1):
+	for z in range(int(-half.y / GRASS_PITCH), int(half.y / GRASS_PITCH) + 1):
+		for x in range(int(-half.x / GRASS_PITCH), int(half.x / GRASS_PITCH) + 1):
 			k += 1
-			var p := Vector2(x * pitch + (0.7 if k % 2 == 0 else -0.7), z * pitch)
+			var p := Vector2(x * GRASS_PITCH + (0.7 if k % 2 == 0 else -0.7), z * GRASS_PITCH)
 			if p.length() < plaza_radius_m * 0.8 or _cover_sampled(p) < 0.5:
 				continue
 			green.append(Vector3(p.x, 0.0, p.y))
-	field.tint_points(green, pitch * 0.9, GRASS_PAINT, 0.55)
-	field.end_batch()
+	return green
 
 
 # --- Edifici e oggetti dentro il perimetro ----------------------------------------------

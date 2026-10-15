@@ -36,6 +36,12 @@ func _initialize() -> void:
 	await _test_ram_ploughs_bank()
 	await _test_ram_ploughs_with_busy_queue()
 	await _test_stunned_do_not_gnaw()
+	await _test_slow()
+	await _test_drift()
+	await _test_boss_ignores_slow_and_drift()
+	await _test_meadow_map()
+	await _test_meadow_slow()
+	await _test_gnaw_scale()
 	await _seconds(0.1)
 	print("PROTOTYPE01_TESTS %s failures=%d" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
@@ -262,3 +268,127 @@ func _test_charge_into_wall() -> void:
 	_check(not _player.is_charging(), "la carica finisce anche contro il muro")
 	_check(_player.global_position.z > start_z - 3.0, "e non lo attraversa (%.2f)" % (_player.global_position.z - start_z))
 	body.queue_free()
+
+
+# --- Servizi delle classi (piano 3) ---------------------------------------------------
+
+## Metri percorsi in [param seconds] da un nemico che parte a [param offset] dal giocatore;
+## [param each_step] gira a ogni passo (rallentamento, deriva).
+func _travel(offset: Vector3, seconds: float, setup: Callable = Callable(), each_step: Callable = Callable()) -> float:
+	await _reset_player()
+	var enemy := _director.spawn_at(_player.global_position + offset)
+	enemy.health = 50
+	await _seconds(0.3)
+	if setup.is_valid():
+		setup.call(enemy)
+	var start := _planar(enemy.global_position)
+	for i in int(seconds * Engine.physics_ticks_per_second):
+		if each_step.is_valid():
+			each_step.call(enemy)
+		await physics_frame
+	var moved := _planar(enemy.global_position).distance_to(start)
+	_director.clear_horde()
+	await _seconds(0.2)
+	return moved
+
+
+func _test_slow() -> void:
+	print("rallentamento")
+	var free := await _travel(Vector3(8.0, 0.0, 0.0), 0.5)
+	var slowed := await _travel(Vector3(8.0, 0.0, 0.0), 0.5, func(e: Enemy) -> void: e.slow(0.5, 1.0))
+	_check(slowed < free * 0.75 and slowed > free * 0.25, "a meta velocita fa circa meta strada (%.2f contro %.2f)" % [slowed, free])
+	var strongest := await _travel(Vector3(8.0, 0.0, 0.0), 0.5, func(e: Enemy) -> void:
+		e.slow(0.5, 1.0)
+		e.slow(0.2, 1.0))
+	_check(strongest < slowed * 0.7, "fra due rallentamenti vale il piu forte (%.2f)" % strongest)
+	var enemy := Enemy.new()
+	enemy.slow(0.5, 0.2)
+	enemy.tick_visuals(0.3)
+	_check(is_zero_approx(enemy.slow_left) and is_equal_approx(enemy.slow_factor, 1.0), "finito il tempo torna a piena velocita")
+	enemy.free()
+
+
+func _test_drift() -> void:
+	print("deriva")
+	var pushed := await _travel(Vector3(0.0, 0.0, 8.0), 0.6, Callable(), func(e: Enemy) -> void: e.drift = Vector3(4.0, 0.0, 0.0))
+	var straight := await _travel(Vector3(0.0, 0.0, 8.0), 0.6)
+	_check(pushed > straight + 0.8, "la deriva sposta di lato (%.2f contro %.2f)" % [pushed, straight])
+	# Deriva tolta: niente scivolata dopo.
+	await _reset_player()
+	var enemy := _director.spawn_at(_player.global_position + Vector3(0.0, 0.0, 12.0))
+	enemy.health = 50
+	for i in 30:
+		enemy.drift = Vector3(4.0, 0.0, 0.0)
+		await physics_frame
+	var x_after := enemy.global_position.x
+	await _seconds(0.5)
+	_check(absf(enemy.global_position.x - x_after) < 0.6, "smessa la deriva non scivola oltre (%.2f m)" % absf(enemy.global_position.x - x_after))
+	_check(enemy.drift == Vector3.ZERO, "la deriva si azzera a ogni passo")
+	_director.clear_horde()
+	await _seconds(0.2)
+
+
+func _test_boss_ignores_slow_and_drift() -> void:
+	print("boss: niente rallentamento ne deriva")
+	var boss := Enemy.new()
+	boss.self_driven = true
+	boss.slow(0.2, 2.0)
+	boss.drift = Vector3(5.0, 0.0, 0.0)
+	_check(is_zero_approx(boss.slow_left), "un boss non rallenta")
+	_director.add_enemy(boss, _player.global_position + Vector3(10.0, 0.0, 0.0))
+	var start := boss.global_position
+	boss.drift = Vector3(5.0, 0.0, 0.0)
+	await _seconds(0.3)
+	_check(boss.global_position.distance_to(start) < 0.2, "la deriva non sposta un boss")
+	_director.clear_horde()
+	await _seconds(0.2)
+
+
+func _test_meadow_map() -> void:
+	print("prato logico")
+	var map := MeadowMap.new()
+	map.setup(_field)
+	var p := _player.global_position + Vector3(5.0, 0.0, 5.0)
+	_check(not map.is_meadow(p), "senza segni niente prato")
+	map.mark(p, 1.5)
+	_check(map.is_meadow(p) and map.is_meadow(p + Vector3(1.0, 0.0, 0.0)), "segnato e prato")
+	_check(not map.is_meadow(p + Vector3(4.0, 0.0, 0.0)), "fuori dal segno no")
+	_check(map.cell_count() > 0, "conta le celle")
+	_field.dig_to_base_offset(p, 1.2, 0.6)
+	_check(not map.is_meadow(p), "dove si scava il prato sparisce")
+	_field.reset_to_base(p, Vector2(2.0, 2.0))
+
+
+func _test_meadow_slow() -> void:
+	print("prato che rallenta")
+	var map := MeadowMap.new()
+	map.setup(_field)
+	_director.meadow = map
+	_director.meadow_slow = 0.4
+	var off := await _travel(Vector3(8.0, 0.0, 0.0), 0.6)
+	map.mark(_player.global_position + Vector3(6.0, 0.0, 0.0), 4.0)
+	var on := await _travel(Vector3(8.0, 0.0, 0.0), 0.6)
+	_check(on < off * 0.8, "sul prato il nemico e piu lento (%.2f contro %.2f)" % [on, off])
+	_director.meadow = null
+	_director.meadow_slow = 0.0
+
+
+func _test_gnaw_scale() -> void:
+	print("argini rosicchiati piu piano")
+	await _reset_player()
+	_director.gnaw_scale = 2.0
+	var start := _player.global_position
+	for x in range(-3, 4):
+		_field.level(start + Vector3(x, 0.0, -3.0), 0.9, 1.6, 1.0)
+	var enemy := _director.spawn_at(start + Vector3(0.0, 0.0, -4.4))
+	enemy.health = 50
+	var before := _director.gnaws
+	for i in 6 * Engine.physics_ticks_per_second:
+		await physics_frame
+		if _director.gnaws > before:
+			break
+	_check(_director.gnaws > before, "il nemico contro l'argine rosicchia")
+	_check(enemy.gnaw_left > 1.8, "il prossimo morso fra gnaw_scale secondi (%.2f)" % enemy.gnaw_left)
+	_director.gnaw_scale = 1.0
+	_director.clear_horde()
+	await _seconds(0.2)

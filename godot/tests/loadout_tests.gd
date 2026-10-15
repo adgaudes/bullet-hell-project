@@ -22,6 +22,8 @@ func _initialize() -> void:
 	_test_class_option()
 	await _test_fusion()
 	await _test_fusion_slot_shift()
+	_test_script_for()
+	await _test_services()
 	print("PROTOTYPE01_TESTS %s failures=%d" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -72,7 +74,7 @@ func _test_engineer_kit() -> void:
 
 func _test_class_without_weapons() -> void:
 	print("classe senza armi implementate")
-	var loadout := await _loadout(&"sapper")
+	var loadout := await _loadout(&"nobody")
 	_check(loadout.autos().is_empty() and loadout.actives().is_empty(), "nessuna arma")
 	_check(loadout.adopted.process_mode == Node.PROCESS_MODE_DISABLED and not loadout.adopted.visible, "la chiodatrice della scena e spenta")
 	_check(loadout.add(&"missing") == null, "un'arma sconosciuta non si aggiunge")
@@ -167,4 +169,45 @@ func _test_manual_aim() -> void:
 		"la mira manuale arriva a tutte le armi")
 	var added := loadout.add(&"nailgun")
 	_check(added == null, "un'arma gia posseduta non si aggiunge due volte")
+	await _clear()
+
+
+## Piano 3: gli script delle armi si trovano dal percorso, i task delle classi non toccano il loadout.
+func _test_script_for() -> void:
+	print("script dal percorso")
+	_check(WeaponLoadout.script_for(&"nailgun") == AutoWeapon, "chiodatrice: AutoWeapon")
+	_check(WeaponLoadout.script_for(&"site_blade") == SiteBlade, "Lama dal percorso")
+	_check(WeaponLoadout.script_for(&"seismic_stake") == SeismicStake, "Picchetto dal percorso")
+	_check(WeaponLoadout.script_for(&"no_such") == null, "arma senza script: null")
+
+
+## Arma di prova con le proprieta dei servizi del piano 3.
+class ServiceProbe extends Weapon:
+	var companion: Node3D
+	var xp_field: XpField
+	var scrap_field: ScrapField
+	var meadow: MeadowMap
+
+
+func _test_services() -> void:
+	print("servizi del loadout")
+	var loadout := await _loadout(&"engineer")
+	var companion := Node3D.new()
+	_root.add_child(companion)
+	var xp := XpField.new()
+	_root.add_child(xp)
+	loadout.companion = companion
+	loadout.xp_field = xp
+	loadout.meadow = MeadowMap.new()
+	var probe := ServiceProbe.new()
+	loadout.add_child(probe)
+	loadout.give_services(probe)
+	_check(probe.companion == companion and probe.xp_field == xp and probe.meadow == loadout.meadow, "i servizi passano all'arma che li ha")
+	_check(probe.scrap_field == null, "un servizio assente resta null")
+	var stake := loadout.weapon(&"seismic_stake") as ActiveWeapon
+	loadout.set_active_cooldown_scale(0.9)
+	_check(is_equal_approx(stake.cooldown_total(), 15.0 * 0.9), "ricarica scalata delle attive presenti")
+	loadout.add(&"cement_mixer")
+	var mixer := loadout.weapon(&"cement_mixer") as ActiveWeapon
+	_check(mixer != null and is_equal_approx(mixer.cooldown_scale, 0.9), "e di quelle aggiunte dopo")
 	await _clear()

@@ -8,6 +8,8 @@ const KINDS: Array[StringName] = [
 	&"nail", &"shovel", &"boot", &"wrench", &"scrap", &"bolt", &"skull", &"clock",
 	&"lamp", &"arrow_right", &"check", &"lock", &"stake",
 	&"blade", &"hammer", &"ram", &"mixer", &"dozer", &"compactor",
+	&"scrap_launcher", &"dig_charge", &"welder", &"crane_magnet", &"scythe", &"bramble",
+	&"fort", &"mortar", &"tesla_coil", &"scythe_bramble",
 ]
 
 @export var kind: StringName = &"nail":
@@ -219,6 +221,61 @@ func _draw() -> void:
 			_shape([[0.2, 0.62], [0.8, 0.62], [0.8, 0.8], [0.2, 0.8]], tint)
 			_shape([[0.42, 0.14], [0.58, 0.14], [0.58, 0.62], [0.42, 0.62]], dark)
 			_stroke([[0.1, 0.9], [0.9, 0.9]], dark, 0.06)
+		&"scrap_launcher":
+			# Lanciarottami: tubo inclinato e un rottame in parabola.
+			_stroke([[0.36, 0.6], [0.5, 0.3], [0.7, 0.16], [0.86, 0.22]], dark, 0.05)
+			_shape([[0.1, 0.72], [0.38, 0.5], [0.46, 0.62], [0.18, 0.86]], tint)
+			_shape([[0.78, 0.12], [0.92, 0.18], [0.88, 0.32], [0.74, 0.26]], tint)
+			_shape([[0.12, 0.86], [0.42, 0.86], [0.42, 0.94], [0.12, 0.94]], dark)
+		&"dig_charge":
+			# Carica da scavo: candelotto con la miccia e la scintilla.
+			_shape([[0.3, 0.38], [0.7, 0.38], [0.7, 0.9], [0.3, 0.9]], tint)
+			_stroke([[0.3, 0.52], [0.7, 0.52]], dark, 0.06)
+			_stroke([[0.5, 0.38], [0.56, 0.22], [0.66, 0.14]], outline, 0.05)
+			_dot([0.7, 0.12], 0.08, Color("ffd45a"))
+		&"welder":
+			# Saldatrice: pinza e arco spezzato.
+			_shape([[0.1, 0.62], [0.34, 0.5], [0.42, 0.62], [0.18, 0.8]], dark)
+			_stroke([[0.4, 0.52], [0.56, 0.4], [0.5, 0.3], [0.7, 0.2], [0.64, 0.12], [0.9, 0.06]], outline, 0.12)
+			_stroke([[0.4, 0.52], [0.56, 0.4], [0.5, 0.3], [0.7, 0.2], [0.64, 0.12], [0.9, 0.06]], tint, 0.06)
+		&"crane_magnet":
+			# Calamita da gru: cavo e ferro di cavallo.
+			_stroke([[0.5, 0.04], [0.5, 0.26]], dark, 0.06)
+			_shape([[0.16, 0.26], [0.84, 0.26], [0.84, 0.86], [0.64, 0.86], [0.64, 0.46], [0.36, 0.46], [0.36, 0.86], [0.16, 0.86]], tint)
+			_shape([[0.16, 0.76], [0.36, 0.76], [0.36, 0.86], [0.16, 0.86]], dark)
+			_shape([[0.64, 0.76], [0.84, 0.76], [0.84, 0.86], [0.64, 0.86]], dark)
+		&"scythe":
+			# Falce: manico e lama ricurva.
+			_stroke([[0.22, 0.92], [0.62, 0.12]], dark, 0.08)
+			_shape([[0.6, 0.12], [0.9, 0.24], [0.94, 0.46], [0.8, 0.32], [0.56, 0.24]], tint)
+		&"bramble":
+			# Roveto: tre cespugli con le spine.
+			_dot([0.3, 0.62], 0.2, tint)
+			_dot([0.68, 0.6], 0.22, tint)
+			_dot([0.5, 0.38], 0.2, dark)
+			_stroke([[0.12, 0.5], [0.04, 0.44]], outline, 0.05)
+			_stroke([[0.88, 0.46], [0.96, 0.38]], outline, 0.05)
+			_stroke([[0.5, 0.18], [0.5, 0.08]], outline, 0.05)
+		&"fort":
+			# Fortino: cono di terra con la canna in cima.
+			_shape([[0.08, 0.9], [0.4, 0.34], [0.6, 0.34], [0.92, 0.9]], tint)
+			_shape([[0.44, 0.18], [0.84, 0.18], [0.84, 0.3], [0.44, 0.3]], dark)
+		&"mortar":
+			# Mortaio a crateri: buca e rottame che ci cade dentro.
+			_shape([[0.06, 0.66], [0.3, 0.66], [0.38, 0.84], [0.62, 0.84], [0.7, 0.66], [0.94, 0.66], [0.94, 0.92], [0.06, 0.92]], dark)
+			_shape(_saw(0.5, 0.32, 0.2, 0.14, 7), tint)
+		&"tesla_coil":
+			# Bobina di Tesla: colonna, sfera e scariche.
+			_shape([[0.4, 0.4], [0.6, 0.4], [0.66, 0.92], [0.34, 0.92]], dark)
+			_dot([0.5, 0.3], 0.18, tint)
+			_stroke([[0.28, 0.24], [0.14, 0.14], [0.2, 0.06]], tint, 0.05)
+			_stroke([[0.72, 0.24], [0.86, 0.14], [0.8, 0.06]], tint, 0.05)
+		&"scythe_bramble":
+			# Falciarovi: falce sopra un cespuglio di rovi.
+			_dot([0.34, 0.74], 0.18, dark)
+			_dot([0.64, 0.76], 0.16, dark)
+			_stroke([[0.16, 0.6], [0.58, 0.08]], outline, 0.08)
+			_shape([[0.56, 0.08], [0.88, 0.2], [0.92, 0.42], [0.78, 0.28], [0.52, 0.2]], tint)
 		&"check":
 			_stroke([[0.16, 0.52], [0.4, 0.78], [0.86, 0.26]], outline, 0.2)
 			_stroke([[0.16, 0.52], [0.4, 0.78], [0.86, 0.26]], tint, 0.1)
