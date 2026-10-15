@@ -2,14 +2,14 @@
 
 > **Breve per scelta** (audit D-06, 14 ottobre 2026): dove siamo, prossimo passo, cosa aspetta il proprietario. Va aggiornato a ogni avanzamento e tenuto **sotto 8 KB**: quando cresce, il vecchio va in `docs/archive/`. Storia delle sessioni fino al 14 ottobre 2026: `docs/archive/STATUS_LOG_2026-10.md`. Decisioni: `DECISIONS.md`. Piano di prodotto: `PROJECT_ROADMAP.md`. Per trovare un documento: `INDEX.md`.
 
-**Ultimo aggiornamento:** 15 ottobre 2026 (eventi del mondo casuali e scheda Gameplay, D-097; carovana: Sezioni 1-5 approvate).
+**Ultimo aggiornamento:** 15 ottobre 2026 (piano 5 armi a meta: suoni e telegrafo fatti; carovana: spec scritta; eventi casuali D-097).
 
 ## Dove siamo
 
 - **Engine** Godot 4.7.2 (GDScript). La migrazione da Unreal e chiusa; il codice Unreal sta nel tag `unreal-prototype-final`.
 - **Prodotto:** fase 3, prototipo della promessa A. Due livelli giocabili, quartiere e ferrovia, su terreno continuo (Terrain3D), con boss (Demolitore, Trivella), treno, terremoto, giorno e notte con lampioni, estrazione, Officina, campagna, interfaccia "fatta a mano", audio Sonniss. Primo playtest del proprietario il 14 ottobre (vedi sotto).
 - **Branch di lavoro:** `feature/arena-run`. Non integrato: `feature/engineer-restyle` (Ingegnere D-088, worktree `../Videogame-engineer`), in attesa del giudizio del proprietario.
-- **Gate:** `tools/godot/Invoke-GodotChecks.ps1`: check-only, 45 suite con seme fisso, passo con finestra (Terrain3D e shader), smoke test. Verde.
+- **Gate:** `tools/godot/Invoke-GodotChecks.ps1`: check-only, 46 suite con seme fisso, passo con finestra (Terrain3D e shader), smoke test. Ultimo gate completo verde prima del piano 5; dopo, verdi solo le suite toccate (armi, audio, telegrafo).
 - **Build:** `LocalBuilds/Prototype01-Godot-Win64/` e `-Linux/` (exe 196 MB).
 
 **Audit del 14 ottobre:** `docs/REVIEWS/FULL_AUDIT_2026-10-14.md` (70 nemici: Alto 4,8 ms, Deck 4,1 ms).
@@ -18,17 +18,15 @@
 
 Esito **Modifica**: 14 osservazioni, piu O-15 e O-16 del 15 ottobre. Cause e piano in `docs/PLAYTESTS/OWNER_PLAYTEST_2026-10-14.md`. **Il piano di quel documento viene prima delle voci dell'audit.** Ordine scelto (D-089): grafica, gioco, armi, audio.
 
-**Blocchi 1 e 2 (14 ottobre, D-090, D-091):** luce, terreno CC0, prato a particelle, rovine a moduli, menu 3D, Officina a carte, vita 10, terra nel HUD, rampa d'uscita, mira commutabile, impostazioni a schede (catture `output/lighting/`).
+**Fatto:** blocchi 1-2 (D-090, D-091); armi e classi D-092 piani 1-4 (Deck 0,18-0,65 ms per passo, budget 1,0); luce D-094 (`output/lighting_lab/`).
 
-**Blocco 3, armi e classi (D-092), 15 ottobre:** design approvato a voce (spec `docs/superpowers/specs/2026-10-15-weapons-classes-design.md`), piani 1-4 fatti (dettagli in `DECISIONS.md`). Deck per classe 0,18-0,65 ms per passo (budget 1,0). Catture `output/weapons/`.
+**Eventi del mondo (D-097):** casuali, quanti ne sceglie la nuova scheda **Gameplay** (1-5, di serie 1), prima del boss.
 
-**Eventi del mondo, 15 ottobre (D-097):** niente orari fissi; quanti eventi per livello (1-5, di serie 1), quali e quando li sceglie a caso `WorldEventScheduler` prima della chiamata del boss. Nuova scheda **Gameplay** nelle Impostazioni: eventi per livello, Terremoto, Treno, Notte, mira manuale. Suite `world_event_tests`.
-
-**Luce, 15 ottobre (D-094):** controluce, ombre blu, AgX, riempimento, nuvole, notte lunare; banco `tests/tools/lighting_lab.gd`; +0,1-0,2 ms; catture `output/lighting_lab/`.
+**Armi, piano 5 (in corso):** task 1-3 fatti (suoni delle armi, anteprima `output/audio/weapons_preview.wav`; telegrafo delle attive). Task 4 iniziato: kit `scripts/effects/weapon_fx.gd`, non ancora usato ne testato. Task 5 (Effekseer) su branch `spike/effekseer`: esito da controllare.
 
 ## Prossimo passo (agente)
 
-0. Blocchi 1-2 del playtest e piani 1-4 delle armi fatti (sopra). **In corso: progettazione della carovana di macchine e della fusione (D-093)** col proprietario: bozza `docs/superpowers/specs/2026-10-15-caravan-machines-design.md`; Sezioni 1-7 approvate, **spec scritta da far rileggere al proprietario**; poi piano 5 delle armi, poi il piano A della carovana (`writing-plans`). **Inondazione** (richiesta del 15 ottobre): proporre uno spike di costo dell'acqua simulata sul Deck, poi il design. Dopo: piano 5 armi (effetti e suoni), bilanciamento coi bot, playtest. Poi la musica scelta da lui (candidati in `Videogame-assets/music-candidates/`). ProtonScatter approvato (D-090) ma non installato: serve quando si spargono oggetti.
+0. Blocchi 1-2 del playtest e piani 1-4 delle armi fatti (sopra). **In corso: progettazione della carovana di macchine e della fusione (D-093)** col proprietario: bozza `docs/superpowers/specs/2026-10-15-caravan-machines-design.md`; Sezioni 1-7 approvate, **spec scritta da far rileggere al proprietario**. **Ripartire dal piano 5 delle armi, task 4** (applicare `WeaponFx` arma per arma, test, catture, benchmark), poi task 5-6, poi il piano A della carovana. **Inondazione** (richiesta del 15 ottobre): proporre uno spike di costo dell'acqua simulata sul Deck, poi il design. Dopo: piano 5 armi (effetti e suoni), bilanciamento coi bot, playtest. Poi la musica scelta da lui (candidati in `Videogame-assets/music-candidates/`). ProtonScatter approvato (D-090) ma non installato: serve quando si spargono oggetti.
    **Grafica (richieste del proprietario del 15 ottobre):** strumenti di D-095 uno alla volta con misura e catture (Effekseer col piano 5, ProtonScatter, post-produzione, AreaLight3D di notte, Material Maker e Ucupaint per nemici e boss); **carte degli upgrade da rifare** (D-096: font e layout, prima bozze in cattura).
 1. **Voci rimaste dell'audit**, nell'ordine della sua sezione 1 (PF-03, T-01/T-02, I-02, K-07/K-08, L-01, D-05, H-01, X-01/X-03, voci B): elenco in `docs/REVIEWS/FULL_AUDIT_2026-10-14.md`.
 2. **Dopo la misura sul Deck:** V-02, V-03, V-06, Q-01, Q-03, Q-04 (costo GPU e contenuto del preset Deck).

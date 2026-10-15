@@ -8,6 +8,8 @@
 
 **Tech Stack:** Godot 4.7.2 GDScript, Python 3 + ffmpeg per i suoni, bundle Sonniss GDC 2024 fuori repo.
 
+**Stato (15 ottobre 2026):** task 1-3 fatti (`e4277c7`, `cd3ee10`, `8e77fe2`); task 4 iniziato (kit `godot/scripts/effects/weapon_fx.gd`: `burst`, `shockwave`, `dust`, tetto di 40 nodi vivi, gruppo `weapon_fx`; non ancora applicato alle armi); task 5 affidato a un agente su `spike/effekseer`.
+
 **Spec:** `docs/superpowers/specs/2026-10-15-weapons-classes-design.md` (par. "Effetti", "Suoni", ordine dei piani punto 5); D-095 per Effekseer.
 
 ## Global Constraints
