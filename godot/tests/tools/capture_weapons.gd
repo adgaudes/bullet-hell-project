@@ -4,7 +4,17 @@ extends SceneTree
 ## Produce: burst (chiodatrice con Raffica sull'orda), incendiary (macchie di fuoco degli
 ## Incandescenti), stake_rising e stake_ring (anello del picchetto che sale e chiude l'orda,
 ## striscia del HUD in ricarica), branch_screen (scelta della trasformazione); kit comune
-## (piano 2): blade, hammer, ram, dozer (Ruspa a dischi), mixer.
+## (piano 2): blade, hammer, ram, dozer (Ruspa a dischi), mixer; Fortino (piano 3): fort.
+## Con `--class=sapper|mechanic|weeder` (piano 3) solo il kit della classe:
+## <classe>_auto, <classe>_active (livello 1), <classe>_auto5, <classe>_active5 (livello 5 coi
+## bivi di PICKS), <classe>_fusion; la tuta e tinta del colore di classe.
+
+## Bivi delle catture di classe: quelli che si vedono di piu.
+const PICKS := {
+	&"scrap_launcher": [&"a", &"a"], &"dig_charge": [&"b", &"a"],
+	&"welder": [&"a", &"b"], &"crane_magnet": [&"b", &"a"],
+	&"scythe": [&"a", &"b"], &"bramble": [&"a", &"a"],
+}
 
 var _out := "../output/weapons"
 var _run: ArenaRun
@@ -32,6 +42,10 @@ func _initialize() -> void:
 	_player.global_position = Vector3(0.0, field.height_at(Vector3.ZERO) + 0.88, 0.0)
 	_player.velocity = Vector3.ZERO
 	var loadout := _run.loadout
+	if _run.class_id != ClassCatalog.DEFAULT:
+		await _class_kit(loadout, _run.class_id)
+		quit()
+		return
 
 	loadout.level_up(&"nailgun")
 	loadout.choose_branch(&"nailgun", &"a")
@@ -64,7 +78,65 @@ func _initialize() -> void:
 	await _frames(30)
 	await _save("branch_screen")
 	await _common_kit(loadout)
+	await _fort(loadout)
 	quit()
+
+
+## Fortino: chiodatrice e picchetto al 5 e fusi; la prima torretta nasce dopo 10 s.
+func _fort(loadout: WeaponLoadout) -> void:
+	_director.clear_horde()
+	loadout.weapon(&"nailgun").process_mode = Node.PROCESS_MODE_INHERIT
+	for id in [&"nailgun", &"seismic_stake"]:
+		_max_out(loadout, id, [&"a", &"a"])
+	loadout.fuse(&"nailgun")
+	await _frames(int(9.0 * Engine.physics_ticks_per_second))
+	_horde(Vector3(0.0, 0.0, -9.0), 6, 1.5)
+	await _frames(int(2.5 * Engine.physics_ticks_per_second))
+	await _save("fort")
+
+
+## Kit di una classe (piano 3): automatica e attiva al livello 1, poi al 5, poi la fusione.
+func _class_kit(loadout: WeaponLoadout, class_id: StringName) -> void:
+	_player._set_aim_device(PlayerCharacter.AimDevice.GAMEPAD)
+	_player.rotation.y = 0.0
+	var kit := ClassCatalog.start_weapons(class_id)
+	if kit.size() < 2:
+		push_error("classe senza kit: %s" % class_id)
+		return
+	var auto_id := kit[0]
+	var active_id := kit[1]
+	var active := loadout.weapon(active_id) as ActiveWeapon
+	_horde(Vector3(0.0, 0.0, -6.0), 8, 2.0)
+	await _frames(int(1.6 * Engine.physics_ticks_per_second))
+	await _save("%s_auto" % class_id)
+	loadout.trigger_active(0)
+	await _frames(int(0.8 * Engine.physics_ticks_per_second))
+	await _save("%s_active" % class_id)
+	_director.clear_horde()
+	await _frames(60)
+	_max_out(loadout, auto_id, PICKS.get(auto_id, [&"a", &"a"]))
+	_max_out(loadout, active_id, PICKS.get(active_id, [&"a", &"a"]))
+	_horde(Vector3(0.0, 0.0, -6.0), 8, 2.0)
+	await _frames(int(2.0 * Engine.physics_ticks_per_second))
+	await _save("%s_auto5" % class_id)
+	active.cooldown_left = 0.0
+	loadout.trigger_active(0)
+	await _frames(int(1.2 * Engine.physics_ticks_per_second))
+	await _save("%s_active5" % class_id)
+	_director.clear_horde()
+	await _frames(int(2.0 * Engine.physics_ticks_per_second))
+	loadout.fuse(auto_id)
+	_horde(Vector3(0.0, 0.0, -5.0), 10, 2.5)
+	await _frames(int(2.0 * Engine.physics_ticks_per_second))
+	await _save("%s_fusion" % class_id)
+
+
+static func _max_out(loadout: WeaponLoadout, id: StringName, picks: Array) -> void:
+	while loadout.level_of(id) > 0 and loadout.level_of(id) < WeaponCatalog.MAX_LEVEL:
+		if loadout.needs_branch(id):
+			loadout.choose_branch(id, picks[0] if loadout.level_of(id) < 3 else picks[1])
+		else:
+			loadout.level_up(id)
 
 
 ## Kit comune (piano 2): una cattura per arma, la chiodatrice resta ferma. Mira da controller:

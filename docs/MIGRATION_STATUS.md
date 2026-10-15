@@ -2,7 +2,7 @@
 
 > **Breve per scelta** (audit D-06, 14 ottobre 2026): dove siamo, prossimo passo, cosa aspetta il proprietario. Va aggiornato a ogni avanzamento e tenuto **sotto 8 KB**: quando cresce, il vecchio va in `docs/archive/`. Storia delle sessioni fino al 14 ottobre 2026: `docs/archive/STATUS_LOG_2026-10.md`. Decisioni: `DECISIONS.md`. Piano di prodotto: `PROJECT_ROADMAP.md`. Per trovare un documento: `INDEX.md`.
 
-**Ultimo aggiornamento:** 15 ottobre 2026 (armi e classi: design e piano 1, impianto).
+**Ultimo aggiornamento:** 15 ottobre 2026 (armi e classi: piano 3, le classi).
 
 ## Dove siamo
 
@@ -20,11 +20,11 @@ Esito **Modifica**: 14 osservazioni (salute, terra senza indicatore, buca senza 
 
 **Blocchi 1 e 2 (14 ottobre, D-090, D-091):** luce, terreno CC0, prato a particelle, rovine a moduli, menu 3D, Officina a carte, vita 10, terra nel HUD, rampa d'uscita, mira commutabile, impostazioni a schede (catture `output/lighting/`).
 
-**Blocco 3, armi e classi (D-092), 15 ottobre:** design approvato a voce (spec `docs/superpowers/specs/2026-10-15-weapons-classes-design.md`: quattro classi giocabili, 6 automatiche, 6 attive, 6 fusioni, bivi al 3 e al 5, casse sepolte, Officina a sezioni). **Piano 1, impianto, fatto** (`docs/superpowers/plans/2026-10-15-weapons-foundation.md`): catalogo e classi, chiodatrice coi quattro bivi, Picchetto sismico, `WeaponLoadout`, comandi E/F e LT/RB, carte arma e schermata della trasformazione, mazzi di classe, striscia nel HUD, `--class=`. **Piano 2, kit comune, fatto** (`docs/superpowers/plans/2026-10-15-weapons-common-kit.md`): Lama da cantiere, Martello pneumatico, Ariete (carica che sfonda gli argini), Betoniera, coi bivi; fusioni (carta Leggendaria, Ruspa a dischi, Costipatore); stordimento e carica. Le armi comuni sono sbloccate per prova finche l'Officina non le vende (piano 4). Cinque slot pieni: 0,2 ms per passo, 0,8-0,9 ms mentre la coda scrive (budget 1,0). Review finale corretta. Catture `output/weapons/`.
+**Blocco 3, armi e classi (D-092), 15 ottobre:** design approvato a voce (spec `docs/superpowers/specs/2026-10-15-weapons-classes-design.md`). Fatti i piani 1 (impianto: catalogo, chiodatrice coi bivi, Picchetto, `WeaponLoadout`, E/F e LT/RB, carte arma, HUD, `--class=`), 2 (kit comune: Lama, Martello, Ariete, Betoniera, fusioni Ruspa e Costipatore) e 3 (classi: Guastatore, Meccanico, Erbacciaia, Fortino; `Enemy.slow`/`drift`, `MeadowMap`, carte di classe in `ClassPerks`, tuta di classe, bot con le attive). Armi comuni sbloccate per prova fino al piano 4. Benchmark Deck per classe 0,18-0,55 ms per passo (0,10-0,65 con la fusione; budget 1,0). Catture `output/weapons/`. Piani in `docs/superpowers/plans/2026-10-15-weapons-*.md`.
 
 ## Prossimo passo (agente)
 
-0. **Blocchi 1 e 2 del playtest fatti** (grafica, menu, Officina, salute, terra, buca, mira, impostazioni; D-090, D-091). **Blocco 3, armi (O-05): design approvato a voce il 15 ottobre** (D-092): quattro classi giocabili, 6 automatiche, 6 attive su tasto, 6 fusioni, bivi, casse sepolte; spec `docs/superpowers/specs/2026-10-15-weapons-classes-design.md`. Piani 1 (impianto) e 2 (kit comune) fatti. Prossimo: **piano 3, le tre classi** (Guastatore, Meccanico, Erbacciaia: armi, fusioni, mazzi, segnaposto; anche in parallelo con Codex), poi la fusione Fortino dell'Ingegnere, casse/Officina/scelta della classe (4), effetti (5), bilanciamento coi bot (6). Poi la musica scelta da lui (candidati in `Videogame-assets/music-candidates/`). ProtonScatter approvato (D-090) ma non installato: serve quando si spargono oggetti.
+0. **Blocchi 1 e 2 del playtest fatti** (grafica, menu, Officina, salute, terra, buca, mira, impostazioni; D-090, D-091). **Blocco 3, armi (O-05): design approvato a voce il 15 ottobre** (D-092): quattro classi giocabili, 6 automatiche, 6 attive su tasto, 6 fusioni, bivi, casse sepolte; spec `docs/superpowers/specs/2026-10-15-weapons-classes-design.md`. Piani 1 (impianto), 2 (kit comune) e 3 (classi) fatti. Prossimo: **piano 4**: casse sepolte, Officina a sezioni (sblocco delle armi comuni, upgrade di classe, ricettario), scelta della classe nella campagna, profilo versione 2; poi effetti e suoni (5), bilanciamento coi bot (6). Poi la musica scelta da lui (candidati in `Videogame-assets/music-candidates/`). ProtonScatter approvato (D-090) ma non installato: serve quando si spargono oggetti.
 1. **Voci rimaste dell'audit**, nell'ordine della sua sezione 1:
    - PF-03, caricamento: prato sul rilievo 850 ms, pittura del terreno 460 ms;
    - T-01 e T-02: collisione copiata dal campo, ferrovia allineata;
@@ -40,7 +40,7 @@ Esito **Modifica**: 14 osservazioni (salute, terra senza indicatore, buca senza 
 
 ## Cosa aspetta il proprietario
 
-0. **Armi e classi** (D-092): la spec e da rileggere quando vuoi (si procede intanto, come chiesto); catture dell'impianto in `output/weapons/` (l'anello del picchetto dalla camera alta e ancora discreto: polvere e tinta arrivano col piano 5).
+0. **Armi e classi** (D-092): la spec e da rileggere quando vuoi (si procede intanto, come chiesto); catture in `output/weapons/` (anello del picchetto, archi della Saldatrice, scoppi del Guastatore e cono del Fortino ancora discreti dalla camera alta: arrivano col piano 5; i rovi si leggono gia). Da provare a mano: `--class=sapper|mechanic|weeder`. Scelte da confermare (D-092): Fortino "al 70%" come cadenza, Polarita inversa che respinge di circa 2 m.
 1. **Musica:** ascoltare i candidati in `C:\Users\adgau\Desktop\Videogame-assets\music-candidates\` (LEGGIMI.md con licenze) e dire quali tenere (D-089). **Grafica:** giudicare il blocco grafica nella nuova build (catture in `output/lighting/`).
 2. **Giudizio sull'Ingegnere** (D-088): catture in `../Videogame-engineer/output/engineer/`. Dopo il si si integra.
 3. **Playtest dei due livelli:** primo giro fatto il 14 ottobre (livello 1, tastiera, breve). Restano boss, notte, ferrovia e controller: promemoria in `docs/PLAYTESTS/ARENA_RUN_LEVEL_2026-10-07.md`.

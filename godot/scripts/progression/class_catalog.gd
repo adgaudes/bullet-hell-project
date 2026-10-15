@@ -30,7 +30,7 @@ static func find(id: StringName) -> Dictionary:
 static func start_weapons(id: StringName) -> Array[StringName]:
 	var out: Array[StringName] = []
 	for weapon_id: StringName in find(id).get(&"kit", []):
-		if not WeaponCatalog.find(weapon_id).is_empty() and WeaponLoadout.script_for(weapon_id) != null:
+		if not WeaponCatalog.find(weapon_id).is_empty():
 			out.append(weapon_id)
 	return out
 

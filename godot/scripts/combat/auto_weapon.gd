@@ -263,8 +263,8 @@ func _move_nails(delta: float) -> void:
 # --- Fortino --------------------------------------------------------------------------------
 
 ## Torrette vive del Fortino.
-func fort_turrets() -> Array[AutoWeapon]:
-	var out: Array[AutoWeapon] = []
+func fort_turrets() -> Array[Weapon]:
+	var out: Array[Weapon] = []
 	for turret in _turrets:
 		out.append(turret.weapon)
 	return out
@@ -326,7 +326,9 @@ func _raise_turret(center: Vector3) -> void:
 	var height := fusion_stat(&"turret_height")
 	for disc in FORT_DISCS:
 		write_queue.push_level(center, disc.x, center.y + height * disc.y)
-	var turret := AutoWeapon.new()
+	# Dal proprio script, non dal nome di classe: un riferimento di AutoWeapon a se stessa
+	# teneva vivi gli script all'uscita (risorse e RID persi nei test).
+	var turret: Weapon = (get_script() as Script).new()
 	turret.name = "FortTurret"
 	turret.weapon_id = &"nailgun"
 	turret.level = level
@@ -340,10 +342,10 @@ func _raise_turret(center: Vector3) -> void:
 	marker.add_child(_turret_mesh())
 	turret.add_child(marker)
 	turret.shooter = marker
-	turret.muzzle_height = FORT_MUZZLE
+	turret.set(&"muzzle_height", FORT_MUZZLE)
 	add_child(turret)
 	turret.global_position = center + Vector3(0.0, height, 0.0)
-	turret.fire_interval /= maxf(fusion_stat(&"rate"), 0.05)
+	turret.set(&"fire_interval", turret.get(&"fire_interval") / maxf(fusion_stat(&"rate"), 0.05))
 	_turrets.append({weapon = turret, center = center, left = fusion_stat(&"turret_seconds")})
 	print("PROTOTYPE01_FORT_RAISED at=(%.1f, %.1f) turrets=%d" % [center.x, center.z, _turrets.size()])
 
