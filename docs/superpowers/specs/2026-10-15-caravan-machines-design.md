@@ -1,6 +1,6 @@
 # Carovana di macchine e fusione — design (bozza in corso)
 
-Data: 15 ottobre 2026. Stato: **in progettazione col proprietario: Sezioni 1-5 approvate, 6-7 da presentare. Niente implementazione finche il design non e approvato per sezioni e la spec scritta non e rivista.**
+Data: 15 ottobre 2026. Stato: **in progettazione col proprietario: Sezioni 1-6 approvate, 7 da presentare. Niente implementazione finche il design non e approvato per sezioni e la spec scritta non e rivista.**
 Decisione: **D-093** (in progettazione). Contesto: D-011 (costruire, fondere, pilotare macchine), D-012 (primo compagno autonomo), D-033 (promessa A; la carovana come struttura, la macchina sempre piu assurda come payoff), D-035 (la build si vede nel mondo), roadmap sezione 2 ("carovana di macchine... agganciarsi e separarsi; fusione in configurazioni crescenti e forma colossale"), D-092 (armi e classi: casse, carte, Officina, ricettario gia esistono).
 
 ## Perche
@@ -69,11 +69,17 @@ Il proprietario (15 ottobre): "e una meccanica fondamentale del gameplay, che lo
 - **Officina:** sbloccati da subito Cassone, Torretta, Calamita, Faro; nuova scheda "Macchine" per sbloccare Trivella, Pala, Saldatore, Sirena (15-25 rottami l'uno); Cassone saldato, Scorta e Torretta fissa (Meccanico) restano. Il Ricettario ha la sezione "Combinazioni" (6 voci a "???" fino alla prima fusione); profilo versione 3, un profilo v2 si carica intatto.
 - **Meccanico, "carovana potenziata":** parte con due macchine; carta di classe "Officina mobile" che porta il limite a 7 moduli (un colosso piu una piccola); le sue armi che usano il compagno (Calamita da gru) usano la macchina col Cassone piu vicina.
 
+## Sezione 6 — comandi, HUD, prestazioni, bot (APPROVATA dal proprietario il 15 ottobre 2026)
+
+- **Comandi:** nessun tasto nuovo. Il tasto azione esistente, secondo il contesto, ripara la macchina guasta vicina (tenuto), apre il banco sulla piazzola, fa salire e scendere dal colosso; controller e tastiera equivalenti. Le macchine sono autonome, niente ordini.
+- **HUD:** striscia di icone sopra la barra delle armi, una per macchina, con taglia, vita e segno di guasto. Nel mondo un anello colorato a terra sotto ogni macchina per staccarla dall'orda; la guasta fuma e ha un'icona sopra.
+- **Prestazioni:** al piu 6 corpi; budget 0,5 ms per passo sul preset Deck, misurato col benchmark come le armi; se si sfora si riducono prima gli effetti.
+- **Bot:** il simulatore raccoglie i relitti, fonde sulla piazzola e ripara, per bilanciare i numeri.
+
 ## Ancora da progettare (sezioni successive)
 
-- HUD e comandi (controller prioritario), leggibilita del grappolo con l'orda, prestazioni sul Deck (piu corpi che si muovono e sparano), simulatore dei bot.
 - Verifica, piani di implementazione e ordine rispetto al piano 5 delle armi (effetti e suoni).
 
 ## Prossimo passo
 
-Sezioni 1-5 approvate il 15 ottobre 2026. Riprendere dalla **Sezione 6** (HUD e comandi a controller, leggibilita del grappolo con l'orda, prestazioni sul Deck, simulatore dei bot), poi la **Sezione 7** (verifica, piani di implementazione, ordine rispetto al piano 5 delle armi), poi la spec definitiva al posto di questa bozza.
+Sezioni 1-6 approvate il 15 ottobre 2026. Riprendere dalla **Sezione 7** (verifica, piani di implementazione, ordine rispetto al piano 5 delle armi), poi la spec definitiva al posto di questa bozza.
