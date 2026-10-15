@@ -145,6 +145,22 @@ func roll_offer() -> Array[Dictionary]:
 	return offer
 
 
+## Carte di una cassa sepolta (spec D-092, par. 6.3): fino a [param count] carte arma distinte,
+## pesate per rarita come il level-up; una fusione (Leggendaria), se c'e, sempre per prima.
+func roll_weapon_offer(cards: Array[Dictionary], count := CARDS) -> Array[Dictionary]:
+	var offer: Array[Dictionary] = []
+	var pool: Array = cards.duplicate()
+	var fusions := pool.filter(func(u: Dictionary) -> bool: return u.rarity >= UpgradeCatalog.Rarity.LEGENDARY)
+	if not fusions.is_empty() and count > 0:
+		offer.append(_weighted_pick(fusions))
+		pool.erase(offer[0])
+	while offer.size() < count and not pool.is_empty():
+		var pick := _weighted_pick(pool)
+		offer.append(pick)
+		pool.erase(pick)
+	return offer
+
+
 ## Restituisce il nuovo livello dell'upgrade.
 func choose(id: StringName) -> int:
 	levels[id] = level_of(id) + 1

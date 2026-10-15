@@ -107,6 +107,12 @@ var boss_call_at := 0.0
 var _boss_warning_left := 0.0
 var _boss_rng := RandomNumberGenerator.new()
 var _pending_level_ups := 0
+## Casse sepolte (D-092, par. 6.3): aperte e non ancora scelte; `_cache_menu` vale se la
+## scelta aperta (o la sua trasformazione) viene da una cassa.
+var caches: BuriedCaches
+var _pending_caches := 0
+var _cache_menu := false
+const CACHE_FALLBACK_SCRAP := 2
 ## Punti di interesse ancora da indicare: { center: Vector3, text: String, color: Color, kind: StringName }.
 var _marker_targets: Array[Dictionary] = []
 var _marker_refresh_left := 0.0
@@ -657,6 +663,7 @@ func _build_terrain_relief() -> void:
 	if not terrain_field.load_base(base_relief_path(), district.layout_seed):
 		district.apply_base_relief(terrain_field)
 	district.apply_strokes(terrain_field, _scrap_field())
+	_place_caches()
 	var margin: float = terrain_field.tuning.protected_radius_m
 	for rect: Rect2 in district.block_rects():
 		var center := rect.get_center()
@@ -674,6 +681,26 @@ func _build_terrain_relief() -> void:
 	if terrain_field.terrain3d() != null:
 		_spawn_grass_field.call_deferred()
 	print("PROTOTYPE01_TERRAIN_LAYOUT_READY strokes=%d" % district.terrain_strokes.size())
+
+
+## Casse sepolte (D-092, par. 6.3): 3 o 4 per livello (seme della run), sotto i cumuli e i
+## vagoni ancora in piedi dopo le pennellate (sulla fascia dei binari i cumuli sono spianati).
+func _place_caches() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = run_seed + 5
+	var raised := district.terrain_strokes.filter(func(stroke: Dictionary) -> bool:
+		var center := Vector3(stroke.center.x, 0.0, stroke.center.y)
+		return terrain_field.height_at(center) > terrain_field.base_height_at(center) + BuriedCaches.OPEN_MARGIN)
+	caches = BuriedCaches.new()
+	caches.name = "BuriedCaches"
+	caches.terrain_field = terrain_field
+	caches.player = player
+	add_child(caches)
+	caches.place(BuriedCaches.pick_points(raised, rng, rng.randi_range(3, 4)))
+	caches.cache_opened.connect(_on_cache_opened)
+	if train_event != null:
+		train_event.buried_caches = caches
+	print("PROTOTYPE01_CACHE_PLACED count=%d" % caches.count())
 
 
 ## Prato a particelle quando Terrain3D e pronto (playtest del 14 ottobre 2026, O-09).
@@ -920,8 +947,12 @@ func _on_xp_collected(amount: int) -> void:
 
 
 func _open_next_level_up() -> void:
-	if _pending_level_ups <= 0 or level_up_menu.is_open or is_over:
+	if level_up_menu.is_open or is_over:
 		return
+	# Casse e level-up in coda (D-092): un menu alla volta, prima le casse.
+	if _open_next_cache() or _pending_level_ups <= 0:
+		return
+	_cache_menu = false
 	var offer := progression.roll_offer()
 	if offer.is_empty():
 		_pending_level_ups = 0
@@ -962,9 +993,50 @@ func _on_weapon_card(id: StringName) -> void:
 			loadout.choose_branch(card.weapon_id, card.pick)
 		&"fusion":
 			loadout.fuse(card.weapon_id)
-	_pending_level_ups -= 1
+	if _cache_menu:
+		_cache_menu = false
+		_pending_caches -= 1
+	else:
+		_pending_level_ups -= 1
 	print("PROTOTYPE01_UPGRADE_CHOSEN id=%s level=%d" % [id, loadout.level_of(card.get(&"weapon_id", &""))])
 	_open_next_level_up.call_deferred()
+
+
+## Cassa scoperta (dallo scavo, a meta passo): la scelta si apre a fine passo come il level-up.
+func _on_cache_opened(_at: Vector3) -> void:
+	if is_over:
+		return
+	_pending_caches += 1
+
+
+## Prossima cassa in coda: tre carte arma; senza carte possibili (slot pieni, tutto al 5)
+## 2 rottami e un avviso al posto del menu. Vero se ha aperto il menu.
+func _open_next_cache() -> bool:
+	while _pending_caches > 0:
+		var offer := progression.roll_weapon_offer(WeaponOffers.cards(loadout, class_id, _unlocked_weapons()))
+		if not offer.is_empty():
+			_cache_menu = true
+			var ids := offer.map(func(u: Dictionary) -> String: return str(u.id))
+			print("PROTOTYPE01_CACHE_OFFER offer=%s" % ",".join(PackedStringArray(ids)))
+			level_up_menu.open(offer, {}, progression.level, "CASSA SEPOLTA", "scegli un'arma")
+			return true
+		_pending_caches -= 1
+		_cache_scrap_fallback()
+	return false
+
+
+## Cassa senza carte: i rottami vanno al compagno; quelli che non ci stanno (o tutti, senza
+## compagno che li porti) restano a terra vicino al giocatore se c'e un campo di rottami.
+func _cache_scrap_fallback() -> void:
+	var given := 0
+	if companion != null:
+		given = clampi(companion.capacity - companion.carried, 0, CACHE_FALLBACK_SCRAP)
+		companion.add_capacity(0, given)
+	if _scrap_field() != null:
+		for i in CACHE_FALLBACK_SCRAP - given:
+			_scrap_field().spawn_on_ground(player.global_position + Vector3(0.8 * (i + 1), 0.0, 0.0))
+	hud.show_notice("CASSA SEPOLTA: +%d ROTTAMI" % CACHE_FALLBACK_SCRAP, 3.0, RunHud.TITLE_COLOR)
+	print("PROTOTYPE01_CACHE_SCRAP given=%d" % given)
 
 
 ## Effetto di un upgrade al suo nuovo livello.

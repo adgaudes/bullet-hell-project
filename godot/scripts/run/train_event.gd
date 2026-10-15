@@ -48,6 +48,8 @@ const DIRECTION_NAMES: Dictionary[int, String] = {-1: "EST", 1: "OVEST"}
 @export var lamp_field: LampField
 @export var scrap_field: ScrapField
 @export var hud: RunHud
+## Casse sepolte nei vagoni (D-092): il treno le spazza via come le vene, senza aprirle.
+var buried_caches: BuriedCaches
 
 ## Secondi di livello del primo passaggio, poi uno ogni `interval_seconds`; 0 = mai.
 var first_seconds := 90.0
@@ -208,6 +210,9 @@ func _sweep_band() -> void:
 		return
 	var center := Vector3((lo + hi) * 0.5, 0.0, 0.0)
 	var half := Vector2((hi - lo) * 0.5, RailwayDistrict.TRACK_HALF_WIDTH)
+	# Prima di spianare: col suolo alla base le casse si aprirebbero da sole.
+	if buried_caches != null:
+		buried_caches.discard_in_rect(Rect2(lo, -half.y, hi - lo, half.y * 2.0))
 	var volume := terrain_field.reset_to_base(center, half)
 	if volume > 0.01:
 		# Il tratto spianato torna massicciata di ghiaia (i cumuli dei vagoni erano ruggine).
