@@ -58,6 +58,7 @@ var _boss_box: VBoxContainer
 var _boss_bar: ProgressBar
 var _root: Control
 var _controls: ButtonPrompts
+var _weapons: WeaponStrip
 ## Indicatori a bordo schermo (punti di interesse, boss): freccia e distanza, riusati.
 var _marker_arrows: Array[Polygon2D] = []
 var _marker_labels: Array[Label] = []
@@ -203,15 +204,37 @@ func _ready() -> void:
 
 	# Comandi di gioco, in basso a sinistra.
 	_controls = ButtonPrompts.create([[&"dash", "Scatto"], [&"terrain_tool", "Scava o rialza"],
-		[&"terrain_mode", "Cambia modo"], [&"weapon_aim_mode", "Mira auto/manuale"], [&"camera_zoom_cycle", "Distanza camera"], [&"pause", "Pausa"]], true)
+		[&"terrain_mode", "Cambia modo"], [&"weapon_active_1", "Attiva 1"], [&"weapon_active_2", "Attiva 2"],
+		[&"weapon_aim_mode", "Mira auto/manuale"], [&"camera_zoom_cycle", "Distanza camera"], [&"pause", "Pausa"]], true)
 	_controls.modulate.a = 0.85
 	root.add_child(_controls)
 	_controls.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT, Control.PRESET_MODE_MINSIZE, 24)
 	_controls.grow_vertical = Control.GROW_DIRECTION_BEGIN
 
+	# Armi (D-092), in basso a destra: il basso a sinistra e della riga dei comandi.
+	_weapons = WeaponStrip.new()
+	_weapons.name = "WeaponStrip"
+	root.add_child(_weapons)
+	_weapons.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT, Control.PRESET_MODE_MINSIZE, 24)
+	_weapons.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	_weapons.grow_vertical = Control.GROW_DIRECTION_BEGIN
+
 	set_xp(0, 1, 1)
 	set_time(0.0)
 	set_kills(0)
+
+
+## Armi negli slot (WeaponStrip.set_slots).
+func set_weapons(autos: Array, actives: Array) -> void:
+	_weapons.set_slots(autos, actives)
+
+
+func set_weapon_cooldowns(values: Array) -> void:
+	_weapons.set_cooldowns(values)
+
+
+func weapon_strip() -> WeaponStrip:
+	return _weapons
 
 
 ## Annuncio dell'arrivo del boss: [param direction] e nel mondo (-Z = alto dello schermo).

@@ -77,7 +77,9 @@ func _test_screens() -> void:
 	root.add_child(hud)
 	await process_frame
 	var in_hud := _find_prompts(hud)
-	_check(in_hud.size() == 1 and in_hud[0].vertical and in_hud[0].prompt_count() == 6, "l'HUD elenca i sei comandi di gioco (con la mira, D-089)")
+	var columns := in_hud.filter(func(p: ButtonPrompts) -> bool: return p.vertical)
+	_check(columns.size() == 1 and columns[0].prompt_count() == 8, "l'HUD elenca gli otto comandi di gioco (mira D-089, due attive D-092)")
+	_check(in_hud.size() == 3, "piu i tasti dei due slot attivi nella striscia delle armi")
 	hud.queue_free()
 	menu.queue_free()
 	await process_frame

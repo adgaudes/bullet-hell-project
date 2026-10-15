@@ -222,6 +222,7 @@ func _physics_process(delta: float) -> void:
 	_tick_boss(delta)
 	_tick_start_protection(delta)
 	_tick_markers(delta)
+	_tick_weapon_hud()
 	_open_next_level_up()
 
 
@@ -1142,6 +1143,36 @@ func _setup_loadout() -> void:
 	loadout.setup_class(class_id)
 	progression.class_id = class_id
 	progression.weapon_cards = func() -> Array[Dictionary]: return WeaponOffers.cards(loadout, class_id, [])
+	loadout.changed.connect(_refresh_weapon_hud)
+	_refresh_weapon_hud()
+
+
+## Striscia delle armi del HUD (D-092): slot ricostruiti quando il loadout cambia, ricarica
+## degli attivi a ogni passo (la striscia ridisegna solo se cambia).
+func _refresh_weapon_hud() -> void:
+	if hud == null or loadout == null:
+		return
+	hud.set_weapons(loadout.autos().map(_weapon_entry), loadout.actives().map(_weapon_entry))
+
+
+func _weapon_entry(w: Weapon) -> Dictionary:
+	var letters := ""
+	for at in WeaponCatalog.BRANCH_LEVELS:
+		if w.branches.has(at):
+			letters += String(w.branches[at]).to_upper()
+	var entry := {icon = WeaponCatalog.find(w.weapon_id).get(&"icon", &"nail"), level = w.level, branches = letters}
+	if w is ActiveWeapon:
+		entry.cooldown = (w as ActiveWeapon).cooldown_left / maxf((w as ActiveWeapon).cooldown_total(), 0.01)
+	return entry
+
+
+func _tick_weapon_hud() -> void:
+	if hud == null or loadout == null:
+		return
+	var values: Array[float] = []
+	for active in loadout.actives():
+		values.append(active.cooldown_left / maxf(active.cooldown_total(), 0.01))
+	hud.set_weapon_cooldowns(values)
 
 
 ## Mira commutabile (D-089): la scelta del giocatore resta nelle impostazioni.

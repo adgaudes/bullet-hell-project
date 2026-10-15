@@ -6,7 +6,7 @@ extends Control
 
 const KINDS: Array[StringName] = [
 	&"nail", &"shovel", &"boot", &"wrench", &"scrap", &"bolt", &"skull", &"clock",
-	&"lamp", &"arrow_right", &"check", &"lock",
+	&"lamp", &"arrow_right", &"check", &"lock", &"stake",
 ]
 
 @export var kind: StringName = &"nail":
@@ -171,6 +171,12 @@ func _draw() -> void:
 			_stroke([[0.9, 0.42], [0.54, 0.74]], outline, 0.04)
 			_stroke([[0.5, 0.42], [0.5, 0.74]], outline, 0.04)
 			_shape([[0.4, 0.72], [0.6, 0.72], [0.62, 0.9], [0.38, 0.9]], dark)
+		&"stake":
+			# Picchetto piantato con l'anello di terra che sale attorno.
+			_stroke([[0.1, 0.78], [0.22, 0.66], [0.5, 0.6], [0.78, 0.66], [0.9, 0.78]], outline, 0.16)
+			_stroke([[0.1, 0.78], [0.22, 0.66], [0.5, 0.6], [0.78, 0.66], [0.9, 0.78]], dark, 0.08)
+			_shape([[0.42, 0.08], [0.58, 0.08], [0.58, 0.62], [0.5, 0.86], [0.42, 0.62]], tint)
+			_shape([[0.36, 0.08], [0.64, 0.08], [0.64, 0.18], [0.36, 0.18]], dark)
 		&"check":
 			_stroke([[0.16, 0.52], [0.4, 0.78], [0.86, 0.26]], outline, 0.2)
 			_stroke([[0.16, 0.52], [0.4, 0.78], [0.86, 0.26]], tint, 0.1)
