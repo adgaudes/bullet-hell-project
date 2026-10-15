@@ -273,13 +273,15 @@ func _test_cards_and_panels() -> void:
 	for row in rows:
 		if row.theme_type_variation == &"CardButton":
 			card_rows += 1
-	_check(card_rows == PermanentCatalog.all().size(), "righe dell'Officina in CardButton (%d)" % card_rows)
+	# Le carte dell'Officina: gli upgrade piu le sei fusioni del ricettario (D-092).
+	var workshop_cards := PermanentCatalog.all().size() + PermanentCatalog.RECIPES.size()
+	_check(card_rows == workshop_cards, "righe dell'Officina in CardButton (%d)" % card_rows)
 	_check(workshop._scrap_label.theme_type_variation == &"ScrapLabel", "contatore rottami in ScrapLabel")
 	var rows_with_icon := 0
 	for row in rows:
 		if row.theme_type_variation == &"CardButton" and row.get_node_or_null(^"Icon") is UiIcon:
 			rows_with_icon += 1
-	_check(rows_with_icon == PermanentCatalog.all().size(), "ogni riga dell'Officina ha la sua icona (%d)" % rows_with_icon)
+	_check(rows_with_icon == workshop_cards, "ogni riga dell'Officina ha la sua icona (%d)" % rows_with_icon)
 	var dots := workshop.row_dots(&"base_health")
 	_check(dots != null and dots.total == 3 and dots.filled == 0, "pallini del livello sulla riga (%s)" % ("%d/%d" % [dots.filled, dots.total] if dots != null else "nessuno"))
 	_check(workshop._scrap_label.get_parent().get_node_or_null(^"ScrapIcon") is UiIcon, "icona dei rottami accanto al totale dell'Officina")

@@ -20,6 +20,8 @@ func _initialize() -> void:
 	await _test_permanent_upgrades_apply()
 	await _test_class_permanents()
 	await _test_unlocks_and_recipes()
+	await _test_workshop_tabs()
+	await _test_recipe_book()
 	await _test_banking_and_workshop_flow()
 	_remove_profile_files(TEMP_PATH)
 	# T-12: i nodi messi in coda con queue_free vanno liberati prima di uscire, o
@@ -331,6 +333,143 @@ func _test_unlocks_and_recipes() -> void:
 	run.loadout.fuse(&"nailgun")
 	_check(profile.has_recipe(&"fort"), "una fusione fatta in partita entra nel ricettario")
 	await _end_run(scene)
+	profile.reset()
+
+
+## Officina fuori da una run, come nel menu: pannello nuovo aperto sul profilo autoload.
+func _open_workshop() -> WorkshopPanel:
+	var workshop := WorkshopPanel.new()
+	root.add_child(workshop)
+	await _frames(1)
+	workshop.open()
+	await _frames(1)
+	return workshop
+
+
+func _close_workshop(workshop: WorkshopPanel) -> void:
+	workshop.close()
+	root.remove_child(workshop)
+	workshop.queue_free()
+	await _frames(2)
+
+
+func _visible_card(workshop: WorkshopPanel, id: StringName) -> bool:
+	return workshop._buttons.has(id) and workshop._buttons[id].is_visible_in_tree()
+
+
+func _focused_card(workshop: WorkshopPanel) -> Button:
+	var focus := root.gui_get_focus_owner() as Button
+	if focus == null or not focus.is_visible_in_tree() or not workshop.is_ancestor_of(focus):
+		return null
+	return focus if focus.theme_type_variation == &"CardButton" else null
+
+
+func _send_joy(button: JoyButton) -> void:
+	for pressed in [true, false]:
+		var event := InputEventJoypadButton.new()
+		event.button_index = button
+		event.pressed = pressed
+		Input.parse_input_event(event)
+	await _frames(2)
+
+
+func _send_key(key: Key) -> void:
+	for pressed in [true, false]:
+		var event := InputEventKey.new()
+		event.keycode = key
+		event.physical_keycode = key
+		event.pressed = pressed
+		Input.parse_input_event(event)
+	await _frames(2)
+
+
+## Piano 4: schede per sezione (Comune e classi) come le Impostazioni (D-091).
+func _test_workshop_tabs() -> void:
+	print("officina a schede")
+	var profile := _profile()
+	profile.reset()
+	profile.last_class = &"engineer"
+	var workshop: WorkshopPanel = await _open_workshop()
+	var names := WorkshopPanel.TAB_NAMES
+	var same_as_groups := names.size() == PermanentCatalog.GROUPS.size() + 1
+	for i in PermanentCatalog.GROUPS.size():
+		same_as_groups = same_as_groups and names[i] == PermanentCatalog.GROUPS[i][1]
+	_check(same_as_groups and names[-1] == "Ricettario", "sei schede: le cinque sezioni e il Ricettario (%s)" % ", ".join(names))
+	_check(workshop.current_tab == 1, "all'apertura la scheda della classe dell'ultima run (Ingegnere)")
+	_check(_focused_card(workshop) == workshop._buttons.get(&"toolbox"), "il fuoco parte sulla prima carta della scheda")
+	await _send_joy(JOY_BUTTON_RIGHT_SHOULDER)
+	var focus := _focused_card(workshop)
+	_check(workshop.current_tab == 2 and focus != null and focus == workshop._buttons.get(&"dry_powder"),
+		"RB: scheda successiva (Guastatore) e fuoco su una sua carta visibile")
+	await _send_joy(JOY_BUTTON_LEFT_SHOULDER)
+	await _send_joy(JOY_BUTTON_LEFT_SHOULDER)
+	_check(workshop.current_tab == 0 and _focused_card(workshop) == workshop._buttons.get(&"tool_reach"), "LB: torna indietro di una scheda alla volta")
+	await _send_joy(JOY_BUTTON_LEFT_SHOULDER)
+	_check(workshop.current_tab == WorkshopPanel.TAB_NAMES.size() - 1 and _focused_card(workshop) != null, "LB dalla prima scheda gira all'ultima (Ricettario)")
+	await _send_key(KEY_PAGEDOWN)
+	_check(workshop.current_tab == 0, "PagGiu: scheda successiva, come RB")
+	await _send_key(KEY_PAGEUP)
+	_check(workshop.current_tab == 5, "PagSu: scheda precedente, come LB")
+	workshop.show_tab(0)
+	var pressed_tabs := workshop._tab_buttons.filter(func(b: Button) -> bool: return b.button_pressed)
+	_check(pressed_tabs.size() == 1 and pressed_tabs[0] == workshop._tab_buttons[0], "una sola scheda accesa, quella mostrata")
+	_check(_visible_card(workshop, &"unlock_site_blade") and _visible_card(workshop, &"tool_reach") and not _visible_card(workshop, &"fixed_turret"),
+		"Comune: sblocco della Lama e Prolunga, non la Torretta fissa")
+	_check(not _visible_card(workshop, &"toolbox") and not _visible_card(workshop, &"good_seeds"), "Comune: niente upgrade di classe")
+	var icon := workshop._buttons[&"unlock_site_blade"].get_node_or_null(^"Icon") as UiIcon
+	_check(icon != null and icon.kind == WeaponCatalog.find(&"site_blade").icon, "la carta di sblocco ha l'icona dell'arma")
+	workshop.show_tab(3)
+	_check(_visible_card(workshop, &"fixed_turret") and _visible_card(workshop, &"good_oil") and not _visible_card(workshop, &"tool_reach"),
+		"Meccanico: Torretta fissa e Olio buono, non gli upgrade comuni")
+	workshop.show_tab(0)
+	profile.scrap = 15
+	workshop.press(&"unlock_site_blade")
+	_check(profile.level_of(&"unlock_site_blade") == 1 and profile.scrap == 0 and workshop.row_text(&"unlock_site_blade").contains("1/1")
+		and profile.unlocked_weapons().has(&"site_blade"), "sbloccare la Lama con 15 rottami: 1/1 e arma sbloccata")
+	_check(workshop.row_text(&"unlock_site_blade").contains("Al massimo"), "la carta di sblocco comprata dice Al massimo")
+	await _close_workshop(workshop)
+	profile.reset()
+	profile.last_class = &"weeder"
+	workshop = await _open_workshop()
+	_check(workshop.current_tab == 4 and _focused_card(workshop) == workshop._buttons.get(&"good_seeds"), "ultima classe Erbacciaia: si apre la sua scheda")
+	await _close_workshop(workshop)
+	profile.reset()
+
+
+## Piano 4: il ricettario mostra le sei fusioni, scoperte o da scoprire; non si compra.
+func _test_recipe_book() -> void:
+	print("ricettario")
+	var profile := _profile()
+	profile.reset()
+	profile.scrap = 50
+	var workshop: WorkshopPanel = await _open_workshop()
+	workshop.show_tab(WorkshopPanel.TAB_NAMES.size() - 1)
+	var all_shown := true
+	for id in PermanentCatalog.RECIPES:
+		all_shown = all_shown and workshop._recipe_buttons.has(id) and workshop._recipe_buttons[id].is_visible_in_tree()
+	_check(all_shown and workshop._recipe_buttons.size() == 6 and not _visible_card(workshop, &"tool_reach"), "Ricettario: le sei fusioni e nient'altro")
+	var hidden := workshop.recipe_text(&"mortar")
+	_check(hidden.contains("?") and hidden.contains("Lanciarottami") and not hidden.contains("Mortaio") and not hidden.contains("Carica da scavo"),
+		"fusione da scoprire: ??? e l'indizio con la prima parte (%s)" % hidden.replace("\n", " | "))
+	var card := workshop._recipe_buttons[&"mortar"]
+	_check((card.get_node(^"Icon") as UiIcon).kind == &"lock", "fusione da scoprire: icona del lucchetto")
+	card.grab_focus()
+	_check(workshop._detail_name.text == "???" and workshop._detail_text.text.contains("Lanciarottami + ?"), "il dettaglio segue la carta della fusione da scoprire")
+	var events := [0]
+	workshop.purchased.connect(func(_id: StringName) -> void: events[0] += 1)
+	workshop.rejected.connect(func(_id: StringName) -> void: events[0] += 1)
+	card.pressed.emit()
+	workshop.press(&"mortar")
+	_check(events[0] == 0 and profile.scrap == 50 and not profile.has_recipe(&"mortar"), "premere una fusione non compra e non emette nulla")
+	profile.discover_recipe(&"mortar")
+	var shown := workshop.recipe_text(&"mortar")
+	_check(shown.contains("Mortaio a crateri") and shown.contains("Lanciarottami + Carica da scavo"),
+		"fusione scoperta: nome e parti (%s)" % shown.replace("\n", " | "))
+	_check((card.get_node(^"Icon") as UiIcon).kind == WeaponCatalog.find(&"mortar").icon, "fusione scoperta: la sua icona")
+	_check(workshop._detail_name.text == "Mortaio a crateri" and workshop._detail_text.text.contains(WeaponCatalog.find(&"mortar").text),
+		"il dettaglio della fusione scoperta ha nome e testo")
+	_check(workshop.recipe_text(&"fort").contains("Chiodatrice + ?"), "le altre restano da scoprire (Chiodatrice + ?)")
+	await _close_workshop(workshop)
 	profile.reset()
 
 
