@@ -136,7 +136,64 @@ func _test_campaign_map() -> void:
 	_check(map.button_text(&"district").contains("V"), "il primo e segnato completato")
 	_check(not map.can_play(&"yard") and map._buttons[&"yard"].disabled, "il cantiere resta in costruzione")
 	map.press(&"railway")
-	_check(chosen == [&"railway"] and not map.is_open, "A sulla ferrovia la sceglie")
+	_check(chosen.is_empty() and map.is_open and map.choosing_class and map.chosen_level() == &"railway",
+		"A sulla ferrovia apre la scelta della classe")
+	map.press_class(&"engineer")
+	_check(chosen == [&"railway"] and not map.is_open and not map.choosing_class, "A sulla classe parte la ferrovia")
+	root.remove_child(menu)
+	menu.queue_free()
+	await _frames(2)
+	profile.reset()
+	await _test_class_choice()
+
+
+## D-092 par. 6.1: dopo il livello si sceglie la classe fra quattro carte; l'ultima resta
+## nel profilo e torna preselezionata; B dalle classi torna ai livelli, non al menu.
+func _test_class_choice() -> void:
+	print("class choice")
+	var profile := _profile()
+	profile.reset()
+	profile.last_class = &"mechanic"
+	var menu: MainMenu = MenuScene.instantiate()
+	root.add_child(menu)
+	await _frames(3)
+	var map: CampaignMapPanel = menu.get_node(^"CampaignMapPanel")
+	var chosen: Array[StringName] = []
+	map.level_chosen.connect(func(id: StringName) -> void: chosen.append(id))
+	map.level_chosen.disconnect(menu.start_level)
+	menu.start_run()
+	_check(map.is_open and not map.choosing_class, "la mappa si apre sui livelli")
+	map.press(&"district")
+	_check(map.choosing_class and map.is_open and chosen.is_empty() and map.chosen_level() == &"district",
+		"premere un livello apre le classi senza partire")
+	var cards := 0
+	var visible_cards := true
+	for entry in ClassCatalog.all():
+		var card := map.class_card(entry.id)
+		if card != null:
+			cards += 1
+			visible_cards = visible_cards and card.is_visible_in_tree()
+	_check(cards == 4 and visible_cards, "quattro carte di classe visibili (%d)" % cards)
+	_check(not map._buttons[&"district"].is_visible_in_tree(), "la riga dei livelli lascia il posto alle classi")
+	_check(root.get_viewport().gui_get_focus_owner() == map.class_card(&"mechanic"), "il fuoco e sull'ultima classe scelta")
+	await _press(&"ui_cancel")
+	_check(map.is_open and not map.choosing_class and map._buttons[&"district"].is_visible_in_tree(),
+		"B dalle classi torna ai livelli senza chiudere")
+	_check(root.get_viewport().gui_get_focus_owner() == map._buttons[&"district"], "il fuoco torna sul livello scelto")
+	await _press(&"ui_cancel")
+	_check(not map.is_open and chosen.is_empty(), "un secondo B chiude la mappa")
+	menu.start_run()
+	map.press(&"district")
+	await _press(&"ui_right")
+	_check(root.get_viewport().gui_get_focus_owner() == map.class_card(&"weeder"), "la croce sposta il fuoco fra le classi")
+	map.press_class(&"sapper")
+	_check(chosen == [&"district"] and not map.is_open and not map.choosing_class, "A sul Guastatore parte il quartiere")
+	_check(profile.last_class == &"sapper", "il profilo ricorda il Guastatore")
+	menu.start_run()
+	map.press(&"district")
+	_check(root.get_viewport().gui_get_focus_owner() == map.class_card(&"sapper"), "alla volta dopo il fuoco e sul Guastatore")
+	await _press(&"ui_cancel")
+	await _press(&"ui_cancel")
 	root.remove_child(menu)
 	menu.queue_free()
 	await _frames(2)

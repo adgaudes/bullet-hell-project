@@ -3,21 +3,31 @@ extends CanvasLayer
 ## Mappa di campagna (D-040, D-066): i livelli in fila, da sinistra a destra, con il
 ## loro stato (completato, sbloccato, bloccato, in costruzione). Si apre dal menu
 ## iniziale con "Gioca": si sceglie un livello sbloccato, A conferma e B torna.
-## Controller (croce o stick), tastiera e mouse.
+## Dopo il livello si sceglie la classe (D-092, spec par. 6.1): quattro carte col colore
+## di classe sul bordo, fuoco sull'ultima scelta del profilo; B torna ai livelli.
+## `level_chosen` parte solo dopo la classe. Controller (croce o stick), tastiera e mouse.
 
 signal closed
 signal level_chosen(id: StringName)
 
 
 var is_open := false
+## Vero mentre al posto dei livelli ci sono le quattro classi.
+var choosing_class := false
 var _profile: PlayerProfileService
 var _overlay: ColorRect
+var _title: Label
 var _row: HBoxContainer
 var _buttons: Dictionary[StringName, Button] = {}
 var _detail: Label
 var _back: Button
 var _marks: Dictionary[StringName, UiIcon] = {}
 var _badges: Dictionary[StringName, Label] = {}
+var _class_row: HBoxContainer
+var _class_buttons: Dictionary[StringName, Button] = {}
+var _level_prompts: ButtonPrompts
+var _class_prompts: ButtonPrompts
+var _chosen_level: StringName = &""
 
 const INK := Color("3b2718")
 const INK_GREEN := Color("3f7a2a")
@@ -39,11 +49,11 @@ func _ready() -> void:
 	column.custom_minimum_size = Vector2(900, 0)
 	column.add_theme_constant_override(&"separation", 18)
 	center.add_child(column)
-	var title := Label.new()
-	title.text = "PRIMA CAMPAGNA"
-	title.theme_type_variation = &"TitleLabel"
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	column.add_child(title)
+	_title = Label.new()
+	_title.text = "PRIMA CAMPAGNA"
+	_title.theme_type_variation = &"TitleLabel"
+	_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	column.add_child(_title)
 	_row = HBoxContainer.new()
 	_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	_row.add_theme_constant_override(&"separation", 24)
@@ -95,6 +105,15 @@ func _ready() -> void:
 		button.add_child(badge)
 		badge.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT, Control.PRESET_MODE_MINSIZE, 8)
 		_badges[id] = badge
+	# Le classi prendono il posto della riga dei livelli dopo la scelta del livello.
+	_class_row = HBoxContainer.new()
+	_class_row.name = "ClassRow"
+	_class_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	_class_row.add_theme_constant_override(&"separation", 20)
+	_class_row.visible = false
+	column.add_child(_class_row)
+	for entry in ClassCatalog.all():
+		_class_row.add_child(_make_class_card(entry))
 	_detail = Label.new()
 	_detail.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -106,21 +125,105 @@ func _ready() -> void:
 	_back.text = "Torna"
 	_back.theme_type_variation = &"MainButton"
 	_back.custom_minimum_size = Vector2(0, 50)
-	_back.pressed.connect(close)
+	_back.pressed.connect(_go_back)
 	column.add_child(_back)
-	column.add_child(ButtonPrompts.create([[&"ui_accept", "Parti"], [&"ui_cancel", "Torna"]]))
+	_level_prompts = ButtonPrompts.create([[&"ui_accept", "Scegli"], [&"ui_cancel", "Torna"]])
+	column.add_child(_level_prompts)
+	_class_prompts = ButtonPrompts.create([[&"ui_accept", "Parti"], [&"ui_cancel", "Livelli"]])
+	_class_prompts.visible = false
+	column.add_child(_class_prompts)
 	_overlay.hide()
+
+
+## Carta di una classe: bordo nel colore di classe, ritratto con le due armi del kit,
+## nome, riga del ruolo e nomi delle armi.
+func _make_class_card(entry: Dictionary) -> Button:
+	var id: StringName = entry.id
+	var color: Color = entry.color
+	var button := Button.new()
+	button.name = "Class_%s" % id
+	button.theme_type_variation = &"CardButton"
+	button.custom_minimum_size = Vector2(205, 250)
+	button.pressed.connect(func() -> void: _on_class_pressed(id))
+	button.focus_entered.connect(func() -> void: _show_class_detail(id))
+	button.mouse_entered.connect(func() -> void: _show_class_detail(id))
+	_class_buttons[id] = button
+	# Cornice nel colore di classe, piu spessa in alto come una fascia.
+	var frame := Panel.new()
+	frame.name = "ClassFrame"
+	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var border := StyleBoxFlat.new()
+	border.draw_center = false
+	border.border_color = color
+	border.set_border_width_all(4)
+	border.border_width_top = 12
+	border.set_corner_radius_all(6)
+	frame.add_theme_stylebox_override(&"panel", border)
+	button.add_child(frame)
+	frame.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, 5)
+	var box := VBoxContainer.new()
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.alignment = BoxContainer.ALIGNMENT_CENTER
+	box.add_theme_constant_override(&"separation", 6)
+	button.add_child(box)
+	box.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, 16)
+	box.offset_top = 22
+	var portrait := HBoxContainer.new()
+	portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	portrait.alignment = BoxContainer.ALIGNMENT_CENTER
+	portrait.add_theme_constant_override(&"separation", 10)
+	box.add_child(portrait)
+	var names: PackedStringArray = []
+	for weapon_id: StringName in entry.kit:
+		var weapon := WeaponCatalog.find(weapon_id)
+		var icon := UiIcon.make(weapon.get(&"icon", &"lock"), 52.0, color)
+		icon.outline = INK
+		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		portrait.add_child(icon)
+		names.append(weapon.get(&"name", String(weapon_id)))
+	var name_label := _card_label(entry.name, 20, INK)
+	name_label.theme_type_variation = &"SectionLabel"
+	box.add_child(name_label)
+	box.add_child(_card_label(entry.text, 15, INK))
+	box.add_child(_card_label("\n".join(names), 14, INK_LOCKED))
+	return button
+
+
+func _card_label(text: String, font_size: int, color: Color) -> Label:
+	var label := Label.new()
+	label.text = text
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.custom_minimum_size = Vector2(170, 0)
+	label.add_theme_font_size_override(&"font_size", font_size)
+	label.add_theme_color_override(&"font_color", color)
+	return label
 
 
 func _input(event: InputEvent) -> void:
 	if is_open and event.is_action_pressed(&"ui_cancel"):
 		get_viewport().set_input_as_handled()
+		_go_back()
+
+
+## B o "Torna": dalle classi si torna ai livelli, dai livelli si chiude.
+func _go_back() -> void:
+	if not is_open:
+		return
+	if not choosing_class:
 		close()
+		return
+	_show_levels()
+	var fx := get_node_or_null(^"/root/UiFx") as UiFxService
+	if fx != null:
+		fx.play(&"ui_back")
 
 
 func open() -> void:
 	is_open = true
 	_refresh()
+	_set_choosing_class(false)
 	_overlay.show()
 	var fx := get_node_or_null(^"/root/UiFx") as UiFxService
 	if fx != null:
@@ -133,6 +236,7 @@ func close() -> void:
 	if not is_open:
 		return
 	is_open = false
+	_set_choosing_class(false)
 	_overlay.hide()
 	var fx := get_node_or_null(^"/root/UiFx") as UiFxService
 	if fx != null:
@@ -189,13 +293,76 @@ func card_mark(id: StringName) -> StringName:
 	return _marks[id].kind
 
 
+## Sceglie la classe come se la carta fosse premuta (test e automazione).
+func press_class(id: StringName) -> void:
+	if is_open and choosing_class and _class_buttons.has(id):
+		_class_buttons[id].pressed.emit()
+
+
+func class_card(id: StringName) -> Button:
+	return _class_buttons.get(id)
+
+
+## Il livello scelto prima della classe (vuoto finche non se ne sceglie uno).
+func chosen_level() -> StringName:
+	return _chosen_level
+
+
+## Classe proposta: l'ultima del profilo, l'Ingegnere senza profilo.
+func default_class() -> StringName:
+	var id := _profile.last_class if _profile != null else ClassCatalog.DEFAULT
+	return id if _class_buttons.has(id) else ClassCatalog.DEFAULT
+
+
 func _on_pressed(id: StringName) -> void:
-	if not is_open or not can_play(id):
+	if not is_open or choosing_class or not can_play(id):
 		return
-	is_open = false
-	_overlay.hide()
+	_chosen_level = id
 	print("PROTOTYPE01_LEVEL_CHOSEN id=%s" % id)
-	level_chosen.emit(id)
+	_set_choosing_class(true)
+	var start := default_class()
+	_class_buttons[start].grab_focus()
+	_show_class_detail(start)
+
+
+func _on_class_pressed(id: StringName) -> void:
+	if not is_open or not choosing_class or _chosen_level == &"":
+		return
+	if _profile != null:
+		_profile.set_last_class(id)
+	print("PROTOTYPE01_CLASS_CHOSEN id=%s" % id)
+	is_open = false
+	_set_choosing_class(false)
+	_overlay.hide()
+	level_chosen.emit(_chosen_level)
+
+
+## Torna alla riga dei livelli col fuoco sul livello scelto prima.
+func _show_levels() -> void:
+	_set_choosing_class(false)
+	var id := _chosen_level if _buttons.has(_chosen_level) else default_level()
+	_buttons[id].grab_focus()
+	_show_detail(id)
+
+
+func _set_choosing_class(value: bool) -> void:
+	choosing_class = value
+	_row.visible = not value
+	_class_row.visible = value
+	_level_prompts.visible = not value
+	_class_prompts.visible = value
+	_back.text = "Torna ai livelli" if value else "Torna"
+	if value:
+		_title.text = "LIVELLO %d: %s" % [LevelCatalog.index_of(_chosen_level) + 1, LevelCatalog.title_of(_chosen_level).to_upper()]
+	else:
+		_title.text = "PRIMA CAMPAGNA"
+
+
+func _show_class_detail(id: StringName) -> void:
+	var entry := ClassCatalog.find(id)
+	if entry.is_empty():
+		return
+	_detail.text = "Scegli la classe per %s.\n%s: %s" % [LevelCatalog.title_of(_chosen_level), entry.name, entry.text]
 
 
 func _show_detail(id: StringName) -> void:
