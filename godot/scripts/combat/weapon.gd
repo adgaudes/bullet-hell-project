@@ -15,6 +15,8 @@ signal changed
 var level := 1
 ## Bivi presi: {3: &"a"|&"b", 5: ...}.
 var branches: Dictionary = {}
+## Fusione (WeaponCatalog, `slot == &"fusion"`) se l'arma e stata fusa con la sua compagna.
+var fusion_id: StringName = &""
 
 
 func _ready() -> void:
@@ -34,6 +36,13 @@ func has_branch(option_id: StringName) -> bool:
 		if index < options.size() and options[index].id == option_id:
 			return true
 	return false
+
+
+## Valore dell'effetto di fusione (base della voce di fusione), 0 se l'arma non e fusa.
+func fusion_stat(key: StringName) -> float:
+	if fusion_id == &"":
+		return 0.0
+	return float((WeaponCatalog.find(fusion_id).get(&"base", {}) as Dictionary).get(key, 0.0))
 
 
 func set_level(new_level: int) -> void:

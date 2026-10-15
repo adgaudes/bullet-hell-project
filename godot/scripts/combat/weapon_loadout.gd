@@ -36,6 +36,8 @@ static func script_for(id: StringName) -> Script:
 			return AutoWeapon
 		&"seismic_stake":
 			return SeismicStake
+		&"site_blade":
+			return SiteBlade
 	return null
 
 
@@ -111,9 +113,10 @@ func add(id: StringName) -> Weapon:
 	w.director = director
 	w.terrain_field = terrain_field
 	w.manual_aim = manual_aim
+	if &"write_queue" in w:
+		w.set(&"write_queue", write_queue)
 	if w is ActiveWeapon:
 		var active := w as ActiveWeapon
-		active.write_queue = write_queue
 		active.triggered.connect(func(at: Vector3) -> void: active_triggered.emit(_actives.find(active), at))
 		_actives.append(active)
 	else:

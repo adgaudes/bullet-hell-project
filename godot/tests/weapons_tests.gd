@@ -38,6 +38,12 @@ func _initialize() -> void:
 	await _test_active_auto_aim()
 	await _test_active_fallback_and_cursor()
 	await _test_shock_keeps_trapped_inside()
+	await _test_blade_base()
+	await _test_blade_downhill()
+	await _test_blade_ditch()
+	await _test_blade_twin()
+	await _test_blade_rebound()
+	await _test_blade_groove()
 	print("PROTOTYPE01_TESTS %s failures=%d" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -333,6 +339,115 @@ func _test_shock_keeps_trapped_inside() -> void:
 	await _seconds(0.7)
 	_check(inside.velocity.length() < 0.1, "chi e dentro non viene spinto (%.2f m/s)" % inside.velocity.length())
 	_check(on_ring.velocity.x > 1.0, "chi sta sull'anello e scagliato fuori (%.2f m/s)" % on_ring.velocity.x)
+	await _clear()
+	_reset_field()
+
+
+# --- Lama da cantiere (piano 2) ----------------------------------------------------------
+
+func _blade(level := 1, picks: Dictionary = {}, at := Vector3.ZERO) -> SiteBlade:
+	var blade := SiteBlade.new()
+	blade.weapon_id = &"site_blade"
+	blade.shooter = _shooter(at)
+	blade.director = _director
+	blade.terrain_field = _field
+	blade.write_queue = _queue
+	_root.add_child(blade)
+	blade.set_level(level)
+	for pick_at: int in picks:
+		blade.choose_branch(pick_at, picks[pick_at])
+	return blade
+
+
+## Argine dritto di traverso, da x = -4 a 4 alla quota [param z], alto 1,5 m.
+func _wall_on_field(z: float) -> void:
+	for x in range(-4, 5):
+		_field.level(Vector3(x, 0.0, z), 0.9, 1.5, 1.0)
+
+
+func _test_blade_base() -> void:
+	print("Lama: base")
+	var a := _enemy_at(Vector3(0, 0, -3))
+	var b := _enemy_at(Vector3(0, 0, -5))
+	_blade()
+	await _seconds(1.3)
+	_check(a.health == 48 and b.health == 48, "il disco rotola e colpisce tutti sul percorso, 2 danni (%d, %d)" % [a.health, b.health])
+	await _clear()
+	_reset_field()
+
+
+func _test_blade_downhill() -> void:
+	print("Lama: discesa")
+	_field.sculpt(Vector3(0.0, 0.0, -14.0), 12.0, -2.4)
+	var down := _blade(1, {}, Vector3(0.0, 0.0, -2.0))
+	var flat := _blade(1, {}, Vector3(14.0, 0.0, 14.0))
+	await physics_frame
+	down._cooldown = 1000.0
+	flat._cooldown = 1000.0
+	down._launch(Vector3.FORWARD)
+	flat._launch(Vector3.LEFT)
+	await _seconds(0.6)
+	var down_run := Vector2(0.0, -2.0).distance_to(Vector2(down.disc_positions()[0].x, down.disc_positions()[0].z))
+	var flat_run := Vector2(14.0, 14.0).distance_to(Vector2(flat.disc_positions()[0].x, flat.disc_positions()[0].z))
+	_check(down_run > flat_run + 0.4, "in discesa va piu lontano (%.2f contro %.2f m)" % [down_run, flat_run])
+	await _clear()
+	_reset_field()
+
+
+func _test_blade_ditch() -> void:
+	print("Lama: fossato")
+	_field.sculpt(Vector3(0.0, 0.0, -5.0), 2.5, -1.6)
+	var blade := _blade()
+	await physics_frame
+	blade._cooldown = 1000.0
+	blade._launch(Vector3.FORWARD)
+	await _seconds(2.0)
+	_check(blade.disc_count() == 1, "nel fossato il disco gira oltre la sua corsa (1,25 s)")
+	await _seconds(3.0)
+	_check(blade.disc_count() == 0, "dopo 3 s si ferma")
+	await _clear()
+	_reset_field()
+
+
+func _test_blade_twin() -> void:
+	print("Lama: Due lame")
+	var blade := _blade(3, {3: &"a"})
+	await physics_frame
+	blade._cooldown = 1000.0
+	blade._launch(Vector3.FORWARD)
+	_check(blade.disc_count() == 2, "due dischi per lancio")
+	await _clear()
+	_reset_field()
+
+
+func _test_blade_rebound() -> void:
+	print("Lama: Rimbalzo")
+	_wall_on_field(-4.0)
+	var plain := _blade()
+	await physics_frame
+	plain._cooldown = 1000.0
+	plain._launch(Vector3.FORWARD)
+	await _seconds(0.8)
+	_check(plain.disc_count() == 0, "senza bivio il disco si ferma sull'argine")
+	plain.queue_free()
+	var blade := _blade(5, {3: &"a", 5: &"a"})
+	await physics_frame
+	blade._cooldown = 1000.0
+	blade._launch(Vector3.FORWARD)
+	await _seconds(0.9)
+	_check(blade.disc_count() >= 1 and blade.disc_positions()[0].z > -3.0, "col bivio rimbalza e torna indietro")
+	await _clear()
+	_reset_field()
+
+
+func _test_blade_groove() -> void:
+	print("Lama: Solco")
+	var blade := _blade(5, {3: &"b", 5: &"b"})
+	await physics_frame
+	blade._cooldown = 1000.0
+	blade._launch(Vector3.FORWARD)
+	await _seconds(1.5)
+	_check(_field.height_at(Vector3(0.0, 0.0, -4.0)) < -0.1, "dietro il disco resta un solco (%.2f m)" % _field.height_at(Vector3(0.0, 0.0, -4.0)))
 	await _clear()
 	_reset_field()
 
