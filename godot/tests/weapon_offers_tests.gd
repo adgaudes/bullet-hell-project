@@ -106,4 +106,6 @@ func _test_fusion_card() -> void:
 func _test_sapper_sees_nothing_of_engineer() -> void:
 	print("classi")
 	var cards := WeaponOffers.cards(_loadout(&"sapper"), &"sapper", [])
-	_check(cards.is_empty(), "il Guastatore non vede le armi dell'Ingegnere (%s)" % [_ids(cards)])
+	var foreign := cards.filter(func(c: Dictionary) -> bool:
+		return WeaponCatalog.find(WeaponOffers.parse(c.id).get(&"weapon_id", &"")).get(&"deck", &"") == &"engineer")
+	_check(foreign.is_empty(), "il Guastatore non vede le armi dell'Ingegnere (%s)" % [_ids(cards)])

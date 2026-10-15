@@ -56,8 +56,13 @@ func aim_point() -> Vector3:
 
 ## Centro dei nemici della cella di CLUSTER_CELL metri piu affollata entro [param reach], o null.
 func densest_cluster(origin: Vector3, reach: float) -> Variant:
+	return cluster_center(director, origin, reach)
+
+
+## Come `densest_cluster`, per le armi che non sono attive (il Lanciarottami).
+static func cluster_center(enemy_director: EnemyDirector, origin: Vector3, reach: float) -> Variant:
 	var cells: Dictionary[Vector2i, Array] = {}
-	for enemy in director.enemies_near(origin, reach):
+	for enemy in enemy_director.enemies_near(origin, reach):
 		if enemy.is_dead:
 			continue
 		var key := Vector2i(floori(enemy.global_position.x / CLUSTER_CELL), floori(enemy.global_position.z / CLUSTER_CELL))

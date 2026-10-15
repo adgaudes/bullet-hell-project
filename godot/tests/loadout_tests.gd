@@ -149,7 +149,7 @@ func _test_fusion() -> void:
 
 func _test_fusion_slot_shift() -> void:
 	print("fusione e slot attivi")
-	var loadout := await _loadout(&"sapper")
+	var loadout := await _loadout(&"nobody")
 	loadout.add(&"jackhammer")
 	loadout.add(&"cement_mixer")
 	loadout.add(&"ram")
