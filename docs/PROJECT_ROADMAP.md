@@ -37,7 +37,7 @@ Principio guida:
 
 **Prossimi passi (in ordine):**
 
-1. **Agente: piano del playtest del 14 ottobre** (`docs/PLAYTESTS/OWNER_PLAYTEST_2026-10-14.md`), nell'ordine scelto dal proprietario (D-089): grafica e gioco leggibile **fatti il 14 ottobre** (D-090, D-091: luce, terreno CC0, prato, rovine, menu 3D, Officina, salute, terra, buca, mira commutabile, impostazioni); **prossimo: armi (O-05), da progettare col proprietario**; musica da scegliere fra i candidati scaricati. Le voci rimaste dell'audit passano dopo, salvo quelle che toccano gli stessi file.
+1. **Agente: piano del playtest del 14 ottobre** (`docs/PLAYTESTS/OWNER_PLAYTEST_2026-10-14.md`), nell'ordine scelto dal proprietario (D-089): grafica e gioco leggibile **fatti il 14 ottobre** (D-090, D-091: luce, terreno CC0, prato, rovine, menu 3D, Officina, salute, terra, buca, mira commutabile, impostazioni); armi (O-05) **progettate col proprietario il 15 ottobre** (D-092, spec `docs/superpowers/specs/2026-10-15-weapons-classes-design.md`: quattro classi, 12 armi, fusioni, casse); **prossimo: revisione scritta della spec, poi piano e implementazione**; musica da scegliere fra i candidati scaricati. Le voci rimaste dell'audit passano dopo, salvo quelle che toccano gli stessi file.
    - Ancora aperti per il proprietario: giudizio sull'Ingegnere (D-088, branch `feature/engineer-restyle`) e playtest di boss, notte, ferrovia e controller.
 2. **Proprietario: misura sul Steam Deck** con il Debug Menu (F3). Serve per il preset Deck e per le voci GPU dell'audit (V-02, V-03, V-06, Q-01, Q-03, Q-04).
 3. **Agente: voci rimaste dell'audit**, nell'ordine della sua sezione 1 (caricamento, collisione del terreno, cursore, test, strumenti, documenti, voci B).

@@ -2,7 +2,7 @@
 
 > **Breve per scelta** (audit D-06, 14 ottobre 2026): dove siamo, prossimo passo, cosa aspetta il proprietario. Va aggiornato a ogni avanzamento e tenuto **sotto 8 KB**: quando cresce, il vecchio va in `docs/archive/`. Storia delle sessioni fino al 14 ottobre 2026: `docs/archive/STATUS_LOG_2026-10.md`. Decisioni: `DECISIONS.md`. Piano di prodotto: `PROJECT_ROADMAP.md`. Per trovare un documento: `INDEX.md`.
 
-**Ultimo aggiornamento:** 14 ottobre 2026, notte (dopo il playtest).
+**Ultimo aggiornamento:** 15 ottobre 2026 (design di armi e classi).
 
 ## Dove siamo
 
@@ -31,7 +31,7 @@ Esito **Modifica**: 14 osservazioni (salute, terra senza indicatore, buca senza 
 
 ## Prossimo passo (agente)
 
-0. **Blocchi 1 e 2 del playtest fatti** (grafica, menu, Officina, salute, terra, buca, mira, impostazioni; D-090, D-091). Prossimo: **blocco 3, armi (O-05)**, da progettare col proprietario prima del codice; poi la musica scelta da lui (candidati in `Videogame-assets/music-candidates/`). ProtonScatter approvato (D-090) ma non installato: serve quando si spargono oggetti.
+0. **Blocchi 1 e 2 del playtest fatti** (grafica, menu, Officina, salute, terra, buca, mira, impostazioni; D-090, D-091). **Blocco 3, armi (O-05): design approvato a voce il 15 ottobre** (D-092): quattro classi giocabili, 6 automatiche, 6 attive su tasto, 6 fusioni, bivi, casse sepolte; spec `docs/superpowers/specs/2026-10-15-weapons-classes-design.md`. Prossimo: **revisione scritta del proprietario, poi piano** (`writing-plans`) e implementazione nell'ordine della spec, par. 11. Poi la musica scelta da lui (candidati in `Videogame-assets/music-candidates/`). ProtonScatter approvato (D-090) ma non installato: serve quando si spargono oggetti.
 1. **Voci rimaste dell'audit**, nell'ordine della sua sezione 1:
    - PF-03, caricamento: prato sul rilievo 850 ms, pittura del terreno 460 ms;
    - T-01 e T-02: collisione copiata dal campo, ferrovia allineata;
@@ -47,6 +47,7 @@ Esito **Modifica**: 14 osservazioni (salute, terra senza indicatore, buca senza 
 
 ## Cosa aspetta il proprietario
 
+0. **Spec di armi e classi** (D-092): rileggerla e dire se va bene prima del piano.
 1. **Musica:** ascoltare i candidati in `C:\Users\adgau\Desktop\Videogame-assets\music-candidates\` (LEGGIMI.md con licenze) e dire quali tenere (D-089). **Grafica:** giudicare il blocco grafica nella nuova build (catture in `output/lighting/`).
 2. **Giudizio sull'Ingegnere** (D-088): catture in `../Videogame-engineer/output/engineer/`. Dopo il si si integra.
 3. **Playtest dei due livelli:** primo giro fatto il 14 ottobre (livello 1, tastiera, breve). Restano boss, notte, ferrovia e controller: promemoria in `docs/PLAYTESTS/ARENA_RUN_LEVEL_2026-10-07.md`.
