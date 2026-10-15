@@ -87,11 +87,11 @@ func _test_upgrade_decks() -> void:
 	var valid := [&"common", &"engineer", &"sapper", &"mechanic", &"weeder"]
 	_check(UpgradeCatalog.all().all(func(u: Dictionary) -> bool: return valid.has(u.get(&"deck", &""))), "ogni carta ha un mazzo valido")
 	var engineer := UpgradeCatalog.all().filter(func(u: Dictionary) -> bool: return u.get(&"deck") == &"engineer")
-	_check(engineer.size() == 2, "mazzo Ingegnere: Pala larga e Argini spinati")
+	_check(engineer.size() == 4, "mazzo Ingegnere: Pala larga, Argini spinati, Argini rinforzati, Getto rapido")
 	var mechanic := UpgradeCatalog.all().filter(func(u: Dictionary) -> bool: return u.get(&"deck") == &"mechanic")
-	_check(mechanic.size() == 2, "mazzo Meccanico: Torretta e Faro")
+	_check(mechanic.size() == 4, "mazzo Meccanico: Torretta, Faro, Motore truccato, Saldatura al volo")
 	var sapper := UpgradeCatalog.all().filter(func(u: Dictionary) -> bool: return u.get(&"deck") == &"sapper")
-	_check(sapper.size() == 1, "mazzo Guastatore: Scavo esplosivo")
+	_check(sapper.size() == 3, "mazzo Guastatore: Scavo esplosivo, Miccia corta, Reazione a catena")
 
 
 ## Piano 3: kit delle tre classi (spec par. 4.1-4.4) e loro fusioni.

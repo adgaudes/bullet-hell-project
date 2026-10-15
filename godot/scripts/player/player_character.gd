@@ -74,6 +74,8 @@ var tool_held := false
 var _dig_anim_left := 0.0
 var pack: SoilPack
 var brush_radius_bonus_m := 0.0
+## Terra chiesta allo zaino per metro cubo alzato (Getto rapido: 0,8 al primo livello).
+var raise_cost_scale := 1.0
 var tool_range_bonus_m := 0.0
 var _preview: BrushPreview
 var _brush_was_blocked := false
@@ -502,22 +504,24 @@ func _apply_brush(delta: float) -> void:
 			var volume := terrain_field.player_sculpt(terrain_target, radius, -rate, terrain_tool_mode)
 			pack.give(-volume)
 		TerrainField.ToolMode.RAISE:
-			# Chiede allo zaino la terra della pennellata intera (pi r^2 / 3 * rate); se ne ha meno, alza di meno.
-			var wanted := PI * radius * radius / 3.0 * rate
+			# Chiede allo zaino la terra della pennellata intera (pi r^2 / 3 * rate, scalata da
+			# Getto rapido); se ne ha meno, alza di meno.
+			var wanted := PI * radius * radius / 3.0 * rate * raise_cost_scale
 			var got := pack.take(wanted)
 			if got > 0.0:
 				var placed := terrain_field.player_sculpt(terrain_target, radius, rate * got / wanted, terrain_tool_mode)
 				# Aree protette, quota massima e bordo posano meno della pennellata: la terra
 				# non posata torna nello zaino (audit G-01: lo zaino scambia terra, non la perde).
-				if got > placed:
-					pack.give(got - placed)
+				var spent := placed * raise_cost_scale
+				if got > spent:
+					pack.give(got - spent)
 		TerrainField.ToolMode.LEVEL:
 			# La terra per alzare i dintorni viene dallo zaino: oltre quella la pennellata si scala.
-			var volume := terrain_field.player_level_budget(terrain_target, radius, terrain_field.tuning.level_rate * delta, pack.amount)
+			var volume := terrain_field.player_level_budget(terrain_target, radius, terrain_field.tuning.level_rate * delta, pack.amount / raise_cost_scale)
 			if volume < 0.0:
 				pack.give(-volume)
 			else:
-				pack.take(volume)
+				pack.take(volume * raise_cost_scale)
 		TerrainField.ToolMode.LAMP:
 			tool_held = false
 			if lamp_field == null or not lamp_field.place_at(terrain_target):

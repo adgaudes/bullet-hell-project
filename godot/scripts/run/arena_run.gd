@@ -85,6 +85,8 @@ var loadout: WeaponLoadout
 var write_queue: TerrainWriteQueue
 ## Prato logico (Falce rotante, Erba alta): riempito dal distretto con il rilievo.
 var meadow: MeadowMap
+## Carte dei mazzi di classe che non sono armi (spec D-092, par. 5).
+var class_perks: ClassPerks
 ## Luci logiche della notte: torcia del giocatore, faro del compagno (e lampioni, tappa 2).
 var light_field := LightField.new()
 var torch_light_id := 0
@@ -992,6 +994,9 @@ func apply_upgrade(id: StringName, new_level: int) -> void:
 			for enemy in director.enemies_near(center, radius):
 				enemy.take_damage(int(UpgradeCatalog.value(id, &"damage")))
 			_blast_effect(center, radius)
+		_:
+			if ClassPerks.handles(id) and class_perks != null:
+				class_perks.apply(id, new_level)
 
 
 func _upgrade_companion_turret(new_level: int) -> void:
@@ -1160,6 +1165,17 @@ func _setup_loadout() -> void:
 	loadout.adopt(weapon)
 	loadout.setup_class(class_id)
 	progression.class_id = class_id
+	class_perks = ClassPerks.new()
+	class_perks.name = "ClassPerks"
+	class_perks.director = director
+	class_perks.player = player
+	class_perks.companion = companion
+	class_perks.loadout = loadout
+	class_perks.terrain_field = terrain_field
+	class_perks.meadow = meadow
+	add_child(class_perks)
+	for card in ClassCatalog.start_cards(class_id):
+		apply_upgrade(card, progression.choose(card))
 	progression.weapon_cards = func() -> Array[Dictionary]: return WeaponOffers.cards(loadout, class_id, _unlocked_weapons())
 	loadout.changed.connect(_refresh_weapon_hud)
 	_refresh_weapon_hud()

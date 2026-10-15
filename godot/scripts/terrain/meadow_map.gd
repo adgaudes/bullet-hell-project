@@ -9,6 +9,9 @@ extends RefCounted
 const CELL := 1.0
 ## Scarto massimo dalla quota di base per restare prato.
 const MAX_DELTA := 0.25
+## Valori delle celle: prato sulla base, prato anche su argini e scavi.
+const FLAT := 1
+const RELIEF := 2
 
 var _field: TerrainField
 var _cells := PackedByteArray()
@@ -28,8 +31,9 @@ func setup(field: TerrainField) -> void:
 	_count = 0
 
 
-## Segna come prato le celle con il centro entro [param radius] da [param center].
-func mark(center: Vector3, radius: float) -> void:
+## Segna come prato le celle con il centro entro [param radius] da [param center]. Con
+## [param on_relief] restano prato anche lontano dalla base (Semi in tasca: argini coperti).
+func mark(center: Vector3, radius: float, on_relief := false) -> void:
 	if _cells.is_empty():
 		return
 	var reach := ceili(radius / CELL)
@@ -44,8 +48,8 @@ func mark(center: Vector3, radius: float) -> void:
 				continue
 			var i := cell.y * _width + cell.x
 			if _cells[i] == 0:
-				_cells[i] = 1
 				_count += 1
+			_cells[i] = maxi(_cells[i], RELIEF if on_relief else FLAT)
 
 
 func is_meadow(p: Vector3) -> bool:
@@ -54,7 +58,8 @@ func is_meadow(p: Vector3) -> bool:
 	var cell := _cell_of(p)
 	if cell.x < 0 or cell.y < 0 or cell.x >= _width or cell.y >= _depth:
 		return false
-	return _cells[cell.y * _width + cell.x] == 1 and absf(_field.delta_at(p)) < MAX_DELTA
+	var value := _cells[cell.y * _width + cell.x]
+	return value == RELIEF or (value == FLAT and absf(_field.delta_at(p)) < MAX_DELTA)
 
 
 func cell_count() -> int:

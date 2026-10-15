@@ -16,7 +16,7 @@ static func all() -> Array[Dictionary]:
 		{id = &"mechanic", name = "Meccanico", color = Color(0.1, 0.75, 0.72),
 			kit = [&"welder", &"crane_magnet"], text = "Compagno potenziato: archi elettrici e calamite."},
 		{id = &"weeder", name = "Erbacciaia", color = Color(0.85, 0.15, 0.6),
-			kit = [&"scythe", &"bramble"], text = "Vegetazione come difesa: falci e rovi."},
+			kit = [&"scythe", &"bramble"], start_cards = [&"tall_grass"], text = "Vegetazione come difesa: falci e rovi."},
 	]
 
 
@@ -32,4 +32,12 @@ static func start_weapons(id: StringName) -> Array[StringName]:
 	for weapon_id: StringName in find(id).get(&"kit", []):
 		if not WeaponCatalog.find(weapon_id).is_empty() and WeaponLoadout.script_for(weapon_id) != null:
 			out.append(weapon_id)
+	return out
+
+
+## Carte (UpgradeCatalog) con cui la classe parte al livello 1 (l'Erbacciaia: Erba alta,
+## spec par. 5, per un mazzo di partenza pari alle altre).
+static func start_cards(id: StringName) -> Array[StringName]:
+	var out: Array[StringName] = []
+	out.assign(find(id).get(&"start_cards", []))
 	return out
