@@ -1,9 +1,11 @@
 class_name AutoWeapon
-extends Node3D
-## Chiodatrice automatica (D-038): spara da sola al nemico piu vicino in linea di
-## tiro. I chiodi volano all'altezza di chi spara e si fermano sul mondo statico:
-## una cella Raised (alta 1,2 m) protegge ma blocca anche i propri colpi.
-## Usata dal giocatore e, con l'upgrade Torretta, dal compagno.
+extends Weapon
+## Chiodatrice automatica (D-038, D-092): spara da sola al nemico piu vicino in linea di
+## tiro, o dove guarda chi spara in mira manuale (D-089). I chiodi volano all'altezza di chi
+## spara e si fermano sul mondo statico: un argine protegge ma blocca anche i propri colpi.
+## Con `weapon_id` i valori vengono da WeaponCatalog (livelli e bivi: Raffica, Chiodi da ponte,
+## Rimbalzanti, Incandescenti); senza (la Torretta del compagno) restano quelli impostati.
+## Chiodi e macchie di fuoco sono istanze di due MultiMesh: nessun nodo per colpo.
 
 signal fired(count: int)
 
@@ -15,16 +17,18 @@ const MAX_NAILS := 64
 const BLOCKED_RETRY := 0.08
 ## Candidati provati col raggio per colpo: i piu vicini bastano.
 const MAX_CANDIDATES := 8
+## Macchie di fuoco degli Incandescenti: raggio, durata, danno e cadenza del danno.
+const FIRE_COLOR := Color(1.0, 0.35, 0.05)
+const FIRE_RADIUS := 1.0
+const FIRE_SECONDS := 2.0
+const FIRE_TICK := 0.5
+const FIRE_DAMAGE := 1
+const MAX_PATCHES := 16
 
-@export var shooter: Node3D
-@export var director: EnemyDirector
 ## Altezza di sparo rispetto all'origine di chi spara.
 @export var muzzle_height := 0.0
 ## Distanza della canna dall'origine, lungo la direzione del colpo (O-04).
 @export var muzzle_forward := 0.0
-## Mira manuale (D-089): spara dove guarda chi spara (`facing_direction()`), quando c'e un
-## nemico in portata; altrimenti al nemico piu vicino, girando chi spara verso di lui.
-@export var manual_aim := false
 @export var fire_interval := 0.5
 @export var weapon_range := 9.0
 @export var damage := 1
@@ -34,26 +38,58 @@ const MAX_CANDIDATES := 8
 ## Chiodi per colpo, a ventaglio.
 @export var projectiles := 1
 @export var spread_degrees := 12.0
+## Rimbalzi sugli argini per chiodo (bivio Rimbalzanti).
+var bounces := 0
+## Ogni chiodo lascia una macchia di fuoco (bivio Incandescenti).
+var fire_patches := false
+## Deviazione casuale massima di ogni colpo, in gradi (bivio Raffica).
+var spread_jitter := 0.0
 
 ## Direzione planare (unitaria) dell'ultimo colpo: chi ascolta `fired` la usa per il rinculo.
 var last_fire_direction := Vector3.ZERO
 var _cooldown := 0.3
+## Chiodi in volo: {position, direction, travelled, pierce, bounces, hit}.
 var _nails: Array[Dictionary] = []
-var _mesh := BoxMesh.new()
-var _material := StandardMaterial3D.new()
+## Macchie di fuoco: {position, left, tick}.
+var _patches: Array[Dictionary] = []
+var _nail_view: MultiMeshInstance3D
+var _patch_view: MultiMeshInstance3D
+var _rng := RandomNumberGenerator.new()
 
 
 func _ready() -> void:
-	_mesh.size = Vector3(0.07, 0.07, NAIL_LENGTH)
-	_material.albedo_color = NAIL_COLOR.linear_to_srgb()
-	_material.emission_enabled = true
-	_material.emission = NAIL_COLOR.linear_to_srgb()
-	_material.emission_energy_multiplier = 1.5
-	_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	_rng.seed = 7
+	var nail_mesh := BoxMesh.new()
+	nail_mesh.size = Vector3(0.07, 0.07, NAIL_LENGTH)
+	nail_mesh.material = _glow_material(NAIL_COLOR, 1.5)
+	_nail_view = _make_view(nail_mesh, MAX_NAILS)
+	var patch_mesh := CylinderMesh.new()
+	patch_mesh.top_radius = FIRE_RADIUS
+	patch_mesh.bottom_radius = FIRE_RADIUS
+	patch_mesh.height = 0.04
+	patch_mesh.radial_segments = 16
+	patch_mesh.rings = 1
+	patch_mesh.material = _glow_material(FIRE_COLOR, 2.0)
+	_patch_view = _make_view(patch_mesh, MAX_PATCHES)
+	super._ready()
+
+
+func _apply_stats() -> void:
+	fire_interval = stat(&"fire_interval")
+	damage = int(stat(&"damage"))
+	weapon_range = stat(&"weapon_range")
+	pierce = int(stat(&"pierce"))
+	projectiles = int(stat(&"projectiles"))
+	spread_degrees = stat(&"spread_degrees")
+	projectile_speed = stat(&"projectile_speed")
+	bounces = int(stat(&"bounces"))
+	fire_patches = stat(&"fire_patch") > 0.0
+	spread_jitter = stat(&"spread_jitter")
 
 
 func _physics_process(delta: float) -> void:
 	_move_nails(delta)
+	_tick_patches(delta)
 	if shooter == null or director == null:
 		return
 	_cooldown -= delta
@@ -108,6 +144,10 @@ func nail_count() -> int:
 	return _nails.size()
 
 
+func fire_patch_count() -> int:
+	return _patches.size()
+
+
 func _fire_at(target: Enemy) -> void:
 	var base := muzzle()
 	var forward := Vector3(target.global_position.x - base.x, 0.0, target.global_position.z - base.z).normalized()
@@ -117,6 +157,8 @@ func _fire_at(target: Enemy) -> void:
 
 
 func _fire_toward(forward: Vector3) -> void:
+	if spread_jitter > 0.0:
+		forward = forward.rotated(Vector3.UP, deg_to_rad(_rng.randf_range(-spread_jitter, spread_jitter)))
 	var origin := muzzle_toward(forward)
 	last_fire_direction = forward
 	var count := maxi(projectiles, 1)
@@ -125,14 +167,8 @@ func _fire_toward(forward: Vector3) -> void:
 			break
 		var angle := deg_to_rad(spread_degrees) * (i - (count - 1) * 0.5)
 		var direction := forward.rotated(Vector3.UP, angle)
-		var nail := MeshInstance3D.new()
-		nail.mesh = _mesh
-		nail.material_override = _material
-		nail.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		add_child(nail)
-		nail.global_position = origin
-		nail.look_at(origin + direction, Vector3.UP)
-		_nails.append({node = nail, direction = direction, travelled = 0.0, pierce = pierce, hit = []})
+		_nails.append({position = origin, direction = direction, travelled = 0.0, pierce = pierce, bounces = bounces, hit = []})
+	_refresh_nail_view()
 	fired.emit(count)
 
 
@@ -152,17 +188,21 @@ func _move_nails(delta: float) -> void:
 	var reach_squared := reach * reach
 	for k in range(_nails.size() - 1, -1, -1):
 		var nail: Dictionary = _nails[k]
-		var node: MeshInstance3D = nail.node
-		var from := node.global_position
+		var from: Vector3 = nail.position
 		var to: Vector3 = from + nail.direction * step
 		var alive := true
 		_ray.from = from
 		_ray.to = to
 		var wall := space.intersect_ray(_ray)
 		var mid := (from + to) * 0.5
+		var bounce_normal := Vector3.ZERO
 		if not wall.is_empty():
 			to = wall.position
-			alive = false
+			var planar := Vector3(wall.normal.x, 0.0, wall.normal.z)
+			if nail.bounces > 0 and planar.length_squared() > 0.01:
+				bounce_normal = planar.normalized()
+			else:
+				alive = false
 		if director != null:
 			# Indietro: un nemico ucciso qui esce da `enemies` durante il ciclo.
 			for e in range(enemies.size() - 1, -1, -1):
@@ -178,6 +218,9 @@ func _move_nails(delta: float) -> void:
 				if _segment_distance(from, to, enemy.global_position) <= HIT_RADIUS + enemy.hit_radius_bonus:
 					nail.hit.append(enemy)
 					enemy.take_damage(damage)
+					# La macchia nasce al primo nemico colpito, anche se il chiodo prosegue.
+					if fire_patches and nail.hit.size() == 1:
+						_spawn_patch(enemy.global_position)
 					if nail.pierce <= 0:
 						alive = false
 						break
@@ -185,11 +228,86 @@ func _move_nails(delta: float) -> void:
 		nail.travelled += step
 		if nail.travelled >= weapon_range * 1.3:
 			alive = false
-		if alive:
-			node.global_position = to
-		else:
+		if alive and bounce_normal != Vector3.ZERO:
+			nail.bounces -= 1
+			nail.direction = (nail.direction as Vector3).bounce(bounce_normal)
+			to += bounce_normal * 0.05
+		nail.position = to
+		if not alive:
+			if fire_patches and nail.hit.is_empty():
+				_spawn_patch(to)
 			_nails.remove_at(k)
-			node.queue_free()
+	_refresh_nail_view()
+
+
+func _spawn_patch(at: Vector3) -> void:
+	if _patches.size() >= MAX_PATCHES:
+		_patches.pop_front()
+	var ground := shooter.global_position.y if shooter != null else at.y
+	if terrain_field != null:
+		ground = terrain_field.height_at(at)
+	_patches.append({position = Vector3(at.x, ground + 0.03, at.z), left = FIRE_SECONDS, tick = 0.0})
+	_refresh_patch_view()
+
+
+func _tick_patches(delta: float) -> void:
+	if _patches.is_empty():
+		return
+	for k in range(_patches.size() - 1, -1, -1):
+		var patch: Dictionary = _patches[k]
+		patch.left -= delta
+		patch.tick -= delta
+		if patch.tick <= 0.0 and director != null:
+			patch.tick = FIRE_TICK
+			for enemy in director.enemies_near(patch.position, FIRE_RADIUS):
+				if not enemy.is_dead:
+					enemy.take_damage(FIRE_DAMAGE)
+		if patch.left <= 0.0:
+			_patches.remove_at(k)
+	_refresh_patch_view()
+
+
+func _refresh_nail_view() -> void:
+	var multimesh := _nail_view.multimesh
+	multimesh.visible_instance_count = _nails.size()
+	for i in _nails.size():
+		var nail: Dictionary = _nails[i]
+		multimesh.set_instance_transform(i, Transform3D(Basis.looking_at(nail.direction, Vector3.UP), nail.position))
+
+
+func _refresh_patch_view() -> void:
+	var multimesh := _patch_view.multimesh
+	multimesh.visible_instance_count = _patches.size()
+	for i in _patches.size():
+		var patch: Dictionary = _patches[i]
+		var fade := clampf(patch.left / FIRE_SECONDS, 0.2, 1.0)
+		multimesh.set_instance_transform(i, Transform3D(Basis.from_scale(Vector3(fade, 1.0, fade)), patch.position))
+
+
+func _make_view(mesh: Mesh, count: int) -> MultiMeshInstance3D:
+	var multimesh := MultiMesh.new()
+	multimesh.transform_format = MultiMesh.TRANSFORM_3D
+	multimesh.mesh = mesh
+	multimesh.instance_count = count
+	multimesh.visible_instance_count = 0
+	var view := MultiMeshInstance3D.new()
+	view.multimesh = multimesh
+	view.top_level = true
+	view.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	# Le istanze si riusano fra chiodi diversi: interpolarle le strascicherebbe fra due punti.
+	view.physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
+	add_child(view)
+	return view
+
+
+static func _glow_material(color: Color, energy: float) -> StandardMaterial3D:
+	var material := StandardMaterial3D.new()
+	material.albedo_color = color.linear_to_srgb()
+	material.emission_enabled = true
+	material.emission = color.linear_to_srgb()
+	material.emission_energy_multiplier = energy
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	return material
 
 
 func _max_hit_bonus(enemies: Array) -> float:
