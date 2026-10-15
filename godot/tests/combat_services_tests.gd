@@ -8,6 +8,8 @@ var _failures := 0
 var _scene: Node3D
 var _player: PlayerCharacter
 var _director: EnemyDirector
+var _field: TerrainField
+var _queue: TerrainWriteQueue
 
 
 func _initialize() -> void:
@@ -17,13 +19,20 @@ func _initialize() -> void:
 	_director = EnemyDirector.new()
 	_director.spawning = false
 	_director.player = _player
-	_director.terrain_field = _scene.get_node(^"TerrainField")
+	_field = _scene.get_node(^"TerrainField")
+	_director.terrain_field = _field
 	_scene.add_child(_director)
+	_queue = TerrainWriteQueue.new()
+	_queue.terrain_field = _field
+	_scene.add_child(_queue)
 	await _seconds(0.5)
 	await _test_stun()
 	await _test_charge()
 	await _test_charge_blocked()
 	await _test_charge_into_wall()
+	await _test_ram_base()
+	await _test_ram_trench_and_blast()
+	await _test_ram_blocked()
 	await _seconds(0.1)
 	print("PROTOTYPE01_TESTS %s failures=%d" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
@@ -91,6 +100,91 @@ func _test_charge_blocked() -> void:
 	print("carica non possibile")
 	_player._start_dash()
 	_check(_player.is_dashing and not _player.start_charge(Vector3.FORWARD, 8.0, 0.5), "durante lo scatto non parte")
+	await _seconds(1.5)
+
+
+# --- Ariete (piano 2) --------------------------------------------------------------------
+
+func _ram(level := 1, picks: Dictionary = {}) -> Ram:
+	var ram := Ram.new()
+	ram.weapon_id = &"ram"
+	ram.shooter = _player
+	ram.director = _director
+	ram.terrain_field = _field
+	ram.write_queue = _queue
+	ram.manual_aim = true
+	_scene.add_child(ram)
+	ram.set_level(level)
+	for at: int in picks:
+		ram.choose_branch(at, picks[at])
+	return ram
+
+
+## Giocatore fermo al centro, rivolto verso -Z, terreno alla base.
+func _reset_player() -> void:
+	_queue.clear()
+	_field.begin_batch()
+	_field.reset_to_base(Vector3.ZERO, Vector2(30.0, 30.0))
+	_field.end_batch()
+	_player.global_position = Vector3(0.0, _field.height_at(Vector3.ZERO) + 1.0, 6.0)
+	_player.velocity = Vector3.ZERO
+	_player.rotation.y = 0.0
+	_player.set_max_health(10)
+	await _seconds(0.5)
+
+
+func _test_ram_base() -> void:
+	print("Ariete: carica")
+	await _reset_player()
+	var start := _player.global_position
+	_field.sculpt(start + Vector3(0.0, 0.0, -4.0), 2.0, 0.5)
+	var a := _director.spawn_at(start + Vector3(0.0, 0.0, -3.0))
+	var b := _director.spawn_at(start + Vector3(0.3, 0.0, -6.0))
+	a.health = 50
+	b.health = 50
+	var ram := _ram()
+	await physics_frame
+	_check(ram.trigger(), "parte")
+	await _seconds(1.0)
+	_check(a.health == 47 and b.health == 47, "travolge chi sta sul percorso, 3 danni (%d, %d)" % [a.health, b.health])
+	_check(start.z - _player.global_position.z > 6.0, "il giocatore carica in avanti (%.2f m)" % (start.z - _player.global_position.z))
+	_check(_field.height_at(start + Vector3(0.0, 0.0, -4.0)) < 0.3, "spiana il dosso sul percorso (%.2f m)" % _field.height_at(start + Vector3(0.0, 0.0, -4.0)))
+	ram.queue_free()
+	_director.clear_horde()
+
+
+func _test_ram_trench_and_blast() -> void:
+	print("Ariete: Trincea, Scudo e Botto")
+	await _reset_player()
+	var start := _player.global_position
+	var ram := _ram(5, {3: &"b", 5: &"a"})
+	await physics_frame
+	ram.trigger()
+	await _seconds(1.0)
+	_check(_field.height_at(start + Vector3(0.0, 0.0, -4.0)) < -0.3, "Trincea scava lungo la carica (%.2f m)" % _field.height_at(start + Vector3(0.0, 0.0, -4.0)))
+	_check(_player._invulnerable_left > 0.9, "Scudo: intoccabile dopo l'arrivo")
+	ram.queue_free()
+	await _reset_player()
+	start = _player.global_position
+	var side := _director.spawn_at(start + Vector3(2.0, 0.0, -8.0))
+	side.health = 50
+	ram = _ram(5, {3: &"b", 5: &"b"})
+	await physics_frame
+	ram.trigger()
+	await _seconds(1.0)
+	_check(side.health == 47, "Botto: 3 danni all'arrivo a chi e vicino (%d)" % side.health)
+	ram.queue_free()
+	_director.clear_horde()
+
+
+func _test_ram_blocked() -> void:
+	print("Ariete: non parte")
+	await _reset_player()
+	var ram := _ram()
+	await physics_frame
+	_player._start_dash()
+	_check(not ram.trigger() and is_zero_approx(ram.cooldown_left), "durante lo scatto non parte e non consuma la ricarica")
+	ram.queue_free()
 	await _seconds(1.5)
 
 

@@ -40,6 +40,8 @@ static func script_for(id: StringName) -> Script:
 			return SiteBlade
 		&"jackhammer":
 			return Jackhammer
+		&"ram":
+			return Ram
 	return null
 
 

@@ -1,0 +1,99 @@
+class_name Ram
+extends ActiveWeapon
+## Ariete (spec D-092, par. 4.5), attiva del kit comune: chi spara carica verso il punto di mira
+## (`charge_distance` metri in `charge_seconds`, intoccabile: PlayerCharacter.start_charge). Chi
+## sta sul percorso prende `damage` ed e spinto di lato; ogni metro la coda spiana il terreno
+## verso la base. Bivi: Rincorsa, Scudo (intoccabile all'arrivo), Trincea (scava invece di
+## spianare), Botto (onda all'arrivo). Se la carica non puo partire la ricarica non si consuma.
+
+## Spianata (o trincea) ogni tanti metri di carica, raggio e forza.
+const WRITE_EVERY := 1.0
+const WRITE_RADIUS := 1.2
+const FLATTEN_STRENGTH := 0.6
+const TRENCH_DEPTH := 0.6
+const BLAST_RADIUS := 3.0
+
+var _charging := false
+var _hit: Array[Enemy] = []
+var _direction := Vector3.ZERO
+var _last_write := Vector3.ZERO
+
+
+func can_trigger() -> bool:
+	return super.can_trigger() and shooter.has_method(&"start_charge") and not _charging
+
+
+func trigger() -> bool:
+	if not can_trigger():
+		return false
+	var at := aim_point()
+	var origin := shooter.global_position
+	var direction := Vector3(at.x - origin.x, 0.0, at.z - origin.z)
+	if direction.length_squared() < 1e-4:
+		direction = shooter.facing_direction() if shooter.has_method(&"facing_direction") else Vector3.FORWARD
+	direction = direction.normalized()
+	if not shooter.start_charge(direction, stat(&"charge_distance"), stat(&"charge_seconds")):
+		return false
+	cooldown_left = cooldown_total()
+	_charging = true
+	_hit.clear()
+	_direction = direction
+	_last_write = origin
+	triggered.emit(at)
+	changed.emit()
+	return true
+
+
+func _physics_process(delta: float) -> void:
+	super._physics_process(delta)
+	if not _charging:
+		return
+	_ram_enemies()
+	_write_path()
+	if not shooter.is_charging():
+		_charging = false
+		_arrive()
+
+
+func _ram_enemies() -> void:
+	if director == null:
+		return
+	var p := shooter.global_position
+	var side := _direction.cross(Vector3.UP).normalized()
+	for enemy in director.enemies_near(p, stat(&"hit_radius")):
+		if enemy.is_dead or _hit.has(enemy):
+			continue
+		_hit.append(enemy)
+		enemy.take_damage(int(stat(&"damage")))
+		if enemy.self_driven:
+			continue
+		var offset := Vector3(enemy.global_position.x - p.x, 0.0, enemy.global_position.z - p.z)
+		var push := side if offset.dot(side) >= 0.0 else -side
+		var speed := stat(&"shove_speed")
+		enemy.velocity = Vector3(push.x * speed, enemy.velocity.y, push.z * speed)
+
+
+func _write_path() -> void:
+	if write_queue == null or terrain_field == null:
+		return
+	var p := shooter.global_position
+	if Vector2(p.x - _last_write.x, p.z - _last_write.z).length() < WRITE_EVERY:
+		return
+	_last_write = p
+	var base := terrain_field.base_height_at(p)
+	if stat(&"trench") > 0.0:
+		write_queue.push_level(p, WRITE_RADIUS, base - TRENCH_DEPTH, 1.0)
+	else:
+		write_queue.push_level(p, WRITE_RADIUS, base, FLATTEN_STRENGTH)
+
+
+func _arrive() -> void:
+	var shield := stat(&"shield")
+	if shield > 0.0 and shooter.has_method(&"grant_invulnerability"):
+		shooter.grant_invulnerability(shield)
+	var blast := int(stat(&"blast"))
+	if blast > 0 and director != null:
+		for enemy in director.enemies_near(shooter.global_position, BLAST_RADIUS):
+			if not enemy.is_dead:
+				enemy.take_damage(blast)
+		director.shove_from(shooter.global_position, BLAST_RADIUS, 7.0)
