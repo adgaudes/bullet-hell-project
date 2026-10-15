@@ -62,6 +62,22 @@ static func for_permanent(id: StringName) -> StringName:
 			return &"nail"
 		&"salvage":
 			return &"parachute"
+		&"toolbox":
+			return &"wrench"
+		&"spare_stakes":
+			return &"stake"
+		&"dry_powder", &"charge_pack":
+			return &"dig_charge"
+		&"good_oil":
+			return &"crane_magnet"
+		&"good_seeds":
+			return &"bramble"
+		&"green_thumb":
+			return &"scythe"
+	# Sblocco di un'arma: l'icona dell'arma.
+	var weapon := PermanentCatalog.weapon_of(id)
+	if weapon != &"":
+		return WeaponCatalog.find(weapon).get(&"icon", &"scrap")
 	return &"scrap"
 
 
