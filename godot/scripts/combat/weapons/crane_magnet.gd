@@ -74,6 +74,7 @@ func _fire(at: Vector3) -> void:
 	_borrow_xp_attractor()
 	_place_ring()
 	_ring.show()
+	WeaponFx.sparks(fx_parent(), _center + Vector3(0.0, 0.4, 0.0), FIELD_COLOR, 10, 4.0)
 
 
 func _physics_process(delta: float) -> void:
@@ -108,6 +109,10 @@ func _release(finished: bool) -> void:
 	_ring.hide()
 	if not finished or director == null:
 		return
+	# Il rilascio: un colpo secco al centro, e con la Polarita inversa l'onda che respinge.
+	WeaponFx.burst(fx_parent(), _center + Vector3(0.0, 0.4, 0.0), WeaponFx.RUST, 8, 4.0, 0.1)
+	if stat(&"repel") > 0.0:
+		WeaponFx.shockwave(fx_parent(), _center, stat(&"pull_radius"), FIELD_COLOR)
 	var radius := stat(&"pull_radius")
 	var crush := int(stat(&"crush"))
 	if crush > 0:

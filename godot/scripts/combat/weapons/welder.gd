@@ -143,6 +143,7 @@ func _chain(origin: Vector3, hit: Array[Enemy]) -> void:
 		if terrain_field != null and terrain_field.delta_at(at) < DITCH_DEPTH:
 			reach = ditch_jump_range
 		_strike(current, damage)
+		WeaponFx.sparks(fx_parent(), at + Vector3.UP * SOURCE_LIFT, ARC_COLOR, 6, 4.0)
 		if count + 1 >= jumps:
 			break
 		current = _nearest(at, reach, hit)
@@ -250,6 +251,7 @@ func _tick_tesla(delta: float) -> void:
 	var pick := _rng.randi_range(0, inside.size() - 1)
 	var target := inside[pick]
 	_add_arc(PackedVector3Array([origins[pick] + Vector3.UP * SOURCE_LIFT, target.global_position]))
+	_fusion_fx(WeaponFx.sparks(fx_parent(), target.global_position + Vector3.UP * SOURCE_LIFT, ARC_COLOR, 8, 4.5))
 	_strike(target, damage)
 
 
