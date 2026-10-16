@@ -10,7 +10,7 @@
 
 **Spec:** `docs/superpowers/specs/2026-10-15-caravan-machines-design.md` (Sezioni 1, 4, 5, 6, 7; "Architettura del codice"; "Valori di partenza"; "Verifica"). Convenzioni dai piani delle armi `docs/superpowers/plans/2026-10-15-weapons-*.md` (servizi, carte dinamiche, casse). Ricognizione del codice (16 ottobre 2026, prima del piano A): rapporti `r_*.txt` in `.superpowers/caravan-plan-a/recon/` (locali, ignorati da Git; le righe citate vanno riverificate sul codice attuale).
 
-**Stato:** task 1, 2, 3 e 4 fatti il 16 ottobre 2026; prossimo il task 5.
+**Stato:** task 1-5 fatti il 16 ottobre 2026; prossimo il task 6.
 
 ## Global Constraints
 
@@ -210,6 +210,7 @@ Il task delicato. Una sola macchina (Cassone) fa tutto cio che faceva il compagn
 - `TrainEvent.machine_wrecks`: `discard_in_rect` prima di `reset_to_base`, come le casse.
 
 - [ ] Nota dal task 2: `Caravan.add_machine(id, at)` usa `at` come origine della macchina, senza i 0,3 m di altezza che aggiunge quando la posa al suo posto: un punto a terra va alzato.
+- [ ] Note dal task 5: `ArenaRun._on_machine_card(id)` consuma sempre un level-up (`_pending_level_ups -= 1`): la scelta del relitto non deve passare da li (Review Focus 3, il relitto non consuma un level-up), ma puo riusare `MachineOffers.card` e `_available_modules()` (oggi solo i moduli con uno script; Trivella, Pala, Saldatore e Sirena entrano dal task 8).
 - [ ] Test (`machine_wrecks_tests.gd`): due relitti posati sotto pennellate alzate e non su quelle delle casse; bagliore visibile a 2 m e nascosto a 5 m, telaio visibile a 10 m; scavando fino alla base il relitto si apre una volta sola; il menu ha titolo "RELITTO SEPOLTO" e due carte di moduli diversi; scegliere aggiunge la macchina, `_pending_wrecks` torna 0 e `_pending_level_ups` non cambia; cassa, relitto e level-up nello stesso passo: tre menu in quell'ordine, tutti risolti, poi il gioco riparte; carovana piena: nessun menu, 3 rottami (quelli che non entrano a terra) e l'avviso; il treno scarta un relitto sulla fascia dei binari senza aprirlo.
 - [ ] Gate completo verde (13 suite caricano un livello e scrivono il terreno: un relitto aperto mette in pausa).
 - [ ] Commit `Carovana (D-093), piano A: relitti sepolti (due per livello, bagliore arancione, telaio che spunta), scelta fra due moduli, 3 rottami a carovana piena, il treno li porta via; test`.
@@ -218,6 +219,7 @@ Il task delicato. Una sola macchina (Cassone) fa tutto cio che faceva il compagn
 
 **Files:** `godot/tests/tools/simulate_runs.gd`, `godot/tests/tools/benchmark_arena.gd`, create `godot/tests/tools/capture_caravan.gd`; documenti `docs/TOOLS_AND_LICENSES.md` (valutati e non adottati: addon di macchine a stati e di steering/boids per il grappolo), `docs/MIGRATION_STATUS.md`, `docs/PROJECT_ROADMAP.md` (Stato operativo), `docs/DECISIONS.md` (D-093: piano A fatto e scelte di questo piano), `docs/INDEX.md`, `docs/GODOT_WORKFLOW.md` (sezione Carovana: comandi, marker, trappole trovate), stato della spec, `docs/PROMISE_A_PROTOTYPE_SPEC.md` e `docs/COMPANION_SLICE_SPEC.md` dove citano marker spariti.
 
+- [ ] Note dal task 5: `simulate_runs` mette le carte "Nuova macchina" in fondo alla priorita e il campo `upgrades=` non conta le macchine; le carte macchina si riconoscono dal nome ("Nuova macchina: ..."), il menu non espone gli id.
 - [ ] Bot: `_tick_repair` (con una guasta, almeno 2 rottami e il nemico piu vicino oltre 3,5 m: va alla macchina e imposta `player.interact_held` finche non e riparata); i relitti si scavano come le vene (`_nearest_wreck`); le carte "Nuova macchina" in priorita dopo la prima arma; righe `PROTOTYPE01_SIM` con `machines`, `repairs`, `wrecks`. Prova: `simulate_runs.gd -- --bots=novice,scrapper --seeds=1-3 --max-seconds=600` senza errori, numeri riportati.
 - [ ] Benchmark: riga `PROTOTYPE01_ARENA_BENCH caravan preset=%s machines=%d modules=%s enemies=%d step_ms=%.3f director_on_ms=%.3f director_off_ms=%.3f` (sei macchine: Cassone, due Torrette, Trivella, Pala, Sirena; 70 nemici, 20 robusti a 2-4 m dal grappolo; giocatore e macchine immuni; tempi come `_time_weapons`; costo del contatto come A/B del direttore con e senza carovana); le righe delle armi rendono le macchine immuni; il tempo comprende la coda delle scritture (Trivella e Pala) come `_time_weapons`; con `--night` anche sei Faro accesi (13 luci con torcia e lampioni). `benchmark_arena.gd -- --enemies=70 --preset=deck`: budget 0,5 ms per passo; se si sfora, prima gli effetti, poi la frequenza dei moduli.
 - [ ] Catture `capture_caravan.gd -- --out=../output/caravan`: grappolo con l'orda di giorno e di notte (Faro), macchina guasta con fumo, esclamativo e tasto Ripara, ritirata, relitto che luccica col telaio, menu del relitto, striscia della carovana; lette una per una.
