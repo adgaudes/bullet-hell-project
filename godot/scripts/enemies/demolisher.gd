@@ -107,7 +107,7 @@ var path_field: PathField
 var director: EnemyDirector
 ## Lampioni del giocatore: abbattuti quando entrano nel raggio di contatto (D-058).
 var lamp_field: LampField
-## Carovana del giocatore: niente barricate sopra le sue macchine.
+## Carovana del giocatore: il contatto colpisce le sue macchine; niente barricate sopra di loro.
 var caravan: Caravan
 var speed := 1.7
 var contact_damage := 2
@@ -250,6 +250,11 @@ func drive(delta: float) -> void:
 	var to_player := _planar(player.global_position - pos)
 	if to_player.length() <= contact_radius:
 		player.take_damage(contact_damage)
+	# Anche le macchine della carovana a contatto (D-093, scelta 7).
+	if caravan != null:
+		for machine in caravan.machines:
+			if _planar(machine.global_position - pos).length() <= contact_radius:
+				machine.take_hit(contact_damage)
 	if lamp_field != null and lamp_field.count() > 0:
 		lamp_field.knock_down_near(pos, contact_radius)
 

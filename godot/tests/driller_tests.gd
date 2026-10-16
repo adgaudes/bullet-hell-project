@@ -46,6 +46,7 @@ func _initialize() -> void:
 	await _test_aim_and_charge()
 	await _test_aims_through_rampart()
 	await _test_side_push_lands_on_ground()
+	await _test_machines_and_the_driller()
 	await _test_wall_stops_and_stuns()
 	await _test_wall_over_vein_gives_scrap()
 	await _test_low_mound_does_not_stop()
@@ -88,6 +89,21 @@ func _place_boss(at: Vector3, phase: Driller.Phase, left: float) -> void:
 	_boss.phase = phase
 	_boss.phase_left = left
 	_boss.reset_physics_interpolation()
+
+
+func _place_machine(machine: Machine, at: Vector3) -> void:
+	machine.global_position = Vector3(at.x, _field.height_at(at) + Caravan.GROUND_CLEARANCE, at.z)
+	machine.velocity = Vector3.ZERO
+	machine.reset_physics_interpolation()
+
+
+## Macchina in ordine, a vita piena e colpibile subito (fuori dall'immunita del colpo prima).
+func _ready_machine(machine: Machine) -> void:
+	if machine.is_broken():
+		machine.repair(1.0)
+	machine.heal(machine.max_health)
+	machine._hit_cooldown_left = 0.0
+	machine._invulnerable_left = 0.0
 
 
 func _count_bursts() -> int:
@@ -209,6 +225,74 @@ func _test_side_push_lands_on_ground() -> void:
 	_field.reset_to_base(p, Vector2(4.0, 4.0))
 	_boss.phase = Driller.Phase.REST
 	_path.solve()
+
+
+## D-093 (task 6): la carica ferisce (2 PV) e spinge di lato una macchina sulla sua strada, una
+## volta per carica; ferma entro 1,5 m la colpisce col contatto, stordita no; una macchina guasta
+## sulla linea della carica resta dov'e (i nemici la ignorano). Il capofila torna poi in ordine.
+func _test_machines_and_the_driller() -> void:
+	print("machines and the driller")
+	_clear_tracks()
+	var machine := _caravan.lead()
+	var p := Vector3(-20.0, 0.0, 0.0)
+	_place_player(p + Vector3(-6.0, 0.0, 3.0))
+	machine.set_physics_process(false)
+	_ready_machine(machine)
+	_place_machine(machine, p)
+	# A 1,7 m: fuori dal contatto (1,5 m), dentro la portata della carica (1,5 + 0,4).
+	_place_boss(p + Vector3(1.7, 0.0, 0.0), Driller.Phase.CHARGE, 5.0)
+	_boss.charge_direction = Vector3(-1.0, 0.0, 0.0)
+	_boss._hit_this_charge.clear()
+	var health := machine.health
+	_boss._hit_in_the_way(machine, true)
+	var pushed := machine.global_position
+	_check(machine.health == health - _boss.contact_damage,
+		"la carica toglie %d PV alla macchina sulla sua strada (%d -> %d)" % [_boss.contact_damage, health, machine.health])
+	_check(absf(pushed.z - p.z) >= Driller.SIDE_PUSH * 0.5 - 0.05, "e la spinge di lato (z=%.1f)" % pushed.z)
+	_boss._hit_in_the_way(machine, true)
+	_check(machine.health == health - _boss.contact_damage and machine.global_position.distance_to(pushed) < 0.01,
+		"nella stessa carica una seconda volta non cambia nulla")
+	_boss.phase = Driller.Phase.REST
+	_boss.phase_left = 60.0
+	# Ferma a 1,2 m: il contatto la colpisce una volta; stordita no.
+	_ready_machine(machine)
+	_place_machine(machine, p)
+	_place_boss(p + Vector3(1.2, 0.0, 0.0), Driller.Phase.REST, 60.0)
+	health = machine.health
+	await _frames(30)
+	_check(machine.health == health - _boss.contact_damage,
+		"a riposo entro 1,5 m toglie esattamente %d PV in 0,5 s (%d -> %d)" % [_boss.contact_damage, health, machine.health])
+	_ready_machine(machine)
+	_place_boss(p + Vector3(1.2, 0.0, 0.0), Driller.Phase.STUN, 60.0)
+	health = machine.health
+	_check(machine.accepts_contact(), "la macchina e di nuovo colpibile")
+	await _frames(30)
+	_check(machine.health == health, "stordita non la colpisce (%d PV)" % machine.health)
+	# Guasta sulla linea di una carica vera: resta dov'e.
+	_ready_machine(machine)
+	_check(machine.take_hit(machine.health) and machine.is_broken(), "la macchina e guasta")
+	machine.set_physics_process(true)
+	_place_player(Vector3(-24.0, 0.0, 0.0))
+	_player.grant_invulnerability(600.0)
+	var on_line := Vector3(-10.0, 0.0, 0.0)
+	_place_machine(machine, on_line)
+	await _frames(2)
+	var rest := machine.global_position
+	_place_boss(Vector3(2.0, 0.0, 0.0), Driller.Phase.REST, 0.05)
+	_check(await _wait_phase(Driller.Phase.CHARGE, 200), "la Trivella carica verso ovest")
+	var passed := false
+	for i in 400:
+		await physics_frame
+		passed = passed or _boss.global_position.x < on_line.x - 2.0
+		if _boss.phase != Driller.Phase.CHARGE:
+			break
+	var moved := _planar(machine.global_position - rest).length()
+	_check(passed and moved < 0.05, "la carica passa sulla macchina guasta senza spostarla (%.3f m)" % moved)
+	machine.repair(1.0)
+	_check(machine.health == machine.max_health and not machine.is_broken(), "riparata a vita piena per i test che seguono")
+	_player._invulnerable_left = 0.0
+	_boss.phase = Driller.Phase.REST
+	_boss.phase_left = 60.0
 
 
 ## Un argine del giocatore sulla linea non e una rovina: la Trivella lo vuole e mira dritta,

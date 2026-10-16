@@ -532,6 +532,8 @@ func _test_caravan_skips_scrap_behind_rampart() -> void:
 		"il rottame ha una strada attorno all'argine ed e entro il raggio di raccolta")
 	# Il Cassone ricerca la meta al piu ogni 0,2 s: una soluzione nuova del percorso la fa rifare ora.
 	_path.solve()
+	# Un Cassone guasto o in ritirata non chiede mete: il controllo sotto sarebbe vuoto.
+	_check(lead.state == Machine.State.OK, "il capofila e in ordine (stato %d, %d PV)" % [lead.state, lead.health])
 	var destination: Vector3 = lead._choose_destination()
 	_check(Vector2(destination.x - scrap.x, destination.z - scrap.z).length() > 1.0,
 		"rottame dietro un argine: non e la meta del Cassone (meta a %.1f m dal rottame)" % Vector2(destination.x - scrap.x, destination.z - scrap.z).length())

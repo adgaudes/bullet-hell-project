@@ -14,6 +14,16 @@ static var _ring: ImageTexture
 
 
 func _ready() -> void:
+	texture_albedo = ring_texture()
+	texture_emission = ring_texture()
+	emission_energy = 1.5
+	size = Vector3(4.8, 6.0, 4.8)
+	cull_mask = 1
+	visible = false
+
+
+## Texture ad anello condivisa (anche dagli anelli a terra delle macchine), generata una volta.
+static func ring_texture() -> ImageTexture:
 	if _ring == null:
 		var image := Image.create(128, 128, false, Image.FORMAT_RGBA8)
 		for y in 128:
@@ -24,12 +34,7 @@ func _ready() -> void:
 				# pieno riempirebbe tutto il quadrato (visto sulle catture del rilievo).
 				image.set_pixel(x, y, Color(a, a, a, a))
 		_ring = ImageTexture.create_from_image(image)
-	texture_albedo = _ring
-	texture_emission = _ring
-	emission_energy = 1.5
-	size = Vector3(4.8, 6.0, 4.8)
-	cull_mask = 1
-	visible = false
+	return _ring
 
 
 func show_ring(center: Vector3, radius: float, color: Color) -> void:

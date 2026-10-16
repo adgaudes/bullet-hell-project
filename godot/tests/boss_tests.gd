@@ -472,6 +472,8 @@ func _test_caravan_ignores_sealed_scrap() -> void:
 	_path.solve()
 	var before := _scrap.count()
 	_scrap.spawn_on_ground(sealed)
+	# Un Cassone guasto o in ritirata non chiede mete: il controllo sotto sarebbe vuoto.
+	_check(lead.state == Machine.State.OK, "il capofila e in ordine (stato %d, %d PV)" % [lead.state, lead.health])
 	var destination: Vector3 = lead._choose_destination()
 	_check(_planar_distance(destination, sealed) > 1.0, "il rottame sigillato non e la destinazione del Cassone")
 	_open_ring(sealed)

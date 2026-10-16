@@ -49,8 +49,8 @@ var light_field: LightField
 var night_active := false
 ## Contatti avvenuti al buio (test e simulazione).
 var dark_contacts := 0
-## La carovana (Caravan.configure la collega): la usera il contatto delle macchine (task 6
-## di D-093); per ora nessun effetto.
+## La carovana (Caravan.configure la collega): i rottamatori colpiscono le sue macchine a
+## contatto (`_apply_machine_contacts`).
 var caravan: Caravan
 var spike_damage := 0
 var spike_interval := 0.8
@@ -326,6 +326,7 @@ func _move_enemies(delta: float) -> void:
 		if planar.length() > 0.2:
 			enemy.rotation.y = atan2(-planar.x, -planar.z)
 		_apply_contacts(enemy, in_dark)
+	_apply_machine_contacts()
 
 
 ## Di notte e fuori da ogni luce logica?
@@ -378,6 +379,42 @@ func _apply_contacts(enemy: Enemy, in_dark := false) -> void:
 			if is_wall:
 				enemy.spike_cooldown = spike_interval
 				enemy.take_damage(spike_damage)
+				break
+
+
+## Rottamatori contro le macchine (D-093, scelta 7): per ogni macchina che accetta un colpo,
+## il primo rottamatore vivo entro `contact_radius` della carovana fra i secchi delle 9 celle
+## attorno a lei la colpisce di `contact_damage` (niente bonus del buio), poi la macchina
+## successiva. I boss (`self_driven`) colpiscono da soli in `drive`. Nessuna scansione di tutti
+## i nemici e nessuna allocazione: si leggono i secchi gia riempiti in questo passo.
+func _apply_machine_contacts() -> void:
+	if caravan == null:
+		return
+	var radius := caravan.tuning.contact_radius
+	var damage := caravan.tuning.contact_damage
+	for machine in caravan.machines:
+		if not machine.accepts_contact():
+			continue
+		var pos := machine.global_position
+		var base := Vector2i(floori(pos.x), floori(pos.z))
+		var done := false
+		for dx in range(-1, 2):
+			for dz in range(-1, 2):
+				var bucket: Variant = _buckets.get(base + Vector2i(dx, dz))
+				if bucket == null:
+					continue
+				for enemy: Enemy in bucket:
+					if enemy.is_dead or enemy.self_driven:
+						continue
+					if _planar(enemy.global_position - pos).length() <= radius:
+						# L'affondo solo per un colpo vero: non contro una macchina protetta.
+						if machine.take_hit(damage):
+							enemy.notify_contact()
+						done = true
+						break
+				if done:
+					break
+			if done:
 				break
 
 

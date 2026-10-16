@@ -38,9 +38,10 @@ func room() -> int:
 
 
 ## Rottame in cui il Cassone e diretto, o null (lo legge la carovana per non mandarci un
-## altro Cassone). Spento non ne punta nessuno, anche se `active` e cambiato senza l'hook.
+## altro Cassone). Spento non ne punta nessuno, anche se `active` e cambiato senza l'hook; in
+## ritirata nemmeno: la macchina non va ai rottami, li lascia agli altri Cassoni.
 func claimed_scrap() -> Variant:
-	return _target if _searched and active else null
+	return _target if _searched and active and machine != null and machine.state == Machine.State.OK else null
 
 
 ## Rottame raggiungibile piu vicino al giocatore, se c'e posto. La ricerca costa una

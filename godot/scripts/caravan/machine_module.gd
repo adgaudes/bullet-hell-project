@@ -12,7 +12,8 @@ var module_id: StringName
 var machine: Machine
 var caravan: Caravan
 var level := 0
-## Un modulo spento non fa `tick` e non chiede mete (la macchina guasta, il Faro di giorno).
+## Un modulo spento non fa `tick` e non chiede mete: lo spegne il guasto della macchina (il
+## Faro resta acceso anche di giorno, la sua luce la nasconde il fattore di notte).
 var active := true
 
 # --- Servizi (dalla carovana) ---

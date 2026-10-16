@@ -76,7 +76,8 @@ var path_field: PathField
 var director: EnemyDirector
 var lamp_field: LampField
 var scrap_field: ScrapField
-## Carovana del giocatore: la carica spinge di lato ogni macchina sulla sua strada.
+## Carovana del giocatore: il contatto colpisce le macchine e la carica spinge di lato e ferisce
+## ogni macchina non guasta sulla sua strada.
 var caravan: Caravan
 var charge_speed := 6.0
 var charge_length := 30.0
@@ -204,8 +205,14 @@ func drive(delta: float) -> void:
 		return
 	var pos := global_position
 	var to_player := _planar(player.global_position - pos)
-	if phase != Phase.STUN and to_player.length() <= contact_radius:
-		player.take_damage(contact_damage)
+	if phase != Phase.STUN:
+		if to_player.length() <= contact_radius:
+			player.take_damage(contact_damage)
+		# Anche le macchine della carovana a contatto (D-093, scelta 7).
+		if caravan != null:
+			for machine in caravan.machines:
+				if _planar(machine.global_position - pos).length() <= contact_radius:
+					machine.take_hit(contact_damage)
 	if lamp_field != null and lamp_field.count() > 0:
 		lamp_field.knock_down_near(pos, contact_radius)
 	phase_left -= delta
@@ -331,9 +338,11 @@ func _tick_charge(delta: float) -> void:
 			furrowed.emit(Vector3(tip.x, 0.0, tip.z))
 		_furrow_travel = 0.0
 	_hit_in_the_way(player, true)
+	# Una macchina guasta resta dov'e: i nemici la ignorano (spec D-093, Sezione 4).
 	if caravan != null:
 		for machine in caravan.machines:
-			_hit_in_the_way(machine, false)
+			if not machine.is_broken():
+				_hit_in_the_way(machine, true)
 	# Fermata contro una rovina o il bordo (mai contro il terreno: quello lo scava).
 	for i in get_slide_collision_count():
 		var collision := get_slide_collision(i)
@@ -365,6 +374,8 @@ func _hit_in_the_way(body: Node3D, damages: bool) -> void:
 		side = -side
 	if damages and body is PlayerCharacter:
 		(body as PlayerCharacter).take_damage(contact_damage)
+	elif damages and body is Machine:
+		(body as Machine).take_hit(contact_damage)
 	var landing: Variant = _side_landing(body.global_position, side)
 	if landing == null:
 		return

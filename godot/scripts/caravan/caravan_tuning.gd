@@ -67,6 +67,10 @@ extends Resource
 ## Secondi senza colpi prima che la vita risalga, poi 1 PV ogni `regen_interval` secondi.
 @export var regen_delay := 8.0
 @export var regen_interval := 4.0
+## Una macchina non guasta piu lontana di cosi dal giocatore torna al suo posto.
+@export var leash_distance := 20.0
+## Ferma per tanti secondi a piu di 2 m dalla meta, una macchina non guasta torna al suo posto.
+@export var stuck_seconds := 3.0
 
 @export_group("Modules")
 ## Torretta: la chiodatrice del compagno di oggi; ogni livello divide l'intervallo per

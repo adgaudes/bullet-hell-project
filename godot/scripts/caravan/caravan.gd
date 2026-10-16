@@ -7,13 +7,16 @@ extends Node3D
 ## al giocatore; la direzione "dietro" e quella del compagno, applicata al capofila.
 
 signal carried_changed(carried: int)
-## Macchine, moduli (aggiunti, livelli, accesi o spenti) o capienza cambiati: HUD e luci dei Faro.
+## Macchine, moduli (aggiunti, livelli, accesi o spenti), capienza o stato di una macchina
+## (guasta, in ritirata, di nuovo in ordine) cambiati: HUD e luci dei Faro.
 signal changed
 signal machine_added(machine: Machine)
 
 const MACHINE_SCENE_PATH := "res://scenes/caravan/machine.tscn"
 ## Altezza dell'origine della macchina sul suolo (meta del box di collisione).
 const GROUND_CLEARANCE := 0.3
+## Rotazioni (gradi) provate attorno al giocatore per un posto o una ritirata non percorribili.
+const SLOT_SEARCH_DEGREES: Array[float] = [0.0, 30.0, -30.0, 60.0, -60.0]
 
 @export var tuning: CaravanTuning
 @export var player: PlayerCharacter
@@ -150,6 +153,20 @@ func lead() -> Machine:
 	return machines[0] if not machines.is_empty() else null
 
 
+## Le macchine guaste, nell'ordine della carovana (HUD, riparazione).
+func broken_machines() -> Array[Machine]:
+	var result: Array[Machine] = []
+	for machine in machines:
+		if machine.is_broken():
+			result.append(machine)
+	return result
+
+
+## Il direttore dei nemici passato da `configure`, o null (la ritirata cerca li il nemico piu vicino).
+func enemy_director() -> EnemyDirector:
+	return _services.get(&"director") as EnemyDirector
+
+
 # --- Rottami ---------------------------------------------------------------------------------
 
 func room() -> int:
@@ -257,14 +274,36 @@ func slot_of(index: int) -> Vector2:
 	return slots[clampi(index, 0, slots.size() - 1)]
 
 
-## Punto del posto della macchina attorno al giocatore, sul suolo.
+## Punto del posto della macchina attorno al giocatore, sul suolo: il primo percorribile fra il
+## posto e lo stesso ruotato di +-30 e +-60 gradi, altrimenti il posto com'e.
 func slot_target(machine: Machine) -> Vector3:
 	return _slot_point(machine.slot)
+
+
+## Vero se [param point] e percorribile e da li si raggiunge il giocatore; senza campo di
+## percorso (o non ancora pronto) ogni punto va bene.
+func is_open_point(point: Vector3) -> bool:
+	if path_field == null or not path_field.is_ready():
+		return true
+	return path_field.is_walkable(point) and path_field.cost_at(point) != PathField.UNREACHABLE
+
+
+## Primo punto aperto (`is_open_point`) a [param distance] dal giocatore lungo [param direction]
+## o la stessa ruotata di +-30 e +-60 gradi, sul suolo; null se nessuno lo e.
+func walkable_near_player(direction: Vector3, distance: float) -> Variant:
+	for degrees: float in SLOT_SEARCH_DEGREES:
+		var point := _on_ground(player.global_position + direction.rotated(Vector3.UP, deg_to_rad(degrees)) * distance)
+		if is_open_point(point):
+			return point
+	return null
 
 
 func _slot_point(index: int) -> Vector3:
 	var place := slot_of(index)
 	var direction := _back_direction().rotated(Vector3.UP, deg_to_rad(place.x))
+	var open: Variant = walkable_near_player(direction, place.y)
+	if open != null:
+		return open
 	return _on_ground(player.global_position + direction * place.y)
 
 
