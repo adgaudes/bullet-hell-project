@@ -3,7 +3,7 @@ extends Weapon
 ## Saldatrice (spec D-092, par. 4.3), automatica del Meccanico: ogni `fire_interval` un arco dal
 ## giocatore al nemico piu vicino entro `weapon_range`, che salta al piu vicino non ancora colpito
 ## entro `jump_range` (`ditch_jump_range` se parte da un fossato) fino a `jumps` bersagli, `damage`
-## ciascuno. Col capofila della carovana entro `companion_range` parte un arco uguale anche da
+## ciascuno. Col capofila della carovana entro `lead_range` parte un arco uguale anche da
 ## lui; in una scarica nessuno e colpito due volte. Bivi: Arco doppio (la seconda catena parte dal
 ## piu vicino non ancora colpito), Punto di fusione (3 danni, un bersaglio), Carica statica (i
 ## colpiti feriscono chi toccano), Filo teso (fra giocatore e capofila). Fusa con la Calamita
@@ -41,7 +41,7 @@ var jumps := 3
 var jump_range := 2.5
 var ditch_jump_range := 4.0
 var damage := 1
-var companion_range := 8.0
+var lead_range := 8.0
 var arcs := 1
 var static_seconds := 0.0
 var wire := false
@@ -90,7 +90,7 @@ func _apply_stats() -> void:
 	jump_range = stat(&"jump_range")
 	ditch_jump_range = stat(&"ditch_jump_range")
 	damage = int(stat(&"damage"))
-	companion_range = stat(&"companion_range")
+	lead_range = stat(&"lead_range")
 	arcs = maxi(int(stat(&"arcs")), 1)
 	static_seconds = stat(&"static")
 	wire = stat(&"wire") > 0.0
@@ -178,10 +178,10 @@ func _nearest(origin: Vector3, reach: float, skip: Array[Enemy]) -> Enemy:
 	return best
 
 
-## Il capofila della carovana se c'e ed e entro `companion_range` da chi spara, altrimenti null.
+## Il capofila della carovana se c'e ed e entro `lead_range` da chi spara, altrimenti null.
 func _lead_near() -> Node3D:
 	var lead := _lead()
-	if lead == null or _planar(lead.global_position - shooter.global_position).length() > companion_range:
+	if lead == null or _planar(lead.global_position - shooter.global_position).length() > lead_range:
 		return null
 	return lead
 

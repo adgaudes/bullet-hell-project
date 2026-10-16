@@ -27,6 +27,7 @@ func _initialize() -> void:
 	_test_starts_with_cargo()
 	await _test_supply_distance()
 	await _test_lead_follows_player()
+	await _test_speed_scale_moves_machine()
 	await _test_pickup_near_player_only()
 	await _test_skips_scrap_behind_rampart()
 	await _test_ignores_sealed_scrap()
@@ -77,6 +78,18 @@ func _test_starts_with_cargo() -> void:
 	var off_layer := visuals.filter(func(n: Node) -> bool: return (n as VisualInstance3D).layers != Machine.VISUAL_LAYER)
 	_check(visuals.size() >= 7 and off_layer.is_empty() and lead._parts.size() == 1,
 		"modello, cubetti e pezzi montati sul layer visivo 2 (%d visual, %d fuori)" % [visuals.size(), off_layer.size()])
+	# Le ombre delle nuvole scuriscono la macchina come scurivano il compagno; l'anello del
+	# pennello no (scelta 12 di D-093).
+	var clouds := _scene.get_node_or_null(^"OvergrownArena/CloudShadows") as Decal
+	var brush := _player.get_node_or_null(^"BrushPreview") as Decal
+	_check(clouds is CloudShadows and brush is BrushPreview, "ombre delle nuvole e anello del pennello in scena")
+	if clouds != null and brush != null:
+		var shaded := visuals.all(func(n: Node) -> bool: return ((n as VisualInstance3D).layers & clouds.cull_mask) != 0)
+		var painted := visuals.any(func(n: Node) -> bool: return ((n as VisualInstance3D).layers & brush.cull_mask) != 0)
+		_check(shaded and (clouds.cull_mask & 1) != 0,
+			"le ombre delle nuvole raggiungono la macchina e il layer 1 (cull_mask %d)" % clouds.cull_mask)
+		_check(not painted and (brush.cull_mask & 1) != 0,
+			"l'anello del pennello non dipinge la macchina, solo il layer 1 (cull_mask %d)" % brush.cull_mask)
 
 
 ## Dal compagno (companion_tests): can_supply vuole rottami a bordo e il Cassone entro il raggio
@@ -125,6 +138,32 @@ func _test_lead_follows_player() -> void:
 	_check(absf(offset.length() - 2.5) <= 0.6, "il capofila si ferma a 2,5 +- 0,6 m (%.2f)" % offset.length())
 	_check(along < -1.5, "dietro al giocatore (%.2f m lungo il cammino)" % along)
 	_check(Vector2(lead.velocity.x, lead.velocity.z).length() < 0.3, "e resta fermo (%.2f m/s)" % lead.velocity.length())
+
+
+## Olio buono e Motore truccato passano da `speed_scale` (prima scrivevano la velocita che il
+## compagno leggeva dalla sua taratura): una macchina vera, lontana dal giocatore su terreno
+## aperto, corre a max_speed x speed_scale. Senza campo di percorso: col campo la meta e la
+## cella vicina e la velocita resta sotto distanza x 3.
+func _test_speed_scale_moves_machine() -> void:
+	print("speed scale")
+	var lead := _caravan.lead()
+	var max_speed := _caravan.tuning.max_speed
+	_caravan.path_field = null
+	var peaks: Array[float] = []
+	for scale: float in [1.0, 1.4]:
+		_caravan.speed_scale = scale
+		_place_player(Vector3(10.0, 0.0, 0.0))
+		_place_machine(lead, Vector3(-2.0, 0.0, 0.0))
+		var peak := 0.0
+		for i in 60:
+			await physics_frame
+			peak = maxf(peak, Vector2(lead.velocity.x, lead.velocity.z).length())
+		peaks.append(peak)
+	_caravan.speed_scale = 1.0
+	_caravan.path_field = _path
+	_check(absf(peaks[0] - max_speed) < 0.3, "a speed_scale 1 la macchina corre a max_speed (%.2f m/s)" % peaks[0])
+	_check(absf(peaks[1] - max_speed * 1.4) < 0.3 and peaks[1] > max_speed + 1.0,
+		"a speed_scale 1,4 corre a max_speed x 1,4 (%.2f m/s contro %.1f)" % [peaks[1], max_speed])
 
 
 ## Raccoglie un rottame entro 6 m dal giocatore e ignora quello a 9 m.

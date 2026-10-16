@@ -109,7 +109,7 @@ static func _build() -> Array[Dictionary]:
 			fusion = &"tesla_coil", unlock_cost = 0, icon = &"welder",
 			text = "Un arco elettrico salta da nemico a nemico; nei fossati salta piu lontano.",
 			base = {fire_interval = 1.2, weapon_range = 6.0, jumps = 3.0, jump_range = 2.5, ditch_jump_range = 4.0,
-				damage = 1.0, companion_range = 8.0, arcs = 1.0},
+				damage = 1.0, lead_range = 8.0, arcs = 1.0},
 			levels = {2: {jumps_add = 1.0}, 4: {fire_interval_mul = 0.8}},
 			level_texts = {2: "Un salto in piu.", 4: "Scarica il 25% piu spesso."},
 			branches = {

@@ -28,7 +28,10 @@ func _init() -> void:
 	lower_fade = 0.0
 	normal_fade = 0.0
 	albedo_mix = 1.0
-	cull_mask = 1
+	# Layer 1 (mondo, giocatore, nemici) e il layer delle macchine della carovana: le macchine
+	# stanno sul 2 perche l'anello del pennello (solo layer 1) non le dipinga, ma le nuvole
+	# devono scurirle come scurivano il compagno.
+	cull_mask = 1 | Machine.VISUAL_LAYER
 	texture_albedo = _build_texture()
 
 

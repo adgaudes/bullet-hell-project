@@ -286,11 +286,16 @@ func _test_class_permanents() -> void:
 	var caravan: Caravan = scene.get_node(^"Caravan")
 	_check(run.class_id == &"mechanic" and run.turret_weapon != null, "Torretta fissa: la monta il Meccanico")
 	_check(run.loadout.level_of(&"nailgun") == 0, "la Cassetta dell'Ingegnere non vale per il Meccanico")
-	# Dalla risorsa della scena, senza ripiego: se il file mancasse il controllo fallirebbe.
-	var base_speed: float = (load("res://resources/tuning/caravan_default.tres") as CaravanTuning).max_speed
+	# Valore sul disco, fuori dalla cache: `load()` restituirebbe la stessa istanza che la
+	# carovana tiene, e il confronto con la risorsa condivisa sarebbe con se stessa. Senza
+	# ripiego: se il file mancasse il controllo fallirebbe.
+	var on_disk := ResourceLoader.load("res://resources/tuning/caravan_default.tres", "", ResourceLoader.CACHE_MODE_IGNORE) as CaravanTuning
+	var base_speed: float = on_disk.max_speed
 	var top_speed := caravan.tuning.max_speed * caravan.speed_scale
-	_check(is_equal_approx(top_speed, base_speed * 1.15) and is_equal_approx(caravan.tuning.max_speed, base_speed),
-		"Olio buono: macchine +15%% (%.2f), taratura condivisa intatta" % top_speed)
+	_check(on_disk != caravan.tuning and is_equal_approx(top_speed, base_speed * 1.15),
+		"Olio buono: macchine +15%% (%.2f)" % top_speed)
+	_check(is_equal_approx(caravan.tuning.max_speed, base_speed),
+		"taratura condivisa intatta (%.2f in scena, %.2f sul disco)" % [caravan.tuning.max_speed, base_speed])
 	await _end_run(scene)
 	profile.levels = {&"dry_powder": 2, &"charge_pack": 1}
 	profile.last_class = &"sapper"
