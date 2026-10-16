@@ -69,6 +69,8 @@ func _ram_enemies() -> void:
 			continue
 		_hit.append(enemy)
 		enemy.take_damage(int(stat(&"damage")))
+		if _fx_ready(&"hit", 0.08):
+			WeaponFx.burst(fx_parent(), enemy.global_position + Vector3(0.0, 0.5, 0.0), WeaponFx.DUST, 8, 5.0, 0.1)
 		if enemy.self_driven:
 			continue
 		var offset := Vector3(enemy.global_position.x - p.x, 0.0, enemy.global_position.z - p.z)
@@ -84,6 +86,8 @@ func _write_path() -> void:
 	if Vector2(p.x - _last_write.x, p.z - _last_write.z).length() < WRITE_EVERY:
 		return
 	_last_write = p
+	if _fx_ready(&"trail", 0.1):
+		WeaponFx.dust(fx_parent(), Vector3(p.x, terrain_field.height_at(p), p.z), WeaponFx.EARTH if stat(&"trench") > 0.0 else WeaponFx.DUST, 0.5, 4)
 	if stat(&"trench") > 0.0:
 		write_queue.push_level(p, WRITE_RADIUS, terrain_field.base_height_at(p) - TRENCH_DEPTH, 1.0)
 	_flatten_ahead(p)
@@ -101,6 +105,11 @@ func _flatten_ahead(p: Vector3) -> void:
 
 func _arrive() -> void:
 	_sound(&"hit")
+	var p := shooter.global_position
+	var ground := Vector3(p.x, terrain_field.height_at(p) if terrain_field != null else p.y, p.z)
+	var blasting := int(stat(&"blast")) > 0
+	WeaponFx.shockwave(fx_parent(), ground, BLAST_RADIUS if blasting else 1.5, WeaponFx.DUST if not blasting else WeaponFx.SPARK)
+	WeaponFx.dust(fx_parent(), ground, WeaponFx.DUST, 0.8, 8)
 	var shield := stat(&"shield")
 	if shield > 0.0 and shooter.has_method(&"grant_invulnerability"):
 		shooter.grant_invulnerability(shield)

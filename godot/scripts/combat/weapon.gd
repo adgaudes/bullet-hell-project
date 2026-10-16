@@ -22,6 +22,7 @@ var branches: Dictionary = {}
 var fusion_id: StringName = &""
 ## Modifiche permanenti (Officina, piano 4): stesse chiavi dei bivi, applicate dopo il catalogo.
 var extra_mods: Dictionary = {}
+var _fx_next: Dictionary[StringName, float] = {}
 
 
 func _ready() -> void:
@@ -31,6 +32,29 @@ func _ready() -> void:
 
 func _sound(kind: StringName) -> void:
 	sound_requested.emit(kind)
+
+
+## Dove nascono gli effetti (WeaponFx): sotto il direttore, che resta nel mondo anche quando
+## l'arma viene tolta o fusa; senza direttore sotto l'arma.
+func fx_parent() -> Node:
+	return director if director != null and director.is_inside_tree() else self
+
+
+## Vero se l'effetto [param key] puo ripartire: al piu uno ogni [param interval] secondi di gioco,
+## per le armi che colpiscono a raffica (chiodi, falci, dischi).
+func _fx_ready(key: StringName, interval: float) -> bool:
+	var now := float(Engine.get_physics_frames()) / Engine.physics_ticks_per_second
+	if now < float(_fx_next.get(key, -1.0)):
+		return false
+	_fx_next[key] = now + interval
+	return true
+
+
+## Marca [param node] come effetto della fusione (per i test); restituisce il nodo.
+func _fusion_fx(node: Node) -> Node:
+	if node != null:
+		node.set_meta(&"fx_fusion", fusion_id)
+	return node
 
 
 func stat(key: StringName) -> float:

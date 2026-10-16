@@ -7,6 +7,8 @@ extends ActiveWeapon
 ## all'indurimento), Pavimento (spiana alla base invece del dosso: una piazzola liscia).
 
 const POOL_COLOR := Color(0.55, 0.55, 0.52)
+## Cemento appena gettato: scuro e lucido; asciugando schiarisce e diventa opaco (POOL_COLOR).
+const WET_COLOR := Color(0.24, 0.24, 0.23)
 ## Lo stordimento si rinnova a ogni passo per questo tempo: chi esce dalla pozza riparte subito.
 const HOLD_STEP := 0.15
 ## Passo e raggio dei dischi del dosso dentro la pozza.
@@ -31,7 +33,10 @@ func _fire(at: Vector3) -> void:
 		var side := forward.cross(Vector3.UP).normalized()
 		centers = [at + side * radius, at - side * radius]
 	for center in centers:
-		_pools.append({center = center, radius = radius, left = stat(&"block_seconds"), stuck = [], view = _make_view(center, radius)})
+		_pools.append({center = center, radius = radius, left = stat(&"block_seconds"), total = stat(&"block_seconds"), stuck = [],
+			view = _make_view(center, radius)})
+		var ground := Vector3(center.x, terrain_field.height_at(center) if terrain_field != null else center.y, center.z)
+		WeaponFx.burst(fx_parent(), ground + Vector3(0.0, 0.3, 0.0), WeaponFx.CEMENT, 12, 3.5, 0.12)
 
 
 func _physics_process(delta: float) -> void:
@@ -46,16 +51,26 @@ func _physics_process(delta: float) -> void:
 				enemy.stun(HOLD_STEP)
 				if not (pool.stuck as Array).has(enemy):
 					pool.stuck.append(enemy)
-		var view: MeshInstance3D = pool.view
-		view.transparency = clampf(0.6 - pool.left * 0.2, 0.0, 0.6)
+		_dry(pool)
 		if pool.left <= 0.0:
 			_harden(pool)
-			view.queue_free()
+			(pool.view as Node).queue_free()
 			_pools.remove_at(k)
+
+
+## Il cemento fa presa: da scuro e lucido a grigio chiaro e opaco nel tempo del blocco.
+func _dry(pool: Dictionary) -> void:
+	var t := 1.0 - clampf(pool.left / maxf(pool.total, 0.01), 0.0, 1.0)
+	var material: StandardMaterial3D = ((pool.view as MeshInstance3D).mesh as CylinderMesh).material
+	material.albedo_color = Color(WET_COLOR.lerp(POOL_COLOR, t).linear_to_srgb(), lerpf(0.85, 1.0, t))
+	material.roughness = lerpf(0.1, 0.95, t)
 
 
 func _harden(pool: Dictionary) -> void:
 	_sound(&"hit")
+	var at: Vector3 = pool.center
+	var ground := Vector3(at.x, terrain_field.height_at(at) if terrain_field != null else at.y, at.z)
+	WeaponFx.dust(fx_parent(), ground, WeaponFx.CEMENT, 0.5, 12, pool.radius)
 	var set_damage := int(stat(&"set_damage"))
 	if set_damage > 0 and director != null:
 		for enemy: Enemy in director.enemies_near(pool.center, pool.radius):
@@ -87,8 +102,8 @@ func _make_view(center: Vector3, radius: float) -> MeshInstance3D:
 	mesh.radial_segments = 24
 	mesh.rings = 1
 	var material := StandardMaterial3D.new()
-	material.albedo_color = POOL_COLOR.linear_to_srgb()
-	material.roughness = 0.2
+	material.albedo_color = Color(WET_COLOR.linear_to_srgb(), 0.85)
+	material.roughness = 0.1
 	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	mesh.material = material
 	var view := MeshInstance3D.new()

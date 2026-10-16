@@ -20,6 +20,8 @@ const WALL_RISE := 0.45
 const WRITE_EVERY := 0.8
 const GROOVE_DEPTH := 0.25
 const BLOCKED_RETRY := 0.1
+## Ogni disco lascia uno sbuffo di polvere ogni DUST_EVERY metri (il disco enorme ogni meta).
+const DUST_EVERY := 2.0
 
 ## Coda delle scritture sul terreno (Solco, Ruspa), dal WeaponLoadout.
 var write_queue: TerrainWriteQueue
@@ -166,7 +168,7 @@ func _add_disc(direction: Vector3, radius: float, distance: float, big: bool) ->
 	var origin := shooter.global_position + direction * 0.6
 	_discs.append({position = Vector3(origin.x, _ground(origin) + radius, origin.z), direction = direction,
 		travelled = 0.0, distance = distance, ditch_left = -1.0, bounces = bounces, hit = [], radius = radius,
-		big = big, write_left = 0.0})
+		big = big, write_left = 0.0, dust_left = 0.5})
 
 
 func _move_discs(delta: float) -> void:
@@ -222,6 +224,9 @@ func _step_disc(disc: Dictionary, delta: float) -> bool:
 		if disc.travelled >= disc.distance:
 			return false
 	_hit_enemies(disc)
+	disc.dust_left -= step
+	if disc.dust_left <= 0.0:
+		_dust(disc)
 	disc.write_left -= step
 	if disc.write_left <= 0.0:
 		disc.write_left = WRITE_EVERY
@@ -241,6 +246,18 @@ func _hit_enemies(disc: Dictionary) -> void:
 			disc.hit.append(enemy)
 			enemy.take_damage(damage)
 			_sound(&"hit")
+			if _fx_ready(&"hit", 0.1):
+				WeaponFx.sparks(fx_parent(), enemy.global_position + Vector3(0.0, 0.5, 0.0), WeaponFx.SPARK, 6)
+
+
+## Polvere dietro il disco che rotola; nella Ruspa a dischi piu fitta e piu larga.
+func _dust(disc: Dictionary) -> void:
+	var big: bool = disc.big
+	disc.dust_left = DUST_EVERY * (0.5 if big else 1.0)
+	var p: Vector3 = disc.position
+	var node := WeaponFx.dust(fx_parent(), Vector3(p.x, _ground(p), p.z), WeaponFx.DUST, disc.radius, 6 if big else 3)
+	if fusion_id != &"":
+		_fusion_fx(node)
 
 
 ## Solco (scava) o Ruspa (spiana verso la base) dove passa il disco.

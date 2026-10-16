@@ -117,6 +117,9 @@ func wave(center: Vector3) -> Array[Enemy]:
 	if fusion_id != &"" and waves % maxi(int(fusion_stat(&"ring_every")), 1) == 0:
 		_cement_ring(center)
 	_show_ring(center)
+	var ground := Vector3(center.x, terrain_field.height_at(center) if terrain_field != null else center.y, center.z)
+	WeaponFx.dust(fx_parent(), ground, WeaponFx.DUST, 0.4, 10, wave_radius * 0.9)
+	WeaponFx.burst(fx_parent(), ground + Vector3(0.0, 0.2, 0.0), WeaponFx.EARTH, 6, 3.0, 0.08)
 	return hit
 
 
@@ -147,6 +150,7 @@ func _open_cracks(center: Vector3) -> void:
 		var floor_h := terrain_field.base_height_at(p) - CRACK_DEPTH
 		if terrain_field.height_at(p) > floor_h + 0.02:
 			write_queue.push_level(p, CRACK_RADIUS, floor_h)
+			WeaponFx.burst(fx_parent(), Vector3(p.x, terrain_field.height_at(p) + 0.2, p.z), WeaponFx.EARTH, 6, 3.5, 0.12)
 
 
 ## Costipatore: un anello basso di cemento sul bordo dell'onda.
@@ -158,6 +162,8 @@ func _cement_ring(center: Vector3) -> void:
 		var angle := TAU * i / count
 		var p := center + Vector3(cos(angle), 0.0, sin(angle)) * wave_radius
 		write_queue.push_level(p, 0.6, terrain_field.base_height_at(p) + fusion_stat(&"ring_height"))
+	var ground := Vector3(center.x, terrain_field.height_at(center), center.z)
+	_fusion_fx(WeaponFx.dust(fx_parent(), ground, WeaponFx.CEMENT, 0.5, 14, wave_radius))
 
 
 func _show_ring(center: Vector3) -> void:

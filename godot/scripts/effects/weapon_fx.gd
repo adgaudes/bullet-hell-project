@@ -16,6 +16,8 @@ const CEMENT := Color(0.55, 0.55, 0.53)
 
 static var _ring_mesh: TorusMesh
 static var _dust_meshes: Dictionary[String, SphereMesh] = {}
+static var _spark_meshes: Dictionary[String, BoxMesh] = {}
+static var _spark_fade: Curve
 
 
 static func _room(parent: Node) -> bool:
@@ -61,8 +63,9 @@ static func shockwave(parent: Node, at: Vector3, radius: float, color: Color, se
 	return ring
 
 
-## Sbuffo di polvere morbida che sale piano (scavi, cemento, ruote, dischi).
-static func dust(parent: Node, at: Vector3, color: Color, radius := 0.6, amount := 6) -> Node:
+## Sbuffo di polvere morbida che sale piano (scavi, cemento, ruote, dischi). Con [param ring]
+## maggiore di zero la polvere nasce su un anello di quel raggio (argini che salgono, onde).
+static func dust(parent: Node, at: Vector3, color: Color, radius := 0.6, amount := 6, ring := 0.0) -> Node:
 	if not _room(parent):
 		return null
 	var puff := CPUParticles3D.new()
@@ -71,8 +74,15 @@ static func dust(parent: Node, at: Vector3, color: Color, radius := 0.6, amount 
 	puff.lifetime = 0.9
 	puff.one_shot = true
 	puff.explosiveness = 0.9
-	puff.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
-	puff.emission_sphere_radius = radius
+	if ring > 0.0:
+		puff.emission_shape = CPUParticles3D.EMISSION_SHAPE_RING
+		puff.emission_ring_axis = Vector3.UP
+		puff.emission_ring_radius = ring
+		puff.emission_ring_inner_radius = maxf(ring - radius, 0.0)
+		puff.emission_ring_height = 0.1
+	else:
+		puff.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
+		puff.emission_sphere_radius = radius
 	puff.direction = Vector3.UP
 	puff.spread = 35.0
 	puff.initial_velocity_min = 0.4
@@ -90,6 +100,54 @@ static func dust(parent: Node, at: Vector3, color: Color, radius := 0.6, amount 
 	puff.emitting = true
 	puff.finished.connect(puff.queue_free)
 	return puff
+
+
+## Scintille brevi e luminose (archi, chiodi, lame sul metallo): niente luce dinamica, solo
+## materiale che brilla.
+static func sparks(parent: Node, at: Vector3, color := SPARK, amount := 8, speed := 5.0) -> Node:
+	if not _room(parent):
+		return null
+	if _spark_fade == null:
+		_spark_fade = Curve.new()
+		_spark_fade.add_point(Vector2(0.0, 1.0))
+		_spark_fade.add_point(Vector2(1.0, 0.0))
+	var burst := CPUParticles3D.new()
+	burst.mesh = _spark_mesh(color)
+	burst.amount = amount
+	burst.lifetime = 0.3
+	burst.one_shot = true
+	burst.explosiveness = 1.0
+	burst.direction = Vector3.UP
+	burst.spread = 80.0
+	burst.initial_velocity_min = speed * 0.5
+	burst.initial_velocity_max = speed
+	burst.gravity = Vector3(0.0, -9.0, 0.0)
+	burst.scale_amount_curve = _spark_fade
+	burst.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	burst.top_level = true
+	burst.position = at
+	burst.add_to_group(GROUP)
+	parent.add_child(burst)
+	burst.emitting = true
+	burst.finished.connect(burst.queue_free)
+	return burst
+
+
+static func _spark_mesh(color: Color) -> BoxMesh:
+	var key := color.to_html(true)
+	var mesh: BoxMesh = _spark_meshes.get(key)
+	if mesh == null:
+		var mat := StandardMaterial3D.new()
+		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mat.albedo_color = color.linear_to_srgb()
+		mat.emission_enabled = true
+		mat.emission = color.linear_to_srgb()
+		mat.emission_energy_multiplier = 2.0
+		mesh = BoxMesh.new()
+		mesh.size = Vector3(0.05, 0.05, 0.16)
+		mesh.material = mat
+		_spark_meshes[key] = mesh
+	return mesh
 
 
 static func _dust_mesh(color: Color) -> SphereMesh:
