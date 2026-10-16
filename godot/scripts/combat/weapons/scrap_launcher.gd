@@ -18,6 +18,10 @@ const APEX := 3.0
 ## Il rottame parte all'altezza delle mani.
 const HAND_HEIGHT := 0.8
 const MAX_SCRAPS := 12
+## Scia del rottame: copie sempre piu piccole lungo la parabola, TRAIL_STEP di volo indietro.
+const TRAIL_GHOSTS := 3
+const TRAIL_STEP := 0.06
+const TRAIL_COLOR := Color(0.62, 0.53, 0.40, 0.55)
 ## Grappolo: frammenti tangenti allo scoppio, lungo il volo e a 120 gradi.
 const FRAGMENT_COUNT := 3
 const FRAGMENT_RADIUS := 1.0
@@ -60,6 +64,7 @@ var _caltrop_sets: Array[Dictionary] = []
 ## Scoppi da mostrare: {position, radius, left}.
 var _blasts: Array[Dictionary] = []
 var _scrap_view: MultiMeshInstance3D
+var _trail_view: MultiMeshInstance3D
 var _caltrop_view: MultiMeshInstance3D
 var _blast_view: MultiMeshInstance3D
 
@@ -69,6 +74,14 @@ func _ready() -> void:
 	scrap.size = Vector3(0.32, 0.22, 0.42)
 	scrap.material = _material(SCRAP_COLOR, false)
 	_scrap_view = _make_view(scrap, MAX_SCRAPS, false)
+	var ghost := BoxMesh.new()
+	ghost.size = Vector3(0.22, 0.16, 0.22)
+	var ghost_material := StandardMaterial3D.new()
+	ghost_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	ghost_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	ghost_material.albedo_color = Color(TRAIL_COLOR.linear_to_srgb(), TRAIL_COLOR.a)
+	ghost.material = ghost_material
+	_trail_view = _make_view(ghost, MAX_SCRAPS * TRAIL_GHOSTS, false)
 	var caltrop := CylinderMesh.new()
 	caltrop.top_radius = 0.0
 	caltrop.bottom_radius = 0.14
@@ -172,12 +185,25 @@ func _move_scraps(delta: float) -> void:
 			var flight := Vector3(to.x - from.x, 0.0, to.z - from.z)
 			_burst(to, flight.normalized() if flight.length_squared() > 1e-4 else Vector3.FORWARD)
 	var multimesh := _scrap_view.multimesh
+	var trail := _trail_view.multimesh
 	multimesh.visible_instance_count = _scraps.size()
+	var ghosts := 0
 	for i in _scraps.size():
 		var scrap: Dictionary = _scraps[i]
 		var u: float = scrap.t / scrap.total
-		var p: Vector3 = (scrap.from as Vector3).lerp(scrap.to, u) + Vector3.UP * 4.0 * APEX * u * (1.0 - u)
-		multimesh.set_instance_transform(i, Transform3D(Basis(Vector3(1.0, 0.4, 0.2).normalized(), scrap.t * 9.0), p))
+		multimesh.set_instance_transform(i, Transform3D(Basis(Vector3(1.0, 0.4, 0.2).normalized(), scrap.t * 9.0), _arc_point(scrap, u)))
+		for g in range(1, TRAIL_GHOSTS + 1):
+			var back := u - TRAIL_STEP * g
+			if back <= 0.0:
+				break
+			var size := 1.0 - float(g) / (TRAIL_GHOSTS + 1)
+			trail.set_instance_transform(ghosts, Transform3D(Basis.from_scale(Vector3.ONE * size), _arc_point(scrap, back)))
+			ghosts += 1
+	trail.visible_instance_count = ghosts
+
+
+static func _arc_point(scrap: Dictionary, u: float) -> Vector3:
+	return (scrap.from as Vector3).lerp(scrap.to, u) + Vector3.UP * 4.0 * APEX * u * (1.0 - u)
 
 
 ## Scoppio del rottame in [param at]; [param direction] e la direzione del volo (piana).
@@ -194,11 +220,15 @@ func _burst(at: Vector3, direction: Vector3) -> void:
 		DigCharge.explode(director, write_queue, terrain_field, at, int(_charge_stat(&"damage")), radius,
 			_charge_stat(&"crater_radius"), _charge_stat(&"crater_depth"))
 		_show_blast(at, radius)
+		_fusion_fx(WeaponFx.shockwave(fx_parent(), at, radius, BLAST_COLOR))
+		_fusion_fx(WeaponFx.burst(fx_parent(), at + Vector3(0.0, 0.3, 0.0), WeaponFx.EARTH, 16, 7.0, 0.2))
 	else:
 		if fusion_id != &"":
 			DigCharge.dig_crater(write_queue, terrain_field, at, fusion_stat(&"crater_radius"), fusion_stat(&"crater_depth"))
 		DigCharge.explode(director, null, null, at, damage, blast_radius, 0.0, 0.0)
 		_show_blast(at, blast_radius)
+		WeaponFx.burst(fx_parent(), at + Vector3(0.0, 0.3, 0.0), WeaponFx.RUST, 8, 5.0, 0.12)
+		WeaponFx.dust(fx_parent(), at, WeaponFx.DUST, 0.6, 5)
 	if shove > 0.0 and director != null:
 		# I boss (self_driven) non si spostano: li salta shove_from.
 		director.shove_from(at, blast_radius, shove)
