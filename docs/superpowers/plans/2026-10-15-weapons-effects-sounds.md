@@ -135,10 +135,12 @@ Obiettivi dalla spec: rottami in parabola con scia (Lanciarottami); dischi che r
 
 **Files:** branch `spike/effekseer` (worktree proprio). Nessun file delle armi su `feature/arena-run` finche la prova non decide.
 
-- [ ] **Step 1:** controllare versione del plugin Godot 4 di Effekseer, compatibilita con 4.7.2 (GDExtension), export Windows e Linux, licenza MIT; se incompatibile annotare "valutato, non adottato" in `TOOLS_AND_LICENSES.md` e chiudere il task.
-- [ ] **Step 2:** se compatibile: un effetto (scoppio della Carica da scavo) in Effekseer accanto a quello in `CPUParticles3D`, catture affiancate, costo per 20 scoppi contemporanei col preset Deck.
-- [ ] **Step 3:** decisione: adottare (registrazione in `TOOLS_AND_LICENSES.md`, nota in `DECISIONS.md` D-095, trappole in `GODOT_WORKFLOW.md`) o scartare con le misure.
-- [ ] **Step 4:** commit della decisione sul branch di lavoro.
+- [x] **Step 1:** controllare versione del plugin Godot 4 di Effekseer, compatibilita con 4.7.2 (GDExtension), export Windows e Linux, licenza MIT; se incompatibile annotare "valutato, non adottato" in `TOOLS_AND_LICENSES.md` e chiudere il task.
+- [x] **Step 2:** se compatibile: un effetto (scoppio della Carica da scavo) in Effekseer accanto a quello in `CPUParticles3D`, catture affiancate, costo per 20 scoppi contemporanei col preset Deck.
+- [x] **Step 3:** decisione: adottare (registrazione in `TOOLS_AND_LICENSES.md`, nota in `DECISIONS.md` D-095, trappole in `GODOT_WORKFLOW.md`) o scartare con le misure.
+- [x] **Step 4:** commit della decisione sul branch di lavoro.
+
+**Esito (16 ottobre 2026):** valutato, non adottato per le armi; misure in `TOOLS_AND_LICENSES.md` (Tool radar), nota in D-095. Il branch `spike/effekseer` resta locale per una prova futura sulle esplosioni dei boss.
 
 ### Task 6: chiusura
 
