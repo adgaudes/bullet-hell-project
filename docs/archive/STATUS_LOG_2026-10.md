@@ -281,3 +281,11 @@ Audit generale in `docs/REVIEWS/FULL_AUDIT_2026-10-14.md`, con lo stato riga per
 ## Carovana, piano A, task 1-3 (16 ottobre 2026)
 
 **Task 1:** `MachineCatalog` (otto moduli), `CaravanTuning` (`caravan_default.tres`), icone dei moduli. **Task 2:** `Machine`, `MachineModule`, `CargoModule`, `Caravan`, `machine.tscn`, suite `caravan_tests`, ancora fuori dalle scene; la revisione ha trovato che un Cassone spento teneva per se il rottame puntato (corretto). **Task 3:** il nodo `Companion` delle tre scene e diventato `Caravan` (una macchina col Cassone, faro e pezzi sul capofila); servizi, eventi, boss, armi del Meccanico, 21 suite e 6 strumenti adattati; `companion.gd`, `companion_tuning.gd`, `companion.tscn` e `companion_default.tres` cancellati; `companion_tests` assorbita in `caravan_tests`. Revisione a cinque lenti con verifica avversaria (15 risultati, 7 confermati): ombre delle nuvole di nuovo sulle macchine (layer 2), velocita delle carte misurata su una macchina vera, taratura condivisa letta dal disco in `workshop_tests`, `companion_range` della Saldatrice diventato `lead_range`. Gate verde (54 suite, seme 20261014) dopo un rilancio per il blocco all'uscita di `machine_catalog_tests`. Registro dell'esecuzione: `.superpowers/sdd/2026-10-16-caravan-machines/progress.md` (locale).
+
+## Playtest del 14 ottobre: fatto (16 ottobre 2026, dal MIGRATION_STATUS)
+
+**Fatto:** blocchi 1-2 (D-090, D-091); armi e classi D-092 piani 1-5 (Deck 0,18-0,65 ms per passo, budget 1,0; effetti in `output/weapons/fx/`, D-095; dettaglio in archivio); luce D-094 (`output/lighting_lab/`).
+
+**Eventi del mondo (D-097):** casuali, quanti ne sceglie la nuova scheda **Gameplay** (1-5, di serie 1), prima del boss.
+
+**Carovana, piano A, task 4-6 (16 ottobre):** Torretta, Calamita e Faro come moduli con carte di livello per tipo, Torretta fissa come seconda macchina, luce di notte solo dai Faro (task 4); carte Nuova macchina, solo per i moduli con uno script (task 5); danni dai rottamatori e dai boss, guasto con fumo, punto esclamativo e anello rosso, ritirata, rigenerazione, guinzaglio a 20 m e ritorno della macchina incastrata (task 6). Dettaglio e scelte: D-093 e il piano.
