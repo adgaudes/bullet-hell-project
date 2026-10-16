@@ -12,6 +12,9 @@
   Exit code 0 solo se tutto passa.
   Il seme delle run e fisso (-Seed, variabile PROTOTYPE01_SEED): un rosso si riproduce
   rilanciando con lo stesso seme; il log completo delle suite fallite resta in output/gate/.
+  Una suite che stampa PASS senza errori ma non si chiude entro il timeout (blocco all'uscita
+  di Godot) viene rilanciata una volta e giudicata sul secondo run; il primo log resta in
+  output/gate/<suite>.exit-hang.log.
   Un passo con finestra (320x200) rilancia restyle_tests con Terrain3D vero e avvia il gioco
   contando anche gli errori degli shader; -NoWindow lo salta.
 
@@ -129,12 +132,27 @@ Get-ChildItem -Path $project -Recurse -Filter *.gd | Where-Object { $_.FullName 
 }
 
 Write-Host "== test suites"
+$exitHangReruns = 0
 Get-ChildItem -Path (Join-Path $project "tests") -Filter *.gd | ForEach-Object {
     $resPath = "res://tests/" + $_.Name
-    $result = Invoke-Captured $godot @("--headless", "--path", "$project", "--fixed-fps", "60", "--script", $resPath)
-    $summary = ($result.Text -split "`n" | Where-Object { $_ -match "PROTOTYPE01_TESTS" }) -join ""
+    $suiteArgs = @("--headless", "--path", "$project", "--fixed-fps", "60", "--script", $resPath)
+    $result = Invoke-Captured $godot $suiteArgs
     # Una suite verde che scatena un errore runtime non asserito e comunque FAIL (U-03).
     $errors = Get-RuntimeErrors $result.Text $_.Name
+    # Blocco all'uscita di Godot (GODOT_WORKFLOW.md, trappola del 16 ottobre 2026): PASS
+    # stampato, nessun errore runtime, ma il processo non si chiude entro il timeout. Solo
+    # in questo caso la suite si rilancia, una volta, e conta il secondo run.
+    $hangLog = ""
+    if ($result.Code -eq 124 -and $result.Text.Contains("PROTOTYPE01_TESTS PASS") -and $errors.Count -eq 0) {
+        $exitHangReruns++
+        New-Item -ItemType Directory -Force $failedLogs | Out-Null
+        $hangLog = Join-Path $failedLogs ($_.BaseName + ".exit-hang.log")
+        Set-Content -Path $hangLog -Value $result.Text -Encoding utf8
+        Write-Host "  RETRY $resPath ha stampato PASS ma non si e chiusa entro il timeout: la rilancio una volta"
+        $result = Invoke-Captured $godot $suiteArgs
+        $errors = Get-RuntimeErrors $result.Text $_.Name
+    }
+    $summary = ($result.Text -split "`n" | Where-Object { $_ -match "PROTOTYPE01_TESTS" }) -join ""
     if ($result.Code -ne 0 -or -not $summary.Contains("PASS") -or $errors.Count -gt 0) {
         $failures++
         Write-Host "  FAIL $resPath (exit $($result.Code), errori runtime $($errors.Count))"
@@ -145,8 +163,11 @@ Get-ChildItem -Path (Join-Path $project "tests") -Filter *.gd | ForEach-Object {
         $logFile = Join-Path $failedLogs ($_.BaseName + ".log")
         Set-Content -Path $logFile -Value $result.Text -Encoding utf8
         Write-Host "       log completo: $logFile (seme $Seed)"
+        if ($hangLog) { Write-Host "       il primo run si era bloccato all'uscita dopo PASS: $hangLog" }
     } else {
-        Write-Host "  ok   $resPath $summary"
+        $note = ""
+        if ($hangLog) { $note = " (verde al rilancio dopo un blocco all'uscita)" }
+        Write-Host "  ok   $resPath $summary$note"
     }
 }
 
@@ -174,5 +195,8 @@ $run = Invoke-Captured $godot @("--headless", "--path", "$project", "--quit-afte
 if (Test-Markers $run.Text) { Write-Host "  ok   tutti i marker presenti" } else { $failures++ }
 if ($run.Code -ne 0) { Write-Host "  FAIL codice d'uscita $($run.Code)"; $failures++ }
 
+if ($exitHangReruns -gt 0) {
+    Write-Host "NOTA $exitHangReruns suite rilanciate dopo un blocco all'uscita; log del primo run in $failedLogs\*.exit-hang.log"
+}
 if ($failures -eq 0) { Write-Host "GODOT_CHECKS PASS" } else { Write-Host "GODOT_CHECKS FAIL ($failures)" }
 exit [int]($failures -gt 0)
