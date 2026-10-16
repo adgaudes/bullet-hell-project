@@ -2,7 +2,7 @@
 
 > **Breve per scelta** (audit D-06, 14 ottobre 2026): dove siamo, prossimo passo, cosa aspetta il proprietario. Va aggiornato a ogni avanzamento e tenuto **sotto 8 KB**: quando cresce, il vecchio va in `docs/archive/`. Storia delle sessioni fino al 14 ottobre 2026: `docs/archive/STATUS_LOG_2026-10.md`. Decisioni: `DECISIONS.md`. Piano di prodotto: `PROJECT_ROADMAP.md`. Per trovare un documento: `INDEX.md`.
 
-**Ultimo aggiornamento:** 16 ottobre 2026 (piano A della carovana scritto; task 1 di 10 fatto: catalogo dei moduli, `CaravanTuning`, icone).
+**Ultimo aggiornamento:** 16 ottobre 2026 (piano A della carovana: task 1 e 2 di 10 fatti; `Machine`, `Caravan` e Cassone esistono ma non sono ancora nelle scene).
 
 ## Dove siamo
 
@@ -26,7 +26,7 @@ Esito **Modifica**: 14 osservazioni, piu O-15 e O-16 del 15 ottobre. Cause e pia
 
 ## Prossimo passo (agente)
 
-0. **In corso: piano A della carovana (D-093)**, `docs/superpowers/plans/2026-10-16-caravan-machines.md` (10 task). **Fatto il task 1** (`MachineCatalog`, `CaravanTuning`, icone dei moduli; revisione in tre lenti approvata). **Prossimo: task 2** (`Machine`, `Caravan`, Cassone fuori dalle scene), in una nuova sessione: piano (Global Constraints, Scelte, Task 2) e ricognizione in `.superpowers/caravan-plan-a/recon/` (locale; codice di prima del piano A). Poi il task 3, la migrazione delicata, col gate completo. **Inondazione** (richiesta del 15 ottobre): proporre uno spike di costo dell'acqua simulata sul Deck, poi il design. Dopo: bilanciamento coi bot, playtest. Poi la musica scelta da lui (candidati in `Videogame-assets/music-candidates/`). ProtonScatter approvato (D-090) ma non installato: serve quando si spargono oggetti.
+0. **In corso: piano A della carovana (D-093)**, `docs/superpowers/plans/2026-10-16-caravan-machines.md` (10 task). **Fatti i task 1 e 2** (catalogo, tuning, icone; `Machine`, `Caravan`, `CargoModule`, `machine.tscn`, suite `caravan_tests`, fuori dalle scene; revisione approvata). **Prossimo: task 3**, la migrazione delicata (tre scene: avvisare il proprietario, editor chiuso; gate completo); leggere le "Note dal task 2" nel piano. Registro locale dell'esecuzione: `.superpowers/sdd/2026-10-16-caravan-machines/progress.md`. **Inondazione** (richiesta del 15 ottobre): proporre uno spike di costo dell'acqua simulata sul Deck, poi il design. Dopo: bilanciamento coi bot, playtest. Poi la musica scelta da lui (candidati in `Videogame-assets/music-candidates/`). ProtonScatter approvato (D-090) ma non installato: serve quando si spargono oggetti.
    **Grafica (richieste del proprietario del 15 ottobre):** strumenti di D-095 uno alla volta con misura e catture (Effekseer solo per i boss, ProtonScatter, post-produzione, AreaLight3D di notte, Material Maker e Ucupaint per nemici e boss); **carte degli upgrade da rifare** (D-096: font e layout, prima bozze in cattura).
 1. **Voci rimaste dell'audit**, nell'ordine della sua sezione 1 (PF-03, T-01/T-02, I-02, K-07/K-08, L-01, D-05, H-01, X-01/X-03, voci B): elenco in `docs/REVIEWS/FULL_AUDIT_2026-10-14.md`.
 2. **Dopo la misura sul Deck:** V-02, V-03, V-06, Q-01, Q-03, Q-04 (costo GPU e contenuto del preset Deck).
