@@ -27,6 +27,9 @@ const FURROW_PAINT_RADIUS := 0.5
 ## Falciarovi: tratti di scia vivi al massimo.
 const MAX_TRAIL := 40
 const TRAIL_GROW := 0.3
+## Scia delle falci: copie traslucide dietro ogni lama, GHOST_STEP radianti l'una dall'altra.
+const GHOSTS := 3
+const GHOST_STEP := 0.3
 
 ## Prato logico (MeadowMap), dal WeaponLoadout; puo mancare.
 var meadow: MeadowMap
@@ -49,6 +52,7 @@ var _trail: BrambleField
 var _trail_id := -1
 var _trail_left := 0.0
 var _view: MultiMeshInstance3D
+var _ghost_view: MultiMeshInstance3D
 
 
 func _ready() -> void:
@@ -72,6 +76,7 @@ func _ready() -> void:
 	_view.top_level = true
 	_view.physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
 	add_child(_view)
+	_ghost_view = _make_ghost_view(mesh.size)
 	super._ready()
 
 
@@ -106,6 +111,7 @@ func trail() -> BrambleField:
 func _physics_process(delta: float) -> void:
 	if shooter == null:
 		_view.multimesh.visible_instance_count = 0
+		_ghost_view.multimesh.visible_instance_count = 0
 		return
 	_bind_director()
 	var center := shooter.global_position
@@ -129,6 +135,7 @@ func _physics_process(delta: float) -> void:
 func _cut(center: Vector3, positions: Array[Vector3]) -> void:
 	var reach := orbit_radius + maxf(BLADE_REACH, FURROW_HALF_WIDTH) + 1.0
 	var cut := false
+	var clipped := false
 	for enemy in director.enemies_near(center, reach):
 		if enemy.is_dead:
 			continue
@@ -144,6 +151,9 @@ func _cut(center: Vector3, positions: Array[Vector3]) -> void:
 				_cooldowns[id] = hit_interval
 				enemy.take_damage(damage)
 				cut = true
+				if not clipped and _fx_ready(&"cut", 0.15):
+					clipped = true
+					WeaponFx.burst(fx_parent(), enemy.global_position + Vector3(0.0, 0.5, 0.0), WeaponFx.LEAF, 8, 4.0, 0.08)
 				break
 	if cut:
 		_sound(&"hit")
@@ -208,6 +218,10 @@ func _drop_trail(positions: Array[Vector3], delta: float) -> void:
 		return
 	_trail_left = fusion_stat(&"trail_every")
 	var seconds := fusion_stat(&"trail_seconds")
+	if not positions.is_empty():
+		var p := positions[0]
+		var ground := terrain_field.height_at(p) if terrain_field != null else p.y
+		_fusion_fx(WeaponFx.burst(fx_parent(), Vector3(p.x, ground + 0.3, p.z), BrambleField.LEAF_COLOR, 5, 2.5, 0.1))
 	for p in positions:
 		if not _trail.add_segment(_trail_id, p, seconds):
 			var first: Array[Vector3] = [p]
@@ -223,9 +237,46 @@ func _refresh_view(center: Vector3, positions: Array[Vector3]) -> void:
 	var multimesh := _view.multimesh
 	multimesh.visible_instance_count = positions.size()
 	for i in positions.size():
-		var p := positions[i]
-		var out := Vector3(p.x - center.x, 0.0, p.z - center.z).normalized()
-		var ground := terrain_field.height_at(p) if terrain_field != null else center.y
-		# La lama punta verso l'esterno del giro, un poco inclinata nel verso della corsa.
-		var basis := Basis(out, Vector3.UP, out.cross(Vector3.UP)) * Basis(Vector3.RIGHT, 0.3)
-		multimesh.set_instance_transform(i, Transform3D(basis, Vector3(p.x, ground + 0.45, p.z)))
+		multimesh.set_instance_transform(i, _blade_transform(center, positions[i]))
+	var ghosts := _ghost_view.multimesh
+	ghosts.visible_instance_count = positions.size() * GHOSTS
+	for i in positions.size():
+		var a := _angle + TAU * i / blades
+		for g in range(1, GHOSTS + 1):
+			var back := a - GHOST_STEP * g
+			var p := center + Vector3(cos(back), 0.0, sin(back)) * orbit_radius
+			var n := i * GHOSTS + g - 1
+			ghosts.set_instance_transform(n, _blade_transform(center, p))
+			ghosts.set_instance_color(n, Color(1.0, 1.0, 1.0, 0.4 * (1.0 - float(g) / (GHOSTS + 1))))
+
+
+## La lama punta verso l'esterno del giro, un poco inclinata nel verso della corsa.
+func _blade_transform(center: Vector3, p: Vector3) -> Transform3D:
+	var out := Vector3(p.x - center.x, 0.0, p.z - center.z).normalized()
+	var ground := terrain_field.height_at(p) if terrain_field != null else center.y
+	var basis := Basis(out, Vector3.UP, out.cross(Vector3.UP)) * Basis(Vector3.RIGHT, 0.3)
+	return Transform3D(basis, Vector3(p.x, ground + 0.45, p.z))
+
+
+func _make_ghost_view(size: Vector3) -> MultiMeshInstance3D:
+	var mesh := BoxMesh.new()
+	mesh.size = Vector3(size.x, size.y * 0.5, size.z * 1.6)
+	var material := StandardMaterial3D.new()
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	material.vertex_color_use_as_albedo = true
+	material.albedo_color = BLADE_GLOW.linear_to_srgb()
+	mesh.material = material
+	var multimesh := MultiMesh.new()
+	multimesh.transform_format = MultiMesh.TRANSFORM_3D
+	multimesh.use_colors = true
+	multimesh.mesh = mesh
+	multimesh.instance_count = MAX_BLADES * GHOSTS
+	multimesh.visible_instance_count = 0
+	var view := MultiMeshInstance3D.new()
+	view.multimesh = multimesh
+	view.top_level = true
+	view.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	view.physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
+	add_child(view)
+	return view

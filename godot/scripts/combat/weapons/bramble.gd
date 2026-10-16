@@ -72,6 +72,14 @@ func plant(at: Vector3) -> int:
 	if stat(&"advance") > 0.0:
 		_advancing.append({id = id, left = ADVANCE_SECONDS})
 	_show_telegraph(points, stat(&"ring") > 0.0)
+	# Foglie e terra smossa dove spunta la siepe: tre ciuffi lungo i punti.
+	var half := points.size() >> 1
+	for i: int in [0, half, points.size() - 1]:
+		var p: Vector3 = points[i]
+		var ground := terrain_field.height_at(p) if terrain_field != null else p.y
+		WeaponFx.burst(fx_parent(), Vector3(p.x, ground + 0.3, p.z), BrambleField.LEAF_COLOR, 6, 3.0, 0.1)
+	var mid: Vector3 = points[half]
+	WeaponFx.dust(fx_parent(), Vector3(mid.x, terrain_field.height_at(mid) if terrain_field != null else mid.y, mid.z), WeaponFx.EARTH, 1.2, 6)
 	return id
 
 
