@@ -33,6 +33,7 @@ func _initialize() -> void:
 	await _test_cluster_of_three()
 	_test_module_limit()
 	await _test_two_cargo_supply()
+	await _test_switched_off_cargo_releases_scrap()
 	# T-12: i nodi messi in coda con queue_free vanno liberati prima di uscire.
 	await _frames(2)
 	print("PROTOTYPE01_TESTS %s failures=%d" % ["PASS" if _failures == 0 else "FAIL", _failures])
@@ -300,6 +301,46 @@ func _test_two_cargo_supply() -> void:
 	var c := _caravan.add_machine(&"cargo")
 	_check(c != null and c.cargo().capacity == 7 and _caravan.capacity == 21, "un Cassone aggiunto dopo ha la stessa capienza")
 	queue.free()
+
+
+## Un rottame gia meta di un Cassone si salta; spento quel Cassone (la macchina guasta, task 6)
+## il rottame torna libero per gli altri, anche se `active` cambia senza l'hook.
+func _test_switched_off_cargo_releases_scrap() -> void:
+	print("switched off cargo releases scrap")
+	var p := Vector3(8.0, 0.0, -6.0)
+	await _replace_caravan(p + Vector3(0.0, 0.0, 2.5))
+	var a := _caravan.lead()
+	var b := _caravan.add_machine(&"cargo")
+	if b == null:
+		_check(false, "secondo Cassone aggiunto")
+		return
+	await _frames(1)
+	# Passi fisici spenti: le mete si chiedono a mano, il tempo lo fa scorrere `tick`.
+	a.set_physics_process(false)
+	b.set_physics_process(false)
+	_place_player(p)
+	a.cargo().carried = 0
+	b.cargo().carried = 0
+	_place_machine(a, p + Vector3(-1.5, 0.0, 0.0))
+	var scrap := p + Vector3(3.0, 0.0, 0.0)
+	_place_machine(b, scrap + Vector3(0.0, 0.0, 1.5))
+	_scraps.spawn_on_ground(scrap)
+	var interval := _caravan.tuning.cargo_search_interval
+	_check(Machine.planar_distance(a._choose_destination(), scrap) < 0.5 and a.cargo().claimed_scrap() != null,
+		"il primo Cassone punta il rottame")
+	_check(Machine.planar_distance(b._choose_destination(), scrap) > 1.0, "il secondo, piu vicino, lo salta: e gia meta del primo")
+	a.cargo().set_active(false)
+	_check(a.cargo().claimed_scrap() == null, "spento, il primo Cassone lascia il rottame")
+	b.cargo().tick(interval)
+	_check(Machine.planar_distance(b._choose_destination(), scrap) < 0.5, "alla ricerca dopo, il secondo Cassone lo punta")
+	# `active` cambiato senza passare dall'hook: claimed_scrap guarda anche `active`.
+	a.cargo().set_active(true)
+	_check(Machine.planar_distance(a._choose_destination(), scrap) > 1.0, "riacceso, il primo lo salta: ora e del secondo")
+	b.cargo().active = false
+	_check(b.cargo().claimed_scrap() == null, "spento senza l'hook, nemmeno il secondo lo tiene")
+	a.cargo().tick(interval)
+	_check(Machine.planar_distance(a._choose_destination(), scrap) < 0.5, "e il primo lo riprende")
+	_scraps.take_near(scrap, 0.5, 10)
 
 
 func _load_scene() -> void:

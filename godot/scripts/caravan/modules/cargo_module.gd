@@ -38,9 +38,9 @@ func room() -> int:
 
 
 ## Rottame in cui il Cassone e diretto, o null (lo legge la carovana per non mandarci un
-## altro Cassone).
+## altro Cassone). Spento non ne punta nessuno, anche se `active` e cambiato senza l'hook.
 func claimed_scrap() -> Variant:
-	return _target if _searched else null
+	return _target if _searched and active else null
 
 
 ## Rottame raggiungibile piu vicino al giocatore, se c'e posto. La ricerca costa una
@@ -73,6 +73,13 @@ func tick(delta: float) -> void:
 func _forget_target() -> void:
 	_target = null
 	_searched = false
+
+
+## Un Cassone spento (la macchina guasta) non viene piu interrogato: lascia subito agli
+## altri Cassoni il rottame che aveva puntato.
+func _on_active_changed(on: bool) -> void:
+	if not on:
+		_forget_target()
 
 
 ## Una nuova soluzione del campo di percorso puo aprire o chiudere la strada verso un
