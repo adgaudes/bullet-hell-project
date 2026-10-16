@@ -10,7 +10,7 @@
 
 **Spec:** `docs/superpowers/specs/2026-10-15-caravan-machines-design.md` (Sezioni 1, 4, 5, 6, 7; "Architettura del codice"; "Valori di partenza"; "Verifica"). Convenzioni dai piani delle armi `docs/superpowers/plans/2026-10-15-weapons-*.md` (servizi, carte dinamiche, casse). Ricognizione del codice (16 ottobre 2026, prima del piano A): rapporti `r_*.txt` in `.superpowers/caravan-plan-a/recon/` (locali, ignorati da Git; le righe citate vanno riverificate sul codice attuale).
 
-**Stato:** task 1, 2 e 3 fatti il 16 ottobre 2026; prossimo il task 4.
+**Stato:** task 1, 2, 3 e 4 fatti il 16 ottobre 2026; prossimo il task 5.
 
 ## Global Constraints
 
@@ -133,6 +133,8 @@ Il task delicato. Una sola macchina (Cassone) fa tutto cio che faceva il compagn
 
 **Files:** Create `godot/scripts/caravan/machine_offers.gd`. Modify `scripts/progression/run_progression.gd`, `scripts/run/arena_run.gd`, test `run_progression_tests.gd`, `arena_run_tests.gd`, `ui_theme_tests.gd` se legge le prime righe del catalogo.
 
+- [ ] Note dal task 4: `RunProgression._requirement_met` decide `requires` (`""`, `"caravan"`, `"module:<id>"`; un `module_count` non impostato vale 0; un `requires` sconosciuto non passa); il mazzo del Meccanico ha solo Motore truccato e Saldatura al volo, quindi fino a questo task il Meccanico ha la Torretta solo dalla Torretta fissa; la terza riga del catalogo letta da `ui_theme_tests` (`slice(0, 3)`) e ora `turret_rate` (Non comune); `set_module_level` e `MachineModule.set_active` emettono `caravan.changed`.
+
 **Interfaces — Produces:**
 - `class_name MachineOffers extends RefCounted`: `const PREFIX := "m:new:"`; `static func is_machine_card(id: StringName) -> bool`; `static func module_of(id: StringName) -> StringName`; `static func card(module_id: StringName, class_id: StringName) -> Dictionary` = `{id = &"m:new:<modulo>", name = "Nuova macchina: <Nome>", category = &"companion", rarity = UNCOMMON se class_id == &"mechanic" altrimenti RARE, max_level = 0, requires = "", deck = class_id se mechanic altrimenti &"common", text = <testo del modulo>, module_id, shown_level = 0, icon = <icona del modulo>}`; `static func cards(caravan: Caravan, class_id: StringName, available: Array[StringName]) -> Array[Dictionary]` (una per modulo disponibile; vuota se `not caravan.has_room()`).
 - `RunProgression.machine_cards: Callable` (come `weapon_cards`): in `roll_offer` le carte si aggiungono a `pool` prima del controllo dei riempitivi; appena una carta macchina entra nell'offerta, tutte le altre escono da `pool` (anche il recupero del raro legge `pool`).
@@ -157,6 +159,7 @@ Il task delicato. Una sola macchina (Cassone) fa tutto cio che faceva il compagn
 - `EnemyDirector`: `var caravan: Caravan`; `_apply_machine_contacts()` chiamata subito dopo il ciclo dei nemici in `_move_enemies`: per ogni macchina non guasta e non immune, le 9 celle 3x3 di `_buckets` attorno alla macchina, salta `is_dead` e `self_driven`, distanza planare dalla posizione attuale ≤ `contact_radius` → `take_hit(contact_damage)`, `enemy.notify_contact()`, prossima macchina. Niente scansione di tutti i nemici.
 - `Demolisher.drive` e `Driller.drive`: oltre al giocatore, ogni macchina entro `contact_radius` prende `take_hit(contact_damage)`; `Driller._hit_in_the_way` su una macchina spinge e ferisce (`contact_damage`).
 
+- [ ] Note dal task 4: `EnemyDirector.caravan` esiste gia (dichiarata nel task 4, collegata da `Caravan.configure`, ancora senza effetti); `MachineModule.set_active` emette gia `caravan.changed` (le luci dei Faro si riaccendono al fattore corrente), quindi il guasto spegne i moduli con `set_active(false)` senza altro lavoro per la luce; i moduli registrano tiratore, attrattore e sorgente solo nell'`apply_level` idempotente e a modulo acceso; il commento di `active` in `machine_module.gd:15` cita ancora "il Faro di giorno" (sbagliato: il Faro resta acceso di giorno), da correggere qui.
 - [ ] Test (`machine_damage_tests.gd`): un rottamatore fermo a 0,5 m toglie 1 PV, il secondo colpo arriva solo dopo 0,8 s; a 1,2 m nessun danno; un boss entro 1,5 m toglie 2 PV e la regola da 1 PV non si applica ai `self_driven`; a 0 PV la macchina e `BROKEN`, la sua torretta ha `shooter` nullo, dopo 1 s la velocita planare e < 0,05, nessun altro danno, fumo ed esclamativo visibili; con 1 PV (sotto il 30%) e un nemico a est la macchina va a 4-6 m dal giocatore dal lato ovest e la torretta continua a sparare; a 4 PV torna al posto; rigenerazione: 8 s senza colpi poi +1 PV, poi +1 ogni 4 s fino a 6, mai da guasta; un Cassone in ritirata non insegue rottami; una macchina chiusa in una buca o oltre 20 m torna al posto entro 3 s; il posto dentro un muro viene scartato.
 - [ ] Suite dei nemici e dei boss verdi (`boss_tests`, `driller_tests`, `enemy_*`), poi gate completo verde (il capofila ora si puo guastare in ogni suite di livello).
 - [ ] Commit `Carovana (D-093), piano A: danni alle macchine dai rottamatori e dai boss, guasto, ritirata, rigenerazione; anello, fumo e segno del guasto; test`.
