@@ -238,6 +238,8 @@ func _move_nails(delta: float) -> void:
 				if _segment_distance(from, to, enemy.global_position) <= HIT_RADIUS + enemy.hit_radius_bonus:
 					nail.hit.append(enemy)
 					enemy.take_damage(damage)
+					if _fx_ready(&"nail", 0.08):
+						WeaponFx.sparks(fx_parent(), enemy.global_position + Vector3(0.0, 0.6, 0.0), NAIL_COLOR, 4, 3.5)
 					# La macchia nasce al primo nemico colpito, anche se il chiodo prosegue.
 					if fire_patches and nail.hit.size() == 1:
 						_spawn_patch(enemy.global_position)
@@ -326,6 +328,9 @@ func _raise_turret(center: Vector3) -> void:
 	var height := fusion_stat(&"turret_height")
 	for disc in FORT_DISCS:
 		write_queue.push_level(center, disc.x, center.y + height * disc.y)
+	# Il cono sale tra polvere e zolle.
+	_fusion_fx(WeaponFx.dust(fx_parent(), center, WeaponFx.DUST, 0.5, 10, FORT_DISCS[0].x))
+	_fusion_fx(WeaponFx.burst(fx_parent(), center + Vector3(0.0, 0.4, 0.0), WeaponFx.EARTH, 10, 4.5, 0.14))
 	# Dal proprio script, non dal nome di classe: un riferimento di AutoWeapon a se stessa
 	# teneva vivi gli script all'uscita (risorse e RID persi nei test).
 	var turret: Weapon = (get_script() as Script).new()

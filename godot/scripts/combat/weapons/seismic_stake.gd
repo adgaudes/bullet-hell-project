@@ -40,6 +40,7 @@ func _fire(at: Vector3) -> void:
 	add_child(marker)
 	var ground := terrain_field.height_at(at) if terrain_field != null else at.y
 	marker.global_position = Vector3(at.x, ground + 0.4, at.z)
+	WeaponFx.burst(fx_parent(), Vector3(at.x, ground + 0.2, at.z), WeaponFx.EARTH, 6, 2.5, 0.08)
 	_rings.append({center = Vector3(at.x, ground, at.z), radius = stat(&"ring_radius"), raise_left = stat(&"raise_delay"),
 		hold_left = stat(&"hold_seconds"), raised = false, spike_left = 0.0, marker = marker})
 
@@ -69,6 +70,9 @@ func _physics_process(delta: float) -> void:
 func _raise(ring: Dictionary) -> void:
 	_sound(&"hit")
 	ring.raised = true
+	# L'onda corre dal picchetto all'anello, che sale tra la polvere.
+	WeaponFx.shockwave(fx_parent(), ring.center, ring.radius + 0.4, STAKE_COLOR, 0.35)
+	WeaponFx.dust(fx_parent(), ring.center, WeaponFx.DUST, 0.5, 16, ring.radius)
 	var height := stat(&"ring_height")
 	for p in _ring_points(ring):
 		if write_queue != null and terrain_field != null:
