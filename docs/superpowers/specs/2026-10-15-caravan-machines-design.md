@@ -1,6 +1,6 @@
 # Carovana di macchine e fusione — design
 
-Data: 15 ottobre 2026. Stato: **design approvato a sezioni dal proprietario il 15 ottobre 2026 (Sezioni 1-7); spec scritta da rileggere. Niente implementazione prima della sua rilettura e del piano A.**
+Data: 15 ottobre 2026. Stato: **design approvato a sezioni dal proprietario il 15 ottobre 2026 (Sezioni 1-7); spec scritta da rileggere. Il 16 ottobre 2026 il proprietario ha chiesto di procedere: piano A in `docs/superpowers/plans/2026-10-16-caravan-machines.md`.**
 Decisione: **D-093**. Contesto: D-011 (costruire, fondere, pilotare macchine), D-012 (primo compagno autonomo), D-033 (promessa A; la carovana come struttura, la macchina sempre piu assurda come payoff), D-035 (la build si vede nel mondo), roadmap sezione 2 ("carovana di macchine... agganciarsi e separarsi; fusione in configurazioni crescenti e forma colossale"), D-092 (armi e classi: casse, carte, Officina, ricettario gia esistono).
 
 ## Perche
