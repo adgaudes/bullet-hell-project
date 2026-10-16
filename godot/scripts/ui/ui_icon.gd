@@ -10,6 +10,7 @@ const KINDS: Array[StringName] = [
 	&"blade", &"hammer", &"ram", &"mixer", &"dozer", &"compactor",
 	&"scrap_launcher", &"dig_charge", &"welder", &"crane_magnet", &"scythe", &"bramble",
 	&"fort", &"mortar", &"tesla_coil", &"scythe_bramble",
+	&"crate", &"turret", &"magnet", &"beacon", &"drill", &"scoop", &"solder", &"siren",
 ]
 
 @export var kind: StringName = &"nail":
@@ -292,6 +293,74 @@ func _draw() -> void:
 			_dot([0.64, 0.76], 0.16, dark)
 			_stroke([[0.16, 0.6], [0.58, 0.08]], outline, 0.08)
 			_shape([[0.56, 0.08], [0.88, 0.2], [0.92, 0.42], [0.78, 0.28], [0.52, 0.2]], tint)
+		&"turret":
+			# Torretta della carovana: zoccolo, testa con l'oblo e canna con la bocca.
+			_shape([[0.16, 0.9], [0.84, 0.9], [0.72, 0.7], [0.28, 0.7]], dark)
+			_shape([[0.2, 0.72], [0.2, 0.46], [0.32, 0.3], [0.58, 0.3], [0.7, 0.46], [0.7, 0.72]], tint)
+			_shape([[0.62, 0.4], [0.88, 0.4], [0.88, 0.54], [0.62, 0.54]], dark)
+			_shape([[0.84, 0.36], [0.94, 0.36], [0.94, 0.58], [0.84, 0.58]], tint)
+			_dot([0.4, 0.52], 0.07, outline)
+		&"magnet":
+			# Calamita a ferro di cavallo inclinata, coi poli scuri e un frammento attirato.
+			var horseshoe := [[0.74, 0.56]]
+			for k in 9:
+				var angle := PI * 0.25 + k * PI / 8.0
+				horseshoe.append([0.42 + cos(angle) * 0.215, 0.58 + sin(angle) * 0.215])
+			horseshoe.append([0.44, 0.26])
+			_stroke(horseshoe, outline, 0.27)
+			_stroke(horseshoe, tint, 0.17)
+			_shape([[0.62, 0.56], [0.68, 0.5], [0.8, 0.62], [0.74, 0.68]], dark)
+			_shape([[0.32, 0.26], [0.38, 0.2], [0.5, 0.32], [0.44, 0.38]], dark)
+			_shape([[0.76, 0.12], [0.86, 0.24], [0.76, 0.36], [0.66, 0.24]], tint)
+		&"beacon":
+			# Faro: lanterna accesa sul palo, tetto a punta e due fasci di luce.
+			var light := Color("ffd45a")
+			_shape([[0.4, 0.36], [0.06, 0.22], [0.06, 0.58], [0.4, 0.48]], light)
+			_shape([[0.6, 0.36], [0.94, 0.22], [0.94, 0.58], [0.6, 0.48]], light)
+			_shape([[0.44, 0.52], [0.56, 0.52], [0.56, 0.86], [0.44, 0.86]], dark)
+			_shape([[0.28, 0.84], [0.72, 0.84], [0.72, 0.94], [0.28, 0.94]], dark)
+			_shape([[0.34, 0.28], [0.66, 0.28], [0.66, 0.56], [0.34, 0.56]], tint)
+			_shape([[0.28, 0.3], [0.5, 0.08], [0.72, 0.3]], dark)
+			_dot([0.5, 0.42], 0.08, light)
+		&"drill":
+			# Trivella: motore con le feritoie, mandrino e punta a spirale.
+			_shape([[0.24, 0.06], [0.76, 0.06], [0.76, 0.32], [0.24, 0.32]], tint)
+			_stroke([[0.36, 0.13], [0.36, 0.25]], dark, 0.05)
+			_stroke([[0.5, 0.13], [0.5, 0.25]], dark, 0.05)
+			_stroke([[0.64, 0.13], [0.64, 0.25]], dark, 0.05)
+			_shape([[0.36, 0.32], [0.64, 0.32], [0.6, 0.44], [0.4, 0.44]], dark)
+			_shape([[0.34, 0.44], [0.66, 0.44], [0.5, 0.96]], tint)
+			_stroke([[0.37, 0.52], [0.6, 0.6]], dark, 0.05)
+			_stroke([[0.42, 0.66], [0.56, 0.72]], dark, 0.05)
+			_stroke([[0.46, 0.8], [0.53, 0.83]], dark, 0.05)
+		&"scoop":
+			# Pala meccanica: braccio, benna colma di terra e l'argine che alza.
+			_shape([[0.06, 0.18], [0.14, 0.1], [0.46, 0.4], [0.38, 0.48]], dark)
+			_shape([[0.42, 0.3], [0.5, 0.2], [0.62, 0.16], [0.72, 0.3]], dark)
+			_shape([[0.4, 0.3], [0.74, 0.3], [0.9, 0.7], [0.5, 0.7], [0.4, 0.6], [0.36, 0.44]], tint)
+			_shape([[0.08, 0.94], [0.2, 0.8], [0.38, 0.8], [0.5, 0.94]], dark)
+		&"solder":
+			# Cannello del Saldatore: impugnatura, ugello, fiamma e la croce della riparazione.
+			_shape([[0.08, 0.8], [0.36, 0.52], [0.48, 0.64], [0.2, 0.92]], dark)
+			_shape([[0.4, 0.5], [0.66, 0.24], [0.72, 0.3], [0.46, 0.56]], tint)
+			_shape([[0.66, 0.2], [0.94, 0.06], [0.8, 0.34]], Color("ffd45a"))
+			_stroke([[0.78, 0.58], [0.78, 0.9]], outline, 0.16)
+			_stroke([[0.62, 0.74], [0.94, 0.74]], outline, 0.16)
+			_stroke([[0.78, 0.58], [0.78, 0.9]], tint, 0.08)
+			_stroke([[0.62, 0.74], [0.94, 0.74]], tint, 0.08)
+		&"siren":
+			# Sirena: lampeggiante a cupola sulla base, con le onde del richiamo ai lati.
+			var dome := []
+			for k in 9:
+				var angle := PI + k * PI / 8.0
+				dome.append([0.5 + cos(angle) * 0.24, 0.62 + sin(angle) * 0.24])
+			_shape(dome, tint)
+			_stroke([[0.3, 0.54], [0.7, 0.54]], dark, 0.06)
+			_shape([[0.26, 0.62], [0.74, 0.62], [0.8, 0.8], [0.2, 0.8]], dark)
+			for wave in [[[0.2, 0.34], [0.13, 0.46], [0.2, 0.58]], [[0.12, 0.24], [0.05, 0.46], [0.12, 0.68]],
+					[[0.8, 0.34], [0.87, 0.46], [0.8, 0.58]], [[0.88, 0.24], [0.95, 0.46], [0.88, 0.68]]]:
+				_stroke(wave, outline, 0.1)
+				_stroke(wave, tint, 0.05)
 		&"check":
 			_stroke([[0.16, 0.52], [0.4, 0.78], [0.86, 0.26]], outline, 0.2)
 			_stroke([[0.16, 0.52], [0.4, 0.78], [0.86, 0.26]], tint, 0.1)
