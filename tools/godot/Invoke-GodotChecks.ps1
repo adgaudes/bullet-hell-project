@@ -132,7 +132,7 @@ Get-ChildItem -Path $project -Recurse -Filter *.gd | Where-Object { $_.FullName 
 }
 
 Write-Host "== test suites"
-$exitHangReruns = 0
+$exitHangLogs = @()
 Get-ChildItem -Path (Join-Path $project "tests") -Filter *.gd | ForEach-Object {
     $resPath = "res://tests/" + $_.Name
     $suiteArgs = @("--headless", "--path", "$project", "--fixed-fps", "60", "--script", $resPath)
@@ -144,10 +144,10 @@ Get-ChildItem -Path (Join-Path $project "tests") -Filter *.gd | ForEach-Object {
     # in questo caso la suite si rilancia, una volta, e conta il secondo run.
     $hangLog = ""
     if ($result.Code -eq 124 -and $result.Text.Contains("PROTOTYPE01_TESTS PASS") -and $errors.Count -eq 0) {
-        $exitHangReruns++
         New-Item -ItemType Directory -Force $failedLogs | Out-Null
         $hangLog = Join-Path $failedLogs ($_.BaseName + ".exit-hang.log")
         Set-Content -Path $hangLog -Value $result.Text -Encoding utf8
+        $exitHangLogs += $hangLog
         Write-Host "  RETRY $resPath ha stampato PASS ma non si e chiusa entro il timeout: la rilancio una volta"
         $result = Invoke-Captured $godot $suiteArgs
         $errors = Get-RuntimeErrors $result.Text $_.Name
@@ -195,8 +195,9 @@ $run = Invoke-Captured $godot @("--headless", "--path", "$project", "--quit-afte
 if (Test-Markers $run.Text) { Write-Host "  ok   tutti i marker presenti" } else { $failures++ }
 if ($run.Code -ne 0) { Write-Host "  FAIL codice d'uscita $($run.Code)"; $failures++ }
 
-if ($exitHangReruns -gt 0) {
-    Write-Host "NOTA $exitHangReruns suite rilanciate dopo un blocco all'uscita; log del primo run in $failedLogs\*.exit-hang.log"
+if ($exitHangLogs.Count -gt 0) {
+    # Solo i log di questo giro: quelli dei giri precedenti restano nella cartella.
+    Write-Host "NOTA suite rilanciate dopo un blocco all'uscita: $($exitHangLogs.Count); log del primo run: $($exitHangLogs -join ', ')"
 }
 if ($failures -eq 0) { Write-Host "GODOT_CHECKS PASS" } else { Write-Host "GODOT_CHECKS FAIL ($failures)" }
 exit [int]($failures -gt 0)

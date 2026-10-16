@@ -46,7 +46,7 @@ Esito **Modifica**: 14 osservazioni, piu O-15 e O-16 del 15 ottobre. Cause e pia
 
 ## Rischi e limiti noti
 
-- **Gate, blocco all'uscita di Godot:** una suite stampa PASS ma il processo non si chiude entro 300 s (exit 124). Visto su `run_progression_tests` (14 ottobre), `weapon_catalog_tests` (16 ottobre: 9 volte su 120 anche sul codice di prima della carovana) e `machine_catalog_tests` (16 ottobre): le suite che chiamano `quit()` da `_initialize`. Si rilancia il gate; proposta aperta: ripetere nel gate una suite scaduta dopo il PASS.
+- **Gate, blocco all'uscita di Godot:** una suite stampa PASS ma il processo non si chiude entro 300 s (exit 124). Visto su `run_progression_tests` (14 ottobre), `weapon_catalog_tests` (16 ottobre: 9 volte su 120 anche sul codice di prima della carovana) e `machine_catalog_tests` (16 ottobre): le suite che chiamano `quit()` da `_initialize`. Dal 16 ottobre il gate rilancia da solo, una volta, la suite che ha stampato PASS senza errori e non si chiude (primo log in `output/gate/<suite>.exit-hang.log`).
 - **Steam Deck mai misurato.** CPU: il direttore costa 2,6 ms per passo (due passi per frame a 60 fps), un anello del picchetto che sale 0,75 ms per passo; GPU stimata 25-40 fps; prato a particelle e menu 3D non misurati.
 - **Registro minori di D-088** in `.superpowers/` (ignorato da Git): va portato in `docs/` all'integrazione (D-03).
 - **Bundle Sonniss:** lo zip 6 di 9 e in parte illeggibile; va riscaricato se servono quei suoni.
