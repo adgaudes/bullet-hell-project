@@ -1,14 +1,14 @@
 extends SceneTree
 ## Catture dei modelli degli attori (non e una suite). Con finestra reale:
 ##   godot_console --path godot --resolution 1280x800 --fixed-fps 60 --script res://tests/tools/capture_actors.gd -- --out=../output/actors
-## Mette in posa giocatore, compagno, rottamatori e Demolitore nel cortile di partenza,
-## fermi, e salva: la vista di gioco (`gameplay_*`) e primi piani a tre quarti
-## (`player_*`, `companion_*`, `scavenger_*`, `boss_*`) con gli stati guidati dal codice:
+## Mette in posa giocatore, macchina della carovana, rottamatori e Demolitore nel cortile di
+## partenza, fermi, e salva: la vista di gioco (`gameplay_*`) e primi piani a tre quarti
+## (`player_*`, `machine_*`, `scavenger_*`, `boss_*`) con gli stati guidati dal codice:
 ## colori del dash, lampo del colpo, rottame sulla schiena, lama a meta martellata,
 ## torretta e calamita montate.
 
 const PLAYER_SCENE := preload("res://scenes/player/player.tscn")
-const COMPANION_SCENE := preload("res://scenes/companion/companion.tscn")
+const MACHINE_SCENE := preload("res://scenes/caravan/machine.tscn")
 
 var _out := "../output/actors"
 var _scene: Node3D
@@ -28,37 +28,37 @@ func _initialize() -> void:
 	root.add_child(_scene)
 	var run: ArenaRun = _scene.get_node(^"Run")
 	var player: PlayerCharacter = _scene.get_node(^"Player")
-	var companion: Companion = _scene.get_node(^"Companion")
+	var caravan: Caravan = _scene.get_node(^"Caravan")
 	var director: EnemyDirector = _scene.get_node(^"EnemyDirector")
 	_hud = _scene.get_node(^"RunHud")
 	director.spawning = false
 	for i in 10:
 		await physics_frame
+	var machine := caravan.lead()
 	# Tutto fermo: le pose le decide questo script.
-	for path: NodePath in [^"Player", ^"Companion", ^"EnemyDirector", ^"PlayerWeapon"]:
+	for path: NodePath in [^"Player", ^"EnemyDirector", ^"PlayerWeapon"]:
 		_scene.get_node(path).set_physics_process(false)
+	machine.set_physics_process(false)
 	_game_camera = _scene.get_node(^"CameraRig/Camera")
 	_closeup = Camera3D.new()
 	_closeup.fov = 30.0
 	_scene.add_child(_closeup)
 
-	# --- Posa: il giocatore al centro guarda in alto a destra, il compagno lo segue.
+	# --- Posa: il giocatore al centro guarda in alto a destra, la macchina lo segue.
 	player.global_position = Vector3(0.0, 0.88, 0.0)
 	player.rotation.y = deg_to_rad(-30.0)
-	companion.global_position = Vector3(-2.2, 0.3, 1.2)
-	companion.rotation.y = deg_to_rad(-60.0)
-	companion.carried = 2
-	companion._refresh_cargo()
-	# Secondo compagno con tutti i pezzi: torretta, calamita, cassone rinforzato pieno.
-	var upgraded: Companion = COMPANION_SCENE.instantiate()
+	machine.global_position = Vector3(-2.2, 0.3, 1.2)
+	machine.rotation.y = deg_to_rad(-60.0)
+	caravan.carried = 2
+	# Seconda macchina, fuori dalla carovana (ferma), con tutti i pezzi: torretta, calamita,
+	# cassone rinforzato pieno (7 rottami).
+	var upgraded: Machine = MACHINE_SCENE.instantiate()
 	_scene.add_child(upgraded)
 	upgraded.global_position = Vector3(2.4, 0.3, 1.6)
 	upgraded.rotation.y = deg_to_rad(40.0)
 	upgraded.mount_part(&"TurretPart", run._turret_part())
 	upgraded.mount_part(&"MagnetPart", run._magnet_part())
-	upgraded.add_capacity(2, 0)
-	upgraded.carried = upgraded.capacity
-	upgraded._refresh_cargo()
+	upgraded.set_cargo_view(caravan.tuning.cargo_capacity + 2, caravan.tuning.cargo_capacity + 2)
 
 	# Rottamatori in cerchio, rivolti al giocatore come in partita.
 	var enemies: Array[Enemy] = []
@@ -83,7 +83,7 @@ func _initialize() -> void:
 
 	# Stessa scena, tutti girati: il fronte deve leggersi da ogni lato.
 	player.rotation.y = deg_to_rad(120.0)
-	companion.rotation.y = deg_to_rad(150.0)
+	machine.rotation.y = deg_to_rad(150.0)
 	upgraded.rotation.y = deg_to_rad(-110.0)
 	for i in enemies.size():
 		enemies[i].rotation.y = deg_to_rad(i * 45.0)
@@ -118,12 +118,12 @@ func _initialize() -> void:
 	await _shot("player_states", Vector3(-27.75, 0.88, 0.0), 7.5, 25.0, 30.0)
 	await _shot("player_states_game", Vector3(-27.75, 0.88, 0.0), 15.0, 0.0, 55.0, 53.0)
 
-	companion.rotation.y = 0.0
-	await _shot("companion_front", companion.global_position, 3.4, 145.0, 25.0)
-	await _shot("companion_back", companion.global_position, 3.4, 20.0, 40.0)
+	machine.rotation.y = 0.0
+	await _shot("machine_front", machine.global_position, 3.4, 145.0, 25.0)
+	await _shot("machine_back", machine.global_position, 3.4, 20.0, 40.0)
 	upgraded.rotation.y = 0.0
-	await _shot("companion_upgraded_front", upgraded.global_position + Vector3.UP * 0.2, 3.6, 140.0, 25.0)
-	await _shot("companion_upgraded_back", upgraded.global_position + Vector3.UP * 0.2, 3.6, 25.0, 40.0)
+	await _shot("machine_upgraded_front", upgraded.global_position + Vector3.UP * 0.2, 3.6, 140.0, 25.0)
+	await _shot("machine_upgraded_back", upgraded.global_position + Vector3.UP * 0.2, 3.6, 25.0, 40.0)
 
 	# Rottamatori: normale, carico, lampo del colpo.
 	var row: Array[Enemy] = [enemies[0], enemies[1], enemies[2]]

@@ -83,7 +83,7 @@ var _hz := 60
 var _scene: Node3D
 var _run: ArenaRun
 var _player: PlayerCharacter
-var _companion: Companion
+var _caravan: Caravan
 var _field: TerrainField
 ## Vena puntata dal bot (centro XZ) e argine gia alzato in questa run.
 var _vein_target := Vector3.INF
@@ -201,7 +201,7 @@ func _simulate(bot: StringName, run_seed: int) -> Dictionary:
 	# I bot non sanno tenere la piazzola di estrazione (D-076): vittoria alla morte del boss.
 	_run.extraction_pad = null
 	_player = _scene.get_node(^"Player")
-	_companion = _scene.get_node(^"Companion")
+	_caravan = _scene.get_node(^"Caravan")
 	_field = _scene.get_node_or_null(^"TerrainField")
 	_director = _scene.get_node(^"EnemyDirector")
 	_path = _scene.get_node(^"PathField")
@@ -249,7 +249,7 @@ func _simulate(bot: StringName, run_seed: int) -> Dictionary:
 			print("PROTOTYPE01_SIM_TRACE t=%.3f pos=%.4f,%.4f kills=%d alive=%d level=%d xp=%d hp=%d rng=%d carried=%d frags=%d"
 				% [_run.elapsed, _player.global_position.x, _player.global_position.z, _director.kills,
 					_director.enemies.size(), _run.progression.level, _run.progression.xp, _player.health,
-					_director.rng.state, _companion.carried, _xp.count()])
+					_director.rng.state, _caravan.carried, _xp.count()])
 		if _menu.is_open:
 			_release_inputs()
 			_pick_card()
@@ -272,7 +272,7 @@ func _simulate(bot: StringName, run_seed: int) -> Dictionary:
 	var result := {
 		bot = bot, seed = run_seed, time = _run.elapsed, victory = victory, timed_out = timed_out,
 		level = _run.progression.level, kills = _director.kills, boss = boss_state, boss_health = boss_health,
-		health = _player.health, digs = _digs, carried = _companion.carried, capacity = _companion.capacity,
+		health = _player.health, digs = _digs, carried = _caravan.carried, capacity = _caravan.capacity,
 		scrap_out = _run.scrap_out(victory), hits = _hits,
 	}
 	var outcome := "victory_at" if victory else ("timeout_at" if timed_out else "died_at")
@@ -437,7 +437,7 @@ func _tick_lamps() -> bool:
 	if lamps == null:
 		return false
 	var in_lamp_mode := _player.terrain_tool_mode == TerrainField.ToolMode.LAMP
-	var wanted := _run.is_night() and _dig_cooldown <= 0.0 and lamps.count() < lamps.max_count 		and _companion.carried >= lamps.scrap_cost and _nearest_enemy_distance() >= 3.5
+	var wanted := _run.is_night() and _dig_cooldown <= 0.0 and lamps.count() < lamps.max_count 		and _caravan.carried >= lamps.scrap_cost and _nearest_enemy_distance() >= 3.5
 	var spot_ok := false
 	if wanted:
 		spot_ok = lamps.can_place(_player.terrain_target) and lamps.can_afford(_player.terrain_target)
@@ -504,8 +504,8 @@ func _tick_relief_brush(step: float) -> void:
 		_rampart_left = RAMPART_HOLD_SECONDS
 		_hold_brush(TerrainField.ToolMode.RAISE)
 		return
-	var waiting := _scrap.positions_near(_player.global_position, _companion.tuning.pickup_radius_from_player).size()
-	if _companion.carried + waiting >= _companion.capacity:
+	var waiting := _scrap.positions_near(_player.global_position, _caravan.tuning.pickup_radius_from_player).size()
+	if _caravan.carried + waiting >= _caravan.capacity:
 		_player.tool_held = false
 		return
 	if _vein_target == Vector3.INF or _scrap.vein_scrap_left(_vein_target) <= 0:

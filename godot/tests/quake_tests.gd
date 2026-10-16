@@ -1,7 +1,7 @@
 extends SceneTree
 ## Suite del terremoto del quartiere (D-075) sul rilievo continuo (D-085): programmazione,
 ## preavviso con faglia vicina al giocatore, scossa che alza una cresta di pennellate con
-## un solco a fianco risparmiando giocatore, compagno e boss, rottamatori travolti,
+## un solco a fianco risparmiando giocatore, macchina della carovana e boss, rottamatori travolti,
 ## lampioni caduti, rottami che rotolano, intervallo successivo, opzione di avvio.
 ##   godot_console --headless --path godot --script res://tests/quake_tests.gd
 
@@ -14,7 +14,9 @@ var _run: ArenaRun
 var _quake: QuakeEvent
 var _field: TerrainField
 var _player: PlayerCharacter
-var _companion: Companion
+var _caravan: Caravan
+## Il capofila della carovana (il compagno di oggi).
+var _machine: Machine
 var _director: EnemyDirector
 var _weapon: AutoWeapon
 var _hud: RunHud
@@ -31,7 +33,7 @@ func _initialize() -> void:
 	_quake = _scene.get_node(^"QuakeEvent")
 	_field = _scene.get_node(^"TerrainField")
 	_player = _scene.get_node(^"Player")
-	_companion = _scene.get_node(^"Companion")
+	_caravan = _scene.get_node(^"Caravan")
 	_director = _scene.get_node(^"EnemyDirector")
 	_weapon = _scene.get_node(^"PlayerWeapon")
 	_hud = _scene.get_node(^"RunHud")
@@ -40,11 +42,13 @@ func _initialize() -> void:
 	_audio = _scene.get_node(^"RunAudio")
 	_director.spawning = false
 	await _frames(5)
+	# La macchina nasce nel _ready della carovana.
+	_machine = _caravan.lead()
 	_weapon.set_physics_process(false)
 	_test_setup()
 	await _test_warning()
 	await _test_shake()
-	await _test_crest_lifts_player_and_companion()
+	await _test_crest_lifts_player_and_machine()
 	_test_options()
 	await _test_empty_fault_is_skipped()
 	await _test_railway_has_no_quake()
@@ -118,12 +122,12 @@ func _test_warning() -> void:
 func _test_shake() -> void:
 	print("shake")
 	var fault := _quake.fault_points
-	# Sulla faglia: un lampione, un rottame, un rottamatore, il giocatore, il compagno.
-	# Giocatore e compagno in fondo alla faglia, lontani dal rottamatore.
+	# Sulla faglia: un lampione, un rottame, un rottamatore, il giocatore, la macchina.
+	# Giocatore e macchina in fondo alla faglia, lontani dal rottamatore.
 	var enemy_point: Vector3 = fault[2]
 	var scrap_point: Vector3 = fault[6]
 	var player_point: Vector3 = fault[fault.size() - 2]
-	var companion_point: Vector3 = fault[fault.size() - 1]
+	var machine_point: Vector3 = fault[fault.size() - 1]
 	# Una pennellata su suolo gia piano (la faglia puo attraversare l'argine del cortile).
 	var crest_point: Vector3 = fault[9]
 	for i in range(6, fault.size() - 3):
@@ -131,11 +135,11 @@ func _test_shake() -> void:
 		if absf(_field.delta_at(candidate)) < 0.2 and absf(_field.delta_at(candidate + _quake.fault_side() * QuakeEvent.FAULT_STEP)) < 0.2:
 			crest_point = candidate
 			break
-	_companion.add_capacity(0, 3)
+	_caravan.add_scrap(3)
 	var lamp_point := Vector3.INF
 	for i in [4, 5, 3]:
 		var candidate: Vector3 = fault[i]
-		_place(_companion, candidate + Vector3(1.0, 0.0, 1.0), 0.3)
+		_place(_machine, candidate + Vector3(1.0, 0.0, 1.0), 0.3)
 		if _lamps.place_at(candidate):
 			lamp_point = candidate
 			break
@@ -156,7 +160,7 @@ func _test_shake() -> void:
 	_place(_player, player_point, 0.88)
 	_player._invulnerable_left = 0.0
 	var health_before := _player.health
-	_place(_companion, companion_point, 0.3)
+	_place(_machine, machine_point, 0.3)
 	var next_before := _quake.next_at
 	var started := [false]
 	_quake.quake_started.connect(func(_center: Vector3) -> void: started[0] = true)
@@ -171,13 +175,13 @@ func _test_shake() -> void:
 	var furrow := crest_point + _quake.fault_side() * 2.4
 	_check(_field.delta_at(furrow) < -0.2, "solco a fianco della cresta (%.2f)" % _field.delta_at(furrow))
 	_check(_quake.volume_moved > 20.0, "volume spostato contato (%.1f m3)" % _quake.volume_moved)
-	# Giocatore e compagno risparmiano la propria pennellata: fino a quattro non alzate.
+	# Giocatore e macchina risparmiano la propria pennellata: fino a quattro non alzate.
 	var most := fault.size() - 1
 	_check(_quake.cells_raised >= most - 3 and _quake.cells_raised <= most, "pennellate alzate lungo la faglia: %d su %d" % [_quake.cells_raised, fault.size()])
 	_check(_field.delta_at(player_point) < 0.5, "il punto del giocatore e risparmiato (%.2f)" % _field.delta_at(player_point))
 	_check(_player.health == health_before - _run.tuning.quake_player_damage and _quake.player_hits == 1,
 		"giocatore sulla faglia colpito: %d -> %d" % [health_before, _player.health])
-	_check(_field.delta_at(_companion.global_position) < 0.5, "il punto del compagno e risparmiato")
+	_check(_field.delta_at(_machine.global_position) < 0.5, "il punto della macchina e risparmiato")
 	_check((not is_instance_valid(enemy) or enemy.is_dead) and _director.kills == kills_before + 1 and _quake.enemies_hit == 1,
 		"rottamatore sulla faglia travolto e contato")
 	_check(is_instance_valid(bystander) and not bystander.is_dead and _director.leashed == leashed_before, "rottamatore lontano illeso e rimasto al suo posto")
@@ -190,30 +194,30 @@ func _test_shake() -> void:
 	_check(_audio.play_count(&"quake_rumble") >= 2, "brontolio anche alla scossa")
 
 
-## Audit R-02: giocatore e compagno sono risparmiati solo entro HIT_RADIUS, ma la cresta ha
+## Audit R-02: giocatore e macchine sono risparmiati solo entro HIT_RADIUS, ma la cresta ha
 ## raggio CREST_RADIUS: appena fuori il suolo sale sotto di loro e va riappoggiati, come i nemici.
-func _test_crest_lifts_player_and_companion() -> void:
-	print("crest lifts player and companion")
+func _test_crest_lifts_player_and_machine() -> void:
+	print("crest lifts player and machine")
 	var q := Vector3(-30.0, 0.0, 30.0)
 	_field.level(q, 6.0, _field.base_height_at(q), 1.0)
 	_field.set_protected(q, 6.0, false)
 	# Dal lato opposto al solco (che sta su `fault_side`), lungo una faglia perpendicolare.
 	var side := _quake.fault_side()
 	var along := Vector3(-side.z, 0.0, side.x)
-	_place(_companion, q - side * 1.5, 0.3)
+	_place(_machine, q - side * 1.5, 0.3)
 	_place(_player, q - side * 1.3 + along * 3.0, 0.88)
 	_player._invulnerable_left = 5.0
 	await _frames(10)
 	var health := _player.health
 	for k in 6:
 		_quake._shake_point(q + along * ((k - 1) * QuakeEvent.FAULT_STEP))
-	var c := _companion.global_position
+	var c := _machine.global_position
 	var p := _player.global_position
 	_check(_player.health == health, "giocatore fuori dal raggio di colpo: nessun danno")
-	_check(_field.delta_at(c) > 0.3 and c.y >= _field.height_at(c) + 0.2, "compagno riappoggiato sulla cresta (centro %.2f, suolo %.2f)" % [c.y, _field.height_at(c)])
+	_check(_field.delta_at(c) > 0.3 and c.y >= _field.height_at(c) + 0.2, "macchina riappoggiata sulla cresta (centro %.2f, suolo %.2f)" % [c.y, _field.height_at(c)])
 	_check(_field.delta_at(p) > 0.3 and p.y >= _field.height_at(p) + 0.7, "giocatore riappoggiato sulla cresta (centro %.2f, suolo %.2f)" % [p.y, _field.height_at(p)])
 	await _frames(30)
-	_check(_companion.global_position.y >= _field.height_at(_companion.global_position) - 0.05
+	_check(_machine.global_position.y >= _field.height_at(_machine.global_position) - 0.05
 		and _player.global_position.y >= _field.height_at(_player.global_position) - 0.05, "dopo mezzo secondo entrambi sopra il suolo")
 
 

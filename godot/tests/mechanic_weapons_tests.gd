@@ -6,7 +6,7 @@ extends SceneTree
 ##   godot_console --headless --path godot --fixed-fps 60 --script res://tests/mechanic_weapons_tests.gd
 
 const SmokeTestScene := preload("res://scenes/main/smoke_test.tscn")
-const CompanionScene := preload("res://scenes/companion/companion.tscn")
+const CARAVAN_TUNING := preload("res://resources/tuning/caravan_default.tres")
 ## Centro della calamita in mira manuale: un tiratore senza `facing_direction` guarda verso -Z.
 const MAGNET_CENTER := Vector3(0.0, 0.0, -6.0)
 
@@ -16,7 +16,7 @@ var _player: PlayerCharacter
 var _director: EnemyDirector
 var _field: TerrainField
 var _queue: TerrainWriteQueue
-## Contenitore dei nodi di un test (tiratori, armi, compagni, campi): svuotato da _clear.
+## Contenitore dei nodi di un test (tiratori, armi, carovane, campi): svuotato da _clear.
 var _tmp: Node3D
 
 
@@ -43,7 +43,7 @@ func _initialize() -> void:
 	await _reset_field()
 	await _test_welder_chain()
 	await _test_welder_gap_and_ditch()
-	await _test_welder_companion()
+	await _test_welder_lead()
 	await _test_welder_double_arc()
 	await _test_welder_fusion_point()
 	await _test_welder_static()
@@ -115,21 +115,31 @@ func _node_at(p: Vector3) -> Node3D:
 	return node
 
 
-func _welder(level := 1, picks: Dictionary = {}, companion: Node3D = null, at := Vector3.ZERO) -> Welder:
+## Carovana senza giocatore (la macchina sta ferma) col capofila in [param p], a
+## [param clearance] dal suolo come i tiratori di prova.
+func _caravan_at(p: Vector3, clearance := 0.9) -> Caravan:
+	var caravan := Caravan.new()
+	caravan.tuning = CARAVAN_TUNING
+	caravan.position = Vector3(p.x, _field.height_at(p) + clearance, p.z)
+	_tmp.add_child(caravan)
+	return caravan
+
+
+func _welder(level := 1, picks: Dictionary = {}, caravan: Caravan = null, at := Vector3.ZERO) -> Welder:
 	var weapon := Welder.new()
 	weapon.weapon_id = &"welder"
 	weapon.shooter = _node_at(at)
 	weapon.director = _director
 	weapon.terrain_field = _field
 	_tmp.add_child(weapon)
-	weapon.companion = companion
+	weapon.caravan = caravan
 	weapon.set_level(level)
 	for at_level: int in picks:
 		weapon.choose_branch(at_level, picks[at_level])
 	return weapon
 
 
-func _magnet(level := 1, picks: Dictionary = {}, companion: Node3D = null) -> CraneMagnet:
+func _magnet(level := 1, picks: Dictionary = {}, caravan: Caravan = null) -> CraneMagnet:
 	var magnet := CraneMagnet.new()
 	magnet.weapon_id = &"crane_magnet"
 	magnet.shooter = _node_at(Vector3.ZERO)
@@ -138,7 +148,7 @@ func _magnet(level := 1, picks: Dictionary = {}, companion: Node3D = null) -> Cr
 	magnet.write_queue = _queue
 	magnet.manual_aim = true
 	_tmp.add_child(magnet)
-	magnet.companion = companion
+	magnet.caravan = caravan
 	magnet.set_level(level)
 	for at_level: int in picks:
 		magnet.choose_branch(at_level, picks[at_level])
@@ -200,19 +210,19 @@ func _test_welder_gap_and_ditch() -> void:
 	await _reset_field()
 
 
-func _test_welder_companion() -> void:
-	print("Saldatrice: arco dal compagno")
+func _test_welder_lead() -> void:
+	print("Saldatrice: arco dal capofila della carovana")
 	var a := _enemy_at(Vector3(0, 0, -3))
 	var b := _enemy_at(Vector3(5, 0, -3))
-	_welder(1, {}, _node_at(Vector3(5, 0, 0)))
+	_welder(1, {}, _caravan_at(Vector3(5, 0, 0)))
 	await _seconds(0.6)
-	_check(a.health == 49 and b.health == 49, "compagno a 5 m: due catene (%d, %d)" % [a.health, b.health])
+	_check(a.health == 49 and b.health == 49, "capofila a 5 m: due catene (%d, %d)" % [a.health, b.health])
 	await _clear()
 	a = _enemy_at(Vector3(0, 0, -3))
 	b = _enemy_at(Vector3(12, 0, -3))
-	_welder(1, {}, _node_at(Vector3(12, 0, 0)))
+	_welder(1, {}, _caravan_at(Vector3(12, 0, 0)))
 	await _seconds(0.6)
-	_check(a.health == 49 and b.health == 50, "compagno a 12 m: una sola (%d, %d)" % [a.health, b.health])
+	_check(a.health == 49 and b.health == 50, "capofila a 12 m: una sola (%d, %d)" % [a.health, b.health])
 	await _clear()
 
 
@@ -257,19 +267,19 @@ func _test_welder_static() -> void:
 func _test_welder_wire() -> void:
 	print("Saldatrice: Filo teso")
 	var plain := _enemy_at(Vector3(2.5, 0, 0))
-	_welder(5, {3: &"a", 5: &"a"}, _node_at(Vector3(5, 0, 0)))
+	_welder(5, {3: &"a", 5: &"a"}, _caravan_at(Vector3(5, 0, 0)))
 	await _seconds(1.4)
 	var without := plain.health
 	await _clear()
 	var wired := _enemy_at(Vector3(2.5, 0, 0))
-	_welder(5, {3: &"a", 5: &"b"}, _node_at(Vector3(5, 0, 0)))
+	_welder(5, {3: &"a", 5: &"b"}, _caravan_at(Vector3(5, 0, 0)))
 	await _seconds(1.4)
-	_check(wired.health < without, "chi sta sul filo fra giocatore e compagno perde piu PV (%d contro %d)" % [wired.health, without])
+	_check(wired.health < without, "chi sta sul filo fra giocatore e capofila perde piu PV (%d contro %d)" % [wired.health, without])
 	await _clear()
 	var lone := _enemy_at(Vector3(0, 0, -3))
 	var weapon := _welder(5, {3: &"a", 5: &"b"})
 	await _seconds(0.6)
-	_check(lone.health < 50 and weapon.companion == null, "senza compagno spara lo stesso, filo spento (%d)" % lone.health)
+	_check(lone.health < 50 and weapon.caravan == null, "senza carovana spara lo stesso, filo spento (%d)" % lone.health)
 	await _clear()
 
 
@@ -277,7 +287,7 @@ func _test_welder_arcs_no_nodes() -> void:
 	print("Saldatrice: archi senza nodi per colpo")
 	for i in 6:
 		_enemy_at(Vector3(-2.0 + i * 0.8, 0, -3.0 - (i % 2)))
-	var weapon := _welder(5, {3: &"a", 5: &"a"}, _node_at(Vector3(3, 0, 0)))
+	var weapon := _welder(5, {3: &"a", 5: &"a"}, _caravan_at(Vector3(3, 0, 0)))
 	await physics_frame
 	var children := weapon.get_child_count()
 	await _seconds(0.36)
@@ -372,23 +382,24 @@ func _test_magnet_crush() -> void:
 
 func _test_magnet_mobile() -> void:
 	print("Calamita: Gru mobile")
-	var companion := _node_at(MAGNET_CENTER + Vector3(0, 0, 2))
-	var magnet := _magnet(3, {3: &"b"}, companion)
+	var caravan := _caravan_at(MAGNET_CENTER + Vector3(0, 0, 2))
+	var lead := caravan.lead()
+	var magnet := _magnet(3, {3: &"b"}, caravan)
 	var enemy := _enemy_at(Vector3(6, 0, -2))
 	await physics_frame
 	magnet.trigger()
 	await _seconds(0.1)
-	_check(_planar(magnet.pull_center(), companion.global_position) < 0.1, "il centro e sul compagno")
-	companion.global_position += Vector3(4, 0, 0)
+	_check(_planar(magnet.pull_center(), lead.global_position) < 0.1, "il centro e sul capofila")
+	lead.global_position += Vector3(4, 0, 0)
 	await _seconds(2.0)
-	_check(_planar(magnet.pull_center(), companion.global_position) < 0.1, "il centro si sposta col compagno")
-	_check(_planar(enemy.global_position, companion.global_position) < 2.0, "e tira verso dove sta ora (%.2f)" % _planar(enemy.global_position, companion.global_position))
+	_check(_planar(magnet.pull_center(), lead.global_position) < 0.1, "il centro si sposta col capofila")
+	_check(_planar(enemy.global_position, lead.global_position) < 2.0, "e tira verso dove sta ora (%.2f)" % _planar(enemy.global_position, lead.global_position))
 	await _clear()
 	magnet = _magnet(3, {3: &"b"})
 	await physics_frame
 	magnet.trigger()
 	await _seconds(0.2)
-	_check(_planar(magnet.pull_center(), MAGNET_CENTER) < 0.1, "senza compagno resta nel punto di mira")
+	_check(_planar(magnet.pull_center(), MAGNET_CENTER) < 0.1, "senza carovana resta nel punto di mira")
 	await _clear()
 
 
@@ -417,26 +428,24 @@ func _test_magnet_repel() -> void:
 
 func _test_magnet_salvage() -> void:
 	print("Calamita: Raccolta")
-	var companion: Companion = CompanionScene.instantiate()
-	_tmp.add_child(companion)
-	companion.set_physics_process(false)
-	companion.global_position = Vector3(2, _field.height_at(Vector3(2, 0, 0)) + 0.3, 0)
-	companion.carried = 0
+	var caravan := _caravan_at(Vector3(2, 0, 0), Caravan.GROUND_CLEARANCE)
+	caravan.lead().set_physics_process(false)
+	caravan.carried = 0
 	var scraps := ScrapField.new()
 	scraps.terrain_field = _field
 	_tmp.add_child(scraps)
 	scraps.spawn_on_ground(MAGNET_CENTER + Vector3(1, 0, 0))
 	scraps.spawn_on_ground(MAGNET_CENTER + Vector3(-2, 0, 1))
 	scraps.spawn_on_ground(MAGNET_CENTER + Vector3(10, 0, 0))
-	var magnet := _magnet(5, {3: &"a", 5: &"b"}, companion)
+	var magnet := _magnet(5, {3: &"a", 5: &"b"}, caravan)
 	magnet.scrap_field = scraps
 	await physics_frame
 	magnet.trigger()
 	await _until_released(magnet)
 	await _seconds(0.1)
-	_check(companion.carried == 2 and scraps.count() == 1, "due rottami nel raggio passano al compagno (%d a bordo, %d a terra)" % [companion.carried, scraps.count()])
+	_check(caravan.carried == 2 and scraps.count() == 1, "due rottami nel raggio passano ai Cassoni (%d a bordo, %d a terra)" % [caravan.carried, scraps.count()])
 	await _clear()
-	# Senza compagno: nessun errore, i rottami restano dove sono.
+	# Senza carovana: nessun errore, i rottami restano dove sono.
 	scraps = ScrapField.new()
 	scraps.terrain_field = _field
 	_tmp.add_child(scraps)
@@ -447,7 +456,7 @@ func _test_magnet_salvage() -> void:
 	magnet.trigger()
 	await _until_released(magnet)
 	await _seconds(0.1)
-	_check(scraps.count() == 1, "senza compagno il rottame resta a terra")
+	_check(scraps.count() == 1, "senza carovana il rottame resta a terra")
 	await _clear()
 
 
@@ -502,13 +511,14 @@ func _test_tesla() -> void:
 	_check(near_now < near_start - 0.5 and near.health < 50, "un nemico a 4 m si avvicina e prende danno (%.2f m, %d PV)" % [near_now, near.health])
 	_check(_planar(far.global_position, far_start) < 0.1 and far.health == 50, "uno a 7 m no")
 	await _clear()
-	# Campo del compagno, lontano dal giocatore (niente catene della Saldatrice): solo la Bobina.
-	var companion := _node_at(Vector3(15, 0, 0))
-	var by_companion := _enemy_at(Vector3(15, 0, -4))
-	weapon = _welder(5, {3: &"a", 5: &"a"}, companion)
+	# Campo del capofila, lontano dal giocatore (niente catene della Saldatrice): solo la Bobina.
+	var caravan := _caravan_at(Vector3(15, 0, 0))
+	var lead := caravan.lead()
+	var by_lead := _enemy_at(Vector3(15, 0, -4))
+	weapon = _welder(5, {3: &"a", 5: &"a"}, caravan)
 	weapon.fusion_id = &"tesla_coil"
 	weapon.set_level(5)
 	await _seconds(1.5)
-	_check(_planar(by_companion.global_position, companion.global_position) < 3.5 and by_companion.health < 50,
-		"il campo del compagno attira e scarica (%.2f m, %d PV)" % [_planar(by_companion.global_position, companion.global_position), by_companion.health])
+	_check(_planar(by_lead.global_position, lead.global_position) < 3.5 and by_lead.health < 50,
+		"il campo del capofila attira e scarica (%.2f m, %d PV)" % [_planar(by_lead.global_position, lead.global_position), by_lead.health])
 	await _clear()

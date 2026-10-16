@@ -3,11 +3,12 @@ extends Weapon
 ## Saldatrice (spec D-092, par. 4.3), automatica del Meccanico: ogni `fire_interval` un arco dal
 ## giocatore al nemico piu vicino entro `weapon_range`, che salta al piu vicino non ancora colpito
 ## entro `jump_range` (`ditch_jump_range` se parte da un fossato) fino a `jumps` bersagli, `damage`
-## ciascuno. Col compagno entro `companion_range` parte un arco uguale anche da lui; in una scarica
-## nessuno e colpito due volte. Bivi: Arco doppio (la seconda catena parte dal piu vicino non
-## ancora colpito), Punto di fusione (3 danni, un bersaglio), Carica statica (i colpiti feriscono
-## chi toccano), Filo teso (fra giocatore e compagno). Fusa con la Calamita diventa la Bobina di
-## Tesla: un campo attorno a giocatore e compagno che attira piano e scarica archi su chi c'e.
+## ciascuno. Col capofila della carovana entro `companion_range` parte un arco uguale anche da
+## lui; in una scarica nessuno e colpito due volte. Bivi: Arco doppio (la seconda catena parte dal
+## piu vicino non ancora colpito), Punto di fusione (3 danni, un bersaglio), Carica statica (i
+## colpiti feriscono chi toccano), Filo teso (fra giocatore e capofila). Fusa con la Calamita
+## diventa la Bobina di Tesla: un campo attorno a giocatore e capofila che attira piano e scarica
+## archi su chi c'e.
 ## Gli archi sono segmenti spezzati di una sola MultiMesh: nessun nodo per colpo.
 
 const ARC_COLOR := Color(0.2, 0.95, 0.9)
@@ -31,8 +32,9 @@ const BLOCKED_RETRY := 0.1
 ## Nell'ultimo metro verso il centro la deriva cala: chi e arrivato non trema attorno al punto.
 const PULL_EASE := 1.0
 
-## Compagno (dal WeaponLoadout, dopo `add_child`): puo mancare, e allora niente arco ne filo.
-var companion: Node3D
+## Carovana (dal WeaponLoadout, dopo `add_child`): archi, filo e campo partono dal capofila;
+## puo mancare, e allora niente arco ne filo.
+var caravan: Caravan
 var fire_interval := 1.2
 var weapon_range := 6.0
 var jumps := 3
@@ -102,7 +104,7 @@ func drawn_segments() -> int:
 func _physics_process(delta: float) -> void:
 	_tick_arcs(delta)
 	if shooter != null and director != null:
-		var mate := _companion_near()
+		var mate := _lead_near()
 		if not _static.is_empty():
 			_tick_static(delta)
 		_tick_wire(delta, mate)
@@ -115,11 +117,11 @@ func _physics_process(delta: float) -> void:
 		_redraw()
 
 
-## Una scarica: le catene dal giocatore e, se e vicino, dal compagno. Restituisce i colpiti.
+## Una scarica: le catene dal giocatore e, se e vicino, dal capofila. Restituisce i colpiti.
 func discharge() -> Array[Enemy]:
 	var hit: Array[Enemy] = []
 	var sources: Array[Node3D] = [shooter]
-	var mate := _companion_near()
+	var mate := _lead_near()
 	if mate != null:
 		sources.append(mate)
 	for source in sources:
@@ -176,13 +178,20 @@ func _nearest(origin: Vector3, reach: float, skip: Array[Enemy]) -> Enemy:
 	return best
 
 
-## Il compagno se c'e ed e entro `companion_range` da chi spara, altrimenti null.
-func _companion_near() -> Node3D:
-	if not is_instance_valid(companion) or not companion.is_inside_tree():
+## Il capofila della carovana se c'e ed e entro `companion_range` da chi spara, altrimenti null.
+func _lead_near() -> Node3D:
+	var lead := _lead()
+	if lead == null or _planar(lead.global_position - shooter.global_position).length() > companion_range:
 		return null
-	if _planar(companion.global_position - shooter.global_position).length() > companion_range:
+	return lead
+
+
+## Il capofila della carovana se c'e ed e nell'albero, altrimenti null.
+func _lead() -> Node3D:
+	if not is_instance_valid(caravan) or not caravan.is_inside_tree():
 		return null
-	return companion
+	var lead := caravan.lead()
+	return lead if is_instance_valid(lead) and lead.is_inside_tree() else null
 
 
 ## Carica statica: ogni STATIC_TICK chi e ancora elettrico ferisce i vivi che tocca.
@@ -203,7 +212,7 @@ func _tick_static(delta: float) -> void:
 				other.take_damage(STATIC_DAMAGE)
 
 
-## Filo teso: col compagno vicino, ogni WIRE_TICK ferisce chi sta sul segmento fra i due.
+## Filo teso: col capofila vicino, ogni WIRE_TICK ferisce chi sta sul segmento fra i due.
 func _tick_wire(delta: float, mate: Node3D) -> void:
 	var on := wire and mate != null
 	if on != _wire_drawn:
@@ -224,14 +233,15 @@ func _tick_wire(delta: float, mate: Node3D) -> void:
 			enemy.take_damage(WIRE_DAMAGE)
 
 
-## Bobina di Tesla: campi attorno a giocatore e compagno che attirano; ogni `arc_interval` un
+## Bobina di Tesla: campi attorno a giocatore e capofila che attirano; ogni `arc_interval` un
 ## arco senza salti su un nemico a caso dentro uno dei due.
 func _tick_tesla(delta: float) -> void:
 	var radius := fusion_stat(&"field_radius")
 	var speed := fusion_stat(&"field_pull")
 	var centers: Array[Vector3] = [shooter.global_position]
-	if is_instance_valid(companion) and companion.is_inside_tree():
-		centers.append(companion.global_position)
+	var lead := _lead()
+	if lead != null:
+		centers.append(lead.global_position)
 	_tesla_left -= delta
 	var arcing := _tesla_left <= 0.0
 	var inside: Array[Enemy] = []
@@ -297,9 +307,10 @@ func _redraw() -> void:
 		var points: PackedVector3Array = arc.points
 		for i in range(1, points.size()):
 			n = _put_segment(n, points[i - 1], points[i])
-	if _wire_drawn and is_instance_valid(companion):
+	var lead := _lead()
+	if _wire_drawn and lead != null:
 		var lift := Vector3.UP * SOURCE_LIFT
-		n = _put_segment(n, shooter.global_position + lift, companion.global_position + lift)
+		n = _put_segment(n, shooter.global_position + lift, lead.global_position + lift)
 	_multimesh.visible_instance_count = n
 
 

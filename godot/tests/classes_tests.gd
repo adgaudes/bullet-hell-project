@@ -4,6 +4,7 @@ extends SceneTree
 
 const SmokeTestScene := preload("res://scenes/main/smoke_test.tscn")
 const CLASSES: Array[StringName] = [&"engineer", &"sapper", &"mechanic", &"weeder"]
+const CARAVAN_TUNING := preload("res://resources/tuning/caravan_default.tres")
 
 var _failures := 0
 var _root: Node3D
@@ -18,12 +19,6 @@ class PlayerStub extends Node3D:
 
 	func heal(amount: int) -> void:
 		health += amount
-
-
-## Compagno finto: posizione, velocita e taratura.
-class CompanionStub extends Node3D:
-	var velocity := Vector3.ZERO
-	var tuning := CompanionTuning.new()
 
 
 func _initialize() -> void:
@@ -109,7 +104,7 @@ func _test_decks(class_id: StringName) -> void:
 	var progression := RunProgression.new()
 	progression.setup(17)
 	progression.class_id = class_id
-	progression.has_companion = true
+	progression.has_caravan = true
 	progression.weapon_cards = func() -> Array[Dictionary]: return WeaponOffers.cards(loadout, class_id, unlocked)
 	for card in ClassCatalog.start_cards(class_id):
 		progression.choose(card)
@@ -142,6 +137,14 @@ func _test_decks(class_id: StringName) -> void:
 	_check(weapon_seen > 0, "%s: compaiono carte arma (%d)" % [class_id, weapon_seen])
 	_check(progression.level_of(&"tall_grass") >= (1 if class_id == &"weeder" else 0), "%s: carte iniziali tenute" % class_id)
 	await _clear()
+
+
+## Carovana vera senza giocatore: la sua macchina sta ferma dove la mette il test.
+func _caravan() -> Caravan:
+	var caravan := Caravan.new()
+	caravan.tuning = CARAVAN_TUNING
+	_root.add_child(caravan)
+	return caravan
 
 
 func _perks() -> ClassPerks:
@@ -226,19 +229,25 @@ func _test_weld_and_bush() -> void:
 	var perks := _perks()
 	var player := PlayerStub.new()
 	_root.add_child(player)
-	var companion := CompanionStub.new()
-	_root.add_child(companion)
+	var caravan := _caravan()
+	var machine := caravan.lead()
 	perks.player = player
-	perks.companion = companion
-	companion.global_position = Vector3(2.0, 0.0, 0.0)
+	perks.caravan = caravan
+	machine.global_position = Vector3(2.0, 0.0, 0.0)
 	perks.apply(&"field_weld", 1)
 	for i in 46:
 		perks._physics_process(1.0)
-	_check(player.health == 6, "compagno vicino: 1 PV dopo 45 s (%d)" % player.health)
-	companion.global_position = Vector3(12.0, 0.0, 0.0)
+	_check(player.health == 6, "macchina vicina: 1 PV dopo 45 s (%d)" % player.health)
+	machine.global_position = Vector3(12.0, 0.0, 0.0)
 	for i in 50:
 		perks._physics_process(1.0)
-	_check(player.health == 6, "compagno lontano: niente")
+	_check(player.health == 6, "macchina lontana: niente")
+	machine.global_position = Vector3(2.0, 0.0, 0.0)
+	machine.state = Machine.State.BROKEN
+	for i in 50:
+		perks._physics_process(1.0)
+	_check(player.health == 6, "macchina vicina ma guasta: niente")
+	machine.state = Machine.State.OK
 	perks.levels.erase(&"field_weld")
 	var map := MeadowMap.new()
 	map.setup(_field)
@@ -261,25 +270,31 @@ func _test_weld_and_bush() -> void:
 func _test_engine() -> void:
 	print("motore truccato")
 	var perks := _perks()
-	var companion := CompanionStub.new()
-	_root.add_child(companion)
-	var shared := companion.tuning
-	perks.companion = companion
+	var caravan := _caravan()
+	var machine := caravan.lead()
+	var shared := caravan.tuning
+	var base_speed := shared.max_speed
+	perks.caravan = caravan
 	perks.apply(&"tuned_engine", 1)
-	_check(is_equal_approx(companion.tuning.max_speed, shared.max_speed * 1.2), "velocita +20%% (%.1f)" % companion.tuning.max_speed)
+	var top_speed := caravan.tuning.max_speed * caravan.speed_scale
+	_check(is_equal_approx(top_speed, base_speed * 1.2), "velocita +20%% (%.1f)" % top_speed)
 	perks.apply(&"tuned_engine", 2)
-	_check(is_equal_approx(companion.tuning.max_speed, shared.max_speed * 1.4), "liv. 2: +40%")
-	_check(companion.tuning != shared, "la taratura condivisa non si tocca")
+	_check(is_equal_approx(caravan.tuning.max_speed * caravan.speed_scale, base_speed * 1.4), "liv. 2: +40%")
+	_check(caravan.tuning == shared and is_equal_approx(shared.max_speed, base_speed), "la taratura condivisa non si tocca")
 	var enemy := _director.spawn_at(Vector3(6.0, 0.0, 6.0))
 	enemy.global_position = Vector3(6.0, 0.0, 6.0)
 	enemy.health = 5
-	companion.global_position = Vector3(6.3, 0.0, 6.0)
-	companion.velocity = Vector3.ZERO
+	machine.global_position = Vector3(6.3, 0.0, 6.0)
+	machine.velocity = Vector3.ZERO
 	perks._physics_process(0.6)
 	_check(enemy.health == 5, "fermo non travolge")
-	companion.velocity = Vector3(4.0, 0.0, 0.0)
+	machine.velocity = Vector3(4.0, 0.0, 0.0)
 	perks._physics_process(0.6)
 	_check(enemy.health == 4, "in corsa travolge: 1 danno")
+	machine.state = Machine.State.BROKEN
+	perks._physics_process(0.6)
+	_check(enemy.health == 4, "guasta non travolge")
+	machine.state = Machine.State.OK
 	_director.clear_horde()
 	await _clear()
 

@@ -10,7 +10,7 @@ var _run: ArenaRun
 var _field: TerrainField
 var _district: RuinsDistrict
 var _player: PlayerCharacter
-var _companion: Companion
+var _caravan: Caravan
 var _director: EnemyDirector
 var _weapon: AutoWeapon
 var _path: PathField
@@ -26,7 +26,7 @@ func _initialize() -> void:
 	_field = _scene.get_node(^"TerrainField")
 	_district = _scene.get_node(^"District")
 	_player = _scene.get_node(^"Player")
-	_companion = _scene.get_node(^"Companion")
+	_caravan = _scene.get_node(^"Caravan")
 	_director = _scene.get_node(^"EnemyDirector")
 	_weapon = _scene.get_node(^"PlayerWeapon")
 	_path = _scene.get_node(^"PathField")
@@ -36,6 +36,7 @@ func _initialize() -> void:
 	await _frames(5)
 	# Dopo il _ready della scena, che riattiverebbe il passo fisico.
 	_weapon.set_physics_process(false)
+	_test_caravan_wiring()
 	_test_courtyard_walls()
 	_test_path_uses_gates()
 	await _test_sealed_courtyard()
@@ -50,8 +51,8 @@ func _initialize() -> void:
 	await _test_dig_debris_throttled()
 	await _test_level_up_flow()
 	await _test_weapon_branch_flow()
-	_test_companion_upgrades()
-	await _test_companion_skips_scrap_behind_rampart()
+	_test_caravan_upgrades()
+	await _test_caravan_skips_scrap_behind_rampart()
 	await _test_death_ends_run()
 	await _test_pause_quit_confirms_and_banks()
 	# T-12: i nodi messi in coda con queue_free vanno liberati prima di uscire, o
@@ -137,6 +138,30 @@ func _seal_gate(gate: Vector3) -> void:
 func _gates() -> Array[Vector3]:
 	var r := _ring_radius()
 	return [Vector3(0.0, 0.0, -r), Vector3(0.0, 0.0, r), Vector3(r, 0.0, 0.0), Vector3(-r, 0.0, 0.0)]
+
+
+## Collegamenti della carovana nella scena (task 3 di D-093): un NodePath sbagliato in una
+## scena non da errore, lascia la proprieta nulla e il gioco senza rottami ne lampioni pagati.
+func _test_caravan_wiring() -> void:
+	print("caravan wiring")
+	var lead := _caravan.lead() if _caravan != null else null
+	_check(_caravan != null and lead != null and lead.has_module(&"cargo"), "la scena ha la carovana, con un Cassone capofila")
+	if lead == null:
+		return
+	var lamps: LampField = _scene.get_node(^"LampField")
+	var audio: RunAudio = _scene.get_node(^"RunAudio")
+	var quake: QuakeEvent = _scene.get_node(^"QuakeEvent")
+	_check(_run.caravan == _caravan and lamps.caravan == _caravan and audio.caravan == _caravan and quake.caravan == _caravan,
+		"Run, LampField, RunAudio e QuakeEvent puntano alla carovana")
+	_check(_caravan.player == _player and _caravan.scrap_field == _scrap_field_node() and _caravan.path_field == _path,
+		"la carovana conosce giocatore, rottami e campo di percorso")
+	_check(not _scrap_field_node().veins().is_empty(), "le vene dei cumuli sono nel campo dei rottami (%d)" % _scrap_field_node().veins().size())
+	_check(_run.write_queue.bodies.has(_player) and _run.write_queue.bodies.has(lead), "giocatore e capofila in write_queue.bodies")
+	_check(lead.cargo().terrain_field == _field and lead.cargo().director == _director and lead.cargo().run_tuning == _run.tuning,
+		"i servizi della run arrivano al Cassone")
+	_check(_run.loadout.caravan == _caravan and _run.class_perks.caravan == _caravan, "loadout e carte di classe hanno la carovana")
+	_check(_run.light_field.source_count() == 2 and is_equal_approx(_run.light_field.radius_of(_run.beacon_light_id), _run.beacon_radius),
+		"torcia e faro del capofila nel campo delle luci")
 
 
 ## Il cortile di partenza e un anello di argini sul rilievo con quattro varchi piani.
@@ -468,22 +493,30 @@ func _test_weapon_branch_flow() -> void:
 
 
 ## Audit C-01: un rottame raggiungibile solo aggirando un argine non e una meta in linea
-## retta: il compagno spingerebbe contro l'argine finche il giocatore non si allontana.
-func _test_companion_skips_scrap_behind_rampart() -> void:
-	print("companion and rampart")
+## retta: il Cassone spingerebbe contro l'argine finche il giocatore non si allontana.
+func _test_caravan_skips_scrap_behind_rampart() -> void:
+	print("caravan and rampart")
 	var p := Vector3(-30.0, 0.0, 30.0)
 	_field.set_protected(p, 16.0, false)
 	_place_player(p)
 	for x in range(-10, 11, 2):
 		_field.sculpt(p + Vector3(x, 0.0, 3.5), 1.6, 1.6)
-	_companion.global_position = p + Vector3(0.0, _field.height_at(p) + 0.3, 1.0)
+	var lead := _caravan.lead()
+	lead.global_position = p + Vector3(0.0, _field.height_at(p) + 0.3, 1.0)
+	lead.reset_physics_interpolation()
 	_path.solve()
-	var scrap := p + Vector3(0.0, 0.0, 6.0)
+	# A 5,8 m e non a 6: il limite di raccolta e 6 m dal giocatore, sul bordo il rottame
+	# potrebbe restare fuori e il controllo passerebbe senza provare la linea dritta.
+	var scrap := p + Vector3(0.0, 0.0, 5.8)
 	_scrap_field_node().spawn_on_ground(scrap)
 	await _frames(2)
-	var destination: Vector3 = _companion._choose_destination()
+	_check(_path.cost_at(scrap) != PathField.UNREACHABLE and Vector2(scrap.x - _player.global_position.x, scrap.z - _player.global_position.z).length() <= _caravan.tuning.pickup_radius_from_player,
+		"il rottame ha una strada attorno all'argine ed e entro il raggio di raccolta")
+	# Il Cassone ricerca la meta al piu ogni 0,2 s: una soluzione nuova del percorso la fa rifare ora.
+	_path.solve()
+	var destination: Vector3 = lead._choose_destination()
 	_check(Vector2(destination.x - scrap.x, destination.z - scrap.z).length() > 1.0,
-		"rottame dietro un argine: non e la meta del compagno (meta a %.1f m dal rottame)" % Vector2(destination.x - scrap.x, destination.z - scrap.z).length())
+		"rottame dietro un argine: non e la meta del Cassone (meta a %.1f m dal rottame)" % Vector2(destination.x - scrap.x, destination.z - scrap.z).length())
 	_scrap_field_node().take_near(scrap, 1.5, 10)
 	_field.reset_to_base(p + Vector3(0.0, 0.0, 3.5), Vector2(13.0, 3.0))
 
@@ -492,18 +525,19 @@ func _scrap_field_node() -> ScrapField:
 	return _scene.get_node(^"ScrapField")
 
 
-func _test_companion_upgrades() -> void:
-	print("companion upgrades")
-	var base_capacity := _companion.tuning.capacity
+func _test_caravan_upgrades() -> void:
+	print("caravan upgrades")
+	var lead := _caravan.lead()
+	var base_capacity := _caravan.tuning.cargo_capacity
 	# Il level-up precedente sceglie una carta a caso: puo gia essere il cassone.
-	var capacity_before := _companion.capacity
+	var capacity_before := _caravan.capacity
 	_run.apply_upgrade(&"companion_cargo", 1)
-	_check(_companion.capacity == capacity_before + 2, "cassone rinforzato: capacita +2")
-	_check(_companion.tuning.capacity == base_capacity, "la risorsa di tuning non cambia")
+	_check(_caravan.capacity == capacity_before + 2, "cassone rinforzato: capacita +2")
+	_check(_caravan.tuning.cargo_capacity == base_capacity, "la risorsa di tuning non cambia")
 	_run.apply_upgrade(&"companion_turret", 1)
-	_check(_run.companion_weapon != null and _companion.has_node(^"TurretPart"), "torretta montata e visibile")
+	_check(_run.turret_weapon != null and _run.turret_weapon.shooter == lead and lead.has_node(^"TurretPart"), "torretta montata e visibile sul capofila")
 	_run.apply_upgrade(&"companion_magnet", 1)
-	_check(_companion.has_node(^"MagnetPart") and _xp.attractors.size() == 1, "calamita montata e attiva")
+	_check(lead.has_node(^"MagnetPart") and _xp.attractors.size() == 1 and _xp.attractors[0].node == lead, "calamita montata e attiva sul capofila")
 
 
 func _test_death_ends_run() -> void:

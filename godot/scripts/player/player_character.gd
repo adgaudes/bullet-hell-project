@@ -83,9 +83,6 @@ var _preview: BrushPreview
 var _brush_was_blocked := false
 ## Punto mondo bersaglio del tool, aggiornato a ogni passo fisico.
 var terrain_target := Vector3.ZERO
-## Compagno macchina (Companion Slice): se presente, rialzare costa un rottame
-## e richiede il compagno vicino al bersaglio. Si registra da solo.
-var companion: Companion
 ## Punti vita (prototipo della promessa A, D-038). Senza un ArenaRun che li
 ## imposta il personaggio non muore: le altre scene restano invariate.
 var max_health := 0

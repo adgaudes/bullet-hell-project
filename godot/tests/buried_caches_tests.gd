@@ -260,7 +260,7 @@ func _test_run_caches() -> void:
 	_check(always_paused and not menu.is_open and not paused and run._pending_caches == 0 and run._pending_level_ups == 0,
 		"fermo fino all'ultima scelta, poi il gioco riparte")
 
-	# Slot pieni e tutto al 5: nessun menu, 2 rottami al compagno.
+	# Slot pieni e tutto al 5: nessun menu, 2 rottami nei Cassoni della carovana.
 	for i in 60:
 		var cards := WeaponOffers.cards(run.loadout, run.class_id, run._unlocked_weapons())
 		if cards.is_empty():
@@ -276,12 +276,19 @@ func _test_run_caches() -> void:
 			&"fusion":
 				run.loadout.fuse(card.weapon_id)
 	_check(WeaponOffers.cards(run.loadout, run.class_id, run._unlocked_weapons()).is_empty(), "nessuna carta arma possibile")
-	run.companion.carried = 0
+	run.caravan.carried = 0
 	run._on_cache_opened(Vector3.ZERO)
 	await _frames(3)
 	_check(not menu.is_open and not paused and run._pending_caches == 0, "nessun menu")
-	_check(run.companion.carried == 2, "2 rottami al compagno: %d" % run.companion.carried)
+	_check(run.caravan.carried == 2, "2 rottami nella carovana: %d" % run.caravan.carried)
 	_check(run.hud.event_warning_text().begins_with("CASSA SEPOLTA"), "avviso nel HUD: %s" % run.hud.event_warning_text())
+	# Con un solo posto libero il secondo rottame resta a terra, come col compagno.
+	run.caravan.carried = run.caravan.capacity - 1
+	var on_ground := run._scrap_field().count()
+	run._on_cache_opened(Vector3.ZERO)
+	await _frames(3)
+	_check(run.caravan.carried == run.caravan.capacity and run._scrap_field().count() == on_ground + 1,
+		"cassone quasi pieno: un rottame a bordo, l'altro a terra (%d/%d, %d a terra)" % [run.caravan.carried, run.caravan.capacity, run._scrap_field().count() - on_ground])
 	profile.reset()
 	paused = false
 	root.remove_child(scene)

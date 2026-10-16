@@ -7,7 +7,7 @@ extends WorldEvent
 ## **cresta** e scava un **solco** a fianco; sulla griglia (ferrovia) le celle Normal si
 ## rialzano e le trincee si riempiono. Chi sta sulla faglia: i rottamatori vengono
 ## travolti (contano come abbattuti), il giocatore subisce `player_damage` e il suo punto
-## viene risparmiato, compagno e boss sono risparmiati. I lampioni sulla linea cadono; i
+## viene risparmiato, le macchine della carovana e il boss sono risparmiati. I lampioni sulla linea cadono; i
 ## rottami a terra rotolano o vengono riportati in superficie da ScrapField.
 ##
 ## Come il treno non ha un passo fisico proprio: `ArenaRun` lo fa avanzare con il tempo di
@@ -44,7 +44,7 @@ const SKIP_RETRY_SECONDS := 8.0
 ## Rilievo continuo (D-085): la faglia e una fila di pennellate.
 @export var terrain_field: TerrainField
 @export var player: PlayerCharacter
-@export var companion: Companion
+@export var caravan: Caravan
 @export var director: EnemyDirector
 @export var lamp_field: LampField
 @export var hud: RunHud
@@ -215,8 +215,8 @@ func _fault_position(index: int) -> Vector3:
 
 
 ## Una pennellata della faglia sul rilievo: cresta nel punto, solco a fianco. Il punto
-## del giocatore (colpito) e quelli di compagno e boss sono risparmiati; i rottamatori
-## entro HIT_RADIUS sono travolti, quelli appena fuori (e giocatore e compagno sotto la
+## del giocatore (colpito) e quelli delle macchine e del boss sono risparmiati; i rottamatori
+## entro HIT_RADIUS sono travolti, quelli appena fuori (e giocatore e macchine sotto la
 ## cresta, audit R-02) vengono riappoggiati sulla nuova
 ## quota (un rialzo secco sotto un corpo lo incastrerebbe nel rilievo).
 func _shake_point(p: Vector3) -> void:
@@ -229,8 +229,10 @@ func _shake_point(p: Vector3) -> void:
 		quake_hit.emit(&"player")
 		print("PROTOTYPE01_QUAKE_HIT what=player")
 		return
-	if _near(companion, at):
-		return
+	if caravan != null:
+		for machine in caravan.machines:
+			if _near(machine, at):
+				return
 	if is_instance_valid(boss) and not boss.is_dead and _planar_distance(boss.global_position, at) < BOSS_SPARE_RADIUS:
 		return
 	if director != null:
@@ -241,7 +243,7 @@ func _shake_point(p: Vector3) -> void:
 				enemies_hit += 1
 				enemy.take_damage(enemy.health)
 				quake_hit.emit(&"enemy")
-	# Giocatore e compagno appena fuori da HIT_RADIUS ma sotto la cresta (audit R-02):
+	# Giocatore e macchine appena fuori da HIT_RADIUS ma sotto la cresta (audit R-02):
 	# altezza sul suolo prima, per riappoggiarli dopo come i nemici.
 	var spared := _spared_offsets(p)
 	volume_moved += absf(terrain_field.sculpt(p, CREST_RADIUS, CREST_HEIGHT))
@@ -266,11 +268,15 @@ func _lift_bodies(p: Vector3, radius: float) -> void:
 		enemy.global_position.y = maxf(enemy.global_position.y, ground + enemy.spawn_center_height())
 
 
-## Giocatore e compagno entro CREST_RADIUS dalla pennellata [param p], con la loro
-## altezza sul suolo attuale.
+## Giocatore e macchine della carovana entro CREST_RADIUS dalla pennellata [param p], con
+## la loro altezza sul suolo attuale.
 func _spared_offsets(p: Vector3) -> Dictionary:
 	var offsets := {}
-	for body: Node3D in [player, companion]:
+	var bodies: Array[Node3D] = [player]
+	if caravan != null:
+		for machine in caravan.machines:
+			bodies.append(machine)
+	for body: Node3D in bodies:
 		if body != null and _planar_distance(body.global_position, p) <= CREST_RADIUS:
 			offsets[body] = body.global_position.y - terrain_field.height_at(body.global_position)
 	return offsets

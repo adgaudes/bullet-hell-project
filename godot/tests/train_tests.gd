@@ -1,7 +1,7 @@
 extends SceneTree
 ## Test del treno della ferrovia sul rilievo continuo (tappa B): preavviso, fascia
 ## riportata alla base senza rottami, vene dei vagoni azzerate, rottamatori travolti,
-## giocatore e compagno spinti su un punto calpestabile, lampioni e rottami a terra
+## giocatore e macchina della carovana spinti su un punto calpestabile, lampioni e rottami a terra
 ## spazzati, direzione alternata. Eseguire con:
 ##   godot_console --headless --path godot --fixed-fps 60 --script res://tests/train_tests.gd
 
@@ -13,7 +13,9 @@ var _run: ArenaRun
 var _train: TrainEvent
 var _field: TerrainField
 var _player: PlayerCharacter
-var _companion: Companion
+var _caravan: Caravan
+## Il capofila della carovana (il compagno di oggi).
+var _machine: Machine
 var _director: EnemyDirector
 var _weapon: AutoWeapon
 var _hud: RunHud
@@ -30,7 +32,7 @@ func _initialize() -> void:
 	_train = _scene.get_node(^"TrainEvent")
 	_field = _scene.get_node(^"TerrainField")
 	_player = _scene.get_node(^"Player")
-	_companion = _scene.get_node(^"Companion")
+	_caravan = _scene.get_node(^"Caravan")
 	_director = _scene.get_node(^"EnemyDirector")
 	_weapon = _scene.get_node(^"PlayerWeapon")
 	_hud = _scene.get_node(^"RunHud")
@@ -39,6 +41,8 @@ func _initialize() -> void:
 	_audio = _scene.get_node(^"RunAudio")
 	_director.spawning = false
 	await _frames(5)
+	# La macchina nasce nel _ready della carovana.
+	_machine = _caravan.lead()
 	_weapon.set_physics_process(false)
 	_test_setup()
 	await _test_warning()
@@ -109,7 +113,7 @@ func _test_warning() -> void:
 
 
 ## Un argine a cavallo del confine delle regioni, un solco, un argine fuori fascia, un
-## lampione, un rottame a terra, un rottamatore, il giocatore sul binario e il compagno
+## lampione, un rottame a terra, un rottamatore, il giocatore sul binario e la macchina
 ## accanto: dopo il passaggio la fascia e alla base, chi era sopra e morto o spinto fuori,
 ## i rottami non aumentano e le vene dei vagoni sono azzerate.
 func _test_pass_flattens_and_hits() -> void:
@@ -121,8 +125,8 @@ func _test_pass_flattens_and_hits() -> void:
 	_field.sculpt(Vector3(24.0, 0.0, 0.0), 2.0, -0.8)
 	_field.sculpt(Vector3(24.0, 0.0, 9.0), 2.0, 1.4)
 	var lamp_at := Vector3(-30.0, 0.0, -2.4)
-	_companion.add_capacity(0, 3)
-	_place(_companion, lamp_at + Vector3(2.0, 0.0, 3.0), 0.3)
+	_caravan.add_scrap(3)
+	_place(_machine, lamp_at + Vector3(2.0, 0.0, 3.0), 0.3)
 	_lamps.place_at(lamp_at)
 	_check(_lamps.count() == 1, "lampione piazzato sulla fascia")
 	_scrap.spawn_on_ground(Vector3(-40.0, 0.0, 0.0))
@@ -142,7 +146,7 @@ func _test_pass_flattens_and_hits() -> void:
 	var push_side := 1.0 if _train.track_z >= 0.0 else -1.0
 	var landing_z := push_side * (RailwayDistrict.TRACK_HALF_WIDTH + TrainEvent.PUSH_MARGIN)
 	_field.sculpt(Vector3(30.0, 0.0, landing_z), 2.0, 1.6)
-	_place(_companion, Vector3(33.0, 0.0, 0.0), 0.3)
+	_place(_machine, Vector3(33.0, 0.0, 0.0), 0.3)
 	for i in 90:
 		await physics_frame
 		if _train.state == TrainEvent.State.PASSING:
@@ -172,8 +176,8 @@ func _test_pass_flattens_and_hits() -> void:
 	var pp := _player.global_position
 	_check(not RailwayDistrict.is_on_tracks(Vector2(pp.x, pp.z)), "giocatore spinto fuori dalla fascia (z=%.1f)" % pp.z)
 	_check(_field.delta_at(pp) < 0.5 and _field.slope_at(pp) <= _field.tuning.max_grade + 0.01, "spinto su un punto calpestabile, non sull'argine (z=%.1f)" % pp.z)
-	var cp := _companion.global_position
-	_check(not RailwayDistrict.is_on_tracks(Vector2(cp.x, cp.z)), "compagno spinto fuori (z=%.1f)" % cp.z)
+	var cp := _machine.global_position
+	_check(not RailwayDistrict.is_on_tracks(Vector2(cp.x, cp.z)), "macchina spinta fuori (z=%.1f)" % cp.z)
 	_check(_train.player_hits == 1 and _train.enemies_hit == 1, "un colpo al giocatore, un rottamatore (%d, %d)" % [_train.player_hits, _train.enemies_hit])
 	_check(_train.next_at == INF, "passato il treno, nessun altro in programma")
 	_check(_audio.play_count(&"train_horn") >= 2, "fischio anche all'ingresso")
@@ -200,14 +204,14 @@ func _test_half_dug_wagon() -> void:
 		_field.player_sculpt(center, 2.4, -0.3, TerrainField.ToolMode.DIG)
 	var spawned := _scrap.count() - before
 	_check(spawned >= 2 and _scrap.vein_scrap_left(center) < RailwayDistrict.WAGON_SCRAP, "scavando il vagone escono rottami (%d)" % spawned)
-	# I rottami usciti vengono portati fuori fascia prima del treno (come farebbe il compagno).
+	# I rottami usciti vengono portati fuori fascia prima del treno (come farebbe il Cassone).
 	var moved := 0
 	for scrap in _scrap._scraps:
 		if RailwayDistrict.is_on_tracks(Vector2(scrap.global_position.x, scrap.global_position.z)):
 			scrap.global_position.z = 6.0
 			moved += 1
 	_place(_player, Vector3(0.0, 0.0, 20.0), 0.88)
-	_place(_companion, Vector3(0.0, 0.0, 22.0), 0.3)
+	_place(_machine, Vector3(0.0, 0.0, 22.0), 0.3)
 	_train.speed = 80.0
 	_train.next_at = _run.elapsed + 1.05
 	for i in 700:
@@ -222,7 +226,7 @@ func _test_half_dug_wagon() -> void:
 func _test_third_train_from_the_other_side() -> void:
 	print("third train")
 	_place(_player, Vector3(0.0, 0.0, 20.0), 0.88)
-	_place(_companion, Vector3(0.0, 0.0, 22.0), 0.3)
+	_place(_machine, Vector3(0.0, 0.0, 22.0), 0.3)
 	_train.next_at = _run.elapsed + 1.05
 	await _frames(6)
 	_check(_train.state == TrainEvent.State.WARNING and _train.heading == -1 and _train.direction_name() == "EST", "il terzo treno torna da est")

@@ -16,14 +16,14 @@ const CHAIN_PER_STEP := 3
 const CRATER_DEPTH := -0.3
 const ENGINE_HIT_EVERY := 0.5
 const ENGINE_HIT_RADIUS := 0.9
-## Velocita oltre la quale il compagno travolge.
+## Velocita oltre la quale una macchina della carovana travolge.
 const ENGINE_MIN_SPEED := 1.0
 ## Semi in tasca: la pennellata arriva a ogni passo, la tinta (mappe di Terrain3D) non oltre questa cadenza.
 const SEED_EVERY := 0.25
 
 var director: EnemyDirector
 var player: Node3D
-var companion: Node3D
+var caravan: Caravan
 var loadout: WeaponLoadout
 var terrain_field: TerrainField
 var meadow: MeadowMap
@@ -32,8 +32,7 @@ var _chain_left := CHAIN_PER_STEP
 var _engine_left := 0.0
 var _weld_time := 0.0
 var _bush_time := 0.0
-var _engine_base_speed := -1.0
-## Olio buono (Officina): frazione di velocita in piu del compagno, sotto Motore truccato.
+## Olio buono (Officina): frazione di velocita in piu delle macchine, sotto Motore truccato.
 var _oil := 0.0
 var _engine_level := 0
 var _seed_left := 0.0
@@ -70,7 +69,7 @@ func apply(id: StringName, level: int) -> void:
 		&"tuned_engine":
 			_engine_damage = int(UpgradeCatalog.value(id, &"damage", 1.0))
 			_engine_level = level
-			_tune_companion()
+			_tune_speed()
 		&"field_weld":
 			_weld_range = UpgradeCatalog.value(id, &"range", 4.0)
 			_weld_every = UpgradeCatalog.value(id, &"seconds", 45.0)
@@ -103,44 +102,38 @@ func _physics_process(delta: float) -> void:
 		_tick_bush(delta)
 
 
-## Olio buono (Officina): il compagno va [param fraction] piu veloce (0,15 = +15%).
-func boost_companion_speed(fraction: float) -> void:
+## Olio buono (Officina): le macchine vanno [param fraction] piu veloci (0,15 = +15%).
+func boost_machine_speed(fraction: float) -> void:
 	_oil = fraction
-	_tune_companion()
+	_tune_speed()
 
 
-## Velocita massima del compagno con Olio buono e Motore truccato, sulla sua copia della taratura.
-func _tune_companion() -> void:
-	if companion == null or not &"tuning" in companion or companion.get(&"tuning") == null:
+## Velocita massima delle macchine con Olio buono e Motore truccato: un fattore della carovana,
+## che le macchine leggono a ogni passo (la taratura condivisa non si tocca).
+func _tune_speed() -> void:
+	if caravan == null:
 		return
-	var tuning: Resource = companion.get(&"tuning")
-	if _engine_base_speed < 0.0:
-		# Copia: la taratura e una risorsa condivisa col file.
-		tuning = tuning.duplicate()
-		companion.set(&"tuning", tuning)
-		_engine_base_speed = tuning.get(&"max_speed")
 	var bonus := UpgradeCatalog.value(&"tuned_engine", &"speed_percent") / 100.0
-	tuning.set(&"max_speed", _engine_base_speed * (1.0 + _oil) * (1.0 + bonus * _engine_level))
+	caravan.speed_scale = (1.0 + _oil) * (1.0 + bonus * _engine_level)
 
 
+## Motore truccato: ogni macchina non guasta in moto travolge i rottamatori che tocca.
 func _tick_engine(delta: float) -> void:
 	_engine_left -= delta
-	if _engine_left > 0.0 or companion == null or director == null:
+	if _engine_left > 0.0 or caravan == null or director == null:
 		return
 	_engine_left = ENGINE_HIT_EVERY
-	var velocity: Variant = companion.get(&"velocity")
-	if velocity == null or Vector2(velocity.x, velocity.z).length() < ENGINE_MIN_SPEED:
-		return
-	for enemy in director.enemies_near(companion.global_position, ENGINE_HIT_RADIUS):
-		if not enemy.is_dead and not enemy.self_driven:
-			enemy.take_damage(_engine_damage)
+	for machine in caravan.machines:
+		if machine.is_broken() or Vector2(machine.velocity.x, machine.velocity.z).length() < ENGINE_MIN_SPEED:
+			continue
+		for enemy in director.enemies_near(machine.global_position, ENGINE_HIT_RADIUS):
+			if not enemy.is_dead and not enemy.self_driven:
+				enemy.take_damage(_engine_damage)
 
 
-## Saldatura al volo: il tempo conta solo col compagno vicino.
+## Saldatura al volo: il tempo conta solo con una macchina non guasta vicina.
 func _tick_weld(delta: float) -> void:
-	if companion == null or player == null:
-		return
-	if _planar(companion.global_position, player.global_position) > _weld_range:
+	if caravan == null or player == null or not _machine_within(_weld_range):
 		return
 	_weld_time += delta
 	if _weld_time >= _weld_every:
@@ -182,6 +175,14 @@ func _on_player_sculpted(center: Vector3, radius: float, volume: float, mode: in
 	_seed_left = SEED_EVERY
 	meadow.mark(center, radius, true)
 	terrain_field.tint(center, radius, RuinsDistrict.GRASS_PAINT, 0.4)
+
+
+## Una macchina non guasta della carovana entro [param distance] dal giocatore?
+func _machine_within(distance: float) -> bool:
+	for machine in caravan.machines:
+		if not machine.is_broken() and _planar(machine.global_position, player.global_position) <= distance:
+			return true
+	return false
 
 
 static func _planar(a: Vector3, b: Vector3) -> float:

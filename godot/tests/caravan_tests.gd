@@ -1,7 +1,8 @@
 extends SceneTree
-## Carovana di macchine, piano A task 2 (spec D-093): Machine, Caravan e modulo Cassone sulla
-## scena `ruins_arena`, col compagno della scena fermo e lontano (la migrazione delle scene e
-## del task 3). La scena non ha un campo di percorso: il test ne aggiunge uno. Eseguire con:
+## Carovana di macchine, piano A (spec D-093): Machine, Caravan e modulo Cassone sul nodo
+## `Caravan` della scena `ruins_arena` (dal task 3 al posto del compagno), piu i controlli che
+## erano di companion_tests (fornitura, campo dei rottami). La scena non ha un campo di
+## percorso: il test ne aggiunge uno e lo passa alla carovana. Eseguire con:
 ##   godot_console --headless --path godot --fixed-fps 60 --script res://tests/caravan_tests.gd
 
 const ArenaScene := preload("res://scenes/main/ruins_arena.tscn")
@@ -23,9 +24,8 @@ var _emitted: Array[int] = []
 func _initialize() -> void:
 	Engine.physics_ticks_per_second = 60
 	await _load_scene()
-	_caravan = _new_caravan(Vector3(0.0, 0.0, 2.5))
-	await _frames(2)
 	_test_starts_with_cargo()
+	await _test_supply_distance()
 	await _test_lead_follows_player()
 	await _test_pickup_near_player_only()
 	await _test_skips_scrap_behind_rampart()
@@ -34,6 +34,8 @@ func _initialize() -> void:
 	_test_module_limit()
 	await _test_two_cargo_supply()
 	await _test_switched_off_cargo_releases_scrap()
+	await _reload_scene()
+	await _test_scrap_field_offset_and_cap()
 	# T-12: i nodi messi in coda con queue_free vanno liberati prima di uscire.
 	await _frames(2)
 	print("PROTOTYPE01_TESTS %s failures=%d" % ["PASS" if _failures == 0 else "FAIL", _failures])
@@ -48,9 +50,11 @@ func _check(condition: bool, label: String) -> void:
 		print("  FAIL %s" % label)
 
 
-## Una macchina col Cassone, 3 rottami su 5, sul layer visivo 2.
+## La carovana della scena: una macchina col Cassone, 3 rottami su 5, sul layer visivo 2.
 func _test_starts_with_cargo() -> void:
 	print("caravan ready")
+	_check(_caravan.player == _player and _caravan.scrap_field == _scraps and _caravan.tuning != null
+		and _caravan.tuning.resource_path == TUNING_PATH, "il nodo Caravan della scena e collegato a giocatore, rottami e taratura")
 	var lead := _caravan.lead()
 	_check(_caravan.machines.size() == 1 and lead != null and lead.has_module(&"cargo") and lead.cargo() != null,
 		"la carovana parte con una macchina col Cassone")
@@ -63,6 +67,7 @@ func _test_starts_with_cargo() -> void:
 		"telaio da 6 PV, in ordine")
 	_check(lead.collision_layer == 8 and lead.collision_mask == 1, "layer 8 e maschera 1, come il compagno")
 	_check(Machine.planar_distance(lead.global_position, _caravan.global_position) < 0.01, "nasce dove sta la carovana")
+	_check(_caravan.global_position.is_equal_approx(Vector3(0.0, 0.3, 2.5)), "dove stava il compagno (%s)" % _caravan.global_position)
 	_check(lead._cargo.size() == 5 and lead._cargo.filter(func(c: MeshInstance3D) -> bool: return c.visible).size() == 3,
 		"cinque cubetti sul pianale, tre visibili")
 	var part := MeshInstance3D.new()
@@ -72,6 +77,31 @@ func _test_starts_with_cargo() -> void:
 	var off_layer := visuals.filter(func(n: Node) -> bool: return (n as VisualInstance3D).layers != Machine.VISUAL_LAYER)
 	_check(visuals.size() >= 7 and off_layer.is_empty() and lead._parts.size() == 1,
 		"modello, cubetti e pezzi montati sul layer visivo 2 (%d visual, %d fuori)" % [visuals.size(), off_layer.size()])
+
+
+## Dal compagno (companion_tests): can_supply vuole rottami a bordo e il Cassone entro il raggio
+## di rifornimento dal bersaglio; il campo dei rottami poggia i rottami sul rilievo.
+func _test_supply_distance() -> void:
+	print("supply")
+	var lead := _caravan.lead()
+	lead.set_physics_process(false)
+	var target := Vector3(0.0, 0.0, 2.0)
+	_place_machine(lead, Vector3(0.0, 0.0, -2.0))
+	_check(_caravan.carried == 3 and _caravan.can_supply(target), "vicino e con rottami rifornisce")
+	_caravan.carried = 0
+	_check(not _caravan.can_supply(target), "senza rottami no")
+	_caravan.carried = 3
+	_place_machine(lead, Vector3(20.0, 0.0, 20.0))
+	_check(not _caravan.can_supply(target), "lontano no")
+	_check(_scraps.terrain_field == _field, "il campo dei rottami sta sul rilievo")
+	var spot := Vector3(4.0, 0.0, 4.0)
+	_scraps.spawn_on_ground(spot)
+	var found: Variant = _scraps.nearest(spot, 0.1)
+	_check(found != null and absf((found as Vector3).y - ScrapField.SCRAP_SIZE) < ScrapField.BOB_HEIGHT + 0.01, "il rottame poggia sulla quota del rilievo")
+	_scraps.take_near(spot, 0.5, 10)
+	_place_machine(lead, Vector3(0.0, 0.0, 2.5))
+	lead.set_physics_process(true)
+	await _frames(2)
 
 
 ## Il capofila segue il giocatore che cammina 10 m e si ferma 2,5 m dietro di lui.
@@ -343,9 +373,44 @@ func _test_switched_off_cargo_releases_scrap() -> void:
 	_scraps.take_near(scrap, 0.5, 10)
 
 
+## Dal compagno (companion_tests, P-03): il bob lavora in coordinate locali, quindi il campo puo
+## stare ovunque. R-09: al tetto MAX_SCRAPS uno scavo ricicla il rottame piu lontano, non viene
+## scartato. Su una scena appena caricata, col Cassone fermo (nessuna raccolta).
+func _test_scrap_field_offset_and_cap() -> void:
+	print("scrap field offset and cap")
+	_caravan.lead().set_physics_process(false)
+	_scraps.position.y = 1.0
+	_scraps.spawn(Vector3(3.0, 0.5, 3.0))
+	await _frames(3)
+	var found: Variant = _scraps.nearest(Vector3(3.0, 0.0, 3.0), 0.1)
+	_check(found != null and absf((found as Vector3).y - 0.5) <= ScrapField.BOB_HEIGHT + 0.001,
+		"campo a y=1: il rottame resta alla quota mondo chiesta (got %s)" % str(found))
+	_check(_scraps.is_processing(), "con rottami a terra il bob gira")
+
+	for i in ScrapField.MAX_SCRAPS - 1:
+		_scraps.spawn(Vector3(30.0 + i, 0.5, 30.0))
+	_check(_scraps.count() == ScrapField.MAX_SCRAPS and _scraps.capped_count == 0, "al tetto senza riciclo (%d)" % _scraps.count())
+	var farthest := Vector3(30.0 + ScrapField.MAX_SCRAPS - 2, 0.5, 30.0)
+	_scraps.spawn(Vector3(0.0, 0.5, 0.0))
+	await _frames(2)
+	_check(_scraps.count() == ScrapField.MAX_SCRAPS and _scraps.capped_count == 1, "oltre il tetto il conteggio resta a MAX_SCRAPS")
+	_check(_scraps.nearest(Vector3.ZERO, 0.1) != null, "il nuovo rottame esiste")
+	_check(_scraps.nearest(farthest, 0.1) == null and _scraps.nearest(Vector3(3.0, 0.0, 3.0), 0.1) != null,
+		"riciclato il piu lontano dal nuovo, non il piu vicino")
+	var taken := _scraps.take_near(Vector3(30.0 + ScrapField.MAX_SCRAPS * 0.5, 0.0, 30.0), 100.0, ScrapField.MAX_SCRAPS)
+	await _frames(1)
+	_check(taken == ScrapField.MAX_SCRAPS and _scraps.count() == 0, "take_near rimuove tutti i rottami nel raggio (%d)" % taken)
+	_check(not _scraps.is_processing(), "senza rottami il bob si ferma")
+
+
+## La scena con la sua carovana; il campo di percorso aggiunto qui passa alla carovana e ai
+## suoi moduli (`configure` ridistribuisce anche giocatore, rottami e percorso).
 func _load_scene() -> void:
 	_scene = ArenaScene.instantiate()
 	_scene.name = "Scene"
+	_caravan = _scene.get_node(^"Caravan")
+	_emitted.clear()
+	_caravan.carried_changed.connect(_on_carried_changed)
 	root.add_child(_scene)
 	_player = _scene.get_node(^"Player")
 	_field = _scene.get_node(^"TerrainField")
@@ -355,17 +420,20 @@ func _load_scene() -> void:
 	_path.target = _player
 	_path.terrain_field = _field
 	_scene.add_child(_path)
+	_caravan.path_field = _path
+	_caravan.configure({terrain_field = _field})
 	await _frames(2)
-	# Il compagno della scena resta, fermo e lontano: la migrazione e del task 3.
-	var companion: Node3D = _scene.get_node(^"Companion")
-	companion.set_physics_process(false)
-	companion.global_position = Vector3(50.0, 0.3, 50.0)
-	companion.reset_physics_interpolation()
 	for i in 10:
 		if _path.is_ready():
 			break
 		await physics_frame
 	_check(_path.is_ready(), "campo di percorso pronto")
+
+
+func _reload_scene() -> void:
+	root.remove_child(_scene)
+	_scene.free()
+	await _load_scene()
 
 
 func _new_caravan(spot: Vector3) -> Caravan:

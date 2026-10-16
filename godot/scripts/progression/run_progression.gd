@@ -18,7 +18,8 @@ var xp_growth := 3
 ## Regola 4.
 var pity_level_ups := 4
 var level_ups_without_rare := 0
-var has_companion := true
+## Con la carovana in scena compaiono le carte che la richiedono (`requires = "companion"`).
+var has_caravan := true
 var seed_value := 0
 ## Classe del giocatore (D-092): con un valore compaiono solo le carte comuni e quelle del suo
 ## mazzo; vuota, tutte (test e simulazioni vecchie).
@@ -60,7 +61,7 @@ func eligible() -> Array[Dictionary]:
 	for upgrade in catalog:
 		if upgrade.get(&"filler", false) or level_of(upgrade.id) >= upgrade.max_level:
 			continue
-		if upgrade.requires == "companion" and not has_companion:
+		if upgrade.requires == "companion" and not has_caravan:
 			continue
 		if not _in_deck(upgrade):
 			continue
@@ -82,7 +83,7 @@ func fillers() -> Array[Dictionary]:
 	for upgrade in catalog:
 		if not upgrade.get(&"filler", false):
 			continue
-		if upgrade.requires == "companion" and not has_companion:
+		if upgrade.requires == "companion" and not has_caravan:
 			continue
 		if not _in_deck(upgrade):
 			continue

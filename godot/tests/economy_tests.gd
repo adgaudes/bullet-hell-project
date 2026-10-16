@@ -17,7 +17,7 @@ var _vein_scrap: ScrapField
 var _player: PlayerCharacter
 var _director: EnemyDirector
 var _scrap: ScrapField
-var _companion: Companion
+var _caravan: Caravan
 var _menu: LevelUpMenu
 
 
@@ -30,12 +30,12 @@ func _initialize() -> void:
 	_player = _scene.get_node(^"Player")
 	_director = _scene.get_node(^"EnemyDirector")
 	_scrap = _scene.get_node(^"ScrapField")
-	_companion = _scene.get_node(^"Companion")
+	_caravan = _scene.get_node(^"Caravan")
 	_menu = _scene.get_node(^"LevelUpMenu")
 	_director.spawning = false
 	await _frames(5)
 	(_scene.get_node(^"PlayerWeapon") as Node).set_physics_process(false)
-	_companion.set_physics_process(false)
+	_caravan.lead().set_physics_process(false)
 	_test_scrap_sources()
 	_setup_vein_field()
 	await _frames(3)
@@ -100,8 +100,8 @@ func _test_catalog_and_fillers() -> void:
 	var mixed := progression.roll_offer()
 	_check(mixed.size() == 3 and mixed.any(func(c: Dictionary) -> bool: return c.id == &"boots"),
 		"l'ultimo upgrade vero rimasto e sempre nell'offerta")
-	progression.has_companion = false
-	_check(progression.fillers().all(func(c: Dictionary) -> bool: return c.requires != "companion"), "senza compagno niente Rottame di fortuna")
+	progression.has_caravan = false
+	_check(progression.fillers().all(func(c: Dictionary) -> bool: return c.requires != "companion"), "senza carovana niente Rottame di fortuna")
 
 
 func _test_scrap_sources() -> void:
@@ -175,7 +175,7 @@ func _test_recovery_scrap() -> void:
 	var level := _run.progression.level
 	_run.progression.level = 1 + int(tuning.recovery_scrap_levels * 4)
 	_check(_run.recovery_scrap() == 4, "quattro rottami dopo %d livelli" % (_run.progression.level - 1))
-	_check(_run.scrap_out(false) == int(floor((_companion.carried + 4) * tuning.death_scrap_share)), "morendo si riducono come il cassone")
+	_check(_run.scrap_out(false) == int(floor((_caravan.carried + 4) * tuning.death_scrap_share)), "morendo si riducono come il cassone")
 	_run.progression.level = level
 
 
@@ -188,10 +188,10 @@ func _test_filler_effects() -> void:
 	_check(_player.health == 4, "Rattoppo al volo: un punto vita in piu (%d)" % _player.health)
 	_player.heal(10)
 	_check(_player.health == 5, "la cura non supera il massimo")
-	var carried := _companion.carried
-	var capacity := _companion.capacity
+	var carried := _caravan.carried
+	var capacity := _caravan.capacity
 	_run.apply_upgrade(&"lucky_scrap", 1)
-	_check(_companion.carried == mini(carried + 1, capacity) and _companion.capacity == capacity, "Rottame di fortuna: un rottame, stessa capienza")
+	_check(_caravan.carried == mini(carried + 1, capacity) and _caravan.capacity == capacity, "Rottame di fortuna: un rottame, stessa capienza")
 	var near := _director.spawn_at(Vector3(4.0, 0.0, 3.0))
 	var far := _director.spawn_at(Vector3(12.0, 0.0, 3.0))
 	near.health = 5

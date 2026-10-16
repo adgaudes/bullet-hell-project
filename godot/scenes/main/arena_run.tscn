@@ -1,4 +1,4 @@
-[gd_scene load_steps=25 format=3]
+[gd_scene load_steps=26 format=3]
 
 [ext_resource type="Script" path="res://scripts/services/skeleton_probe.gd" id="1_probe"]
 [ext_resource type="Script" path="res://scripts/arena/ruins_district.gd" id="2_arena"]
@@ -6,7 +6,8 @@
 [ext_resource type="PackedScene" path="res://scenes/player/player.tscn" id="4_player"]
 [ext_resource type="Script" path="res://scripts/terrain/terrain_field.gd" id="5_terrain_field"]
 [ext_resource type="Resource" path="res://resources/tuning/terrain_district.tres" id="6_terrain_tuning"]
-[ext_resource type="PackedScene" path="res://scenes/companion/companion.tscn" id="7_companion"]
+[ext_resource type="Script" path="res://scripts/caravan/caravan.gd" id="7_caravan"]
+[ext_resource type="Resource" path="res://resources/tuning/caravan_default.tres" id="25_caravan_tuning"]
 [ext_resource type="Script" path="res://scripts/companion/scrap_field.gd" id="8_scrap"]
 [ext_resource type="Script" path="res://scripts/navigation/path_field.gd" id="9_path"]
 [ext_resource type="Script" path="res://scripts/enemies/enemy_director.gd" id="10_director"]
@@ -61,16 +62,18 @@ half_extent = 102.0
 script = ExtResource("8_scrap")
 terrain_field = NodePath("../TerrainField")
 
-[node name="Companion" parent="." node_paths=PackedStringArray("player", "scrap_field", "path_field") instance=ExtResource("7_companion")]
+[node name="Caravan" type="Node3D" parent="." node_paths=PackedStringArray("player", "scrap_field", "path_field")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.3, 2.5)
+script = ExtResource("7_caravan")
+tuning = ExtResource("25_caravan_tuning")
 player = NodePath("../Player")
 scrap_field = NodePath("../ScrapField")
 path_field = NodePath("../PathField")
 
-[node name="LampField" type="Node3D" parent="." node_paths=PackedStringArray("terrain_field", "companion")]
+[node name="LampField" type="Node3D" parent="." node_paths=PackedStringArray("terrain_field", "caravan")]
 script = ExtResource("21_lamps")
 terrain_field = NodePath("../TerrainField")
-companion = NodePath("../Companion")
+caravan = NodePath("../Caravan")
 
 [node name="EnemyDirector" type="Node3D" parent="." node_paths=PackedStringArray("player", "path_field", "terrain_field")]
 script = ExtResource("10_director")
@@ -104,11 +107,11 @@ script = ExtResource("19_workshop")
 script = ExtResource("20_day_night")
 district = NodePath("../District")
 
-[node name="QuakeEvent" type="Node3D" parent="." node_paths=PackedStringArray("terrain_field", "player", "companion", "director", "lamp_field", "hud")]
+[node name="QuakeEvent" type="Node3D" parent="." node_paths=PackedStringArray("terrain_field", "player", "caravan", "director", "lamp_field", "hud")]
 script = ExtResource("23_quake")
 terrain_field = NodePath("../TerrainField")
 player = NodePath("../Player")
-companion = NodePath("../Companion")
+caravan = NodePath("../Caravan")
 director = NodePath("../EnemyDirector")
 lamp_field = NodePath("../LampField")
 hud = NodePath("../RunHud")
@@ -119,7 +122,7 @@ terrain_field = NodePath("../TerrainField")
 player = NodePath("../Player")
 hud = NodePath("../RunHud")
 
-[node name="Run" type="Node" parent="." node_paths=PackedStringArray("district", "player", "companion", "terrain_field", "director", "weapon", "xp_field", "hud", "level_up_menu", "game_over", "workshop", "day_night", "lamp_field", "quake_event", "extraction_pad")]
+[node name="Run" type="Node" parent="." node_paths=PackedStringArray("district", "player", "caravan", "terrain_field", "director", "weapon", "xp_field", "hud", "level_up_menu", "game_over", "workshop", "day_night", "lamp_field", "quake_event", "extraction_pad")]
 script = ExtResource("14_run")
 day_night = NodePath("../DayNightCycle")
 lamp_field = NodePath("../LampField")
@@ -128,7 +131,7 @@ extraction_pad = NodePath("../ExtractionPad")
 tuning = ExtResource("11_run_tuning")
 district = NodePath("../District")
 player = NodePath("../Player")
-companion = NodePath("../Companion")
+caravan = NodePath("../Caravan")
 terrain_field = NodePath("../TerrainField")
 director = NodePath("../EnemyDirector")
 weapon = NodePath("../PlayerWeapon")
@@ -138,14 +141,14 @@ level_up_menu = NodePath("../LevelUpMenu")
 game_over = NodePath("../GameOverPanel")
 workshop = NodePath("../WorkshopPanel")
 
-[node name="RunAudio" type="Node" parent="." node_paths=PackedStringArray("player", "weapon", "director", "terrain_field", "xp_field", "companion", "level_up_menu", "run", "workshop")]
+[node name="RunAudio" type="Node" parent="." node_paths=PackedStringArray("player", "weapon", "director", "terrain_field", "xp_field", "caravan", "level_up_menu", "run", "workshop")]
 script = ExtResource("18_audio")
 player = NodePath("../Player")
 weapon = NodePath("../PlayerWeapon")
 director = NodePath("../EnemyDirector")
 terrain_field = NodePath("../TerrainField")
 xp_field = NodePath("../XpField")
-companion = NodePath("../Companion")
+caravan = NodePath("../Caravan")
 level_up_menu = NodePath("../LevelUpMenu")
 run = NodePath("../Run")
 workshop = NodePath("../WorkshopPanel")

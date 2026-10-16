@@ -1,7 +1,7 @@
 class_name LampField
 extends Node3D
 ## Lampioni piazzabili (D-058, tappa 2; `DAY_NIGHT_SPEC.md` sezione 7). Possiede i
-## lampioni: regole di piazzamento, limite, costo in rottami del compagno, nodo visivo e
+## lampioni: regole di piazzamento, limite, costo in rottami della carovana, nodo visivo e
 ## luce di ciascuno, registrazione in `LightField`, rimozione quando il suolo sotto
 ## cambia o quando il Demolitore ci passa sopra. Non blocca il passaggio: il campo di
 ## percorso non lo vede. Sul rilievo continuo (D-085) un lampione e un punto: si pianta
@@ -23,8 +23,8 @@ const FALL_SHIFT_M := 0.4
 
 ## Rilievo continuo (D-085): i lampioni stanno su punti del rilievo.
 @export var terrain_field: TerrainField
-## Chi paga i lampioni (rottami del cassone); senza compagno sono gratis (scene senza compagno).
-@export var companion: Companion
+## Chi paga i lampioni (rottami dei Cassoni); senza carovana sono gratis (scene senza carovana).
+@export var caravan: Caravan
 
 ## Copiati dal tuning da ArenaRun.
 var scrap_cost := 3
@@ -73,11 +73,11 @@ func can_place(point: Vector3) -> bool:
 	return true
 
 
-## Il compagno ha i rottami per un lampione, entro il raggio di rifornimento dal punto.
+## La carovana ha i rottami per un lampione, nei Cassoni entro il raggio di rifornimento dal punto.
 func can_afford(world_target: Vector3) -> bool:
-	if companion == null:
+	if caravan == null:
 		return true
-	return companion.can_supply_count(world_target, scrap_cost)
+	return caravan.can_supply_count(world_target, scrap_cost)
 
 
 ## Piazza un lampione nel punto sotto [param world_target], pagandolo. False se rifiutato.
@@ -89,8 +89,8 @@ func place_at(world_target: Vector3) -> bool:
 	if not can_afford(world_target):
 		print("PROTOTYPE01_LAMP_REJECTED x=%.1f z=%.1f reason=scrap" % [point.x, point.z])
 		return false
-	if companion != null:
-		companion.spend_count(scrap_cost)
+	if caravan != null:
+		caravan.spend_count(scrap_cost)
 	var base := _build_post(point)
 	print("PROTOTYPE01_LAMP_PLACED x=%.1f z=%.1f count=%d" % [point.x, point.z, count()])
 	lamp_placed.emit(base)

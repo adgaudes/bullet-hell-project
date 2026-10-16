@@ -228,10 +228,10 @@ func _test_new_profile_changes_nothing() -> void:
 	await _frames(3)
 	var run: ArenaRun = scene.get_node(^"Run")
 	var player: PlayerCharacter = scene.get_node(^"Player")
-	var companion: Companion = scene.get_node(^"Companion")
+	var caravan: Caravan = scene.get_node(^"Caravan")
 	_check(player.max_health == run.tuning.player_max_health and is_zero_approx(player.tool_range_bonus_m), "vita e portata del tool come da tuning")
-	_check(companion.capacity == companion.tuning.capacity and companion.carried == companion.tuning.starting_scrap, "cassone come da tuning")
-	_check(run.companion_weapon == null and run.progression.level_of(&"companion_turret") == 0, "nessuna torretta")
+	_check(caravan.capacity == caravan.tuning.cargo_capacity and caravan.carried == caravan.tuning.starting_scrap, "cassone come da tuning")
+	_check(run.turret_weapon == null and run.progression.level_of(&"companion_turret") == 0, "nessuna torretta")
 	await _end_run(scene)
 
 
@@ -246,19 +246,19 @@ func _test_permanent_upgrades_apply() -> void:
 	await _frames(3)
 	var run: ArenaRun = scene.get_node(^"Run")
 	var player: PlayerCharacter = scene.get_node(^"Player")
-	var companion: Companion = scene.get_node(^"Companion")
+	var caravan: Caravan = scene.get_node(^"Caravan")
 	var field: TerrainField = scene.get_node(^"TerrainField")
 	_check(player.max_health == run.tuning.player_max_health + 2 and player.health == player.max_health, "Telaio rinforzato 2: vita %d" % player.max_health)
 	_check(is_equal_approx(player.invulnerability_seconds, run.tuning.player_invulnerability + 0.2), "Riflessi: invulnerabilita %.1f s" % player.invulnerability_seconds)
 	var reach := Vector2(player.terrain_target.x - player.global_position.x, player.terrain_target.z - player.global_position.z).length()
 	_check(is_equal_approx(player.tool_range_bonus_m, 1.2) and absf(reach - (field.tuning.tool_range_m + 1.2)) < 0.05, "Prolunga: il tool arriva a %.1f m" % reach)
 	_check(is_equal_approx(player.pack.capacity, field.tuning.pack_capacity_m3 + 20.0), "Zainetto largo: capacita %.0f m3" % player.pack.capacity)
-	_check(companion.capacity == companion.tuning.capacity + 2, "Cassone saldato: capacita %d" % companion.capacity)
-	_check(companion.carried == companion.tuning.starting_scrap + 2, "Scorta: parte con %d rottami" % companion.carried)
-	_check(run.companion_weapon != null and run.companion_weapon.is_inside_tree() and companion.has_node(^"TurretPart"),
+	_check(caravan.capacity == caravan.tuning.cargo_capacity + 2, "Cassone saldato: capacita %d" % caravan.capacity)
+	_check(caravan.carried == caravan.tuning.starting_scrap + 2, "Scorta: parte con %d rottami" % caravan.carried)
+	_check(run.turret_weapon != null and run.turret_weapon.is_inside_tree() and caravan.lead().has_node(^"TurretPart"),
 		"Torretta fissa: montata e in funzione dall'inizio")
 	_check(run.progression.level_of(&"companion_turret") == 1, "la carta Torretta parte dal livello 1")
-	_check(run.scrap_out(false) == int(floor(companion.carried * 0.75)), "Paracadute: morendo si salvano tre quarti (%d)" % run.scrap_out(false))
+	_check(run.scrap_out(false) == int(floor(caravan.carried * 0.75)), "Paracadute: morendo si salvano tre quarti (%d)" % run.scrap_out(false))
 	await _end_run(scene)
 
 
@@ -273,7 +273,7 @@ func _test_class_permanents() -> void:
 	await _frames(3)
 	var run: ArenaRun = scene.get_node(^"Run")
 	_check(run.class_id == &"engineer", "la classe viene dal profilo")
-	_check(run.companion_weapon == null, "Torretta fissa: non la monta l'Ingegnere")
+	_check(run.turret_weapon == null, "Torretta fissa: non la monta l'Ingegnere")
 	_check(run.loadout.level_of(&"nailgun") == 2 and run.loadout.level_of(&"seismic_stake") == 2, "Cassetta degli attrezzi 2: chiodatrice e picchetto al livello 2")
 	var stake := run.loadout.weapon(&"seismic_stake") as ActiveWeapon
 	_check(is_equal_approx(stake.cooldown_total(), 15.0 * 0.85 * 0.9), "Picchetti di scorta: ricarica -10%% (%.2f s)" % stake.cooldown_total())
@@ -283,11 +283,14 @@ func _test_class_permanents() -> void:
 	scene = _start_run()
 	await _frames(3)
 	run = scene.get_node(^"Run")
-	var companion: Companion = scene.get_node(^"Companion")
-	_check(run.class_id == &"mechanic" and run.companion_weapon != null, "Torretta fissa: la monta il Meccanico")
+	var caravan: Caravan = scene.get_node(^"Caravan")
+	_check(run.class_id == &"mechanic" and run.turret_weapon != null, "Torretta fissa: la monta il Meccanico")
 	_check(run.loadout.level_of(&"nailgun") == 0, "la Cassetta dell'Ingegnere non vale per il Meccanico")
-	var base_speed: float = (load("res://resources/tuning/companion_default.tres") as CompanionTuning).max_speed if ResourceLoader.exists("res://resources/tuning/companion_default.tres") else 5.0
-	_check(is_equal_approx(companion.tuning.max_speed, base_speed * 1.15), "Olio buono: compagno +15%% (%.2f)" % companion.tuning.max_speed)
+	# Dalla risorsa della scena, senza ripiego: se il file mancasse il controllo fallirebbe.
+	var base_speed: float = (load("res://resources/tuning/caravan_default.tres") as CaravanTuning).max_speed
+	var top_speed := caravan.tuning.max_speed * caravan.speed_scale
+	_check(is_equal_approx(top_speed, base_speed * 1.15) and is_equal_approx(caravan.tuning.max_speed, base_speed),
+		"Olio buono: macchine +15%% (%.2f), taratura condivisa intatta" % top_speed)
 	await _end_run(scene)
 	profile.levels = {&"dry_powder": 2, &"charge_pack": 1}
 	profile.last_class = &"sapper"
@@ -519,8 +522,8 @@ func _test_banking_and_workshop_flow() -> void:
 	scene = _start_run()
 	await _frames(3)
 	run = scene.get_node(^"Run")
-	var companion: Companion = scene.get_node(^"Companion")
-	companion.add_capacity(0, 4)
+	var caravan: Caravan = scene.get_node(^"Caravan")
+	caravan.add_scrap(4)
 	var abandon_expected := run.scrap_out(false)
 	var scrap_before := profile.scrap
 	var pause_menu := root.get_node("PauseMenu")

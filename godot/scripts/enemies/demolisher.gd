@@ -107,7 +107,8 @@ var path_field: PathField
 var director: EnemyDirector
 ## Lampioni del giocatore: abbattuti quando entrano nel raggio di contatto (D-058).
 var lamp_field: LampField
-var companion: Node3D
+## Carovana del giocatore: niente barricate sopra le sue macchine.
+var caravan: Caravan
 var speed := 1.7
 var contact_damage := 2
 var contact_radius := 1.5
@@ -514,7 +515,7 @@ func _on_carrier_arrived(carrier: Enemy) -> void:
 		return
 	if not carrier.carrying_scrap:
 		if scrap_field.take_near(carrier.errand_point, 0.3, 1) == 0:
-			# Il compagno (o un altro) e arrivato prima.
+			# Un Cassone (o un altro) e arrivato prima.
 			_release(carrier, false)
 			return
 		carrier.set_carrying(true)
@@ -611,7 +612,7 @@ func _try_build_at_site() -> void:
 	if not _site_is_valid():
 		_choose_site()
 	if _site_point != Vector3.INF and not _point_is_free(_site_point):
-		# Occupato (giocatore, compagno, nemici, rottame): un altro cantiere, la scorta resta (R-03).
+		# Occupato (giocatore, macchine, nemici, rottame): un altro cantiere, la scorta resta (R-03).
 		_choose_site()
 	if _site_point == Vector3.INF or not _point_is_free(_site_point):
 		return
@@ -691,15 +692,17 @@ func _pick_barricade_point() -> Vector3:
 	return Vector3.INF
 
 
-## Mai sopra giocatore, compagno, nemici, rottami o il boss stesso; mai in area protetta.
+## Mai sopra giocatore, macchine, nemici, rottami o il boss stesso; mai in area protetta.
 func _point_is_free(point: Vector3) -> bool:
 	var step := BARRICADE_RADIUS
 	if terrain_field.is_protected(point):
 		return false
 	if _planar(point - player.global_position).length() < step:
 		return false
-	if companion != null and _planar(point - companion.global_position).length() < step:
-		return false
+	if caravan != null:
+		for machine in caravan.machines:
+			if _planar(point - machine.global_position).length() < step:
+				return false
 	if _planar(point - global_position).length() < BODY_RADIUS + step * 0.75:
 		return false
 	if director != null:

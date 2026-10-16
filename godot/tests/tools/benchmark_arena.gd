@@ -278,13 +278,15 @@ func _initialize() -> void:
 		await physics_frame
 		# Sei lampioni attorno al giocatore: il massimo di luci logiche della tappa 2.
 		var lamps: LampField = scene.get_node(^"LampField")
-		var companion: Companion = scene.get_node(^"Companion")
-		companion.add_capacity(18, 18)
+		var caravan: Caravan = scene.get_node(^"Caravan")
+		var lead := caravan.lead()
+		caravan.add_cargo_capacity(18)
+		caravan.add_scrap(18)
 		for i in 6:
 			var world: Vector3 = player.global_position + Vector3(cos(i * TAU / 6.0) * 8.0, 0.0, sin(i * TAU / 6.0) * 8.0)
-			companion.global_position = world + Vector3(0.0, 0.3, 1.5)
+			lead.global_position = world + Vector3(0.0, 0.3, 1.5)
 			lamps.place_at(world)
-		companion.global_position = player.global_position + Vector3(3.0, 0.3, 0.0)
+		lead.global_position = player.global_position + Vector3(3.0, 0.3, 0.0)
 		print("PROTOTYPE01_ARENA_BENCH night phase=%s lamps=%d" % [DayNightCycle.PHASE_NAMES[run.day_night.phase], lamps.count()])
 	# Orda piena: tutti i nemici vivi, giocatore invulnerabile.
 	for i in WARMUP_FRAMES:

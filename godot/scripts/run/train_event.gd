@@ -6,7 +6,7 @@ extends WorldEvent
 ## spariscono senza lasciare rottami (le vene dei vagoni si azzerano), i solchi si
 ## riempiono, i rottami a terra e i lampioni spariscono. Chi sta sulla fascia viene travolto:
 ## i rottamatori muoiono (e contano come abbattuti dal giocatore), il giocatore
-## subisce danno e viene spinto fuori, il compagno viene solo spinto, il boss
+## subisce danno e viene spinto fuori, le macchine della carovana vengono solo spinte, il boss
 ## subisce `boss_damage` e viene spinto.
 ##
 ## Non ha un passo fisico proprio: `ArenaRun` lo fa avanzare con il tempo di
@@ -15,7 +15,8 @@ extends WorldEvent
 
 signal train_warned(direction: Vector3, seconds: float)
 signal train_passing(direction: Vector3)
-## Qualcosa e stato travolto: "terrain", "wagon", "enemy", "player", "companion", "boss", "lamp", "scrap".
+## Qualcosa e stato travolto: "terrain", "wagon", "enemy", "player", "companion" (una macchina
+## della carovana), "boss", "lamp", "scrap".
 signal train_hit(what: StringName)
 signal train_passed(passes: int)
 
@@ -43,7 +44,7 @@ const DIRECTION_NAMES: Dictionary[int, String] = {-1: "EST", 1: "OVEST"}
 @export var terrain_field: TerrainField
 @export var district: RailwayDistrict
 @export var player: PlayerCharacter
-@export var companion: Companion
+@export var caravan: Caravan
 @export var director: EnemyDirector
 @export var lamp_field: LampField
 @export var scrap_field: ScrapField
@@ -240,10 +241,12 @@ func _sweep_actors() -> void:
 		_push_out(player)
 		train_hit.emit(&"player")
 		print("PROTOTYPE01_TRAIN_HIT what=player")
-	if companion != null and _covers(companion.global_position, tail_x) and not _hit.has(companion):
-		_hit[companion] = true
-		_push_out(companion)
-		train_hit.emit(&"companion")
+	if caravan != null:
+		for machine in caravan.machines:
+			if _covers(machine.global_position, tail_x) and not _hit.has(machine):
+				_hit[machine] = true
+				_push_out(machine)
+				train_hit.emit(&"companion")
 	if director == null:
 		return
 	for enemy in director.enemies.duplicate():

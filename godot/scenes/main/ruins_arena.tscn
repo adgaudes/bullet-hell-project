@@ -1,4 +1,4 @@
-[gd_scene load_steps=14 format=3]
+[gd_scene load_steps=15 format=3]
 
 [ext_resource type="Script" path="res://scripts/services/skeleton_probe.gd" id="1_probe"]
 [ext_resource type="Script" path="res://scripts/arena/overgrown_arena.gd" id="2_arena"]
@@ -11,7 +11,8 @@
 [ext_resource type="Resource" path="res://resources/tuning/player_presets/snappy.tres" id="11_feel_snappy"]
 [ext_resource type="Resource" path="res://resources/tuning/player_presets/heavy.tres" id="12_feel_heavy"]
 [ext_resource type="Resource" path="res://resources/tuning/player_presets/dash.tres" id="13_feel_dash"]
-[ext_resource type="PackedScene" path="res://scenes/companion/companion.tscn" id="14_companion"]
+[ext_resource type="Script" path="res://scripts/caravan/caravan.gd" id="14_caravan"]
+[ext_resource type="Resource" path="res://resources/tuning/caravan_default.tres" id="16_caravan_tuning"]
 [ext_resource type="Script" path="res://scripts/companion/scrap_field.gd" id="15_scrap"]
 
 [node name="RuinsArena" type="Node3D"]
@@ -43,7 +44,9 @@ presets = [ExtResource("11_feel_snappy"), ExtResource("10_feel_unreal"), ExtReso
 script = ExtResource("15_scrap")
 terrain_field = NodePath("../TerrainField")
 
-[node name="Companion" parent="." node_paths=PackedStringArray("player", "scrap_field") instance=ExtResource("14_companion")]
+[node name="Caravan" type="Node3D" parent="." node_paths=PackedStringArray("player", "scrap_field")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.3, 2.5)
+script = ExtResource("14_caravan")
+tuning = ExtResource("16_caravan_tuning")
 player = NodePath("../Player")
 scrap_field = NodePath("../ScrapField")

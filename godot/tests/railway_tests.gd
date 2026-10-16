@@ -30,6 +30,7 @@ func _initialize() -> void:
 	_run = _scene.get_node(^"Run")
 	_director.spawning = false
 	await _frames(5)
+	_test_caravan_wiring()
 	_test_scale()
 	_test_track_strip()
 	_test_start_courtyard_straddles_tracks()
@@ -68,6 +69,26 @@ func _strokes(kind: StringName) -> Array[Dictionary]:
 		if s.kind == kind:
 			out.append(s)
 	return out
+
+
+## Collegamenti della carovana nella scena (task 3 di D-093): un NodePath sbagliato in una
+## scena non da errore, lascia la proprieta nulla.
+func _test_caravan_wiring() -> void:
+	print("caravan wiring")
+	var caravan := _scene.get_node_or_null(^"Caravan") as Caravan
+	var lead := caravan.lead() if caravan != null else null
+	_check(caravan != null and lead != null and lead.has_module(&"cargo"), "la scena ha la carovana, con un Cassone capofila")
+	if lead == null:
+		return
+	var lamps: LampField = _scene.get_node(^"LampField")
+	var audio: RunAudio = _scene.get_node(^"RunAudio")
+	var train: TrainEvent = _scene.get_node(^"TrainEvent")
+	_check(_run.caravan == caravan and lamps.caravan == caravan and audio.caravan == caravan and train.caravan == caravan,
+		"Run, LampField, RunAudio e TrainEvent puntano alla carovana")
+	_check(caravan.player == _player and caravan.scrap_field == _scrap and caravan.path_field == _path,
+		"la carovana conosce giocatore, rottami e campo di percorso")
+	_check(not _scrap.veins().is_empty(), "le vene di vagoni e depositi sono nel campo dei rottami (%d)" % _scrap.veins().size())
+	_check(_run.write_queue.bodies.has(_player) and _run.write_queue.bodies.has(lead), "giocatore e capofila in write_queue.bodies")
 
 
 func _test_scale() -> void:

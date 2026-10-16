@@ -1,7 +1,7 @@
 class_name PathField
 extends Node3D
 ## Campo di percorso verso il giocatore (D-038): celle da 1,2 m con costi di
-## Dijkstra dal giocatore a ogni cella libera. Nemici e compagno seguono la
+## Dijkstra dal giocatore a ogni cella libera. Nemici e macchine seguono la
 ## cella vicina piu economica, quindi aggirano le mura e passano dai varchi.
 ## Le celle 1,2 m sono meta di una cella terreno (2,4 m) e allineate ai suoi
 ## bordi: una cella terreno Raised blocca esattamente 2x2 celle del campo.

@@ -4,8 +4,8 @@ extends Node
 ## pennellate per passo fisico, raggio limitato, punti protetti o fuori campo scartati. Un anello
 ## del picchetto sale cosi un disco alla volta: si vede crescere e non pesa su un solo frame.
 ## Un rialzo secco sotto un corpo lo incastrerebbe nella heightfield (GODOT_WORKFLOW): dopo ogni
-## pennellata i nemici sul disco salgono col suolo e i corpi di `bodies` (giocatore, compagno)
-## restano alla stessa altezza sul suolo, come fa il terremoto. Le scritture urgenti (la
+## pennellata i nemici sul disco salgono col suolo e i corpi di `bodies` (giocatore, macchine
+## della carovana) restano alla stessa altezza sul suolo, come fa il terremoto. Le scritture urgenti (la
 ## spianata davanti all'Ariete) passano davanti alla coda.
 
 const WRITES_PER_STEP := 1
@@ -14,7 +14,8 @@ const MAX_RADIUS := 2.5
 var terrain_field: TerrainField
 ## Per sollevare i nemici sui dischi che salgono (opzionale).
 var director: EnemyDirector
-## Giocatore e compagno: restano alla stessa altezza sul suolo se il suolo sale (opzionale).
+## Giocatore e macchine della carovana: restano alla stessa altezza sul suolo se il suolo sale
+## (opzionale). Si aggiunge un corpo alla volta (lista tipizzata).
 var bodies: Array[Node3D] = []
 var _jobs: Array[Dictionary] = []
 

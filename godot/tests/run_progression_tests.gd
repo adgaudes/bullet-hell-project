@@ -11,7 +11,7 @@ func _initialize() -> void:
 	_test_seed_is_reproducible()
 	_test_pity_guarantee()
 	_test_maxed_upgrades_disappear()
-	_test_companion_parts_need_companion()
+	_test_caravan_cards_need_caravan()
 	_test_rarity_weights()
 	_test_class_decks()
 	_test_weapon_card_first()
@@ -185,15 +185,15 @@ func _test_maxed_upgrades_disappear() -> void:
 		"UpgradeCatalog.value legge i valori e ha un default")
 
 
-func _test_companion_parts_need_companion() -> void:
+func _test_caravan_cards_need_caravan() -> void:
 	print("requires")
 	var p := _new(4)
-	p.has_companion = false
+	p.has_caravan = false
 	var seen := false
 	for i in 200:
 		for u in p.roll_offer():
 			seen = seen or u.category == &"companion"
-	_check(not seen, "senza compagno nessun pezzo compagno (regola 2)")
+	_check(not seen, "senza carovana nessuna carta della carovana (regola 2)")
 
 
 ## Regola 1 sulla prima carta, con la garanzia spenta: circa 60/27/10 rinormalizzati

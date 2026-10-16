@@ -76,7 +76,8 @@ var path_field: PathField
 var director: EnemyDirector
 var lamp_field: LampField
 var scrap_field: ScrapField
-var companion: Node3D
+## Carovana del giocatore: la carica spinge di lato ogni macchina sulla sua strada.
+var caravan: Caravan
 var charge_speed := 6.0
 var charge_length := 30.0
 var aim_seconds := 2.0
@@ -330,8 +331,9 @@ func _tick_charge(delta: float) -> void:
 			furrowed.emit(Vector3(tip.x, 0.0, tip.z))
 		_furrow_travel = 0.0
 	_hit_in_the_way(player, true)
-	if companion != null:
-		_hit_in_the_way(companion, false)
+	if caravan != null:
+		for machine in caravan.machines:
+			_hit_in_the_way(machine, false)
 	# Fermata contro una rovina o il bordo (mai contro il terreno: quello lo scava).
 	for i in get_slide_collision_count():
 		var collision := get_slide_collision(i)

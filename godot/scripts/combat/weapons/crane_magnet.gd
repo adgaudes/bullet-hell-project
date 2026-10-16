@@ -4,9 +4,10 @@ extends ActiveWeapon
 ## elettromagnete per `pull_seconds` tira verso il centro i nemici entro `pull_radius` (deriva a
 ## `pull_speed`, rimessa a ogni passo: i boss non si muovono) e verso chi spara l'esperienza entro
 ## `xp_radius`; alla fine l'attrattore dell'esperienza torna com'era. Bivi: Schiacciasassi (alla
-## fine danno a chi e al centro), Gru mobile (il centro segue il compagno), Polarita inversa (alla
-## fine respinge: chi sbatte contro un argine prende danno), Raccolta (i rottami a terra nel
-## raggio passano al compagno, fin dove c'e posto). Senza compagno le sue parti si saltano.
+## fine danno a chi e al centro), Gru mobile (il centro segue il capofila della carovana),
+## Polarita inversa (alla fine respinge: chi sbatte contro un argine prende danno), Raccolta (i
+## rottami a terra nel raggio passano ai Cassoni, fin dove c'e posto). Senza carovana le sue
+## parti si saltano.
 
 const FIELD_COLOR := Color(0.2, 0.95, 0.9)
 const CRUSH_RADIUS := 1.5
@@ -18,7 +19,7 @@ const WALL_RISE := 0.6
 const WALL_PROBE := 1.0
 
 ## Servizi dal WeaponLoadout (dopo `add_child`): ognuno puo mancare.
-var companion: Node3D
+var caravan: Caravan
 var xp_field: XpField
 var scrap_field: ScrapField
 var _pull_left := 0.0
@@ -70,7 +71,7 @@ func _fire(at: Vector3) -> void:
 		_release(false)
 	_center = at
 	_pull_left = stat(&"pull_seconds")
-	_follow_companion()
+	_follow_lead()
 	_borrow_xp_attractor()
 	_place_ring()
 	_ring.show()
@@ -82,7 +83,7 @@ func _physics_process(delta: float) -> void:
 	_tick_repel(delta)
 	if _pull_left <= 0.0:
 		return
-	_follow_companion()
+	_follow_lead()
 	if director != null:
 		var speed := stat(&"pull_speed")
 		for enemy in director.enemies_near(_center, stat(&"pull_radius")):
@@ -133,16 +134,16 @@ func _release(finished: bool) -> void:
 		_salvage(radius)
 
 
-## Raccolta: i rottami a terra nel raggio passano al compagno, fin dove ha posto.
+## Raccolta: i rottami a terra nel raggio passano ai Cassoni della carovana, fin dove hanno posto.
 func _salvage(radius: float) -> void:
-	if scrap_field == null or not is_instance_valid(companion) or not companion.has_method(&"add_capacity"):
+	if scrap_field == null or not is_instance_valid(caravan):
 		return
-	var room := int(companion.get(&"capacity")) - int(companion.get(&"carried"))
+	var room := caravan.room()
 	if room <= 0:
 		return
 	var taken := scrap_field.take_near(_center, radius, room)
 	if taken > 0:
-		companion.call(&"add_capacity", 0, taken)
+		caravan.add_scrap(taken)
 
 
 func _tick_repel(delta: float) -> void:
@@ -164,10 +165,14 @@ func _wall_behind(position: Vector3, away: Vector3) -> bool:
 	return terrain_field.height_at(position + away * WALL_PROBE) - terrain_field.height_at(position) > WALL_RISE
 
 
-## Gru mobile: il centro sta sul compagno, se c'e; altrimenti resta dove e stato messo.
-func _follow_companion() -> void:
-	if stat(&"mobile") > 0.0 and is_instance_valid(companion) and companion.is_inside_tree():
-		_center = companion.global_position
+## Gru mobile: il centro sta sul capofila della carovana, se c'e; altrimenti resta dove e
+## stato messo.
+func _follow_lead() -> void:
+	if stat(&"mobile") <= 0.0 or not is_instance_valid(caravan) or not caravan.is_inside_tree():
+		return
+	var lead := caravan.lead()
+	if is_instance_valid(lead) and lead.is_inside_tree():
+		_center = lead.global_position
 
 
 func _borrow_xp_attractor() -> void:

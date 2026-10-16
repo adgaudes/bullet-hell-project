@@ -2,14 +2,15 @@ class_name ScrapField
 extends Node3D
 ## Rottami a terra: nascono quando una cella viene scavata (griglia) o quando il pennello
 ## asporta terra da una vena sepolta sotto un cumulo (rilievo continuo, spec 5.1), e
-## restano finche il compagno non li raccoglie. Nessuna fisica: posizioni e distanze bastano.
+## restano finche un Cassone della carovana non li raccoglie. Nessuna fisica: posizioni e
+## distanze bastano.
 
 signal scrap_spawned(position: Vector3)
 
 ## Ruggine, lineare.
 const SCRAP_COLOR := Color(0.55, 0.22, 0.06)
 const SCRAP_SIZE := 0.3
-## Nell'arena grande (D-042) i depositi scavati restano a terra lontano dal compagno.
+## Nell'arena grande (D-042) i depositi scavati restano a terra lontano dai Cassoni.
 const MAX_SCRAPS := 60
 const BOB_HEIGHT := 0.08
 const BOB_SPEED := 3.0

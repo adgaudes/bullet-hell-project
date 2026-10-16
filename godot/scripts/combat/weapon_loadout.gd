@@ -21,7 +21,7 @@ var director: EnemyDirector
 var terrain_field: TerrainField
 var write_queue: TerrainWriteQueue
 ## Servizi facoltativi (piano 3): passano alle armi che hanno una proprieta con lo stesso nome.
-var companion: Node3D
+var caravan: Caravan
 var xp_field: XpField
 var scrap_field: ScrapField
 var meadow: MeadowMap
@@ -66,7 +66,7 @@ static func script_for(id: StringName) -> Script:
 
 ## Passa all'arma i servizi del loadout che lei dichiara (proprieta con lo stesso nome).
 func give_services(w: Weapon) -> void:
-	for key: StringName in [&"write_queue", &"companion", &"xp_field", &"scrap_field", &"meadow"]:
+	for key: StringName in [&"write_queue", &"caravan", &"xp_field", &"scrap_field", &"meadow"]:
 		if key in w:
 			w.set(key, get(key))
 	if w is ActiveWeapon:

@@ -11,7 +11,7 @@ var _scene: Node3D
 var _run: ArenaRun
 var _field: TerrainField
 var _player: PlayerCharacter
-var _companion: Companion
+var _caravan: Caravan
 var _director: EnemyDirector
 var _weapon: AutoWeapon
 var _path: PathField
@@ -29,7 +29,7 @@ func _initialize() -> void:
 	_run = _scene.get_node(^"Run")
 	_field = _scene.get_node(^"TerrainField")
 	_player = _scene.get_node(^"Player")
-	_companion = _scene.get_node(^"Companion")
+	_caravan = _scene.get_node(^"Caravan")
 	_director = _scene.get_node(^"EnemyDirector")
 	_weapon = _scene.get_node(^"PlayerWeapon")
 	_path = _scene.get_node(^"PathField")

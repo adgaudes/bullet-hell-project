@@ -184,7 +184,7 @@ func _test_script_for() -> void:
 
 ## Arma di prova con le proprieta dei servizi del piano 3.
 class ServiceProbe extends Weapon:
-	var companion: Node3D
+	var caravan: Caravan
 	var xp_field: XpField
 	var scrap_field: ScrapField
 	var meadow: MeadowMap
@@ -193,17 +193,17 @@ class ServiceProbe extends Weapon:
 func _test_services() -> void:
 	print("servizi del loadout")
 	var loadout := await _loadout(&"engineer")
-	var companion := Node3D.new()
-	_root.add_child(companion)
+	var caravan := Caravan.new()
+	_root.add_child(caravan)
 	var xp := XpField.new()
 	_root.add_child(xp)
-	loadout.companion = companion
+	loadout.caravan = caravan
 	loadout.xp_field = xp
 	loadout.meadow = MeadowMap.new()
 	var probe := ServiceProbe.new()
 	loadout.add_child(probe)
 	loadout.give_services(probe)
-	_check(probe.companion == companion and probe.xp_field == xp and probe.meadow == loadout.meadow, "i servizi passano all'arma che li ha")
+	_check(probe.caravan == caravan and probe.xp_field == xp and probe.meadow == loadout.meadow, "i servizi passano all'arma che li ha")
 	_check(probe.scrap_field == null, "un servizio assente resta null")
 	var stake := loadout.weapon(&"seismic_stake") as ActiveWeapon
 	loadout.set_active_cooldown_scale(0.9)

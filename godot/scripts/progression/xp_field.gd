@@ -2,7 +2,7 @@ class_name XpField
 extends Node3D
 ## Frammenti di esperienza a terra (PROGRESSION_SPEC, sezione 4): nascono dove
 ## muore un nemico e volano verso chi li attira entro il suo raggio. Il
-## giocatore attira sempre; il compagno solo con l'upgrade Calamita.
+## giocatore attira sempre; il capofila della carovana solo con l'upgrade Calamita.
 
 signal collected(amount: int)
 

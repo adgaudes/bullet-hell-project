@@ -11,7 +11,7 @@ var _scene: Node3D
 var _run: ArenaRun
 var _field: TerrainField
 var _player: PlayerCharacter
-var _companion: Companion
+var _caravan: Caravan
 var _director: EnemyDirector
 var _lamps: LampField
 var _hud: RunHud
@@ -24,12 +24,11 @@ func _initialize() -> void:
 	_run = _scene.get_node(^"Run")
 	_field = _scene.get_node(^"TerrainField")
 	_player = _scene.get_node(^"Player")
-	_companion = _scene.get_node(^"Companion")
+	_caravan = _scene.get_node(^"Caravan")
 	_director = _scene.get_node(^"EnemyDirector")
 	_lamps = _scene.get_node(^"LampField")
 	_hud = _scene.get_node(^"RunHud")
 	_director.spawning = false
-	_companion.set_physics_process(false)
 	(_scene.get_node(^"PlayerWeapon") as AutoWeapon).set_physics_process(false)
 	await _frames(5)
 	await _test_mode_cycle()
@@ -77,10 +76,10 @@ func _place_player_facing(target: Vector3) -> void:
 	_player._update_terrain_target()
 
 
+## Il Cassone capofila accanto a [param near], con [param scrap] rottami a bordo.
 func _supply(near: Vector3, scrap: int) -> void:
-	_companion.global_position = near + Vector3(0.0, 0.3, 2.0)
-	_companion.carried = scrap
-	_companion._refresh_cargo()
+	_caravan.lead().global_position = near + Vector3(0.0, 0.3, 2.0)
+	_caravan.carried = scrap
 
 
 func _test_mode_cycle() -> void:
@@ -111,7 +110,8 @@ func _test_mode_cycle() -> void:
 
 func _test_lamp_rules_on_relief() -> void:
 	print("lamp rules")
-	_companion.add_capacity(20, 20)
+	_caravan.add_cargo_capacity(20)
+	_caravan.add_scrap(20)
 	# Fuori dal cortile di partenza: nei primi 10 s il suo disco (6 m) e protetto.
 	var flat := Vector3(0.0, 0.0, -14.0)
 	_check(_lamps.can_place(flat), "si pianta su terreno piano")
@@ -173,7 +173,7 @@ func _test_cost() -> void:
 	_player._update_terrain_target()
 	await _frames(1)
 	_check(not _lamps.can_afford(target) and _player._preview.last_color == BrushPreview.INVALID_COLOR,
-		"con %d rottami l'anello e rosso" % _companion.carried)
+		"con %d rottami l'anello e rosso" % _caravan.carried)
 	_player.tool_held = true
 	await _frames(2)
 	_player.tool_held = false
@@ -184,7 +184,7 @@ func _test_cost() -> void:
 	_player.tool_held = true
 	await _frames(2)
 	_player.tool_held = false
-	_check(_lamps.count() == 1 and _companion.carried == 1, "col tool: lampione piazzato e %d rottami spesi (%d, %d)" % [_lamps.scrap_cost, _lamps.count(), _companion.carried])
+	_check(_lamps.count() == 1 and _caravan.carried == 1, "col tool: lampione piazzato e %d rottami spesi (%d, %d)" % [_lamps.scrap_cost, _lamps.count(), _caravan.carried])
 	_player.terrain_tool_rejected.disconnect(handler)
 	_player.terrain_tool_mode = TerrainField.ToolMode.DIG
 	_lamps.remove_all(&"test")
@@ -193,11 +193,11 @@ func _test_cost() -> void:
 func _test_light_and_loss() -> void:
 	print("light and loss")
 	var world := Vector3(9.6, 0.0, -14.0)
-	_companion.add_capacity(0, 6)
+	_caravan.add_scrap(6)
 	_supply(world, 6)
 	_check(_lamps.place_at(world), "lampione piantato a %s" % world)
-	# Via il faro del compagno e la torcia: conta solo il lampione.
-	_companion.global_position = world + Vector3(60.0, 0.3, 0.0)
+	# Via il faro del capofila e la torcia: conta solo il lampione.
+	_caravan.lead().global_position = world + Vector3(60.0, 0.3, 0.0)
 	_player.global_position = world + Vector3(-60.0, 0.88, 0.0)
 	var field := _run.light_field
 	_check(field.is_lit(world + Vector3(_lamps.light_radius - 0.1, 0.0, 0.0)) and not field.is_lit(world + Vector3(_lamps.light_radius + 0.3, 0.0, 0.0)),
@@ -227,4 +227,4 @@ func _test_boss_knocks_down() -> void:
 		boss.global_position = world + Vector3(0.5, _field.height_at(world) + Demolisher.boss_spawn_height(), 0.0)
 		await _frames(3)
 		_check(_lamps.count() == 0, "entrando nel raggio di contatto lo abbatte")
-	_companion.global_position = Vector3(-3.0, 0.3, 0.0)
+	_caravan.lead().global_position = Vector3(-3.0, 0.3, 0.0)

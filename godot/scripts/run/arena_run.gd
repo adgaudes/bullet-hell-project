@@ -51,7 +51,7 @@ const BOSS_DIRECTIONS := [
 ## cortile centrale di `tuning.wall_ring_radius`.
 @export var district: RuinsDistrict
 @export var player: PlayerCharacter
-@export var companion: Companion
+@export var caravan: Caravan
 ## Rilievo continuo del livello (D-085); con questo nodo la griglia non c'e piu.
 @export var terrain_field: TerrainField
 @export var director: EnemyDirector
@@ -78,7 +78,8 @@ var progression := RunProgression.new()
 var elapsed := 0.0
 var is_over := false
 var run_seed := 0
-var companion_weapon: AutoWeapon
+## Torretta della carta `companion_turret`, montata sul capofila della carovana.
+var turret_weapon: AutoWeapon
 ## Classe del giocatore (D-092) e i suoi slot d'arma; la chiodatrice della scena e `weapon`.
 var class_id: StringName = ClassCatalog.DEFAULT
 var loadout: WeaponLoadout
@@ -87,7 +88,7 @@ var write_queue: TerrainWriteQueue
 var meadow: MeadowMap
 ## Carte dei mazzi di classe che non sono armi (spec D-092, par. 5).
 var class_perks: ClassPerks
-## Luci logiche della notte: torcia del giocatore, faro del compagno (e lampioni, tappa 2).
+## Luci logiche della notte: torcia del giocatore, faro sul capofila della carovana (e lampioni, tappa 2).
 var light_field := LightField.new()
 var torch_light_id := 0
 var beacon_light_id := 0
@@ -162,7 +163,7 @@ func _ready() -> void:
 	progression.xp_first_level = tuning.xp_first_level
 	progression.xp_growth = tuning.xp_growth
 	progression.pity_level_ups = tuning.pity_level_ups
-	progression.has_companion = companion != null
+	progression.has_caravan = caravan != null
 	director.rng.seed = run_seed + 1
 	_boss_rng.seed = run_seed + 2
 	_check_scale()
@@ -294,7 +295,7 @@ func _on_marker_terrain_changed(aabb: AABB) -> void:
 
 
 func _scrap_field() -> ScrapField:
-	return companion.scrap_field if companion != null else null
+	return caravan.scrap_field if caravan != null else null
 
 
 func _add_marker_target(is_deposit: bool, marker: Vector2) -> void:
@@ -411,7 +412,7 @@ func _make_demolisher() -> Demolisher:
 	demolisher.terrain_field = terrain_field
 	demolisher.path_field = director.path_field
 	demolisher.director = director
-	demolisher.companion = companion
+	demolisher.caravan = caravan
 	demolisher.speed = tuning.boss_speed
 	demolisher.contact_damage = tuning.boss_contact_damage
 	demolisher.contact_radius = tuning.boss_contact_radius
@@ -419,7 +420,7 @@ func _make_demolisher() -> Demolisher:
 	demolisher.wall_attraction_radius = tuning.boss_wall_attraction_radius
 	demolisher.walls_per_barricade = tuning.boss_walls_per_barricade
 	demolisher.max_barricades = tuning.boss_max_barricades
-	demolisher.scrap_field = companion.scrap_field if companion != null else null
+	demolisher.scrap_field = _scrap_field()
 	demolisher.lamp_field = lamp_field
 	demolisher.max_carriers = tuning.boss_max_carriers
 	demolisher.carrier_scrap_radius = tuning.boss_carrier_scrap_radius
@@ -435,8 +436,8 @@ func _make_driller() -> Driller:
 	driller.terrain_field = terrain_field
 	driller.path_field = director.path_field
 	driller.director = director
-	driller.companion = companion
-	driller.scrap_field = companion.scrap_field if companion != null else null
+	driller.caravan = caravan
+	driller.scrap_field = _scrap_field()
 	driller.lamp_field = lamp_field
 	driller.contact_damage = tuning.boss_contact_damage
 	driller.contact_radius = tuning.boss_contact_radius
@@ -526,10 +527,10 @@ func recovery_scrap() -> int:
 	return total
 
 
-## Rottami che escono dal livello: quelli nel cassone e quelli di recupero, piu il
+## Rottami che escono dal livello: quelli nei Cassoni della carovana e quelli di recupero, piu il
 ## premio del boss se battuto.
 func scrap_out(victory: bool) -> int:
-	var carried := (companion.carried if companion != null else 0) + recovery_scrap()
+	var carried := (caravan.carried if caravan != null else 0) + recovery_scrap()
 	if victory:
 		return carried + tuning.boss_scrap_bonus
 	return int(floor(carried * _death_scrap_share))
@@ -608,13 +609,13 @@ func _apply_permanent_upgrades() -> void:
 			&"reflexes":
 				player.invulnerability_seconds += 0.2 * owned
 			&"cargo":
-				if companion != null:
-					companion.add_capacity(2 * owned)
+				if caravan != null:
+					caravan.add_cargo_capacity(2 * owned)
 			&"stock":
-				if companion != null:
-					companion.add_capacity(0, 2 * owned)
+				if caravan != null:
+					caravan.add_scrap(2 * owned)
 			&"fixed_turret":
-				if companion != null:
+				if caravan != null:
 					# Conta come primo livello della carta: al level-up si puo solo migliorare.
 					apply_upgrade(&"companion_turret", progression.choose(&"companion_turret"))
 			&"salvage":
@@ -630,7 +631,7 @@ func _apply_permanent_upgrades() -> void:
 			&"charge_pack":
 				apply_upgrade(&"dig_blast", progression.choose(&"dig_blast"))
 			&"good_oil":
-				class_perks.boost_companion_speed(0.15)
+				class_perks.boost_machine_speed(0.15)
 			&"good_seeds":
 				loadout.set_weapon_mods(&"bramble", {hedge_seconds_add = 3.0 * owned})
 			&"green_thumb":
@@ -826,8 +827,9 @@ func _setup_night() -> void:
 	torch_radius = tuning.torch_radius
 	beacon_radius = tuning.beacon_radius
 	torch_light_id = light_field.add_source(player, torch_radius)
-	if companion != null:
-		beacon_light_id = light_field.add_source(companion, beacon_radius)
+	# Il faro del compagno di oggi sta sul capofila (piano A; il modulo Faro arriva col task 4).
+	if caravan != null and caravan.lead() != null:
+		beacon_light_id = light_field.add_source(caravan.lead(), beacon_radius)
 	director.light_field = light_field
 	if lamp_field != null:
 		lamp_field.scrap_cost = tuning.lamp_scrap_cost
@@ -875,14 +877,14 @@ func _on_night_phase_changed(phase: DayNightCycle.Phase) -> void:
 	night_phase_changed.emit(phase)
 
 
-## Le due OmniLight3D sono di ArenaRun, non delle scene del giocatore e del compagno
+## Le due OmniLight3D sono di ArenaRun, non delle scene del giocatore e della macchina
 ## (piano, sezione 14): nascono alla prima chiamata e costano zero a fattore 0.
 func _update_game_lights() -> void:
 	var factor := day_night.night_factor
 	if _torch == null:
 		_torch = _make_game_light("TorchLight", player)
-		if companion != null:
-			_beacon = _make_game_light("BeaconLight", companion)
+		if caravan != null and caravan.lead() != null:
+			_beacon = _make_game_light("BeaconLight", caravan.lead())
 	if is_equal_approx(factor, _night_factor_applied):
 		return
 	_night_factor_applied = factor
@@ -1055,13 +1057,12 @@ func _open_next_cache() -> bool:
 	return false
 
 
-## Cassa senza carte: i rottami vanno al compagno; quelli che non ci stanno (o tutti, senza
-## compagno che li porti) restano a terra vicino al giocatore se c'e un campo di rottami.
+## Cassa senza carte: i rottami vanno nei Cassoni della carovana; quelli che non ci stanno (o
+## tutti, senza carovana che li porti) restano a terra vicino al giocatore se c'e un campo di rottami.
 func _cache_scrap_fallback() -> void:
 	var given := 0
-	if companion != null:
-		given = clampi(companion.capacity - companion.carried, 0, CACHE_FALLBACK_SCRAP)
-		companion.add_capacity(0, given)
+	if caravan != null:
+		given = caravan.add_scrap(CACHE_FALLBACK_SCRAP)
 	if _scrap_field() != null:
 		for i in CACHE_FALLBACK_SCRAP - given:
 			_scrap_field().spawn_on_ground(player.global_position + Vector3(0.8 * (i + 1), 0.0, 0.0))
@@ -1075,11 +1076,12 @@ func apply_upgrade(id: StringName, new_level: int) -> void:
 		&"companion_turret":
 			_upgrade_companion_turret(new_level)
 		&"companion_magnet":
-			xp_field.set_attractor(companion, UpgradeCatalog.value(id, &"radius") + UpgradeCatalog.value(id, &"radius_per_level") * (new_level - 1))
+			xp_field.set_attractor(caravan.lead(), UpgradeCatalog.value(id, &"radius") + UpgradeCatalog.value(id, &"radius_per_level") * (new_level - 1))
 			if new_level == 1:
-				companion.mount_part(&"MagnetPart", _magnet_part())
+				caravan.lead().mount_part(&"MagnetPart", _magnet_part())
 		&"companion_cargo":
-			companion.add_capacity(int(UpgradeCatalog.value(id, &"capacity")), int(UpgradeCatalog.value(id, &"scrap_now")))
+			caravan.add_cargo_capacity(int(UpgradeCatalog.value(id, &"capacity")))
+			caravan.add_scrap(int(UpgradeCatalog.value(id, &"scrap_now")))
 		&"dig_blast":
 			dig_blast_radius = UpgradeCatalog.value(id, &"radius") + UpgradeCatalog.value(id, &"radius_per_level") * (new_level - 1)
 		&"spiked_wall":
@@ -1097,8 +1099,8 @@ func apply_upgrade(id: StringName, new_level: int) -> void:
 		&"field_patch":
 			player.heal(int(UpgradeCatalog.value(id, &"heal")))
 		&"lucky_scrap":
-			if companion != null:
-				companion.add_capacity(0, int(UpgradeCatalog.value(id, &"scrap_now")))
+			if caravan != null:
+				caravan.add_scrap(int(UpgradeCatalog.value(id, &"scrap_now")))
 		&"torch_range":
 			torch_radius = tuning.torch_radius + tuning.torch_radius_per_level * new_level
 			light_field.set_radius(torch_light_id, torch_radius)
@@ -1118,22 +1120,24 @@ func apply_upgrade(id: StringName, new_level: int) -> void:
 				class_perks.apply(id, new_level)
 
 
+## Carta Torretta: l'arma spara dal capofila della carovana e il pezzo sta sul suo cassone
+## (piano A; il modulo Torretta arriva col task 4).
 func _upgrade_companion_turret(new_level: int) -> void:
-	if companion_weapon == null:
-		companion_weapon = AutoWeapon.new()
-		companion_weapon.name = "CompanionWeapon"
-		companion_weapon.shooter = companion
-		companion_weapon.director = director
-		companion_weapon.muzzle_height = 0.55
-		companion_weapon.fire_interval = UpgradeCatalog.value(&"companion_turret", &"fire_interval")
-		companion_weapon.weapon_range = UpgradeCatalog.value(&"companion_turret", &"weapon_range")
-		companion_weapon.damage = tuning.weapon_damage
-		companion_weapon.projectile_speed = tuning.projectile_speed
+	if turret_weapon == null:
+		turret_weapon = AutoWeapon.new()
+		turret_weapon.name = "TurretWeapon"
+		turret_weapon.shooter = caravan.lead()
+		turret_weapon.director = director
+		turret_weapon.muzzle_height = 0.55
+		turret_weapon.fire_interval = UpgradeCatalog.value(&"companion_turret", &"fire_interval")
+		turret_weapon.weapon_range = UpgradeCatalog.value(&"companion_turret", &"weapon_range")
+		turret_weapon.damage = tuning.weapon_damage
+		turret_weapon.projectile_speed = tuning.projectile_speed
 		# Differito: con la Torretta fissa (D-049) succede durante il _ready della scena.
-		get_parent().add_child.call_deferred(companion_weapon)
-		companion.mount_part(&"TurretPart", _turret_part())
+		get_parent().add_child.call_deferred(turret_weapon)
+		caravan.lead().mount_part(&"TurretPart", _turret_part())
 	else:
-		companion_weapon.fire_interval /= UpgradeCatalog.value(&"companion_turret", &"rate_per_level")
+		turret_weapon.fire_interval /= UpgradeCatalog.value(&"companion_turret", &"rate_per_level")
 	print("PROTOTYPE01_COMPANION_TURRET level=%d" % new_level)
 
 
@@ -1266,17 +1270,21 @@ func _setup_loadout() -> void:
 	write_queue.name = "WeaponTerrainQueue"
 	write_queue.terrain_field = terrain_field
 	write_queue.director = director
-	for body: Node3D in [player, companion]:
-		if body != null:
-			write_queue.bodies.append(body)
+	if player != null:
+		write_queue.bodies.append(player)
 	add_child(write_queue)
+	# Servizi della run ai moduli della carovana; le macchine entrano in `write_queue.bodies`
+	# (restano alla stessa altezza sul suolo quando le armi alzano il terreno).
+	if caravan != null:
+		caravan.configure({director = director, terrain_field = terrain_field, write_queue = write_queue,
+			xp_field = xp_field, light_field = light_field, run_tuning = tuning})
 	loadout = WeaponLoadout.new()
 	loadout.name = "WeaponLoadout"
 	loadout.player = player
 	loadout.director = director
 	loadout.terrain_field = terrain_field
 	loadout.write_queue = write_queue
-	loadout.companion = companion
+	loadout.caravan = caravan
 	loadout.xp_field = xp_field
 	loadout.scrap_field = _scrap_field()
 	if terrain_field != null:
@@ -1295,7 +1303,7 @@ func _setup_loadout() -> void:
 	class_perks.name = "ClassPerks"
 	class_perks.director = director
 	class_perks.player = player
-	class_perks.companion = companion
+	class_perks.caravan = caravan
 	class_perks.loadout = loadout
 	class_perks.terrain_field = terrain_field
 	class_perks.meadow = meadow

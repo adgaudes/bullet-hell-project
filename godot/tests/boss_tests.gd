@@ -50,7 +50,7 @@ func _initialize() -> void:
 	await _test_abandons_unreachable_wall()
 	await _test_no_carrier_without_route()
 	await _test_spawn_point_is_walkable()
-	await _test_companion_ignores_sealed_scrap()
+	await _test_caravan_ignores_sealed_scrap()
 	await _test_site_moves_when_occupied()
 	await _test_carrier_waits_without_site()
 	await _test_uphill_slows()
@@ -160,8 +160,8 @@ func _test_call_and_arrival() -> void:
 ## una barricata a cumulo fra lui e il giocatore (D-045).
 func _test_walls_attract_and_feed_barricades() -> void:
 	print("walls and barricades")
-	var companion: Companion = _scene.get_node(^"Companion")
-	companion.set_physics_process(false)
+	var lead := (_scene.get_node(^"Caravan") as Caravan).lead()
+	lead.set_physics_process(false)
 	_place_player(Vector3.ZERO)
 	_place_boss(Vector3(4.8, 0.0, -17.0))
 	var first_frame := -1
@@ -225,7 +225,7 @@ func _test_walls_attract_and_feed_barricades() -> void:
 		hauler.queue_free()
 	_boss.speed = _run.tuning.boss_speed
 	_boss.wall_attraction_radius = _run.tuning.boss_wall_attraction_radius
-	companion.set_physics_process(true)
+	lead.set_physics_process(true)
 	_player._invulnerable_left = 0.0
 	if _boss.barricade_points.size() == 1:
 		var p: Vector3 = _boss.barricade_points[0]
@@ -457,26 +457,27 @@ func _test_spawn_point_is_walkable() -> void:
 	_path.scan_static_obstacles()
 
 
-## R-05: il compagno non punta a un rottame chiuso dentro un anello di argini.
-func _test_companion_ignores_sealed_scrap() -> void:
-	print("companion ignores sealed scrap")
-	# Il rottame sta entro il raggio di raccolta dal giocatore (6 m), ma il giocatore e il
-	# compagno restano fuori dal fianco dell'anello; il cassone deve avere posto.
+## R-05: il Cassone non punta a un rottame chiuso dentro un anello di argini.
+func _test_caravan_ignores_sealed_scrap() -> void:
+	print("caravan ignores sealed scrap")
+	# Il rottame sta entro il raggio di raccolta dal giocatore (6 m), ma il giocatore e la
+	# macchina restano fuori dal fianco dell'anello; il cassone deve avere posto.
 	_place_player(Vector3(-3.0, 0.0, 0.0))
-	var companion: Companion = _scene.get_node(^"Companion")
-	companion.carried = 0
+	var caravan: Caravan = _scene.get_node(^"Caravan")
+	caravan.carried = 0
+	var lead := caravan.lead()
 	var sealed := Vector3(2.5, 0.0, 0.0)
 	_seal_ring(sealed)
 	await _frames(2)
 	_path.solve()
 	var before := _scrap.count()
 	_scrap.spawn_on_ground(sealed)
-	var destination: Vector3 = companion._choose_destination()
-	_check(_planar_distance(destination, sealed) > 1.0, "il rottame sigillato non e la destinazione del compagno")
+	var destination: Vector3 = lead._choose_destination()
+	_check(_planar_distance(destination, sealed) > 1.0, "il rottame sigillato non e la destinazione del Cassone")
 	_open_ring(sealed)
 	await _frames(2)
 	_path.solve()
-	destination = companion._choose_destination()
+	destination = lead._choose_destination()
 	_check(_planar_distance(destination, sealed) < 0.5, "riaperto, il rottame torna a essere la destinazione (costo %.1f, dest %s, rottami %d)" % [_path.cost_at(sealed), destination, _scrap.count()])
 	_scrap.take_near(sealed, 1.0, 1)
 	_check(_scrap.count() == before, "pulizia")
@@ -595,7 +596,7 @@ func _test_defeat_completes_level() -> void:
 	var kills := _director.kills
 	var completed := [false]
 	_run.level_completed.connect(func() -> void: completed[0] = true)
-	var carried: int = _scene.get_node(^"Companion").carried
+	var carried: int = (_scene.get_node(^"Caravan") as Caravan).carried
 	# La piazzola di estrazione (D-076) ha la sua suite: qui si prova la vittoria diretta.
 	_run.extraction_pad = null
 	_boss.take_damage(_boss.health)

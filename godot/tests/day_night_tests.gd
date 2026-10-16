@@ -12,7 +12,9 @@ var _failures := 0
 var _scene: Node3D
 var _run: ArenaRun
 var _player: PlayerCharacter
-var _companion: Companion
+var _caravan: Caravan
+## Il capofila della carovana: porta il faro (il compagno di oggi).
+var _machine: Machine
 var _director: EnemyDirector
 var _hud: RunHud
 var _cycle: DayNightCycle
@@ -24,13 +26,15 @@ func _initialize() -> void:
 	root.add_child(_scene)
 	_run = _scene.get_node(^"Run")
 	_player = _scene.get_node(^"Player")
-	_companion = _scene.get_node(^"Companion")
+	_caravan = _scene.get_node(^"Caravan")
 	_director = _scene.get_node(^"EnemyDirector")
 	_hud = _scene.get_node(^"RunHud")
 	_cycle = _run.day_night
 	_director.spawning = false
 	(_scene.get_node(^"PlayerWeapon") as AutoWeapon).set_physics_process(false)
 	await _frames(5)
+	# La macchina nasce nel _ready della carovana.
+	_machine = _caravan.lead()
 	# Il terremoto (D-075) ha la sua suite: qui il tempo salta e il suo annuncio coprirebbe
 	# quello della notte. Dopo i primi passi: la regia imposta l'evento al suo _ready.
 	if _run.quake_event != null:
@@ -163,8 +167,8 @@ func _measure_speed(at: Vector3, night: bool) -> float:
 func _test_dark_speed() -> void:
 	print("dark speed")
 	_place_player(Vector3.ZERO)
-	_companion.global_position = Vector3(-3.0, _companion.global_position.y, 0.0)
-	_companion.set_physics_process(false)
+	_machine.global_position = Vector3(-3.0, _machine.global_position.y, 0.0)
+	_machine.set_physics_process(false)
 	_player._invulnerable_left = 600.0
 	var base := _run.tuning.enemy_speed
 	var far_night := await _measure_speed(Vector3(20.0, 0.0, 0.0), true)
@@ -193,7 +197,7 @@ func _contact_damage(at: Vector3, night: bool) -> int:
 func _test_dark_damage() -> void:
 	print("dark damage")
 	_place_player(Vector3(40.0, 0.0, 40.0))
-	_companion.global_position = Vector3(40.0, _companion.global_position.y, 80.0)
+	_machine.global_position = Vector3(40.0, _machine.global_position.y, 80.0)
 	var contact := _run.tuning.contact_damage
 	# Dentro la torcia: il nemico nasce a contatto, a 0,5 m dal giocatore.
 	var lit := await _contact_damage(_player.global_position + Vector3(0.5, 0.0, 0.0), true)
@@ -245,10 +249,10 @@ func _test_cards() -> void:
 	_run.apply_upgrade(&"beacon_range", 2)
 	_check(is_equal_approx(_run.light_field.radius_of(_run.beacon_light_id), _run.tuning.beacon_radius + 2.0 * _run.tuning.beacon_radius_per_level), "Faro livello 2: raggio %.1f" % _run.light_field.radius_of(_run.beacon_light_id))
 	var solo := RunProgression.new()
-	solo.has_companion = false
+	solo.has_caravan = false
 	solo.setup(3)
 	var ids := solo.eligible().map(func(u: Dictionary) -> StringName: return u.id)
-	_check(ids.has(&"torch_range") and not ids.has(&"beacon_range"), "senza compagno la Torcia si, il Faro no")
+	_check(ids.has(&"torch_range") and not ids.has(&"beacon_range"), "senza carovana la Torcia si, il Faro no")
 
 
 func _test_rendering_and_lights() -> void:
@@ -264,7 +268,7 @@ func _test_rendering_and_lights() -> void:
 	_check(sun.light_energy < day_sun and sun.light_energy > 0.0 and environment.ambient_light_energy < day_ambient and environment.ambient_light_energy > 0.0,
 		"sole %.2f e ambiente %.2f: sotto il giorno, sopra zero" % [sun.light_energy, environment.ambient_light_energy])
 	var torch: OmniLight3D = _player.get_node_or_null(^"TorchLight")
-	var beacon: OmniLight3D = _companion.get_node_or_null(^"BeaconLight")
+	var beacon: OmniLight3D = _machine.get_node_or_null(^"BeaconLight")
 	_check(torch != null and beacon != null and torch.visible and beacon.visible, "torcia e faro esistono e sono accesi")
 	_check(torch != null and absf(torch.omni_range - _run.torch_radius * 1.15) < 0.01 and beacon != null and absf(beacon.omni_range - _run.beacon_radius * 1.15) < 0.01,
 		"portata delle luci coerente coi raggi logici")

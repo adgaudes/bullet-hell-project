@@ -4,7 +4,7 @@ extends SceneTree
 ##   godot_console --path godot --resolution 1280x800 --fixed-fps 60 --script res://tests/tools/capture_motion.gd -- --out=../output/motion
 ## Per ogni sequenza salva FRAMES fotogrammi (`<nome>_0.png` ...) e una striscia
 ## `<nome>_strip.png` coi ritagli attorno all'attore affiancati 4x2, da guardare in un
-## colpo: giocatore che cammina, scatta, viene colpito, rincula; compagno che parte e
+## colpo: giocatore che cammina, scatta, viene colpito, rincula; macchina della carovana che parte e
 ## carico che cambia; rottamatori in marcia, colpiti, in affondo; Demolitore in marcia,
 ## che martella, colpito; e l'insieme dalla camera di gioco.
 ## Il rinculo qui e collegato a mano (`weapon.fired` -> `player.kick`).
@@ -28,13 +28,14 @@ func _initialize() -> void:
 	root.add_child(_scene)
 	var run: ArenaRun = _scene.get_node(^"Run")
 	_player = _scene.get_node(^"Player")
-	var companion: Companion = _scene.get_node(^"Companion")
+	var caravan: Caravan = _scene.get_node(^"Caravan")
 	var director: EnemyDirector = _scene.get_node(^"EnemyDirector")
 	var weapon: AutoWeapon = _scene.get_node(^"PlayerWeapon")
 	var field: TerrainField = _scene.get_node(^"TerrainField")
 	director.spawning = false
 	weapon.fired.connect(func(_count: int) -> void: _player.kick(-weapon.last_fire_direction))
 	await _steps(20)
+	var machine := caravan.lead()
 	(_scene.get_node(^"RunHud") as CanvasLayer).visible = false
 	_game_camera = _scene.get_node(^"CameraRig/Camera")
 	_closeup = Camera3D.new()
@@ -69,18 +70,18 @@ func _initialize() -> void:
 	_player.kick(_player.global_basis.z)
 	await _sequence("player_recoil", _player, 1, 11.5, 90.0, 15.0)
 
-	# --- Compagno: carico che cambia da fermo, poi partenza e curva dietro al giocatore.
+	# --- Macchina: carico che cambia da fermo, poi partenza e curva dietro al giocatore.
 	await _steps(120)
-	companion.spend()
-	await _sequence("companion_cargo", companion, 2, 8.5, 40.0, 30.0)
+	caravan.spend()
+	await _sequence("machine_cargo", machine, 2, 8.5, 40.0, 30.0)
 	await _steps(60)
 	Input.action_press(&"move_back")
 	await _steps(6)
-	await _sequence("companion_start", companion, 2, 8.5, 60.0, 25.0)
+	await _sequence("machine_start", machine, 2, 8.5, 60.0, 25.0)
 	Input.action_release(&"move_back")
 	Input.action_press(&"move_left")
 	await _steps(10)
-	await _sequence("companion_turn", companion, 3, 8.5, 60.0, 25.0)
+	await _sequence("machine_turn", machine, 3, 8.5, 60.0, 25.0)
 	Input.action_release(&"move_left")
 	await _steps(90)
 

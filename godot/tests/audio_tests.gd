@@ -30,7 +30,7 @@ var _audio: RunAudio
 var _run: ArenaRun
 var _field: TerrainField
 var _player: PlayerCharacter
-var _companion: Companion
+var _caravan: Caravan
 var _director: EnemyDirector
 var _weapon: AutoWeapon
 var _path: PathField
@@ -48,7 +48,7 @@ func _initialize() -> void:
 	_run = _scene.get_node(^"Run")
 	_field = _scene.get_node(^"TerrainField")
 	_player = _scene.get_node(^"Player")
-	_companion = _scene.get_node(^"Companion")
+	_caravan = _scene.get_node(^"Caravan")
 	_director = _scene.get_node(^"EnemyDirector")
 	_weapon = _scene.get_node(^"PlayerWeapon")
 	_path = _scene.get_node(^"PathField")
@@ -450,15 +450,16 @@ func _test_terrain_events() -> void:
 
 func _test_scrap_events() -> void:
 	print("scrap")
+	_check(_audio.caravan == _caravan and _audio._last_carried == _caravan.carried, "l'audio ascolta i rottami della carovana (%d)" % _caravan.carried)
+	# Posto per un rottame in piu (la carovana avvisa solo quando il totale cambia).
+	_caravan.carried = mini(_caravan.carried, _caravan.capacity - 1)
 	var pickups := _count(&"scrap_pickup")
 	var spends := _count(&"scrap_spend")
-	_companion.carried = maxi(_companion.carried - 1, 0) + 1
-	_audio._last_carried = _companion.carried - 1
-	_companion._refresh_cargo()
+	_caravan.add_scrap(1)
 	_check(_count(&"scrap_pickup") == pickups + 1 and _count(&"scrap_spend") == spends, "cassone che cresce: scrap_pickup")
-	_companion.spend()
+	_caravan.spend()
 	_check(_count(&"scrap_spend") == spends + 1 and _count(&"scrap_pickup") == pickups + 1, "rottame speso: scrap_spend")
-	_companion._refresh_cargo()
+	_caravan.carried_changed.emit(_caravan.carried)
 	_check(_count(&"scrap_spend") == spends + 1 and _count(&"scrap_pickup") == pickups + 1, "cassone invariato: silenzio")
 	await _frames(12)
 

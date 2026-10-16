@@ -72,7 +72,7 @@ const PROTECTED_IDS: Array[StringName] = [&"boss_warning", &"victory", &"train_h
 @export var weapon: AutoWeapon
 @export var director: EnemyDirector
 @export var xp_field: XpField
-@export var companion: Companion
+@export var caravan: Caravan
 @export var level_up_menu: LevelUpMenu
 @export var run: ArenaRun
 @export var workshop: WorkshopPanel
@@ -200,9 +200,9 @@ func _connect_signals() -> void:
 		director.enemy_killed.connect(_on_enemy_killed)
 	if xp_field != null:
 		xp_field.collected.connect(_on_xp_collected)
-	if companion != null:
-		_last_carried = companion.carried
-		companion.carried_changed.connect(_on_carried_changed)
+	if caravan != null:
+		_last_carried = caravan.carried
+		caravan.carried_changed.connect(_on_carried_changed)
 	if level_up_menu != null:
 		level_up_menu.opened.connect(play.bind(&"level_up", 0.0))
 		level_up_menu.chosen.connect(_on_upgrade_chosen)

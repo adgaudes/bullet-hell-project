@@ -7,13 +7,15 @@ extends SceneTree
 ## l'interruttore globale ferma tutto.
 
 const PLAYER_SCENE := preload("res://scenes/player/player.tscn")
-const COMPANION_SCENE := preload("res://scenes/companion/companion.tscn")
+const CARAVAN_TUNING := preload("res://resources/tuning/caravan_default.tres")
 const EPSILON := 0.0001
 
 var _failures := 0
 var _world: Node3D
 var _player: PlayerCharacter
-var _companion: Companion
+var _caravan: Caravan
+## La macchina della carovana (il compagno di oggi, D-093 task 3).
+var _machine: Machine
 var _director: EnemyDirector
 var _boss: Demolisher
 var _enemies: Array[Enemy] = []
@@ -23,7 +25,7 @@ func _initialize() -> void:
 	Engine.physics_ticks_per_second = 60
 	await _test_bodies_unchanged_by_motion()
 	await _test_player()
-	await _test_companion()
+	await _test_machine()
 	await _test_scavengers()
 	await _test_boss()
 	await _test_off_switch()
@@ -48,7 +50,7 @@ func _frames(n: int) -> void:
 		await physics_frame
 
 
-## Pavimento, giocatore, compagno, sei rottamatori e un Demolitore (senza griglia: il
+## Pavimento, giocatore, carovana con una macchina, sei rottamatori e un Demolitore (senza griglia: il
 ## boss non si guida da solo, il test gli da la velocita che serve).
 func _build_world() -> void:
 	_world = Node3D.new()
@@ -64,16 +66,19 @@ func _build_world() -> void:
 	_player = PLAYER_SCENE.instantiate()
 	_player.position = Vector3(0.0, 0.9, 0.0)
 	_world.add_child(_player)
-	_companion = COMPANION_SCENE.instantiate()
-	_companion.player = _player
-	_companion.position = Vector3(3.0, 0.32, 3.0)
-	_world.add_child(_companion)
+	_caravan = Caravan.new()
+	_caravan.tuning = CARAVAN_TUNING
+	_caravan.player = _player
+	_caravan.position = Vector3(3.0, 0.32, 3.0)
+	_world.add_child(_caravan)
 	_director = EnemyDirector.new()
 	_director.player = _player
 	_director.spawning = false
 	_world.add_child(_director)
 	root.add_child(_world)
 	await _frames(2)
+	# La macchina nasce nel _ready della carovana.
+	_machine = _caravan.lead()
 	_enemies.clear()
 	for i in 6:
 		_enemies.append(_director.spawn_at(Vector3(-6.0 + i * 1.3, 0.0, -7.0 - (i % 2))))
@@ -104,15 +109,15 @@ func _play_sequence() -> Array[Transform3D]:
 		enemy.notify_contact()
 	_boss.take_damage(1)
 	_boss.velocity = Vector3(0.0, 0.0, 1.5)
-	_companion.spend()
+	_caravan.spend()
 	await _frames(25)
 	Input.action_release(&"move_right")
 	Input.action_press(&"move_forward")
 	await _frames(25)
 	Input.action_release(&"move_forward")
 	await _frames(10)
-	var result: Array[Transform3D] = [_player.global_transform, _companion.global_transform, _boss.global_transform,
-		_player.get_node(^"Collision").global_transform, _companion.get_node(^"Collision").global_transform]
+	var result: Array[Transform3D] = [_player.global_transform, _machine.global_transform, _boss.global_transform,
+		_player.get_node(^"Collision").global_transform, _machine.get_node(^"Collision").global_transform]
 	for enemy in _enemies:
 		result.append(enemy.global_transform)
 		result.append((enemy.get_child(0) as CollisionShape3D).global_transform)
@@ -122,7 +127,7 @@ func _play_sequence() -> Array[Transform3D]:
 
 func _test_bodies_unchanged_by_motion() -> void:
 	print("Corpi fisici identici con e senza movimento procedurale")
-	# La prima esecuzione nel processo differisce di qualche centimetro sul compagno anche
+	# La prima esecuzione nel processo differisce di qualche centimetro sulla macchina anche
 	# a parita di interruttore (riscaldamento del motore fisico): si scarta.
 	await _play_sequence()
 	ActorMotion.enabled = true
@@ -223,14 +228,14 @@ func _test_player() -> void:
 	await _free_world()
 
 
-func _test_companion() -> void:
-	print("Compagno")
+func _test_machine() -> void:
+	print("Macchina della carovana")
 	await _build_world()
 	_director.set_physics_process(false)
 	await _frames(60)
-	var model: Node3D = _companion.get_node(^"Model")
-	var rest := _companion._model_rest
-	var idle_limit := Companion.SHIVER_HEIGHT + Companion.SHIVER_ROLL * (Companion.WHEEL_HALF_WIDTH + 1.0) + EPSILON
+	var model: Node3D = _machine.get_node(^"Model")
+	var rest := _machine._model_rest
+	var idle_limit := Machine.SHIVER_HEIGHT + Machine.SHIVER_ROLL * (Machine.WHEEL_HALF_WIDTH + 1.0) + EPSILON
 	var worst := 0.0
 	var lowest := 0.0
 	var poses := {}
@@ -239,41 +244,41 @@ func _test_companion() -> void:
 		worst = maxf(worst, model.transform.origin.distance_to(rest.origin))
 		lowest = minf(lowest, model.transform.origin.y - rest.origin.y)
 		poses[snappedf(model.transform.basis.y.x, 0.0005)] = true
-	_check(_companion.velocity.length() < 0.05, "il compagno e fermo accanto al giocatore")
+	_check(_machine.velocity.length() < 0.05, "la macchina e ferma accanto al giocatore")
 	_check(worst <= idle_limit and lowest >= -EPSILON, "da fermo resta entro il tremito del motore (%.4f <= %.4f), mai sotto terra" % [worst, idle_limit])
 	_check(poses.size() > 3, "il tremito del motore si vede (%d pose)" % poses.size())
 
 	# Carico che cambia: cubetti che ballano, poi fermi sul pianale.
-	var cube := _companion._cargo[0]
-	var cube_rest := _companion._cargo_rest[0]
-	_companion.spend()
+	var cube := _machine._cargo[0]
+	var cube_rest := _machine._cargo_rest[0]
+	_caravan.spend()
 	var hop := 0.0
 	for i in 12:
 		await physics_frame
 		hop = maxf(hop, cube.transform.origin.y - cube_rest.y)
-	_check(hop > Companion.CARGO_WOBBLE_HOP * 0.3 and hop <= Companion.CARGO_WOBBLE_HOP + Companion.BOUNCE_MAX + idle_limit,
+	_check(hop > Machine.CARGO_WOBBLE_HOP * 0.3 and hop <= Machine.CARGO_WOBBLE_HOP + Machine.BOUNCE_MAX + idle_limit,
 		"speso un rottame i cubetti saltano entro i limiti (%.3f m)" % hop)
-	await _frames(int(Companion.CARGO_WOBBLE_SECONDS * 60.0) + 40)
-	_check(cube.transform.origin.distance_to(cube_rest) <= idle_limit and cube.get_parent() == _companion,
-		"poi tornano sul pianale, sempre figli del compagno")
+	await _frames(int(Machine.CARGO_WOBBLE_SECONDS * 60.0) + 40)
+	_check(cube.transform.origin.distance_to(cube_rest) <= idle_limit and cube.get_parent() == _machine,
+		"poi tornano sul pianale, sempre figli della macchina")
 
 	# Pezzi montati: figli diretti (chi li cerca per nome li trova) e solidali al telaio.
 	var part := Node3D.new()
 	part.position = Vector3(0.0, 0.42, -0.25)
-	_companion.mount_part(&"TurretPart", part)
+	_machine.mount_part(&"TurretPart", part)
 	var replacement := Node3D.new()
 	replacement.position = Vector3(0.0, 0.42, -0.25)
-	_companion.mount_part(&"TurretPart", replacement)
+	_machine.mount_part(&"TurretPart", replacement)
 	await _frames(2)
-	_check(replacement.get_parent() == _companion and _companion._parts.size() == 1 and _companion._parts[0] == replacement,
-		"un pezzo rimontato sostituisce il vecchio e resta figlio diretto del compagno")
+	_check(replacement.get_parent() == _machine and _machine._parts.size() == 1 and _machine._parts[0] == replacement,
+		"un pezzo rimontato sostituisce il vecchio e resta figlio diretto della macchina")
 	# R-38: il terzo montaggio dello stesso nome non deve accumulare pezzi ne rinominarli.
 	var third := Node3D.new()
 	third.position = Vector3(0.0, 0.42, -0.25)
-	_companion.mount_part(&"TurretPart", third)
+	_machine.mount_part(&"TurretPart", third)
 	await _frames(2)
-	var named := _companion.get_children().filter(func(n: Node) -> bool: return n.name == &"TurretPart")
-	_check(named.size() == 1 and named[0] == third and _companion._parts.size() == 1 and _companion.has_node(^"TurretPart"),
+	var named := _machine.get_children().filter(func(n: Node) -> bool: return n.name == &"TurretPart")
+	_check(named.size() == 1 and named[0] == third and _machine._parts.size() == 1 and _machine.has_node(^"TurretPart"),
 		"al terzo montaggio c'e un solo TurretPart, col nome giusto")
 
 	# In marcia: si inclina, sobbalza e tutto resta attaccato al telaio.
@@ -291,18 +296,18 @@ func _test_companion() -> void:
 		max_tilt = maxf(max_tilt, model.transform.basis.y.angle_to(Vector3.UP))
 		var rig := model.transform * rest.affine_inverse()
 		max_rise = maxf(max_rise, rig.origin.y)
-		min_rise = minf(min_rise, (rig * Companion.RIG_GROUND).y - Companion.RIG_GROUND.y)
+		min_rise = minf(min_rise, (rig * Machine.RIG_GROUND).y - Machine.RIG_GROUND.y)
 		max_gap = maxf(max_gap, third.transform.origin.distance_to(rig * Vector3(0.0, 0.42, -0.25)))
-		moved = moved or _companion.velocity.length() > 2.0
+		moved = moved or _machine.velocity.length() > 2.0
 	Input.action_release(&"move_back")
-	var tilt_limit := Companion.TILT_MAX * 1.42 + Companion.SHIVER_ROLL
-	var rise_limit := Companion.BOUNCE_MAX + Companion.ROAD_BUMP + Companion.SHIVER_HEIGHT \
-		+ tilt_limit * (Companion.WHEEL_HALF_LENGTH + Companion.WHEEL_HALF_WIDTH + absf(Companion.RIG_GROUND.y))
+	var tilt_limit := Machine.TILT_MAX * 1.42 + Machine.SHIVER_ROLL
+	var rise_limit := Machine.BOUNCE_MAX + Machine.ROAD_BUMP + Machine.SHIVER_HEIGHT \
+		+ tilt_limit * (Machine.WHEEL_HALF_LENGTH + Machine.WHEEL_HALF_WIDTH + absf(Machine.RIG_GROUND.y))
 	_check(moved and max_tilt > 0.02 and max_tilt <= tilt_limit, "seguendo il giocatore si inclina entro TILT_MAX (%.3f rad)" % max_tilt)
 	_check(max_rise <= rise_limit and min_rise >= -EPSILON, "sobbalza entro i limiti (%.3f m) e le ruote non entrano nel terreno" % max_rise)
 	_check(max_gap < EPSILON, "il pezzo montato resta solidale al telaio")
-	_check(is_zero_approx(_companion.rotation.x) and is_zero_approx(_companion.rotation.z)
-		and (_companion.get_node(^"Collision") as Node3D).transform.is_equal_approx(Transform3D.IDENTITY),
+	_check(is_zero_approx(_machine.rotation.x) and is_zero_approx(_machine.rotation.z)
+		and (_machine.get_node(^"Collision") as Node3D).transform.is_equal_approx(Transform3D.IDENTITY),
 		"corpo fisico e collisione non si inclinano")
 	await _free_world()
 
@@ -452,21 +457,21 @@ func _test_off_switch() -> void:
 	_boss.velocity = Vector3(0.0, 0.0, 1.5)
 	await _frames(20)
 	var player_model: Node3D = _player.get_node(^"Model")
-	var companion_model: Node3D = _companion.get_node(^"Model")
+	var machine_model: Node3D = _machine.get_node(^"Model")
 	_check(not player_model.transform.is_equal_approx(_player._model_rest) and not _boss._rig.transform.is_equal_approx(Transform3D.IDENTITY)
 		and not _enemies[0]._body.transform.is_equal_approx(_enemies[0]._body_rest), "acceso: i visual si muovono")
 	ActorMotion.enabled = false
 	_player.on_hit()
 	_player.kick()
-	_companion.spend()
+	_caravan.spend()
 	_enemies[0].take_damage(1)
 	_boss.take_damage(1)
 	var frozen := true
 	for i in 30:
 		await physics_frame
 		frozen = frozen and player_model.transform.is_equal_approx(_player._model_rest) \
-			and companion_model.transform.is_equal_approx(_companion._model_rest) \
-			and _companion._cargo[0].transform.origin.is_equal_approx(_companion._cargo_rest[0]) \
+			and machine_model.transform.is_equal_approx(_machine._model_rest) \
+			and _machine._cargo[0].transform.origin.is_equal_approx(_machine._cargo_rest[0]) \
 			and _boss._rig.transform.is_equal_approx(Transform3D.IDENTITY)
 		for enemy in _enemies:
 			frozen = frozen and enemy._body.transform.is_equal_approx(enemy._body_rest)

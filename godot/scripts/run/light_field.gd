@@ -1,7 +1,7 @@
 class_name LightField
 extends RefCounted
 ## Sorgenti di luce "logiche" del ciclo giorno/notte (D-058, tappa 1): torcia del
-## giocatore, faro del compagno e, dalla tappa 2, i lampioni. Logica pura: dice se un
+## giocatore, faro della carovana e, dalla tappa 2, i lampioni. Logica pura: dice se un
 ## punto e illuminato confrontando la distanza planare col raggio di ogni sorgente.
 ## Un nodo liberato o fuori dall'albero conta come spento, senza errori.
 
