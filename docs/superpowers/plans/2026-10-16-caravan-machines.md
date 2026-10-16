@@ -8,7 +8,9 @@
 
 **Tech Stack:** Godot 4.7.2, GDScript, suite headless (`extends SceneTree`), gate `tools/godot/Invoke-GodotChecks.ps1`.
 
-**Spec:** `docs/superpowers/specs/2026-10-15-caravan-machines-design.md` (Sezioni 1, 4, 5, 6, 7; "Architettura del codice"; "Valori di partenza"; "Verifica"). Convenzioni dai piani delle armi `docs/superpowers/plans/2026-10-15-weapons-*.md` (servizi, carte dinamiche, casse). Ricognizione del codice (16 ottobre 2026, fuori repo): i rapporti `r_*.txt` nella cartella scratchpad della sessione, citati nei prompt degli esecutori.
+**Spec:** `docs/superpowers/specs/2026-10-15-caravan-machines-design.md` (Sezioni 1, 4, 5, 6, 7; "Architettura del codice"; "Valori di partenza"; "Verifica"). Convenzioni dai piani delle armi `docs/superpowers/plans/2026-10-15-weapons-*.md` (servizi, carte dinamiche, casse). Ricognizione del codice (16 ottobre 2026, prima del piano A): rapporti `r_*.txt` in `.superpowers/caravan-plan-a/recon/` (locali, ignorati da Git; le righe citate vanno riverificate sul codice attuale).
+
+**Stato:** task 1 fatto il 16 ottobre 2026; prossimo il task 2.
 
 ## Global Constraints
 
@@ -68,9 +70,9 @@
   - Wrecks: `wrecks_per_level 2`, `wreck_choices 2`, `wreck_full_scrap 3`.
 - `UiIcon.KINDS` comprende `crate` (gia disegnata) e le nuove `turret`, `magnet`, `beacon`, `drill`, `scoop`, `solder`, `siren`, disegnate a poligoni nello stile delle altre (due toni, contorno).
 
-- [ ] Test (`machine_catalog_tests.gd`): otto moduli in quell'ordine coi nomi della spec; ogni icona in `UiIcon.KINDS`; colori a coppie distinti; sbloccati di serie esattamente cargo, turret, magnet, beacon; `find(&"nope")` vuoto; `caravan_default.tres` si carica come `CaravanTuning` con `chassis_health 6`, `module_limit 6`, `hit_cooldown 0.8`, `repair_cost 2`, `repair_seconds 1.5`, `regen_delay 8`, `regen_interval 4`; sette posti, tutti con raggio fra 2 e 4 m, i primi sei distinti; movimento e Cassone uguali a `companion_default.tres` (5, 25, 0.4, 3, 5, 6, 0.9, 5).
-- [ ] `ui_theme_tests.gd` verde (disegna ogni voce di `KINDS`; aggiornare un conteggio se serve).
-- [ ] Commit `Carovana (D-093), piano A: catalogo dei moduli, CaravanTuning e icone dei moduli; test`.
+- [x] Test (`machine_catalog_tests.gd`): otto moduli in quell'ordine coi nomi della spec; ogni icona in `UiIcon.KINDS`; colori a coppie distinti; sbloccati di serie esattamente cargo, turret, magnet, beacon; `find(&"nope")` vuoto; `caravan_default.tres` si carica come `CaravanTuning` con `chassis_health 6`, `module_limit 6`, `hit_cooldown 0.8`, `repair_cost 2`, `repair_seconds 1.5`, `regen_delay 8`, `regen_interval 4`; sette posti, tutti con raggio fra 2 e 4 m, i primi sei distinti; movimento e Cassone uguali a `companion_default.tres` (5, 25, 0.4, 3, 5, 6, 0.9, 5).
+- [x] `ui_theme_tests.gd` verde (disegna ogni voce di `KINDS`; aggiornare un conteggio se serve).
+- [x] Commit `Carovana (D-093), piano A: catalogo dei moduli, CaravanTuning e icone dei moduli; test`.
 
 ### Task 2: Machine, Caravan e modulo Cassone (ancora fuori dalle scene)
 
@@ -168,6 +170,7 @@ Il task delicato. Una sola macchina (Cassone) fa tutto cio che faceva il compagn
 - [ ] Test con eventi veri (`input_events_tests.gd`): `InputEventJoypadButton` X premuto per 90 passi a 60 Hz accanto a una macchina guasta la ripara (OK, 3 PV, 2 rottami in meno); lo stesso con `InputEventKey` R; rilascio a 1,0 s: progresso 0, nessun rottame speso; eco ignorati; `NOTIFICATION_APPLICATION_FOCUS_OUT` a meta: `interact_held` falso e progresso 0.
 - [ ] Test (`machine_damage_tests.gd`): allontanarsi oltre 2 m azzera il progresso; un level-up aperto a meta tenuta (pausa) azzera tenuta e progresso; giocatore morto: nessun avanzamento; un solo Cassone guasto con 1 rottame: dopo 1,5 s ancora guasto, dopo 4,5 s riparato e il rottame resta; intanto `can_supply_count` e falso (lampioni rifiutati); due guaste entro 2 m: si ripara la piu vicina.
 - [ ] Test HUD: tante caselle quante macchine; guasta → `slot_state` BROKEN; "3/5" coi rottami; tasto visibile solo col giocatore entro 2 m da una guasta; lo spicchio segue `repair_progress()`; `RunHud.new()` senza carovana non va in errore; `button_prompts_tests` aggiornato a quattro tasti (la colonna dei comandi resta di otto).
+- [ ] Nota della revisione del task 1: la luce dell'icona `beacon` (ffd45a) ha quasi il colore del modulo Faro (ffe36b); se le caselle tingono l'icona col colore del modulo, contornare il punto di luce o cambiare tinta.
 - [ ] Cattura a 1280x800 della striscia sopra le armi (`capture_weapons.gd` o uno scatto aggiunto a `capture_run.gd`), letta (la striscia non deve coprire le frecce ai bordi oltre la linea dei 160 px: se le copre, abbassare l'altezza delle caselle).
 - [ ] Commit `Carovana (D-093), piano A: azione Interagisci (X / R), riparazione tenendo premuto con indicatore, striscia della carovana nel HUD con i rottami; test`.
 

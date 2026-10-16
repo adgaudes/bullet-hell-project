@@ -37,7 +37,7 @@ static func _build() -> Array[Dictionary]:
 		{id = &"shovel", name = "Pala", icon = &"scoop", color = Color("9ad94a"), unlocked_by_default = false,
 			text = "Alza un piccolo argine davanti al nemico piu vicino coi rottami del Cassone."},
 		{id = &"welder", name = "Saldatore", icon = &"solder", color = Color("56d3f5"), unlocked_by_default = false,
-			text = "Ripara le altre macchine, un punto vita ogni 3 secondi."},
+			text = "Ripara piano le altre macchine vicine, anche quelle guaste."},
 		{id = &"siren", name = "Sirena", icon = &"siren", color = Color("f25cc8"), unlocked_by_default = false,
 			text = "Attira su di se i rottamatori vicini."},
 	]

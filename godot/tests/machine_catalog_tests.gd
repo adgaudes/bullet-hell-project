@@ -123,5 +123,6 @@ func _test_tuning() -> void:
 	# Movimento e Cassone uguali al compagno di oggi (companion_default.tres, che il task 3
 	# toglie): la migrazione non cambia il gioco.
 	_check(is_equal_approx(tuning.max_speed, 5.0) and is_equal_approx(tuning.acceleration, 25.0) and is_equal_approx(tuning.arrive_radius, 0.4), "movimento del compagno: 5 m/s, 25 m/s2, arrivo a 0,4 m")
+	_check(slots[0].is_equal_approx(Vector2(0.0, 2.5)) and is_equal_approx(tuning.path_margin, 1.5), "primo posto a 2,5 m dietro al giocatore e margine del percorso di 1,5 m, come il compagno")
 	_check(tuning.starting_scrap == 3 and tuning.cargo_capacity == 5, "Cassone del compagno: parte con 3 rottami, ne porta 5")
 	_check(is_equal_approx(tuning.pickup_radius_from_player, 6.0) and is_equal_approx(tuning.collect_radius, 0.9) and is_equal_approx(tuning.supply_radius, 5.0), "raccolta entro 6 m dal giocatore, a 0,9 m, fornitura entro 5 m")

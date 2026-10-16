@@ -274,3 +274,6 @@ Audit generale in `docs/REVIEWS/FULL_AUDIT_2026-10-14.md`, con lo stato riga per
   - exe 246 → 196 MB.
 - **Gate:** seme fisso, log delle suite fallite in `output/gate/`, allowlist per suite, passo con finestra.
 
+## Armi, piano 5 (16 ottobre 2026, dal MIGRATION_STATUS)
+
+**Armi, piano 5 (fatto il 16 ottobre):** suoni delle armi (anteprima `output/audio/weapons_preview.wav`), telegrafo delle attive, effetti su 12 armi e 6 fusioni (`WeaponFx`: scintille, schegge, onde, polvere, scie; catture `output/weapons/fx/`, provini `sheet_1.png` e `sheet_2.png`; costo: righe `weapons` entro +0,07 ms, 40 effetti vivi 0,064 ms per frame su desktop). **Effekseer valutato, non adottato per le armi** (+2,4-4,3 ms di frame col preset Deck per 20 scoppi; D-095): branch locale `spike/effekseer` tenuto per i boss.

@@ -2,7 +2,7 @@
 
 > **Breve per scelta** (audit D-06, 14 ottobre 2026): dove siamo, prossimo passo, cosa aspetta il proprietario. Va aggiornato a ogni avanzamento e tenuto **sotto 8 KB**: quando cresce, il vecchio va in `docs/archive/`. Storia delle sessioni fino al 14 ottobre 2026: `docs/archive/STATUS_LOG_2026-10.md`. Decisioni: `DECISIONS.md`. Piano di prodotto: `PROJECT_ROADMAP.md`. Per trovare un documento: `INDEX.md`.
 
-**Ultimo aggiornamento:** 16 ottobre 2026 (piano 5 armi chiuso: suoni, telegrafo, effetti arma per arma; Effekseer non adottato per le armi).
+**Ultimo aggiornamento:** 16 ottobre 2026 (piano A della carovana scritto; task 1 di 10 fatto: catalogo dei moduli, `CaravanTuning`, icone).
 
 ## Dove siamo
 
@@ -22,11 +22,11 @@ Esito **Modifica**: 14 osservazioni, piu O-15 e O-16 del 15 ottobre. Cause e pia
 
 **Eventi del mondo (D-097):** casuali, quanti ne sceglie la nuova scheda **Gameplay** (1-5, di serie 1), prima del boss.
 
-**Armi, piano 5 (fatto il 16 ottobre):** suoni delle armi (anteprima `output/audio/weapons_preview.wav`), telegrafo delle attive, effetti su 12 armi e 6 fusioni (`WeaponFx`: scintille, schegge, onde, polvere, scie; catture `output/weapons/fx/`, provini `sheet_1.png` e `sheet_2.png`; costo: righe `weapons` entro +0,07 ms, 40 effetti vivi 0,064 ms per frame su desktop). **Effekseer valutato, non adottato per le armi** (+2,4-4,3 ms di frame col preset Deck per 20 scoppi; D-095): branch locale `spike/effekseer` tenuto per i boss.
+**Armi, piano 5 (fatto il 16 ottobre):** suoni, telegrafo delle attive, effetti su 12 armi e 6 fusioni (`output/weapons/fx/`); Effekseer non adottato per le armi (D-095, branch `spike/effekseer` tenuto per i boss). Dettaglio in `docs/archive/STATUS_LOG_2026-10.md`.
 
 ## Prossimo passo (agente)
 
-0. Blocchi 1-2 del playtest e piani 1-5 delle armi fatti (sopra). **In corso: progettazione della carovana di macchine e della fusione (D-093)** col proprietario: bozza `docs/superpowers/specs/2026-10-15-caravan-machines-design.md`; Sezioni 1-7 approvate, **spec scritta da far rileggere al proprietario**. **In corso dal 16 ottobre: piano A della carovana** (`docs/superpowers/plans/2026-10-16-caravan-machines.md`, 10 task; il proprietario ha chiesto di procedere). **Inondazione** (richiesta del 15 ottobre): proporre uno spike di costo dell'acqua simulata sul Deck, poi il design. Dopo: bilanciamento coi bot, playtest. Poi la musica scelta da lui (candidati in `Videogame-assets/music-candidates/`). ProtonScatter approvato (D-090) ma non installato: serve quando si spargono oggetti.
+0. **In corso: piano A della carovana (D-093)**, `docs/superpowers/plans/2026-10-16-caravan-machines.md` (10 task). **Fatto il task 1** (`MachineCatalog`, `CaravanTuning`, icone dei moduli; revisione in tre lenti approvata). **Prossimo: task 2** (`Machine`, `Caravan`, Cassone fuori dalle scene), in una nuova sessione: piano (Global Constraints, Scelte, Task 2) e ricognizione in `.superpowers/caravan-plan-a/recon/` (locale; codice di prima del piano A). Poi il task 3, la migrazione delicata, col gate completo. **Inondazione** (richiesta del 15 ottobre): proporre uno spike di costo dell'acqua simulata sul Deck, poi il design. Dopo: bilanciamento coi bot, playtest. Poi la musica scelta da lui (candidati in `Videogame-assets/music-candidates/`). ProtonScatter approvato (D-090) ma non installato: serve quando si spargono oggetti.
    **Grafica (richieste del proprietario del 15 ottobre):** strumenti di D-095 uno alla volta con misura e catture (Effekseer solo per i boss, ProtonScatter, post-produzione, AreaLight3D di notte, Material Maker e Ucupaint per nemici e boss); **carte degli upgrade da rifare** (D-096: font e layout, prima bozze in cattura).
 1. **Voci rimaste dell'audit**, nell'ordine della sua sezione 1 (PF-03, T-01/T-02, I-02, K-07/K-08, L-01, D-05, H-01, X-01/X-03, voci B): elenco in `docs/REVIEWS/FULL_AUDIT_2026-10-14.md`.
 2. **Dopo la misura sul Deck:** V-02, V-03, V-06, Q-01, Q-03, Q-04 (costo GPU e contenuto del preset Deck).
@@ -34,7 +34,7 @@ Esito **Modifica**: 14 osservazioni, piu O-15 e O-16 del 15 ottobre. Cause e pia
 
 ## Cosa aspetta il proprietario
 
-0. **Carovana di macchine** (D-093): rileggere la spec (`docs/superpowers/specs/2026-10-15-caravan-machines-design.md`); nota: azione nuova Interagisci su X / R. **Scheda Gameplay** (D-097): provarla; dire se un evento di serie basta. 0. **Armi e classi** (D-092): da provare a mano la scelta della classe in campagna, l'Officina a schede e le casse sepolte (luccichio sui cumuli).  Spec da rileggere quando vuoi; **effetti del piano 5 da provare in gioco** (catture `output/weapons/fx/`). Da provare a mano: `--class=sapper|mechanic|weeder`. Scelte da confermare (D-092): Fortino "al 70%" come cadenza, Polarita inversa che respinge di circa 2 m.
+0. **Carovana di macchine** (D-093): rileggere la spec (`docs/superpowers/specs/2026-10-15-caravan-machines-design.md`); azione nuova Interagisci su X / R. **Confermare due scelte del piano A**: luce di notte solo dalle macchine col Faro (il carretto di partenza non ha piu il faro da 11 m di D-058) e riparazione gratis ma lenta (4,5 s invece di 1,5) quando la carovana ha meno di 2 rottami. **Scheda Gameplay** (D-097): provarla; dire se un evento di serie basta. 0. **Armi e classi** (D-092): da provare a mano la scelta della classe in campagna, l'Officina a schede e le casse sepolte (luccichio sui cumuli).  Spec da rileggere quando vuoi; **effetti del piano 5 da provare in gioco** (catture `output/weapons/fx/`). Da provare a mano: `--class=sapper|mechanic|weeder`. Scelte da confermare (D-092): Fortino "al 70%" come cadenza, Polarita inversa che respinge di circa 2 m.
 1. **Luce (D-094):** giudicare in gioco o sulle catture `output/lighting_lab/`. **Carte degli upgrade (D-096):** scegliere fra le bozze quando arrivano.
 1. **Musica:** ascoltare i candidati in `C:\Users\adgau\Desktop\Videogame-assets\music-candidates\` (LEGGIMI.md con licenze) e dire quali tenere (D-089).
 2. **Giudizio sull'Ingegnere** (D-088): catture in `../Videogame-engineer/output/engineer/`. Dopo il si si integra.
