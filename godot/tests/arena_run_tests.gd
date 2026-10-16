@@ -53,6 +53,8 @@ func _initialize() -> void:
 	await _test_weapon_branch_flow()
 	_test_caravan_upgrades()
 	await _test_caravan_skips_scrap_behind_rampart()
+	# Dopo i conti di macchine, attrattori e luci dei test della carovana: aggiunge macchine.
+	await _test_machine_card_level_up()
 	await _test_death_ends_run()
 	await _test_pause_quit_confirms_and_banks()
 	# T-12: i nodi messi in coda con queue_free vanno liberati prima di uscire, o
@@ -467,11 +469,22 @@ func _test_level_up_flow() -> void:
 	_menu.press(0)
 	_check(_menu.is_open, "carte inattive subito dopo l'apertura")
 	await create_timer(0.6, true).timeout
-	# La prima carta e un'arma (D-092): si prende la seconda, una carta del mazzo.
-	_menu.press(1)
+	# La prima carta e un'arma (D-092) e una carta "Nuova macchina" non scrive i livelli
+	# (D-093): si prende la prima carta del mazzo.
+	_menu.press(_first_deck_card())
 	await _frames(2)
 	_check(not _menu.is_open and not paused, "scelta fatta: il gioco riparte")
 	_check(_run.progression.levels.size() == 1, "un upgrade acquisito %s" % [_run.progression.levels])
+
+
+## Indice della prima carta che non e un'arma ne una "Nuova macchina", riconosciuta dalle righe
+## che il menu espone (nome, tipo); -1 se non c'e.
+func _first_deck_card() -> int:
+	for i in _menu.card_count():
+		var lines := _menu.card_text(i).split("\n")
+		if not lines[1].begins_with("Nuova macchina") and not lines[2].begins_with(UpgradeCatalog.CATEGORY_NAMES[&"weapon"]):
+			return i
+	return -1
 
 
 ## D-092: la carta bivio apre la scelta fra due trasformazioni; il livello sale solo dopo,
@@ -491,7 +504,8 @@ func _test_weapon_branch_flow() -> void:
 	_check(loadout.level_of(&"nailgun") == 3 and loadout.weapon(&"nailgun").has_branch(&"bridge"), "scelta: Chiodi da ponte al livello 3")
 	_check(_menu.is_open and _menu.card_count() == 3 and _run._pending_level_ups == 1, "poi si apre il level-up rimasto")
 	await create_timer(0.6, true).timeout
-	_menu.press(1)
+	# Una carta del mazzo: una macchina in piu cambierebbe i conti di _test_caravan_upgrades.
+	_menu.press(_first_deck_card())
 	await _frames(2)
 	_check(not _menu.is_open and not paused, "finite le scelte il gioco riparte")
 
@@ -566,6 +580,58 @@ func _test_caravan_upgrades() -> void:
 	_run.apply_upgrade(&"beacon_range", 1)
 	_check(is_equal_approx(_run.light_field.radius_of(beacon.light_id), _run.tuning.beacon_radius + _run.tuning.beacon_radius_per_level),
 		"Faro 1: raggio %.0f m" % _run.light_field.radius_of(beacon.light_id))
+
+
+## D-093, Sezione 5: una carta "Nuova macchina" in un level-up vero. Il provider offre solo la
+## Torretta e il recupero del Raro e dovuto: per l'Ingegnere la carta e l'unica Rara del pool,
+## quindi entra nell'offerta qualunque sia il seme.
+func _test_machine_card_level_up() -> void:
+	print("machine card")
+	var progression := _run.progression
+	var provider := progression.machine_cards
+	var available := _run._available_modules()
+	_check(available.has(&"turret") and available.all(func(id: StringName) -> bool: return Caravan.module_script_for(id) != MachineModule),
+		"si offrono solo i moduli con uno script (%s)" % [available])
+	_check(_caravan.has_room() and provider.call().size() == available.size(), "con posto nella carovana una carta per modulo disponibile")
+	progression.machine_cards = func() -> Array[Dictionary]: return [MachineOffers.card(&"turret", _run.class_id)] as Array[Dictionary]
+	progression.level_ups_without_rare = progression.pity_level_ups
+	_place_player(Vector3.ZERO)
+	var levels := progression.levels.duplicate()
+	var machines := _caravan.machines.size()
+	var turrets := _caravan.count_of(&"turret")
+	# Due livelli: dopo la carta macchina si apre il level-up rimasto.
+	_xp.spawn(_player.global_position + Vector3(1.0, 0.0, 0.0),
+		progression.xp_to_next() - progression.xp + progression.xp_to_next() + progression.xp_growth)
+	await _frames(20)
+	var pending := _run._pending_level_ups
+	var index := -1
+	for i in _menu.card_count():
+		if _menu.card_text(i).split("\n")[1] == "Nuova macchina: Torretta":
+			index = i
+	_check(_menu.is_open and pending == 2 and index >= 0, "level-up con la carta Nuova macchina: Torretta (carta %d, %d level-up)" % [index, pending])
+	if index < 0:
+		progression.machine_cards = provider
+		return
+	_check(_menu.card_text(index).contains("NUOVO") and _menu.card_icon(index).kind == MachineCatalog.find(&"turret").icon,
+		"la carta mostra NUOVO e l'icona del modulo")
+	await create_timer(0.6, true).timeout
+	_menu.press(index)
+	await _frames(2)
+	var added := _caravan.machines.back() as Machine
+	_check(_caravan.machines.size() == machines + 1 and _caravan.count_of(&"turret") == turrets + 1, "scelta: una macchina in piu, con la Torretta")
+	_check(_run._pending_level_ups == pending - 1 and progression.levels == levels, "consuma un level-up e non scrive i livelli")
+	_check(_run.write_queue.bodies.has(added) and added.module(&"turret").level == _caravan.module_level(&"turret"),
+		"la macchina nuova ha i servizi della run e il livello del tipo (%d)" % _caravan.module_level(&"turret"))
+	_check(_menu.is_open, "si apre il level-up rimasto")
+	await create_timer(0.6, true).timeout
+	_menu.press(_first_deck_card())
+	await _frames(2)
+	_check(not _menu.is_open and not paused and _run._pending_level_ups == 0, "finite le scelte il gioco riparte")
+	progression.machine_cards = provider
+	while _caravan.has_room() and _caravan.add_machine(&"turret") != null:
+		pass
+	_check(_caravan.module_count() == _caravan.tuning.module_limit and MachineOffers.cards(_caravan, _run.class_id, available).is_empty()
+		and provider.call().is_empty(), "carovana piena (%d moduli): nessuna carta macchina" % _caravan.module_count())
 
 
 func _test_death_ends_run() -> void:

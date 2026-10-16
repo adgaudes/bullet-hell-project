@@ -31,6 +31,9 @@ var class_id: StringName = &""
 ## Carte arma possibili (WeaponOffers.cards), chiamata a ogni offerta; se ne restituisce, la
 ## prima carta dell'offerta e un'arma (spec D-092, par. 6.3).
 var weapon_cards: Callable
+## Carte "Nuova macchina" possibili (MachineOffers.cards), chiamata a ogni offerta; al piu una
+## entra nell'offerta (spec D-093, Sezione 5).
+var machine_cards: Callable
 
 
 func setup(run_seed: int, upgrades: Array[Dictionary] = []) -> void:
@@ -108,6 +111,7 @@ func fillers() -> Array[Dictionary]:
 ## Tre carte distinte. Regola 3: categorie diverse finche il pool lo permette.
 ## Regola 4: dopo pity_level_ups scelte senza Rari, la prima carta e Rara o superiore.
 ## D-092: con carte arma la prima e un'arma, la seconda preferisce il mazzo della classe.
+## D-093: al piu una carta "Nuova macchina" per offerta.
 func roll_offer() -> Array[Dictionary]:
 	var offer: Array[Dictionary] = []
 	var used_categories: Array[StringName] = []
@@ -130,9 +134,14 @@ func roll_offer() -> Array[Dictionary]:
 		var pick := _weighted_pick(weapon_pool)
 		offer.append(pick)
 		used_categories.append(pick.category)
+	var machines: Array[Dictionary] = []
+	if machine_cards.is_valid():
+		machines.assign(machine_cards.call())
 	var pool := eligible()
-	if pool.size() < CARDS - offer.size():
+	# Le carte macchina contano come una sola per le ripetibili: ne entra al piu una (D-056).
+	if pool.size() + mini(machines.size(), 1) < CARDS - offer.size():
 		pool.append_array(fillers())
+	pool.append_array(machines)
 	for i in CARDS - offer.size():
 		var candidates := pool.filter(func(u: Dictionary) -> bool: return not offer.has(u))
 		if candidates.is_empty():
@@ -155,6 +164,9 @@ func roll_offer() -> Array[Dictionary]:
 		var pick := _weighted_pick(candidates)
 		offer.append(pick)
 		used_categories.append(pick.category)
+		# Una carta macchina nell'offerta: le altre escono dal pool (anche dal recupero del Raro).
+		if MachineOffers.is_machine_card(pick.id):
+			pool.assign(pool.filter(func(u: Dictionary) -> bool: return not MachineOffers.is_machine_card(u.id)))
 	var has_rare := offer.any(func(u: Dictionary) -> bool: return u.rarity >= UpgradeCatalog.Rarity.RARE)
 	level_ups_without_rare = 0 if has_rare else level_ups_without_rare + 1
 	return offer

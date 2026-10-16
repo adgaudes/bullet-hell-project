@@ -18,6 +18,11 @@ func _initialize() -> void:
 	_test_weapon_card_first()
 	_test_owned_card_of_other_deck()
 	_test_fusion_card_wins()
+	_test_machine_card_shape()
+	_test_one_machine_card_per_offer()
+	_test_machine_cards_keep_offer_full()
+	_test_no_machine_cards()
+	_test_module_cards_with_machine_cards()
 	print("PROTOTYPE01_TESTS %s failures=%d" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -264,3 +269,140 @@ func _test_rarity_weights() -> void:
 	var rare := float(counts[2]) / total
 	_check(absf(common - 60.0 / 97.0) < 0.03, "comuni %.3f (atteso %.3f)" % [common, 60.0 / 97.0])
 	_check(absf(rare - 10.0 / 97.0) < 0.02, "rari %.3f (atteso %.3f)" % [rare, 10.0 / 97.0])
+
+
+func _machine_cards(class_id: StringName) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	for id in MachineCatalog.MODULES:
+		out.append(MachineOffers.card(id, class_id))
+	return out
+
+
+func _machine_count(offer: Array[Dictionary]) -> int:
+	return offer.filter(func(u: Dictionary) -> bool: return MachineOffers.is_machine_card(u.id)).size()
+
+
+## D-093, Sezione 5: la carta "Nuova macchina" di un modulo; Rara nel mazzo comune, Non comune
+## in quello del Meccanico.
+func _test_machine_card_shape() -> void:
+	print("machine card")
+	var shovel := MachineOffers.card(&"shovel", &"engineer")
+	var entry := MachineCatalog.find(&"shovel")
+	_check(shovel.id == &"m:new:shovel" and shovel.name == "Nuova macchina: Pala" and shovel.category == &"companion"
+		and shovel.max_level == 0 and shovel.requires == "" and shovel.module_id == &"shovel" and shovel.shown_level == 0
+		and shovel.text == entry.text and shovel.icon == entry.icon and shovel.icon != &"shovel",
+		"carta della Pala: id, nome, categoria, testo e icona del modulo (%s)" % shovel.icon)
+	_check(shovel.rarity == UpgradeCatalog.Rarity.RARE and shovel.deck == &"common", "Ingegnere: Rara, mazzo comune")
+	var mechanic := MachineOffers.card(&"shovel", &"mechanic")
+	_check(mechanic.rarity == UpgradeCatalog.Rarity.UNCOMMON and mechanic.deck == &"mechanic", "Meccanico: Non comune, mazzo del Meccanico")
+	var plain := MachineOffers.card(&"cargo", &"")
+	_check(plain.rarity == UpgradeCatalog.Rarity.RARE and plain.deck == &"common", "senza classe: Rara, mazzo comune")
+	_check(MachineOffers.is_machine_card(&"m:new:shovel") and MachineOffers.module_of(&"m:new:shovel") == &"shovel",
+		"id di una carta macchina riconosciuto, modulo letto")
+	_check(not MachineOffers.is_machine_card(&"w:new:nailgun") and not MachineOffers.is_machine_card(&"turret_rate")
+		and MachineOffers.module_of(&"turret_rate") == &"", "le altre carte non sono carte macchina e non hanno modulo")
+
+
+## Review Focus #4 di D-093: mai due carte macchina nella stessa offerta, anche quando il
+## recupero del Raro e dovuto. Catalogo ridotto a due carte della carovana: dopo la prima carta
+## macchina la regola delle categorie non ha altre categorie a cui passare (e il Meccanico
+## preferisce il suo mazzo, cioe le carte macchina), quindi solo l'esclusione tiene fuori la seconda.
+func _test_one_machine_card_per_offer() -> void:
+	print("one machine card per offer")
+	var two: Array[Dictionary] = [
+		{id = &"test_a", deck = &"common", name = "A", category = &"companion", rarity = UpgradeCatalog.Rarity.COMMON,
+			max_level = 1, requires = "", text = ""},
+		{id = &"test_b", deck = &"common", name = "B", category = &"companion", rarity = UpgradeCatalog.Rarity.COMMON,
+			max_level = 1, requires = "", text = ""},
+	]
+	for class_id: StringName in [&"", &"mechanic"]:
+		var machines := _machine_cards(class_id)
+		var doubles := 0
+		var full := true
+		var with_machine := 0
+		var rescued := 0
+		for run_seed in 300:
+			var p := RunProgression.new()
+			p.setup(run_seed, two)
+			p.class_id = class_id
+			p.has_caravan = true
+			p.module_count = func(_id: StringName) -> int: return 1
+			p.machine_cards = func() -> Array[Dictionary]: return machines
+			var due := run_seed % 2 == 0
+			p.level_ups_without_rare = p.pity_level_ups if due else p.pity_level_ups - 1
+			var offer := p.roll_offer()
+			var count := _machine_count(offer)
+			doubles += 1 if count > 1 else 0
+			full = full and offer.size() == 3
+			with_machine += 1 if count > 0 else 0
+			rescued += 1 if due and count > 0 else 0
+		var label := "Meccanico" if class_id == &"mechanic" else "senza classe"
+		_check(doubles == 0 and full, "%s: 300 offerte di tre carte, mai due carte macchina (%d doppie)" % [label, doubles])
+		_check(with_machine > 0, "%s: le carte macchina compaiono (%d offerte su 300)" % [label, with_machine])
+		if class_id == &"":
+			_check(rescued == 150, "senza classe, recupero del Raro dovuto: la Rara e una carta macchina (%d su 150)" % rescued)
+
+
+## D-056: a fine run le carte macchina contano come una sola per le ripetibili, cosi l'offerta
+## resta di tre carte (prima del conteggio poteva scendere a una o due).
+func _test_machine_cards_keep_offer_full() -> void:
+	print("machine cards and fillers")
+	var p := _new(31)
+	p.module_count = func(_id: StringName) -> int: return 1
+	p.machine_cards = func() -> Array[Dictionary]: return _machine_cards(&"")
+	for upgrade in UpgradeCatalog.all():
+		if not upgrade.get(&"filler", false):
+			p.levels[upgrade.id] = upgrade.max_level
+	var full := true
+	var machines := 0
+	for i in 200:
+		var offer := p.roll_offer()
+		var count := _machine_count(offer)
+		machines += count
+		full = full and offer.size() == 3 and count <= 1 and offer.all(func(u: Dictionary) -> bool:
+			return MachineOffers.is_machine_card(u.id) or u.get(&"filler", false))
+	_check(full and machines > 0, "upgrade veri al massimo: sempre tre carte, al piu una macchina, le altre ripetibili (%d macchine)" % machines)
+	p.levels[&"boots"] = 0
+	full = true
+	var boots := 0
+	for i in 200:
+		var offer := p.roll_offer()
+		full = full and offer.size() == 3 and _machine_count(offer) <= 1
+		boots += 1 if offer.any(func(u: Dictionary) -> bool: return u.id == &"boots") else 0
+	# Che l'ultimo upgrade vero sia in ogni offerta roll_offer non lo garantisce nemmeno senza
+	# carte macchina (divide la categoria con Rattoppo al volo): qui basta che resti offerto.
+	_check(full and boots > 0, "un solo upgrade vero rimasto: sempre tre carte, al piu una macchina, lui offerto (%d su 200)" % boots)
+
+
+## Senza carte macchina possibili (carovana piena, nessun modulo) nessuna carta macchina.
+func _test_no_machine_cards() -> void:
+	print("no machine cards")
+	var p := _new(32)
+	p.module_count = func(_id: StringName) -> int: return 1
+	p.machine_cards = func() -> Array[Dictionary]: return [] as Array[Dictionary]
+	var none := true
+	var full := true
+	for i in 300:
+		var offer := p.roll_offer()
+		none = none and _machine_count(offer) == 0
+		full = full and offer.size() == 3
+	_check(none and full, "machine_cards vuota: 300 offerte di tre carte, nessuna carta macchina")
+
+
+## Review Focus #4 di D-093: con le carte macchina nel pool una carta di livello di un modulo
+## che la carovana non ha non compare mai.
+func _test_module_cards_with_machine_cards() -> void:
+	print("module cards with machine cards")
+	var p := _new(33)
+	p.machine_cards = func() -> Array[Dictionary]: return _machine_cards(&"")
+	p.module_count = func(id: StringName) -> int: return 0 if id == &"turret" else 1
+	var seen := 0
+	for i in 300:
+		for u in p.roll_offer():
+			seen += 1 if u.id == &"turret_rate" else 0
+	_check(seen == 0, "nessuna Torretta: Torretta veloce mai offerta in 300 offerte")
+	p.module_count = func(_id: StringName) -> int: return 1
+	for i in 300:
+		for u in p.roll_offer():
+			seen += 1 if u.id == &"turret_rate" else 0
+	_check(seen > 0, "una Torretta: Torretta veloce offerta (%d volte in 300 offerte)" % seen)

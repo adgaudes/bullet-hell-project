@@ -1002,6 +1002,9 @@ func _on_upgrade_chosen(id: StringName) -> void:
 	if WeaponOffers.is_weapon_card(id):
 		_on_weapon_card(id)
 		return
+	if MachineOffers.is_machine_card(id):
+		_on_machine_card(id)
+		return
 	_pending_level_ups -= 1
 	var new_level := progression.choose(id)
 	apply_upgrade(id, new_level)
@@ -1034,6 +1037,17 @@ func _on_weapon_card(id: StringName) -> void:
 	else:
 		_pending_level_ups -= 1
 	print("PROTOTYPE01_UPGRADE_CHOSEN id=%s level=%d" % [id, loadout.level_of(card.get(&"weapon_id", &""))])
+	_open_next_level_up.call_deferred()
+
+
+## Carta "Nuova macchina" (D-093): una macchina col modulo, che riceve dalla carovana livelli,
+## bonus e servizi. Consuma il level-up senza `progression.choose`: la carta resta "NUOVO".
+func _on_machine_card(id: StringName) -> void:
+	var module := MachineOffers.module_of(id)
+	_pending_level_ups -= 1
+	if caravan != null:
+		caravan.add_machine(module)
+	print("PROTOTYPE01_MACHINE_CARD module=%s" % module)
 	_open_next_level_up.call_deferred()
 
 
@@ -1239,6 +1253,8 @@ func _setup_loadout() -> void:
 	for card in ClassCatalog.start_cards(class_id):
 		apply_upgrade(card, progression.choose(card))
 	progression.weapon_cards = func() -> Array[Dictionary]: return WeaponOffers.cards(loadout, class_id, _unlocked_weapons())
+	if caravan != null:
+		progression.machine_cards = func() -> Array[Dictionary]: return MachineOffers.cards(caravan, class_id, _available_modules())
 	loadout.changed.connect(_refresh_weapon_hud)
 	if profile != null:
 		loadout.fused.connect(func(fusion_id: StringName) -> void: profile.discover_recipe(fusion_id))
@@ -1249,6 +1265,16 @@ func _setup_loadout() -> void:
 func _unlocked_weapons() -> Array[StringName]:
 	var profile := get_node_or_null(^"/root/PlayerProfile") as PlayerProfileService
 	return profile.unlocked_weapons() if profile != null else ([] as Array[StringName])
+
+
+## Moduli delle carte "Nuova macchina" (D-093): nel piano A quelli del catalogo che hanno uno
+## script (come le armi, i moduli ancora inerti non si offrono); il piano C filtrera col profilo.
+func _available_modules() -> Array[StringName]:
+	var out: Array[StringName] = []
+	for id in MachineCatalog.MODULES:
+		if Caravan.module_script_for(id) != MachineModule:
+			out.append(id)
+	return out
 
 
 ## Striscia delle armi del HUD (D-092): slot ricostruiti quando il loadout cambia, ricarica
