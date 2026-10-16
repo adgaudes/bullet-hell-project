@@ -2,14 +2,14 @@
 
 > **Breve per scelta** (audit D-06, 14 ottobre 2026): dove siamo, prossimo passo, cosa aspetta il proprietario. Va aggiornato a ogni avanzamento e tenuto **sotto 8 KB**: quando cresce, il vecchio va in `docs/archive/`. Storia delle sessioni fino al 14 ottobre 2026: `docs/archive/STATUS_LOG_2026-10.md`. Decisioni: `DECISIONS.md`. Piano di prodotto: `PROJECT_ROADMAP.md`. Per trovare un documento: `INDEX.md`.
 
-**Ultimo aggiornamento:** 16 ottobre 2026 (piano A della carovana: task 1 e 2 di 10 fatti; `Machine`, `Caravan` e Cassone esistono ma non sono ancora nelle scene).
+**Ultimo aggiornamento:** 16 ottobre 2026 (piano A della carovana: task 1-3 di 10 fatti; il compagno e diventato la carovana, una macchina col Cassone, e il gioco non cambia).
 
 ## Dove siamo
 
 - **Engine** Godot 4.7.2 (GDScript). La migrazione da Unreal e chiusa; il codice Unreal sta nel tag `unreal-prototype-final`.
 - **Prodotto:** fase 3, prototipo della promessa A. Due livelli giocabili, quartiere e ferrovia, su terreno continuo (Terrain3D), con boss (Demolitore, Trivella), treno, terremoto, giorno e notte con lampioni, estrazione, Officina, campagna, interfaccia "fatta a mano", audio Sonniss. Primo playtest del proprietario il 14 ottobre (vedi sotto).
 - **Branch di lavoro:** `feature/arena-run`. Non integrato: `feature/engineer-restyle` (Ingegnere D-088, worktree `../Videogame-engineer`), in attesa del giudizio del proprietario.
-- **Gate:** `tools/godot/Invoke-GodotChecks.ps1`: check-only, 47 suite con seme fisso, passo con finestra (Terrain3D e shader), smoke test. Ultimo gate completo verde il 16 ottobre, a fine piano 5.
+- **Gate:** `tools/godot/Invoke-GodotChecks.ps1`: check-only, 54 suite con seme fisso, passo con finestra (Terrain3D e shader), smoke test. Ultimo gate completo verde il 16 ottobre, dopo il task 3 della carovana.
 - **Build:** `LocalBuilds/Prototype01-Godot-Win64/` e `-Linux/` (exe 196 MB).
 
 **Audit del 14 ottobre:** `docs/REVIEWS/FULL_AUDIT_2026-10-14.md` (70 nemici: Alto 4,8 ms, Deck 4,1 ms).
@@ -18,15 +18,13 @@
 
 Esito **Modifica**: 14 osservazioni, piu O-15 e O-16 del 15 ottobre. Cause e piano in `docs/PLAYTESTS/OWNER_PLAYTEST_2026-10-14.md`. **Il piano di quel documento viene prima delle voci dell'audit.** Ordine scelto (D-089): grafica, gioco, armi, audio.
 
-**Fatto:** blocchi 1-2 (D-090, D-091); armi e classi D-092 piani 1-4 (Deck 0,18-0,65 ms per passo, budget 1,0); luce D-094 (`output/lighting_lab/`).
+**Fatto:** blocchi 1-2 (D-090, D-091); armi e classi D-092 piani 1-5 (Deck 0,18-0,65 ms per passo, budget 1,0; effetti in `output/weapons/fx/`, D-095; dettaglio in archivio); luce D-094 (`output/lighting_lab/`).
 
 **Eventi del mondo (D-097):** casuali, quanti ne sceglie la nuova scheda **Gameplay** (1-5, di serie 1), prima del boss.
 
-**Armi, piano 5 (fatto il 16 ottobre):** suoni, telegrafo delle attive, effetti su 12 armi e 6 fusioni (`output/weapons/fx/`); Effekseer non adottato per le armi (D-095, branch `spike/effekseer` tenuto per i boss). Dettaglio in `docs/archive/STATUS_LOG_2026-10.md`.
-
 ## Prossimo passo (agente)
 
-0. **In corso: piano A della carovana (D-093)**, `docs/superpowers/plans/2026-10-16-caravan-machines.md` (10 task). **Fatti i task 1 e 2** (catalogo, tuning, icone; `Machine`, `Caravan`, `CargoModule`, `machine.tscn`, suite `caravan_tests`, fuori dalle scene; revisione approvata). **Prossimo: task 3**, la migrazione delicata (tre scene: avvisare il proprietario, editor chiuso; gate completo); leggere le "Note dal task 2" nel piano. Registro locale dell'esecuzione: `.superpowers/sdd/2026-10-16-caravan-machines/progress.md`. **Inondazione** (richiesta del 15 ottobre): proporre uno spike di costo dell'acqua simulata sul Deck, poi il design. Dopo: bilanciamento coi bot, playtest. Poi la musica scelta da lui (candidati in `Videogame-assets/music-candidates/`). ProtonScatter approvato (D-090) ma non installato: serve quando si spargono oggetti.
+0. **In corso: piano A della carovana (D-093)**, `docs/superpowers/plans/2026-10-16-caravan-machines.md` (10 task). **Fatti i task 1-3** (catalogo, tuning, icone; `Machine`, `Caravan`, Cassone; migrazione del compagno in scene, servizi, eventi, boss, armi e 21 suite, gate verde; revisioni approvate). **Prossimo: task 4** (Torretta, Calamita e Faro come moduli; la luce di notte passa ai Faro); leggere le note dai task 2 e 3 nel piano. Registro locale dell'esecuzione: `.superpowers/sdd/2026-10-16-caravan-machines/progress.md`. **Inondazione** (richiesta del 15 ottobre): proporre uno spike di costo dell'acqua simulata sul Deck, poi il design. Dopo: bilanciamento coi bot, playtest. Poi la musica scelta da lui (candidati in `Videogame-assets/music-candidates/`). ProtonScatter approvato (D-090) ma non installato: serve quando si spargono oggetti.
    **Grafica (richieste del proprietario del 15 ottobre):** strumenti di D-095 uno alla volta con misura e catture (Effekseer solo per i boss, ProtonScatter, post-produzione, AreaLight3D di notte, Material Maker e Ucupaint per nemici e boss); **carte degli upgrade da rifare** (D-096: font e layout, prima bozze in cattura).
 1. **Voci rimaste dell'audit**, nell'ordine della sua sezione 1 (PF-03, T-01/T-02, I-02, K-07/K-08, L-01, D-05, H-01, X-01/X-03, voci B): elenco in `docs/REVIEWS/FULL_AUDIT_2026-10-14.md`.
 2. **Dopo la misura sul Deck:** V-02, V-03, V-06, Q-01, Q-03, Q-04 (costo GPU e contenuto del preset Deck).
@@ -48,7 +46,7 @@ Esito **Modifica**: 14 osservazioni, piu O-15 e O-16 del 15 ottobre. Cause e pia
 
 ## Rischi e limiti noti
 
-- **Gate, 14 ottobre notte:** `run_progression_tests` ha passato i controlli ma il processo non si e chiuso entro 300 s (exit 124) una volta su quattro; da sola esce sempre in 1 s. Blocco intermittente all'uscita di Godot, da tenere d'occhio.
+- **Gate, blocco all'uscita di Godot:** una suite stampa PASS ma il processo non si chiude entro 300 s (exit 124). Visto su `run_progression_tests` (14 ottobre), `weapon_catalog_tests` (16 ottobre: 9 volte su 120 anche sul codice di prima della carovana) e `machine_catalog_tests` (16 ottobre): le suite che chiamano `quit()` da `_initialize`. Si rilancia il gate; proposta aperta: ripetere nel gate una suite scaduta dopo il PASS.
 - **Steam Deck mai misurato.** CPU: il direttore costa 2,6 ms per passo (due passi per frame a 60 fps), un anello del picchetto che sale 0,75 ms per passo; GPU stimata 25-40 fps; prato a particelle e menu 3D non misurati.
 - **Registro minori di D-088** in `.superpowers/` (ignorato da Git): va portato in `docs/` all'integrazione (D-03).
 - **Bundle Sonniss:** lo zip 6 di 9 e in parte illeggibile; va riscaricato se servono quei suoni.
