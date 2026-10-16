@@ -1,8 +1,9 @@
 class_name LightField
 extends RefCounted
 ## Sorgenti di luce "logiche" del ciclo giorno/notte (D-058, tappa 1): torcia del
-## giocatore, faro della carovana e, dalla tappa 2, i lampioni. Logica pura: dice se un
-## punto e illuminato confrontando la distanza planare col raggio di ogni sorgente.
+## giocatore, Faro della carovana (le macchine col BeaconModule) e, dalla tappa 2, i
+## lampioni. Logica pura: dice se un punto e illuminato confrontando la distanza planare col
+## raggio di ogni sorgente.
 ## Un nodo liberato o fuori dall'albero conta come spento, senza errori.
 
 var _sources: Dictionary[int, Dictionary] = {}
@@ -33,6 +34,14 @@ func set_radius(id: int, radius: float) -> void:
 
 func radius_of(id: int) -> float:
 	return _sources[id].radius if _sources.has(id) else 0.0
+
+
+## Nodo della sorgente [param id], o null se l'id non c'e o il nodo e stato liberato.
+func source_node(id: int) -> Node3D:
+	if not _sources.has(id):
+		return null
+	var holder: Variant = _sources[id].node
+	return holder as Node3D if is_instance_valid(holder) else null
 
 
 func remove_source(id: int) -> void:

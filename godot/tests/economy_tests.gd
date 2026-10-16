@@ -80,6 +80,10 @@ func _test_catalog_and_fillers() -> void:
 	_check(fillers == 3, "tre carte ripetibili nel catalogo")
 	var progression := RunProgression.new()
 	progression.setup(7)
+	# Una carovana col solo Cassone, come all'inizio della run: Rottame di fortuna richiede un
+	# Cassone (task 4 di D-093) e con lui le ripetibili sono tre.
+	var cargo_only := func(id: StringName) -> int: return 1 if id == &"cargo" else 0
+	progression.module_count = cargo_only
 	var seen_filler := false
 	for i in 60:
 		for card in progression.roll_offer():
@@ -100,8 +104,15 @@ func _test_catalog_and_fillers() -> void:
 	var mixed := progression.roll_offer()
 	_check(mixed.size() == 3 and mixed.any(func(c: Dictionary) -> bool: return c.id == &"boots"),
 		"l'ultimo upgrade vero rimasto e sempre nell'offerta")
+	var has_lucky := func() -> bool: return progression.fillers().any(func(c: Dictionary) -> bool: return c.id == &"lucky_scrap")
+	_check(has_lucky.call(), "con un Cassone il Rottame di fortuna e fra le ripetibili")
 	progression.has_caravan = false
-	_check(progression.fillers().all(func(c: Dictionary) -> bool: return c.requires != "companion"), "senza carovana niente Rottame di fortuna")
+	_check(not has_lucky.call(), "senza carovana niente Rottame di fortuna")
+	progression.has_caravan = true
+	progression.module_count = func(_id: StringName) -> int: return 0
+	_check(not has_lucky.call(), "con la carovana ma senza Cassoni niente Rottame di fortuna")
+	progression.module_count = cargo_only
+	_check(has_lucky.call(), "un Cassone e il Rottame di fortuna torna")
 
 
 func _test_scrap_sources() -> void:

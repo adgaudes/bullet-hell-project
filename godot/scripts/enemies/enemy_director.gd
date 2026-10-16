@@ -49,6 +49,9 @@ var light_field: LightField
 var night_active := false
 ## Contatti avvenuti al buio (test e simulazione).
 var dark_contacts := 0
+## La carovana (Caravan.configure la collega): la usera il contatto delle macchine (task 6
+## di D-093); per ora nessun effetto.
+var caravan: Caravan
 var spike_damage := 0
 var spike_interval := 0.8
 ## Prato logico (piano 3 delle armi): sul prato i nemici vanno a 1 - `meadow_slow` (Erba alta).

@@ -89,7 +89,13 @@ func _test_upgrade_decks() -> void:
 	var engineer := UpgradeCatalog.all().filter(func(u: Dictionary) -> bool: return u.get(&"deck") == &"engineer")
 	_check(engineer.size() == 4, "mazzo Ingegnere: Pala larga, Argini spinati, Argini rinforzati, Getto rapido")
 	var mechanic := UpgradeCatalog.all().filter(func(u: Dictionary) -> bool: return u.get(&"deck") == &"mechanic")
-	_check(mechanic.size() == 4, "mazzo Meccanico: Torretta, Faro, Motore truccato, Saldatura al volo")
+	_check(mechanic.size() == 2, "mazzo Meccanico: Motore truccato, Saldatura al volo")
+	# Task 4 di D-093: le carte di livello dei moduli stanno nel mazzo comune (compaiono solo
+	# con quel modulo in carovana); le carte dei pezzi del compagno non ci sono piu.
+	var module_cards := UpgradeCatalog.all().filter(func(u: Dictionary) -> bool:
+		return [&"turret_rate", &"magnet_range", &"beacon_range"].has(u.id) and u.get(&"deck") == &"common")
+	_check(module_cards.size() == 3, "Torretta veloce, Calamita potente e Faro nel mazzo comune")
+	_check(not ids.has(&"companion_turret") and not ids.has(&"companion_magnet"), "via le carte Torretta sul cassone e Calamita")
 	var sapper := UpgradeCatalog.all().filter(func(u: Dictionary) -> bool: return u.get(&"deck") == &"sapper")
 	_check(sapper.size() == 3, "mazzo Guastatore: Scavo esplosivo, Miccia corta, Reazione a catena")
 

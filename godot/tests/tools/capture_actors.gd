@@ -5,7 +5,7 @@ extends SceneTree
 ## partenza, fermi, e salva: la vista di gioco (`gameplay_*`) e primi piani a tre quarti
 ## (`player_*`, `machine_*`, `scavenger_*`, `boss_*`) con gli stati guidati dal codice:
 ## colori del dash, lampo del colpo, rottame sulla schiena, lama a meta martellata,
-## torretta e calamita montate.
+## pezzi dei moduli Torretta, Calamita e Faro montati.
 
 const PLAYER_SCENE := preload("res://scenes/player/player.tscn")
 const MACHINE_SCENE := preload("res://scenes/caravan/machine.tscn")
@@ -26,7 +26,6 @@ func _initialize() -> void:
 	ActorMotion.enabled = false
 	_scene = preload("res://scenes/main/arena_run.tscn").instantiate()
 	root.add_child(_scene)
-	var run: ArenaRun = _scene.get_node(^"Run")
 	var player: PlayerCharacter = _scene.get_node(^"Player")
 	var caravan: Caravan = _scene.get_node(^"Caravan")
 	var director: EnemyDirector = _scene.get_node(^"EnemyDirector")
@@ -50,14 +49,18 @@ func _initialize() -> void:
 	machine.global_position = Vector3(-2.2, 0.3, 1.2)
 	machine.rotation.y = deg_to_rad(-60.0)
 	caravan.carried = 2
-	# Seconda macchina, fuori dalla carovana (ferma), con tutti i pezzi: torretta, calamita,
-	# cassone rinforzato pieno (7 rottami).
+	# Seconda macchina, fuori dalla carovana (ferma), con i pezzi dei moduli Torretta, Calamita
+	# e Faro (dai loro `build_part`, su moduli mai montati) e il cassone rinforzato pieno (7
+	# rottami). In gioco ogni macchina ha un solo modulo: qui i pezzi stanno insieme per la foto.
 	var upgraded: Machine = MACHINE_SCENE.instantiate()
 	_scene.add_child(upgraded)
 	upgraded.global_position = Vector3(2.4, 0.3, 1.6)
 	upgraded.rotation.y = deg_to_rad(40.0)
-	upgraded.mount_part(&"TurretPart", run._turret_part())
-	upgraded.mount_part(&"MagnetPart", run._magnet_part())
+	var parts := {&"TurretPart": TurretModule.new(), &"MagnetPart": MagnetModule.new(), &"BeaconPart": BeaconModule.new()}
+	for part_name: StringName in parts:
+		var module: MachineModule = parts[part_name]
+		upgraded.mount_part(part_name, module.build_part())
+		module.free()
 	upgraded.set_cargo_view(caravan.tuning.cargo_capacity + 2, caravan.tuning.cargo_capacity + 2)
 
 	# Rottamatori in cerchio, rivolti al giocatore come in partita.

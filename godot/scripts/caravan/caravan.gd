@@ -7,7 +7,7 @@ extends Node3D
 ## al giocatore; la direzione "dietro" e quella del compagno, applicata al capofila.
 
 signal carried_changed(carried: int)
-## Macchine, moduli o capienza cambiati (HUD).
+## Macchine, moduli (aggiunti, livelli, accesi o spenti) o capienza cambiati: HUD e luci dei Faro.
 signal changed
 signal machine_added(machine: Machine)
 
@@ -51,8 +51,8 @@ var capacity: int:
 
 ## Servizi di `configure`, passati a ogni modulo (anche futuro) che ha una proprieta col nome.
 var _services: Dictionary[StringName, Variant] = {}
-## Livello di ogni tipo di modulo (carte di livello, task 4) e capienza in piu dei Cassoni:
-## valgono anche per i moduli aggiunti dopo.
+## Livello di ogni tipo di modulo (carte di livello) e capienza in piu dei Cassoni: valgono
+## anche per i moduli aggiunti dopo.
 var _levels: Dictionary[StringName, int] = {}
 var _cargo_bonus := 0
 var _machine_scene: PackedScene
@@ -73,12 +73,15 @@ func _ready() -> void:
 
 ## Servizi della run (`director`, `terrain_field`, `write_queue`, `xp_field`, `light_field`,
 ## `run_tuning`, e altri dei task successivi): li salva e li passa ai moduli, presenti e futuri.
+## I moduli gia presenti rifanno `apply_level`: chi e nato prima dei servizi (Torretta,
+## Calamita, Faro) si registra ora.
 func configure(services: Dictionary) -> void:
 	for key: Variant in services:
 		_services[StringName(key)] = services[key]
 	for machine in machines:
 		for module in machine.modules:
 			_give_services(module)
+			module.apply_level(module.level)
 		_track_body(machine)
 	var director: Object = _services.get(&"director")
 	if director != null and &"caravan" in director:
@@ -112,6 +115,30 @@ func modules_of(module_id: StringName) -> Array[MachineModule]:
 		for module in machine.modules:
 			if module.module_id == module_id:
 				result.append(module)
+	return result
+
+
+## Livello delle carte di un tipo di modulo (Torretta veloce, Calamita potente, Faro): vale per
+## i moduli presenti e per quelli che arrivano dopo.
+func set_module_level(module_id: StringName, level: int) -> void:
+	_levels[module_id] = level
+	for module in modules_of(module_id):
+		module.apply_level(level)
+	changed.emit()
+
+
+func module_level(module_id: StringName) -> int:
+	return _levels.get(module_id, 0)
+
+
+## Luci dei Faro accesi, `{light: OmniLight3D, radius: float}`: ArenaRun vi applica il
+## fattore di notte, come alla torcia.
+func beacon_lights() -> Array[Dictionary]:
+	var result: Array[Dictionary] = []
+	for module in modules_of(&"beacon"):
+		var beacon := module as BeaconModule
+		if beacon != null and beacon.active:
+			result.append({light = beacon.light, radius = beacon.radius()})
 	return result
 
 
@@ -270,11 +297,17 @@ func _on_ground(point: Vector3) -> Vector3:
 
 # --- Interni ---------------------------------------------------------------------------------
 
-## Script del modulo di ogni tipo: i tipi senza script (task 4 e 8) usano il modulo inerte.
+## Script del modulo di ogni tipo: i tipi senza script (task 8) usano il modulo inerte.
 static func module_script_for(module_id: StringName) -> GDScript:
 	match module_id:
 		&"cargo":
 			return CargoModule
+		&"turret":
+			return TurretModule
+		&"magnet":
+			return MagnetModule
+		&"beacon":
+			return BeaconModule
 	return MachineModule
 
 
@@ -308,7 +341,7 @@ func _add_machine(module_id: StringName, at: Variant, scrap: int) -> Machine:
 	module.module_id = module_id
 	machine.add_module(module)
 	_give_services(module)
-	module.apply_level(_levels.get(module_id, 0))
+	module.apply_level(module_level(module_id))
 	if module is CargoModule:
 		var cargo := module as CargoModule
 		cargo.capacity = tuning.cargo_capacity + _cargo_bonus

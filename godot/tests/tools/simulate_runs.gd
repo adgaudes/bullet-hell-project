@@ -56,15 +56,17 @@ const LOOKAHEAD := 3.0
 const BOSS_ORBIT_DISTANCE := 5.5
 const BOSS_TOO_CLOSE := 3.0
 ## Priorita fissa delle carte dopo le armi (D-092: carte arma e trasformazioni vincono
-## sempre): prima il danno, poi la vita, poi il resto.
+## sempre): prima il danno, poi la vita, poi il resto. Torretta veloce e Calamita potente
+## compaiono solo con quel modulo in carovana (task 4 di D-093): fino alle carte Nuova
+## macchina (task 5) solo per il Meccanico con la Torretta fissa.
 const CARD_PRIORITY: Array[StringName] = [
-	&"companion_turret", &"patch", &"boots",
-	&"companion_magnet", &"reach", &"companion_cargo", &"dig_blast", &"spiked_wall",
+	&"turret_rate", &"patch", &"boots",
+	&"magnet_range", &"reach", &"companion_cargo", &"dig_blast", &"spiked_wall",
 ]
 ## Lo scrapper vuole il cassone grande subito dopo le armi.
 const CARD_PRIORITY_SCRAPPER: Array[StringName] = [
-	&"companion_cargo", &"companion_turret", &"patch",
-	&"boots", &"companion_magnet", &"reach", &"dig_blast", &"spiked_wall",
+	&"companion_cargo", &"turret_rate", &"patch",
+	&"boots", &"magnet_range", &"reach", &"dig_blast", &"spiked_wall",
 ]
 ## Secondi fra due decisioni, raggio entro cui vede i nemici, peso dell'esperienza.
 const BOT_PARAMS := {

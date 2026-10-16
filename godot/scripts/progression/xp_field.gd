@@ -2,7 +2,7 @@ class_name XpField
 extends Node3D
 ## Frammenti di esperienza a terra (PROGRESSION_SPEC, sezione 4): nascono dove
 ## muore un nemico e volano verso chi li attira entro il suo raggio. Il
-## giocatore attira sempre; il capofila della carovana solo con l'upgrade Calamita.
+## giocatore attira sempre; le macchine della carovana col modulo Calamita (MagnetModule).
 
 signal collected(amount: int)
 
@@ -70,11 +70,25 @@ func set_attractor(node: Node3D, radius: float) -> void:
 	attractors.append({node = node, radius = radius})
 
 
+## Toglie l'attrattore [param node] (una Calamita spenta): i frammenti che volavano verso di
+## lui tornano a scegliere il bersaglio.
+func remove_attractor(node: Node3D) -> void:
+	for k in range(attractors.size() - 1, -1, -1):
+		if is_instance_valid(attractors[k].node) and attractors[k].node == node:
+			attractors.remove_at(k)
+	for fragment: Dictionary in _fragments:
+		if not is_instance_valid(fragment.target) or fragment.target == node:
+			fragment.target = null
+
+
 func _physics_process(delta: float) -> void:
 	_time += delta
 	for k in range(_fragments.size() - 1, -1, -1):
 		var fragment: Dictionary = _fragments[k]
 		var node: MeshInstance3D = fragment.node
+		# Un bersaglio liberato (una macchina tolta) non si insegue: se ne sceglie un altro.
+		if not is_instance_valid(fragment.target):
+			fragment.target = null
 		if fragment.target == null:
 			fragment.target = _attractor_for(node.global_position)
 		if fragment.target == null:

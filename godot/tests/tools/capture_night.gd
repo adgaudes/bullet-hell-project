@@ -2,8 +2,9 @@ extends SceneTree
 ## Catture del ciclo giorno/notte (D-058, tappa 1), non e una suite. Con finestra reale:
 ##   godot_console --path godot --resolution 1280x800 --fixed-fps 60 --quit-after 3000 --script res://tests/tools/capture_night.gd -- --out=../output/night
 ## Produce: day (giorno, indicatore con il tempo al tramonto), dusk (tramonto a meta),
-## night_beacon (notte dentro il faro della carovana), night_dark (notte fuori dalle luci,
-## 20 rottamatori attorno), night_upgraded (Torcia e Faro al livello 3).
+## night_beacon (notte dentro il faro della carovana: una macchina col Faro, aggiunta qui),
+## night_dark (notte fuori dalle luci, 20 rottamatori attorno), night_upgraded (Torcia e Faro
+## al livello 3).
 
 var _out := "../output/night"
 var _scene: Node3D
@@ -26,29 +27,32 @@ func _initialize() -> void:
 	player._invulnerable_left = 3000.0
 	for i in 30:
 		await physics_frame
-	# Il faro sta sul capofila (nasce nel _ready della carovana).
+	# Il faro e il modulo di una macchina (task 4 di D-093): il Cassone capofila non illumina.
 	var lead := caravan.lead()
+	var beacon := caravan.add_machine(&"beacon")
+	for i in 10:
+		await physics_frame
 	await _save("day")
 	# Tramonto a meta.
 	_run.elapsed = _run.day_night.night_start_seconds + _run.day_night.dusk_seconds * 0.5
 	for i in 20:
 		await physics_frame
 	await _save("dusk")
-	# Notte, accanto al capofila (faro).
+	# Notte, accanto alla macchina col Faro.
 	_run.elapsed = _run.day_night.night_start_seconds + _run.day_night.dusk_seconds + 2.0
 	for i in 20:
 		await physics_frame
 	await _save("night_beacon")
-	# Notte lontano dal capofila, con l'orda attorno.
-	lead.set_physics_process(false)
-	lead.global_position = player.global_position + Vector3(40.0, 0.0, 0.0)
+	# Notte lontano dal Faro, con l'orda attorno.
+	beacon.set_physics_process(false)
+	beacon.global_position = player.global_position + Vector3(40.0, 0.0, 0.0)
 	for i in 20:
 		director.spawn_at(player.global_position + Vector3(cos(i * 0.314) * 9.0, 0.0, sin(i * 0.314) * 9.0))
 	for i in 40:
 		await physics_frame
 	await _save("night_dark")
 	# Torcia e Faro al massimo.
-	lead.global_position = player.global_position + Vector3(6.0, 0.0, 0.0)
+	beacon.global_position = player.global_position + Vector3(6.0, 0.0, 0.0)
 	_run.apply_upgrade(&"torch_range", 3)
 	_run.apply_upgrade(&"beacon_range", 3)
 	for i in 20:
@@ -58,6 +62,8 @@ func _initialize() -> void:
 	var lamps: LampField = _scene.get_node(^"LampField")
 	caravan.add_cargo_capacity(12)
 	caravan.add_scrap(12)
+	# Il Cassone paga i lampioni: fermo, lo si porta accanto a ognuno.
+	lead.set_physics_process(false)
 	for offset in [Vector3(7.2, 0.0, 0.0), Vector3(-7.2, 0.0, 0.0), Vector3(0.0, 0.0, 7.2), Vector3(0.0, 0.0, -7.2)]:
 		var world: Vector3 = player.global_position + offset
 		lead.global_position = world + Vector3(0.0, 0.3, 2.0)

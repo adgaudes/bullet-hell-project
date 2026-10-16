@@ -18,8 +18,12 @@ var xp_growth := 3
 ## Regola 4.
 var pity_level_ups := 4
 var level_ups_without_rare := 0
-## Con la carovana in scena compaiono le carte che la richiedono (`requires = "companion"`).
+## Con la carovana in scena compaiono le carte che la richiedono (`requires = "caravan"`) e,
+## se c'e il modulo, quelle di un modulo (`requires = "module:<id>"`).
 var has_caravan := true
+## Quante macchine della carovana hanno il modulo: `func(id: StringName) -> int` (ArenaRun la
+## collega a `Caravan.count_of`). Non impostata vale 0: le carte dei moduli non compaiono.
+var module_count: Callable
 var seed_value := 0
 ## Classe del giocatore (D-092): con un valore compaiono solo le carte comuni e quelle del suo
 ## mazzo; vuota, tutte (test e simulazioni vecchie).
@@ -54,23 +58,35 @@ func level_of(id: StringName) -> int:
 	return levels.get(id, 0)
 
 
-## Regola 2: niente upgrade al massimo ne pezzi per macchine che non hai.
+## Regola 2: niente upgrade al massimo ne carte per moduli che la carovana non ha.
 ## Le carte ripetibili (`filler`) non sono qui: vedi `fillers()`.
 func eligible() -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
 	for upgrade in catalog:
 		if upgrade.get(&"filler", false) or level_of(upgrade.id) >= upgrade.max_level:
 			continue
-		if upgrade.requires == "companion" and not has_caravan:
-			continue
-		if not _in_deck(upgrade):
+		if not _requirement_met(upgrade) or not _in_deck(upgrade):
 			continue
 		result.append(upgrade)
 	return result
 
 
-## Carte comuni e della classe; piu quelle gia possedute (la Torretta fissa dell'Officina resta
-## potenziabile anche da Ingegnere).
+## `requires`: "" sempre; "caravan" con la carovana; "module:<id>" con almeno una macchina col
+## modulo. Un valore sconosciuto non passa.
+func _requirement_met(upgrade: Dictionary) -> bool:
+	var requires: String = upgrade.get(&"requires", "")
+	if requires.is_empty():
+		return true
+	if requires == "caravan":
+		return has_caravan
+	if requires.begins_with("module:"):
+		var module_id := StringName(requires.trim_prefix("module:"))
+		return has_caravan and module_count.is_valid() and int(module_count.call(module_id)) > 0
+	return false
+
+
+## Carte comuni e della classe; piu quelle gia possedute (una carta di un altro mazzo avuta in
+## altro modo resta potenziabile).
 func _in_deck(upgrade: Dictionary) -> bool:
 	var deck: StringName = upgrade.get(&"deck", &"common")
 	return class_id == &"" or deck == &"common" or deck == class_id or level_of(upgrade.id) > 0
@@ -83,9 +99,7 @@ func fillers() -> Array[Dictionary]:
 	for upgrade in catalog:
 		if not upgrade.get(&"filler", false):
 			continue
-		if upgrade.requires == "companion" and not has_caravan:
-			continue
-		if not _in_deck(upgrade):
+		if not _requirement_met(upgrade) or not _in_deck(upgrade):
 			continue
 		result.append(upgrade)
 	return result

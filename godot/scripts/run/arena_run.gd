@@ -78,8 +78,6 @@ var progression := RunProgression.new()
 var elapsed := 0.0
 var is_over := false
 var run_seed := 0
-## Torretta della carta `companion_turret`, montata sul capofila della carovana.
-var turret_weapon: AutoWeapon
 ## Classe del giocatore (D-092) e i suoi slot d'arma; la chiodatrice della scena e `weapon`.
 var class_id: StringName = ClassCatalog.DEFAULT
 var loadout: WeaponLoadout
@@ -88,14 +86,12 @@ var write_queue: TerrainWriteQueue
 var meadow: MeadowMap
 ## Carte dei mazzi di classe che non sono armi (spec D-092, par. 5).
 var class_perks: ClassPerks
-## Luci logiche della notte: torcia del giocatore, faro sul capofila della carovana (e lampioni, tappa 2).
+## Luci logiche della notte: torcia del giocatore, Faro della carovana (le sorgenti le
+## registrano i moduli Faro) e lampioni (tappa 2).
 var light_field := LightField.new()
 var torch_light_id := 0
-var beacon_light_id := 0
 var torch_radius := 0.0
-var beacon_radius := 0.0
 var _torch: OmniLight3D
-var _beacon: OmniLight3D
 var _night_factor_applied := -1.0
 var _day_second_shown := -1
 var dig_blast_radius := 0.0
@@ -164,6 +160,8 @@ func _ready() -> void:
 	progression.xp_growth = tuning.xp_growth
 	progression.pity_level_ups = tuning.pity_level_ups
 	progression.has_caravan = caravan != null
+	if caravan != null:
+		progression.module_count = caravan.count_of
 	director.rng.seed = run_seed + 1
 	_boss_rng.seed = run_seed + 2
 	_check_scale()
@@ -615,9 +613,9 @@ func _apply_permanent_upgrades() -> void:
 				if caravan != null:
 					caravan.add_scrap(2 * owned)
 			&"fixed_turret":
+				# Una seconda macchina, con la Torretta (scelta 6 di D-093).
 				if caravan != null:
-					# Conta come primo livello della carta: al level-up si puo solo migliorare.
-					apply_upgrade(&"companion_turret", progression.choose(&"companion_turret"))
+					caravan.add_machine(&"turret")
 			&"salvage":
 				_death_scrap_share = maxf(_death_scrap_share, 0.75)
 			&"toolbox":
@@ -825,11 +823,11 @@ func _schedule_world_events() -> void:
 
 func _setup_night() -> void:
 	torch_radius = tuning.torch_radius
-	beacon_radius = tuning.beacon_radius
 	torch_light_id = light_field.add_source(player, torch_radius)
-	# Il faro del compagno di oggi sta sul capofila (piano A; il modulo Faro arriva col task 4).
-	if caravan != null and caravan.lead() != null:
-		beacon_light_id = light_field.add_source(caravan.lead(), beacon_radius)
+	# I Faro (BeaconModule) registrano da se le loro sorgenti; una macchina nuova, un livello o
+	# un modulo spento o riacceso rifanno le luci al passo dopo, anche a fattore di notte fermo.
+	if caravan != null:
+		caravan.changed.connect(_on_caravan_changed)
 	director.light_field = light_field
 	if lamp_field != null:
 		lamp_field.scrap_cost = tuning.lamp_scrap_cost
@@ -877,25 +875,30 @@ func _on_night_phase_changed(phase: DayNightCycle.Phase) -> void:
 	night_phase_changed.emit(phase)
 
 
-## Le due OmniLight3D sono di ArenaRun, non delle scene del giocatore e della macchina
-## (piano, sezione 14): nascono alla prima chiamata e costano zero a fattore 0.
+## La torcia e di ArenaRun, non della scena del giocatore (piano, sezione 14): nasce alla
+## prima chiamata. Le luci dei Faro accesi le tengono i moduli (Caravan.beacon_lights); il
+## fattore di notte vale per tutte. A fattore 0 costano zero.
 func _update_game_lights() -> void:
 	var factor := day_night.night_factor
 	if _torch == null:
 		_torch = _make_game_light("TorchLight", player)
-		if caravan != null and caravan.lead() != null:
-			_beacon = _make_game_light("BeaconLight", caravan.lead())
 	if is_equal_approx(factor, _night_factor_applied):
 		return
 	_night_factor_applied = factor
 	director.set_night(factor)
-	for pair in [[_torch, torch_radius], [_beacon, beacon_radius]]:
-		var light: OmniLight3D = pair[0]
-		if light == null:
-			continue
+	var lights: Array[Dictionary] = [{light = _torch, radius = torch_radius}]
+	if caravan != null:
+		lights.append_array(caravan.beacon_lights())
+	for entry in lights:
+		var light: OmniLight3D = entry.light
 		light.visible = factor > 0.0
 		light.light_energy = 2.2 * factor
-		light.omni_range = pair[1] * 1.15
+		light.omni_range = float(entry.radius) * 1.15
+
+
+## Macchine, livelli o moduli accesi cambiati: le luci si rifanno al prossimo passo.
+func _on_caravan_changed() -> void:
+	_night_factor_applied = -1.0
 
 
 func _make_game_light(light_name: String, owner_node: Node3D) -> OmniLight3D:
@@ -1073,12 +1076,16 @@ func _cache_scrap_fallback() -> void:
 ## Effetto di un upgrade al suo nuovo livello.
 func apply_upgrade(id: StringName, new_level: int) -> void:
 	match id:
-		&"companion_turret":
-			_upgrade_companion_turret(new_level)
-		&"companion_magnet":
-			xp_field.set_attractor(caravan.lead(), UpgradeCatalog.value(id, &"radius") + UpgradeCatalog.value(id, &"radius_per_level") * (new_level - 1))
-			if new_level == 1:
-				caravan.lead().mount_part(&"MagnetPart", _magnet_part())
+		# Carte di livello dei moduli: il livello del tipo, per le macchine presenti e future.
+		&"turret_rate":
+			if caravan != null:
+				caravan.set_module_level(&"turret", new_level)
+		&"magnet_range":
+			if caravan != null:
+				caravan.set_module_level(&"magnet", new_level)
+		&"beacon_range":
+			if caravan != null:
+				caravan.set_module_level(&"beacon", new_level)
 		&"companion_cargo":
 			caravan.add_cargo_capacity(int(UpgradeCatalog.value(id, &"capacity")))
 			caravan.add_scrap(int(UpgradeCatalog.value(id, &"scrap_now")))
@@ -1105,10 +1112,6 @@ func apply_upgrade(id: StringName, new_level: int) -> void:
 			torch_radius = tuning.torch_radius + tuning.torch_radius_per_level * new_level
 			light_field.set_radius(torch_light_id, torch_radius)
 			_night_factor_applied = -1.0
-		&"beacon_range":
-			beacon_radius = tuning.beacon_radius + tuning.beacon_radius_per_level * new_level
-			light_field.set_radius(beacon_light_id, beacon_radius)
-			_night_factor_applied = -1.0
 		&"nail_jar":
 			var radius := UpgradeCatalog.value(id, &"radius")
 			var center := Vector3(player.global_position.x, 0.1, player.global_position.z)
@@ -1118,27 +1121,6 @@ func apply_upgrade(id: StringName, new_level: int) -> void:
 		_:
 			if ClassPerks.handles(id) and class_perks != null:
 				class_perks.apply(id, new_level)
-
-
-## Carta Torretta: l'arma spara dal capofila della carovana e il pezzo sta sul suo cassone
-## (piano A; il modulo Torretta arriva col task 4).
-func _upgrade_companion_turret(new_level: int) -> void:
-	if turret_weapon == null:
-		turret_weapon = AutoWeapon.new()
-		turret_weapon.name = "TurretWeapon"
-		turret_weapon.shooter = caravan.lead()
-		turret_weapon.director = director
-		turret_weapon.muzzle_height = 0.55
-		turret_weapon.fire_interval = UpgradeCatalog.value(&"companion_turret", &"fire_interval")
-		turret_weapon.weapon_range = UpgradeCatalog.value(&"companion_turret", &"weapon_range")
-		turret_weapon.damage = tuning.weapon_damage
-		turret_weapon.projectile_speed = tuning.projectile_speed
-		# Differito: con la Torretta fissa (D-049) succede durante il _ready della scena.
-		get_parent().add_child.call_deferred(turret_weapon)
-		caravan.lead().mount_part(&"TurretPart", _turret_part())
-	else:
-		turret_weapon.fire_interval /= UpgradeCatalog.value(&"companion_turret", &"rate_per_level")
-	print("PROTOTYPE01_COMPANION_TURRET level=%d" % new_level)
 
 
 ## Rilievo continuo: contatori in metri cubi, zolle e scavo esplosivo a tempo (scatta
@@ -1195,60 +1177,6 @@ func _blast_effect(center: Vector3, radius: float) -> void:
 func _set_raised_tint(color: Color) -> void:
 	if terrain_field != null and terrain_field.terrain3d() != null:
 		TerrainSurface.set_raised_tint(terrain_field.terrain3d(), color)
-
-
-func _turret_part() -> Node3D:
-	var part := Node3D.new()
-	part.position = Vector3(0.0, 0.42, -0.25)
-	var dark := StandardMaterial3D.new()
-	dark.albedo_color = Color(0.12, 0.12, 0.13)
-	var base := MeshInstance3D.new()
-	var base_mesh := CylinderMesh.new()
-	base_mesh.top_radius = 0.16
-	base_mesh.bottom_radius = 0.2
-	base_mesh.height = 0.14
-	base.mesh = base_mesh
-	base.material_override = dark
-	part.add_child(base)
-	var barrel := MeshInstance3D.new()
-	var barrel_mesh := BoxMesh.new()
-	barrel_mesh.size = Vector3(0.09, 0.09, 0.45)
-	barrel.mesh = barrel_mesh
-	barrel.material_override = dark
-	barrel.position = Vector3(0.0, 0.1, -0.22)
-	part.add_child(barrel)
-	return part
-
-
-func _magnet_part() -> Node3D:
-	var part := Node3D.new()
-	part.position = Vector3(0.0, 0.55, 0.42)
-	var red := StandardMaterial3D.new()
-	red.albedo_color = Color(0.85, 0.08, 0.06)
-	var tip := StandardMaterial3D.new()
-	tip.albedo_color = Color(0.8, 0.8, 0.82)
-	for side in [-1.0, 1.0]:
-		var arm := MeshInstance3D.new()
-		var arm_mesh := BoxMesh.new()
-		arm_mesh.size = Vector3(0.1, 0.4, 0.1)
-		arm.mesh = arm_mesh
-		arm.material_override = red
-		arm.position = Vector3(side * 0.14, 0.2, 0.0)
-		part.add_child(arm)
-		var cap := MeshInstance3D.new()
-		var cap_mesh := BoxMesh.new()
-		cap_mesh.size = Vector3(0.11, 0.08, 0.11)
-		cap.mesh = cap_mesh
-		cap.material_override = tip
-		cap.position = Vector3(side * 0.14, 0.42, 0.0)
-		part.add_child(cap)
-	var bridge := MeshInstance3D.new()
-	var bridge_mesh := BoxMesh.new()
-	bridge_mesh.size = Vector3(0.38, 0.1, 0.1)
-	bridge.mesh = bridge_mesh
-	bridge.material_override = red
-	part.add_child(bridge)
-	return part
 
 
 func _refresh_xp() -> void:

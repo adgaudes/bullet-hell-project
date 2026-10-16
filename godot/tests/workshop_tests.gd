@@ -231,7 +231,7 @@ func _test_new_profile_changes_nothing() -> void:
 	var caravan: Caravan = scene.get_node(^"Caravan")
 	_check(player.max_health == run.tuning.player_max_health and is_zero_approx(player.tool_range_bonus_m), "vita e portata del tool come da tuning")
 	_check(caravan.capacity == caravan.tuning.cargo_capacity and caravan.carried == caravan.tuning.starting_scrap, "cassone come da tuning")
-	_check(run.turret_weapon == null and run.progression.level_of(&"companion_turret") == 0, "nessuna torretta")
+	_check(caravan.machines.size() == 1 and caravan.count_of(&"turret") == 0, "nessuna torretta: una sola macchina, il Cassone")
 	await _end_run(scene)
 
 
@@ -255,9 +255,22 @@ func _test_permanent_upgrades_apply() -> void:
 	_check(is_equal_approx(player.pack.capacity, field.tuning.pack_capacity_m3 + 20.0), "Zainetto largo: capacita %.0f m3" % player.pack.capacity)
 	_check(caravan.capacity == caravan.tuning.cargo_capacity + 2, "Cassone saldato: capacita %d" % caravan.capacity)
 	_check(caravan.carried == caravan.tuning.starting_scrap + 2, "Scorta: parte con %d rottami" % caravan.carried)
-	_check(run.turret_weapon != null and run.turret_weapon.is_inside_tree() and caravan.lead().has_node(^"TurretPart"),
-		"Torretta fissa: montata e in funzione dall'inizio")
-	_check(run.progression.level_of(&"companion_turret") == 1, "la carta Torretta parte dal livello 1")
+	# Torretta fissa (scelta 6 di D-093): una seconda macchina, con la Torretta; il capofila
+	# resta il Cassone.
+	var turrets := caravan.modules_of(&"turret")
+	_check(caravan.machines.size() == 2 and turrets.size() == 1 and caravan.lead().has_module(&"cargo"),
+		"Torretta fissa: due macchine, la seconda con la Torretta")
+	if turrets.size() == 1:
+		var turret := turrets[0] as TurretModule
+		var machine := turret.machine
+		_check(machine != caravan.lead() and machine.has_node(^"TurretPart") and not caravan.lead().has_node(^"TurretPart"),
+			"il pezzo della torretta sta sulla sua macchina, non sul Cassone")
+		_check(turret.weapon().is_inside_tree() and turret.weapon().shooter == machine and turret.weapon().director == run.director,
+			"Torretta fissa: in funzione dall'inizio, spara dalla sua macchina")
+		_check(run.write_queue.bodies.has(machine), "la macchina della Torretta sta in write_queue.bodies")
+		var ground := field.height_at(machine.global_position) + Caravan.GROUND_CLEARANCE
+		_check(absf(machine.global_position.y - ground) < 0.1, "e poggia sul suolo (quota %.2f, suolo %.2f)" % [machine.global_position.y, ground])
+	_check(run.progression.level_of(&"turret_rate") == 0, "la Torretta fissa non consuma livelli di Torretta veloce")
 	_check(run.scrap_out(false) == int(floor(caravan.carried * 0.75)), "Paracadute: morendo si salvano tre quarti (%d)" % run.scrap_out(false))
 	await _end_run(scene)
 
@@ -273,7 +286,8 @@ func _test_class_permanents() -> void:
 	await _frames(3)
 	var run: ArenaRun = scene.get_node(^"Run")
 	_check(run.class_id == &"engineer", "la classe viene dal profilo")
-	_check(run.turret_weapon == null, "Torretta fissa: non la monta l'Ingegnere")
+	var engineer_caravan: Caravan = scene.get_node(^"Caravan")
+	_check(engineer_caravan.machines.size() == 1 and engineer_caravan.count_of(&"turret") == 0, "Torretta fissa: non la monta l'Ingegnere")
 	_check(run.loadout.level_of(&"nailgun") == 2 and run.loadout.level_of(&"seismic_stake") == 2, "Cassetta degli attrezzi 2: chiodatrice e picchetto al livello 2")
 	var stake := run.loadout.weapon(&"seismic_stake") as ActiveWeapon
 	_check(is_equal_approx(stake.cooldown_total(), 15.0 * 0.85 * 0.9), "Picchetti di scorta: ricarica -10%% (%.2f s)" % stake.cooldown_total())
@@ -284,7 +298,7 @@ func _test_class_permanents() -> void:
 	await _frames(3)
 	run = scene.get_node(^"Run")
 	var caravan: Caravan = scene.get_node(^"Caravan")
-	_check(run.class_id == &"mechanic" and run.turret_weapon != null, "Torretta fissa: la monta il Meccanico")
+	_check(run.class_id == &"mechanic" and caravan.machines.size() == 2 and caravan.count_of(&"turret") == 1, "Torretta fissa: la monta il Meccanico")
 	_check(run.loadout.level_of(&"nailgun") == 0, "la Cassetta dell'Ingegnere non vale per il Meccanico")
 	# Valore sul disco, fuori dalla cache: `load()` restituirebbe la stessa istanza che la
 	# carovana tiene, e il confronto con la risorsa condivisa sarebbe con se stessa. Senza

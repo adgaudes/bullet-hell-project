@@ -13,8 +13,11 @@ var _scene: Node3D
 var _run: ArenaRun
 var _player: PlayerCharacter
 var _caravan: Caravan
-## Il capofila della carovana: porta il faro (il compagno di oggi).
+## La macchina col Faro, aggiunta dalla suite (task 4 di D-093: la luce della carovana viene
+## dai Faro; il Cassone capofila non illumina piu).
 var _machine: Machine
+## Il capofila, il Cassone.
+var _lead: Machine
 var _director: EnemyDirector
 var _hud: RunHud
 var _cycle: DayNightCycle
@@ -33,8 +36,9 @@ func _initialize() -> void:
 	_director.spawning = false
 	(_scene.get_node(^"PlayerWeapon") as AutoWeapon).set_physics_process(false)
 	await _frames(5)
-	# La macchina nasce nel _ready della carovana.
-	_machine = _caravan.lead()
+	# Il Cassone nasce nel _ready della carovana; il Faro lo aggiunge la suite.
+	_lead = _caravan.lead()
+	_machine = _caravan.add_machine(&"beacon")
 	# Il terremoto (D-075) ha la sua suite: qui il tempo salta e il suo annuncio coprirebbe
 	# quello della notte. Dopo i primi passi: la regia imposta l'evento al suo _ready.
 	if _run.quake_event != null:
@@ -202,14 +206,19 @@ func _test_dark_damage() -> void:
 	# Dentro la torcia: il nemico nasce a contatto, a 0,5 m dal giocatore.
 	var lit := await _contact_damage(_player.global_position + Vector3(0.5, 0.0, 0.0), true)
 	_check(lit == contact, "a contatto nella luce di notte: %d danni (%d)" % [contact, lit])
-	# Al buio: torcia spenta logicamente (raggio 0) per il tempo del test.
+	# Al buio: torcia spenta logicamente (raggio 0) per il tempo del test. Il Cassone resta
+	# accanto al giocatore: da solo non illumina (scelta 1 di D-093).
 	_run.light_field.set_radius(_run.torch_light_id, 0.0)
+	_lead.set_physics_process(false)
+	_lead.global_position = Vector3(41.0, _lead.global_position.y, 40.0)
+	_check(not _run.light_field.is_lit(_lead.global_position), "il Cassone accanto al giocatore non illumina nemmeno se stesso")
 	var dark := await _contact_damage(_player.global_position + Vector3(0.5, 0.0, 0.0), true)
 	_check(dark == contact + _run.tuning.night_dark_contact_bonus and _director.dark_contacts >= 1,
 		"a contatto al buio di notte: %d danni (%d), contatto al buio contato" % [contact + _run.tuning.night_dark_contact_bonus, dark])
 	var day := await _contact_damage(_player.global_position + Vector3(0.5, 0.0, 0.0), false)
 	_check(day == contact, "di giorno: %d danni (%d)" % [contact, day])
 	_run.light_field.set_radius(_run.torch_light_id, _run.torch_radius)
+	_lead.set_physics_process(true)
 	_director.night_active = false
 
 
@@ -246,13 +255,26 @@ func _test_cards() -> void:
 	var torch := _run.tuning.torch_radius
 	_run.apply_upgrade(&"torch_range", 1)
 	_check(is_equal_approx(_run.light_field.radius_of(_run.torch_light_id), torch + _run.tuning.torch_radius_per_level), "Torcia livello 1: raggio %.1f" % _run.light_field.radius_of(_run.torch_light_id))
+	var beacon := _machine.module(&"beacon") as BeaconModule
 	_run.apply_upgrade(&"beacon_range", 2)
-	_check(is_equal_approx(_run.light_field.radius_of(_run.beacon_light_id), _run.tuning.beacon_radius + 2.0 * _run.tuning.beacon_radius_per_level), "Faro livello 2: raggio %.1f" % _run.light_field.radius_of(_run.beacon_light_id))
+	_check(is_equal_approx(_run.light_field.radius_of(beacon.light_id), _run.tuning.beacon_radius + 2.0 * _run.tuning.beacon_radius_per_level)
+		and _run.light_field.source_node(beacon.light_id) == _machine,
+		"Faro livello 2 sulla macchina col Faro: raggio %.1f" % _run.light_field.radius_of(beacon.light_id))
 	var solo := RunProgression.new()
 	solo.has_caravan = false
 	solo.setup(3)
 	var ids := solo.eligible().map(func(u: Dictionary) -> StringName: return u.id)
 	_check(ids.has(&"torch_range") and not ids.has(&"beacon_range"), "senza carovana la Torcia si, il Faro no")
+	# La carta Faro richiede una macchina col Faro.
+	solo.has_caravan = true
+	solo.module_count = func(_id: StringName) -> int: return 0
+	ids = solo.eligible().map(func(u: Dictionary) -> StringName: return u.id)
+	_check(ids.has(&"torch_range") and not ids.has(&"beacon_range"), "con la carovana ma senza Faro, niente carta Faro")
+	solo.module_count = func(id: StringName) -> int: return 1 if id == &"beacon" else 0
+	ids = solo.eligible().map(func(u: Dictionary) -> StringName: return u.id)
+	_check(ids.has(&"beacon_range"), "con un Faro la carta Faro c'e")
+	_check(_run.progression.eligible().any(func(u: Dictionary) -> bool: return u.id == &"beacon_range"),
+		"nella run, col Faro in carovana, la carta Faro e fra quelle possibili")
 
 
 func _test_rendering_and_lights() -> void:
@@ -268,14 +290,17 @@ func _test_rendering_and_lights() -> void:
 	_check(sun.light_energy < day_sun and sun.light_energy > 0.0 and environment.ambient_light_energy < day_ambient and environment.ambient_light_energy > 0.0,
 		"sole %.2f e ambiente %.2f: sotto il giorno, sopra zero" % [sun.light_energy, environment.ambient_light_energy])
 	var torch: OmniLight3D = _player.get_node_or_null(^"TorchLight")
-	var beacon: OmniLight3D = _machine.get_node_or_null(^"BeaconLight")
+	var module := _machine.module(&"beacon") as BeaconModule
+	var beacon: OmniLight3D = module.get_node_or_null(^"BeaconLight")
+	var beacon_radius := _run.light_field.radius_of(module.light_id)
 	_check(torch != null and beacon != null and torch.visible and beacon.visible, "torcia e faro esistono e sono accesi")
-	_check(torch != null and absf(torch.omni_range - _run.torch_radius * 1.15) < 0.01 and beacon != null and absf(beacon.omni_range - _run.beacon_radius * 1.15) < 0.01,
+	_check(_lead.find_child("BeaconLight", true, false) == null, "il Cassone non ha una luce del faro")
+	_check(torch != null and absf(torch.omni_range - _run.torch_radius * 1.15) < 0.01 and beacon != null and absf(beacon.omni_range - beacon_radius * 1.15) < 0.01,
 		"portata delle luci coerente coi raggi logici")
 	_run.elapsed = 1.0
 	await _frames(3)
-	_check(_cycle.phase == DAY and not _director.night_active and torch != null and not torch.visible and is_equal_approx(sun.light_energy, day_sun),
-		"tornati al giorno: luci spente, sole com'era")
+	_check(_cycle.phase == DAY and not _director.night_active and torch != null and not torch.visible and beacon != null and not beacon.visible
+		and is_equal_approx(sun.light_energy, day_sun), "tornati al giorno: luci spente, sole com'era")
 
 
 func _test_hud_and_audio() -> void:

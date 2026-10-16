@@ -160,8 +160,12 @@ func _test_caravan_wiring() -> void:
 	_check(lead.cargo().terrain_field == _field and lead.cargo().director == _director and lead.cargo().run_tuning == _run.tuning,
 		"i servizi della run arrivano al Cassone")
 	_check(_run.loadout.caravan == _caravan and _run.class_perks.caravan == _caravan, "loadout e carte di classe hanno la carovana")
-	_check(_run.light_field.source_count() == 2 and is_equal_approx(_run.light_field.radius_of(_run.beacon_light_id), _run.beacon_radius),
-		"torcia e faro del capofila nel campo delle luci")
+	# Scelta 1 di D-093: il Cassone non porta piu il faro, la luce della carovana viene dai Faro.
+	_check(_run.light_field.source_count() == 1 and _run.light_field.source_node(_run.torch_light_id) == _player,
+		"all'inizio solo la torcia nel campo delle luci: il Cassone capofila non illumina")
+	_check(_director.caravan == _caravan and is_same(_run.progression.module_count.get_object(), _caravan)
+		and _run.progression.module_count.get_method() == &"count_of",
+		"il direttore ha la carovana; le carte dei moduli contano le macchine della carovana")
 
 
 ## Il cortile di partenza e un anello di argini sul rilievo con quattro varchi piani.
@@ -534,10 +538,34 @@ func _test_caravan_upgrades() -> void:
 	_run.apply_upgrade(&"companion_cargo", 1)
 	_check(_caravan.capacity == capacity_before + 2, "cassone rinforzato: capacita +2")
 	_check(_caravan.tuning.cargo_capacity == base_capacity, "la risorsa di tuning non cambia")
-	_run.apply_upgrade(&"companion_turret", 1)
-	_check(_run.turret_weapon != null and _run.turret_weapon.shooter == lead and lead.has_node(^"TurretPart"), "torretta montata e visibile sul capofila")
-	_run.apply_upgrade(&"companion_magnet", 1)
-	_check(lead.has_node(^"MagnetPart") and _xp.attractors.size() == 1 and _xp.attractors[0].node == lead, "calamita montata e attiva sul capofila")
+	# Torretta, Calamita e Faro sono moduli di macchine proprie (task 4 di D-093), non pezzi
+	# del capofila; le carte di livello passano dal livello del tipo.
+	var turret_machine := _caravan.add_machine(&"turret")
+	var turret: TurretModule = turret_machine.module(&"turret") as TurretModule if turret_machine != null else null
+	_check(turret != null and turret.weapon() != null and turret.weapon().shooter == turret_machine and turret_machine.has_node(^"TurretPart"),
+		"la macchina Torretta spara da se e ha il suo pezzo")
+	_check(not lead.has_node(^"TurretPart"), "il capofila non monta la torretta")
+	var magnet_machine := _caravan.add_machine(&"magnet")
+	_check(magnet_machine != null and magnet_machine.has_node(^"MagnetPart") and _xp.attractors.size() == 1 and _xp.attractors[0].node == magnet_machine,
+		"la macchina Calamita ha il suo pezzo ed e l'unico attrattore")
+	_check(not lead.has_node(^"MagnetPart"), "il capofila non attira")
+	var beacon_machine := _caravan.add_machine(&"beacon")
+	var beacon: BeaconModule = beacon_machine.module(&"beacon") as BeaconModule if beacon_machine != null else null
+	_check(beacon != null and _run.light_field.source_count() == 2 and _run.light_field.source_node(beacon.light_id) == beacon_machine
+		and is_equal_approx(_run.light_field.radius_of(beacon.light_id), _run.tuning.beacon_radius),
+		"la macchina Faro e la seconda sorgente di luce, di %.0f m (la macchina, non la carovana)" % _run.tuning.beacon_radius)
+	if turret == null or beacon == null or magnet_machine == null:
+		return
+	var rate := _caravan.tuning.turret_rate_per_level
+	_run.apply_upgrade(&"turret_rate", 1)
+	_check(is_equal_approx(turret.weapon().fire_interval, _caravan.tuning.turret_interval / rate) and _caravan.module_level(&"turret") == 1,
+		"Torretta veloce 1: intervallo %.3f s" % turret.weapon().fire_interval)
+	_run.apply_upgrade(&"magnet_range", 1)
+	_check(is_equal_approx(_xp.attractors[0].radius, _caravan.tuning.magnet_radius + _caravan.tuning.magnet_radius_per_level),
+		"Calamita potente: raggio %.1f m" % _xp.attractors[0].radius)
+	_run.apply_upgrade(&"beacon_range", 1)
+	_check(is_equal_approx(_run.light_field.radius_of(beacon.light_id), _run.tuning.beacon_radius + _run.tuning.beacon_radius_per_level),
+		"Faro 1: raggio %.0f m" % _run.light_field.radius_of(beacon.light_id))
 
 
 func _test_death_ends_run() -> void:

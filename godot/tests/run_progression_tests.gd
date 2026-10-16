@@ -12,6 +12,7 @@ func _initialize() -> void:
 	_test_pity_guarantee()
 	_test_maxed_upgrades_disappear()
 	_test_caravan_cards_need_caravan()
+	_test_module_requirements()
 	_test_rarity_weights()
 	_test_class_decks()
 	_test_weapon_card_first()
@@ -77,18 +78,27 @@ func _test_weapon_card_first() -> void:
 	_check(none.roll_offer().size() == 3, "senza carte arma restano tre carte normali")
 
 
-## Review: una carta gia posseduta (la Torretta fissa dell'Officina) resta potenziabile anche
-## se e del mazzo di un'altra classe.
+## Review: una carta gia posseduta resta potenziabile anche se e del mazzo di un'altra classe
+## (prima la Torretta fissa dell'Officina, che dal task 4 di D-093 e una macchina: qui lo Scavo
+## esplosivo del Guastatore, senza requisiti).
 func _test_owned_card_of_other_deck() -> void:
 	print("owned card of other deck")
+	var blast: Array[Dictionary] = UpgradeCatalog.all().filter(func(u: Dictionary) -> bool: return u.id == &"dig_blast")
+	_check(blast.size() == 1 and blast[0].deck == &"sapper" and blast[0].requires == "" and blast[0].max_level > 1,
+		"lo Scavo esplosivo e del mazzo del Guastatore, senza requisiti")
 	var p := _new(24)
 	p.class_id = &"engineer"
-	p.levels[&"companion_turret"] = 1
+	var unseen := true
+	for i in 300:
+		for u in p.roll_offer():
+			unseen = unseen and u.id != &"dig_blast"
+	_check(unseen, "non posseduto, l'Ingegnere non lo vede")
+	p.levels[&"dig_blast"] = 1
 	var seen := false
 	for i in 300:
 		for u in p.roll_offer():
-			seen = seen or u.id == &"companion_turret"
-	_check(seen, "la Torretta gia montata si potenzia anche da Ingegnere")
+			seen = seen or u.id == &"dig_blast"
+	_check(seen, "lo Scavo esplosivo gia posseduto si potenzia anche da Ingegnere")
 
 
 ## D-092: la carta fusione, quando c'e, e sempre la carta arma dell'offerta.
@@ -189,11 +199,55 @@ func _test_caravan_cards_need_caravan() -> void:
 	print("requires")
 	var p := _new(4)
 	p.has_caravan = false
+	p.module_count = func(_id: StringName) -> int: return 1
 	var seen := false
 	for i in 200:
 		for u in p.roll_offer():
 			seen = seen or u.category == &"companion"
-	_check(not seen, "senza carovana nessuna carta della carovana (regola 2)")
+	_check(not seen, "senza carovana nessuna carta della carovana (regola 2), nemmeno coi moduli contati")
+	p.has_caravan = true
+	for i in 200:
+		for u in p.roll_offer():
+			seen = seen or u.category == &"companion"
+	_check(seen, "con la carovana e i suoi moduli le carte della carovana compaiono")
+
+
+## Task 4 di D-093: `requires` e "", "caravan" o "module:<id>"; una carta di un modulo compare
+## solo se la carovana ha almeno una macchina con quel modulo (`module_count`).
+func _test_module_requirements() -> void:
+	print("module requirements")
+	var malformed := UpgradeCatalog.all().filter(func(u: Dictionary) -> bool:
+		var requires: String = u.requires
+		return not (requires == "" or requires == "caravan"
+			or (requires.begins_with("module:") and MachineCatalog.MODULES.has(StringName(requires.trim_prefix("module:"))))))
+	_check(malformed.is_empty(), "ogni requires del catalogo e valido (%s)" % [malformed.map(func(u: Dictionary) -> StringName: return u.id)])
+	var module_cards: Array[StringName] = [&"turret_rate", &"magnet_range", &"beacon_range", &"companion_cargo"]
+	var p := _new(5)
+	var ids := func() -> Array: return p.eligible().map(func(u: Dictionary) -> StringName: return u.id)
+	var none_of := func(list: Array) -> bool: return module_cards.all(func(id: StringName) -> bool: return not list.has(id))
+	_check(none_of.call(ids.call()) and ids.call().has(&"tuned_engine"),
+		"module_count non impostata: nessuna carta di modulo, Motore truccato (requires caravan) si")
+	p.module_count = func(_id: StringName) -> int: return 0
+	_check(none_of.call(ids.call()), "zero macchine col modulo: nessuna carta di modulo")
+	p.module_count = func(id: StringName) -> int: return 1 if id == &"turret" else 0
+	var with_turret: Array = ids.call()
+	_check(with_turret.has(&"turret_rate") and not with_turret.has(&"magnet_range") and not with_turret.has(&"beacon_range")
+		and not with_turret.has(&"companion_cargo"), "una Torretta: Torretta veloce si, le carte degli altri moduli no")
+	var asked: Array[StringName] = []
+	p.module_count = func(id: StringName) -> int:
+		asked.append(id)
+		return 1
+	var all_modules: Array = ids.call()
+	_check(module_cards.all(func(id: StringName) -> bool: return all_modules.has(id)) and asked.has(&"turret") and asked.has(&"cargo"),
+		"un modulo per tipo: tutte le carte di modulo, chiesti per id (%s)" % [asked])
+	_check(p.fillers().any(func(u: Dictionary) -> bool: return u.id == &"lucky_scrap"), "e il Rottame di fortuna fra le ripetibili")
+	p.has_caravan = false
+	_check(none_of.call(ids.call()) and not ids.call().has(&"tuned_engine") and not p.fillers().any(func(u: Dictionary) -> bool: return u.id == &"lucky_scrap"),
+		"senza carovana nessuna carta della carovana, anche coi moduli contati")
+	p.has_caravan = true
+	p.module_count = func(id: StringName) -> int: return 1 if id == &"turret" else 0
+	p.levels[&"turret_rate"] = 2
+	_check(not ids.call().has(&"turret_rate"), "Torretta veloce al livello 2 (il massimo) esce")
 
 
 ## Regola 1 sulla prima carta, con la garanzia spenta: circa 60/27/10 rinormalizzati

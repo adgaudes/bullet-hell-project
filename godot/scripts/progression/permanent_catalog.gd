@@ -52,7 +52,7 @@ static func _build() -> Array[Dictionary]:
 		{id = &"charge_pack", group = &"sapper", name = "Zaino di cariche", costs = [12],
 			text = "Parti con Scavo esplosivo al livello 1."},
 		{id = &"fixed_turret", group = &"mechanic", name = "Torretta fissa", costs = [30],
-			text = "Il compagno parte gia con la chiodatrice sul cassone."},
+			text = "Parti con una seconda macchina, con la Torretta."},
 		{id = &"good_oil", group = &"mechanic", name = "Olio buono", costs = [8],
 			text = "Il compagno va il 15% piu veloce."},
 		{id = &"good_seeds", group = &"weeder", name = "Semi buoni", costs = [8, 16],

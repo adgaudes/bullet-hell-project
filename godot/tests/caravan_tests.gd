@@ -6,6 +6,8 @@ extends SceneTree
 ##   godot_console --headless --path godot --fixed-fps 60 --script res://tests/caravan_tests.gd
 
 const ArenaScene := preload("res://scenes/main/ruins_arena.tscn")
+const TURRET_SCRIPT := preload("res://scripts/caravan/modules/turret_module.gd")
+const MAGNET_SCRIPT := preload("res://scripts/caravan/modules/magnet_module.gd")
 const TUNING_PATH := "res://resources/tuning/caravan_default.tres"
 ## Quota dell'origine del giocatore sul suolo.
 const PLAYER_CLEARANCE := 0.88
@@ -261,8 +263,13 @@ func _test_cluster_of_three() -> void:
 		return
 	_check(turret.slot == 1 and magnet.slot == 2 and turret.name == &"Machine2" and magnet.name == &"Machine3",
 		"posti 1 e 2, nomi crescenti")
-	_check(turret.has_module(&"turret") and turret.module(&"turret").get_script() == MachineModule and turret.cargo() == null,
-		"senza script del modulo (task 4) la Torretta e un modulo inerte")
+	_check(turret.has_module(&"turret") and turret.module(&"turret").get_script() == TURRET_SCRIPT and turret.cargo() == null,
+		"la Torretta ha il suo modulo (TurretModule)")
+	_check(magnet.has_module(&"magnet") and magnet.module(&"magnet").get_script() == MAGNET_SCRIPT, "la Calamita ha il suo modulo (MagnetModule)")
+	_check(Caravan.module_script_for(&"drill") == MachineModule, "un tipo ancora senza script (Trivella, task 8) resta un modulo inerte")
+	# Scena senza regia: niente direttore, campo dei frammenti ne taratura della run. I moduli
+	# aspettano i servizi senza errori.
+	_check((turret.module(&"turret") as TurretModule).weapon().shooter == null, "senza direttore la Torretta non spara")
 	_check(_caravan.lead() == lead, "il capofila resta la macchina col Cassone")
 	var ground := _field.height_at(turret.global_position) + Caravan.GROUND_CLEARANCE
 	_check(absf(turret.global_position.y - ground) < 0.05 and Machine.planar_distance(turret.global_position, _caravan.slot_target(turret)) < 0.05,
