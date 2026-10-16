@@ -33,6 +33,11 @@ func _initialize() -> void:
 	for case in _cases():
 		await _test_case(case)
 	await _test_cap()
+	await _test_cap_priority()
+	await _test_fx_ready()
+	await _test_magnet_release()
+	await _test_dozer_big_only()
+	await _test_no_director()
 	print("PROTOTYPE01_TESTS %s failures=%d" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -168,3 +173,87 @@ func _test_cap() -> void:
 	_check(_fx_count() <= WeaponFx.MAX_LIVE, "tetto: %d effetti vivi su %d chiesti" % [_fx_count(), WeaponFx.MAX_LIVE + 20])
 	await _seconds(2.0)
 	_check(_fx_count() == 0, "tetto: tutti liberati")
+
+
+## Effetti minori (polvere dei dischi, scintille a raffica) solo fino a MAX_LIVE - RESERVE: i
+## posti rimasti sono per gli effetti che dicono che un'attiva e partita.
+func _test_cap_priority() -> void:
+	for i in WeaponFx.MAX_LIVE:
+		WeaponFx.dust(_director, Vector3(i * 0.1, 0.5, 0.0), WeaponFx.DUST, 0.6, 4, 0.0, true)
+	_check(_fx_count() == WeaponFx.MAX_LIVE - WeaponFx.RESERVE, "priorita: i minori si fermano a %d (%d)" % [WeaponFx.MAX_LIVE - WeaponFx.RESERVE, _fx_count()])
+	_check(WeaponFx.shockwave(_director, Vector3.ZERO, 2.0, WeaponFx.SPARK) != null, "priorita: un'onda importante trova posto")
+	await _seconds(2.0)
+
+
+## Una raffica: al piu un effetto per chiave ogni intervallo di gioco.
+func _test_fx_ready() -> void:
+	var w := AutoWeapon.new()
+	_scene.add_child(w)
+	var first := w._fx_ready(&"k", 0.1)
+	var again := w._fx_ready(&"k", 0.1)
+	var other := w._fx_ready(&"j", 0.1)
+	await _seconds(0.12)
+	var later := w._fx_ready(&"k", 0.1)
+	_check(first and not again and other and later, "_fx_ready: %s %s %s %s" % [first, again, other, later])
+	w.queue_free()
+	await process_frame
+
+
+## Calamita lasciata finire: il rilascio ha il suo effetto (i casi sopra la riattivano prima).
+func _test_magnet_release() -> void:
+	await _reset()
+	var magnet: CraneMagnet = _setup(CraneMagnet.new(), &"crane_magnet", &"")
+	magnet.trigger()
+	var pull := magnet.stat(&"pull_seconds")
+	await _seconds(pull - 0.05)
+	_check(magnet.pulling(), "calamita: ancora attira prima della fine")
+	# Le scintille della partenza (0,35 s) sono finite da un pezzo: quel che nasce ora e il rilascio.
+	var most := 0
+	for frame in int(0.5 * Engine.physics_ticks_per_second):
+		await physics_frame
+		if not magnet.pulling():
+			most = maxi(most, _fx_count())
+	_check(not magnet.pulling() and most > 0, "calamita: effetto al rilascio (%d)" % most)
+	magnet.queue_free()
+	_director.clear_horde()
+	await _seconds(2.0)
+
+
+## Ruspa a dischi: l'effetto della fusione e solo quello del disco enorme.
+func _test_dozer_big_only() -> void:
+	await _reset()
+	var blade: SiteBlade = _setup(SiteBlade.new(), &"site_blade", &"disc_dozer")
+	blade.set(&"_big_left", 999.0)
+	var tagged := false
+	for frame in int(2.5 * Engine.physics_ticks_per_second):
+		await physics_frame
+		blade.set(&"_big_left", 999.0)
+		for node in get_nodes_in_group(WeaponFx.GROUP):
+			if node.get_meta(&"fx_fusion", &"") == &"disc_dozer":
+				tagged = true
+	_check(blade.disc_count() >= 0 and not tagged, "ruspa: i dischi normali non hanno l'effetto della fusione")
+	blade.queue_free()
+	_director.clear_horde()
+	await _seconds(2.0)
+
+
+## Senza direttore ne terreno (un'arma appena creata, una prova): l'effetto nasce sotto l'arma.
+func _test_no_director() -> void:
+	await _reset()
+	var stake := SeismicStake.new()
+	stake.weapon_id = &"seismic_stake"
+	stake.shooter = _player
+	_scene.add_child(stake)
+	stake.trigger()
+	var most := 0
+	for frame in int(1.5 * Engine.physics_ticks_per_second):
+		await physics_frame
+		var mine := 0
+		for node in get_nodes_in_group(WeaponFx.GROUP):
+			if stake.is_ancestor_of(node):
+				mine += 1
+		most = maxi(most, mine)
+	_check(most > 0 and stake.fx_parent() == stake, "senza direttore: effetti sotto l'arma (%d)" % most)
+	stake.queue_free()
+	_director.clear_horde()
+	await _seconds(0.3)

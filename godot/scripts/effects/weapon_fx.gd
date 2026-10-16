@@ -3,10 +3,13 @@ extends RefCounted
 ## Effetti leggibili delle armi (piano 5 di D-092): schegge, onda a terra, polvere. Solo
 ## presentazione, niente stato di gioco; ogni nodo e nel gruppo `weapon_fx` e si libera da
 ## solo. Un tetto di nodi vivi protegge il Deck quando cinque armi sparano nell'orda: oltre
-## il tetto l'effetto si salta (il colpo resta, si perde solo la decorazione).
+## il tetto l'effetto si salta (il colpo resta, si perde solo la decorazione). Gli effetti minori
+## (`minor`: polvere che rotola, scintille a raffica) si fermano RESERVE posti prima, cosi le
+## attive e le fusioni mostrano sempre il loro colpo.
 
 const GROUP := &"weapon_fx"
 const MAX_LIVE := 40
+const RESERVE := 10
 const EARTH := Color(0.36, 0.25, 0.14)
 const DUST := Color(0.62, 0.53, 0.40)
 const RUST := Color(0.55, 0.25, 0.10)
@@ -22,13 +25,15 @@ static var _spark_meshes: Dictionary[String, BoxMesh] = {}
 static var _spark_fade: Curve
 
 
-static func _room(parent: Node) -> bool:
-	return enabled and parent != null and parent.is_inside_tree() and parent.get_tree().get_node_count_in_group(GROUP) < MAX_LIVE
+static func _room(parent: Node, minor := false) -> bool:
+	if not enabled or parent == null or not parent.is_inside_tree():
+		return false
+	return parent.get_tree().get_node_count_in_group(GROUP) < MAX_LIVE - (RESERVE if minor else 0)
 
 
 ## Schegge che saltano (DebrisBurst) nel gruppo degli effetti delle armi.
-static func burst(parent: Node, at: Vector3, color: Color, amount := 8, speed := 4.0, size := 0.1) -> Node:
-	if not _room(parent):
+static func burst(parent: Node, at: Vector3, color: Color, amount := 8, speed := 4.0, size := 0.1, minor := false) -> Node:
+	if not _room(parent, minor):
 		return null
 	var node := DebrisBurst.spawn(parent, at, color, amount, speed, size)
 	node.add_to_group(GROUP)
@@ -67,8 +72,8 @@ static func shockwave(parent: Node, at: Vector3, radius: float, color: Color, se
 
 ## Sbuffo di polvere morbida che sale piano (scavi, cemento, ruote, dischi). Con [param ring]
 ## maggiore di zero la polvere nasce su un anello di quel raggio (argini che salgono, onde).
-static func dust(parent: Node, at: Vector3, color: Color, radius := 0.6, amount := 6, ring := 0.0) -> Node:
-	if not _room(parent):
+static func dust(parent: Node, at: Vector3, color: Color, radius := 0.6, amount := 6, ring := 0.0, minor := false) -> Node:
+	if not _room(parent, minor):
 		return null
 	var puff := CPUParticles3D.new()
 	puff.mesh = _dust_mesh(color)
@@ -106,35 +111,35 @@ static func dust(parent: Node, at: Vector3, color: Color, radius := 0.6, amount 
 
 ## Scintille brevi e luminose (archi, chiodi, lame sul metallo): niente luce dinamica, solo
 ## materiale che brilla.
-static func sparks(parent: Node, at: Vector3, color := SPARK, amount := 10, speed := 6.0) -> Node:
-	if not _room(parent):
+static func sparks(parent: Node, at: Vector3, color := SPARK, amount := 10, speed := 6.0, minor := false) -> Node:
+	if not _room(parent, minor):
 		return null
 	if _spark_fade == null:
 		_spark_fade = Curve.new()
 		_spark_fade.add_point(Vector2(0.0, 1.0))
 		_spark_fade.add_point(Vector2(1.0, 0.0))
-	var burst := CPUParticles3D.new()
-	burst.mesh = _spark_mesh(color)
-	burst.amount = amount
-	burst.lifetime = 0.35
-	burst.one_shot = true
-	burst.explosiveness = 1.0
+	var node := CPUParticles3D.new()
+	node.mesh = _spark_mesh(color)
+	node.amount = amount
+	node.lifetime = 0.35
+	node.one_shot = true
+	node.explosiveness = 1.0
 	# Schegge allungate lungo la corsa: si leggono come scintille anche da 15 m.
-	burst.particle_flag_align_y = true
-	burst.direction = Vector3.UP
-	burst.spread = 80.0
-	burst.initial_velocity_min = speed * 0.5
-	burst.initial_velocity_max = speed
-	burst.gravity = Vector3(0.0, -9.0, 0.0)
-	burst.scale_amount_curve = _spark_fade
-	burst.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	burst.top_level = true
-	burst.position = at
-	burst.add_to_group(GROUP)
-	parent.add_child(burst)
-	burst.emitting = true
-	burst.finished.connect(burst.queue_free)
-	return burst
+	node.particle_flag_align_y = true
+	node.direction = Vector3.UP
+	node.spread = 80.0
+	node.initial_velocity_min = speed * 0.5
+	node.initial_velocity_max = speed
+	node.gravity = Vector3(0.0, -9.0, 0.0)
+	node.scale_amount_curve = _spark_fade
+	node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	node.top_level = true
+	node.position = at
+	node.add_to_group(GROUP)
+	parent.add_child(node)
+	node.emitting = true
+	node.finished.connect(node.queue_free)
+	return node
 
 
 static func _spark_mesh(color: Color) -> BoxMesh:
@@ -144,9 +149,6 @@ static func _spark_mesh(color: Color) -> BoxMesh:
 		var mat := StandardMaterial3D.new()
 		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 		mat.albedo_color = color.linear_to_srgb()
-		mat.emission_enabled = true
-		mat.emission = color.linear_to_srgb()
-		mat.emission_energy_multiplier = 2.0
 		mesh = BoxMesh.new()
 		mesh.size = Vector3(0.07, 0.32, 0.07)
 		mesh.material = mat

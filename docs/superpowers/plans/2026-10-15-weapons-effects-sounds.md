@@ -8,7 +8,7 @@
 
 **Tech Stack:** Godot 4.7.2 GDScript, Python 3 + ffmpeg per i suoni, bundle Sonniss GDC 2024 fuori repo.
 
-**Stato (15 ottobre 2026):** task 1-3 fatti (`e4277c7`, `cd3ee10`, `8e77fe2`); task 4 fatto il 16 ottobre (`02277d4`..: effetti su 12 armi e 6 fusioni, suite `weapon_fx_tests`, catture `capture_weapons.gd -- --fx` in `output/weapons/fx/`, riga `weapons_frame` e `--no-fx` nel benchmark; costo: righe `weapons` entro +0,07 ms, 40 effetti vivi 0,064 ms per frame su desktop, headless); task 5 interrotto su richiesta del proprietario prima del gate: branch locale `spike/effekseer` (`58f55fe`, worktree `.claude/worktrees/agent-aab9726008e91510e`) con plugin 1.80.7 MIT (Windows e Linux x86_64, si carica e disegna su 4.7.2 Windows), campione `ef_fire03`, strumento `tests/tools/effekseer_spike.gd` e catture affiancate in `output/effekseer/` del worktree. Mancano: gate, misura del frame col preset Deck, prova su Linux/Deck, decisione. Gli `.efkefc` si fanno solo con l'editor Effekseer (app desktop).
+**Stato (15 ottobre 2026):** task 1-3 fatti (`e4277c7`, `cd3ee10`, `8e77fe2`); task 4 fatto il 16 ottobre (`02277d4`..: effetti su 12 armi e 6 fusioni, suite `weapon_fx_tests`, catture `capture_weapons.gd -- --fx` in `output/weapons/fx/`, riga `weapons_frame` e `--no-fx` nel benchmark; costo: righe `weapons` entro +0,07 ms, 40 effetti vivi 0,064 ms per frame su desktop, headless); task 5 fatto il 16 ottobre: Effekseer misurato col preset Deck e **non adottato per le armi** (esito sotto il Task 5; branch locale `spike/effekseer`, `58f55fe`, tenuto per i boss); task 6 fatto il 16 ottobre (gate completo verde, review finale con correzioni: priorita del tetto per gli effetti minori, test della Calamita al rilascio, della Ruspa e senza direttore).
 
 **Spec:** `docs/superpowers/specs/2026-10-15-weapons-classes-design.md` (par. "Effetti", "Suoni", ordine dei piani punto 5); D-095 per Effekseer.
 
@@ -43,9 +43,9 @@
 **Interfaces:**
 - Produces: `Weapon.sound_requested(kind: StringName)` con `kind` in `&"fire"`, `&"hit"`; `Weapon._sound(kind)`; `WeaponLoadout.weapon_sound(id: StringName, kind: StringName)`; `RunAudio.weapon_sound_id(id, kind) -> StringName` (id del campione suonato, ripiego compreso).
 
-- [ ] **Step 1: test che falliscono** in `audio_tests.gd`, nuova `_test_weapon_sounds()`: per ogni arma non fusione del catalogo la si aggiunge al loadout, si emette `sound_requested(&"fire")` e si controlla che `RunAudio.play_count(weapon_sound_id(id, &"fire")) ` cresca; un id inesistente (`&"nobody"`) ripiega su `nail_shot` per `fire` e `terrain_raise` per `hit` senza errori; con l'albero in pausa nessun suono.
-- [ ] **Step 2:** eseguire `godot_console --headless --path godot --fixed-fps 60 --script res://tests/audio_tests.gd`: FAIL (segnale inesistente).
-- [ ] **Step 3: implementazione.**
+- [x] **Step 1: test che falliscono** in `audio_tests.gd`, nuova `_test_weapon_sounds()`: per ogni arma non fusione del catalogo la si aggiunge al loadout, si emette `sound_requested(&"fire")` e si controlla che `RunAudio.play_count(weapon_sound_id(id, &"fire")) ` cresca; un id inesistente (`&"nobody"`) ripiega su `nail_shot` per `fire` e `terrain_raise` per `hit` senza errori; con l'albero in pausa nessun suono.
+- [x] **Step 2:** eseguire `godot_console --headless --path godot --fixed-fps 60 --script res://tests/audio_tests.gd`: FAIL (segnale inesistente).
+- [x] **Step 3: implementazione.**
 
 ```gdscript
 # weapon.gd
@@ -82,8 +82,8 @@ func _on_loadout_weapon_sound(id: StringName, kind: StringName) -> void:
 ```
 
   Collegare `loadout.weapon_sound` in `_connect_run` accanto a `weapon.fired`; la chiodatrice continua a suonare da `fired`. Nelle armi: `_sound(&"fire")` dove parte il colpo (in `_fire` delle attive, nel punto di sparo delle automatiche), `_sound(&"hit")` all'impatto o all'esplosione.
-- [ ] **Step 4:** audio_tests PASS; `--check-only` sui file toccati.
-- [ ] **Step 5:** commit "Armi, piano 5: aggancio sonoro".
+- [x] **Step 4:** audio_tests PASS; `--check-only` sui file toccati.
+- [x] **Step 5:** commit "Armi, piano 5: aggancio sonoro".
 
 ### Task 2: ricette dei suoni delle armi
 
@@ -95,11 +95,11 @@ func _on_loadout_weapon_sound(id: StringName, kind: StringName) -> void:
 
 Armi: `seismic_stake`, `scrap_launcher`, `dig_charge`, `welder`, `crane_magnet`, `scythe`, `bramble`, `site_blade`, `jackhammer`, `ram`, `cement_mixer`; la chiodatrice resta `nail_shot`; le fusioni vivono dentro la loro automatica e ne usano i suoni. Carattere: Picchetto colpo sordo e anello che rimbomba; Lanciarottami tonfo pneumatico e lamiera che cade; Carica fuse corta e scoppio di terra; Saldatrice ronzio e scintille; Calamita ronzio grave e clangore; Falce fruscio d'erba tagliata; Roveto rami che scricchiolano; Lama strisciata metallica; Martello colpo pneumatico; Ariete spinta e urto; Betoniera tamburo e colata.
 
-- [ ] **Step 1: test che fallisce:** in `_test_library()` ogni arma non fusione del catalogo ha `w_<id>_fire` in `SfxLibrary.IDS` con campione (`has_sample`), durata fra 0,05 e 1,2 s, picco non nullo.
-- [ ] **Step 2:** FAIL.
-- [ ] **Step 3:** elencare i candidati del bundle con uno script nello scratchpad (nomi dei file negli zip per parola chiave: impact, metal, electric, swish, grass, crack, pneumatic, explosion), scrivere le ricette con `L(...)`, costruire con `python -I tools/audio/build_sfx.py --only <ids> --preview`, importare con `godot_console --headless --path godot --editor --quit`.
-- [ ] **Step 4:** audio_tests PASS; ascolto non possibile all'agente: dichiararlo e lasciare `output/audio/sfx_preview.wav` al proprietario.
-- [ ] **Step 5:** commit "Armi, piano 5: suoni delle armi".
+- [x] **Step 1: test che fallisce:** in `_test_library()` ogni arma non fusione del catalogo ha `w_<id>_fire` in `SfxLibrary.IDS` con campione (`has_sample`), durata fra 0,05 e 1,2 s, picco non nullo.
+- [x] **Step 2:** FAIL.
+- [x] **Step 3:** elencare i candidati del bundle con uno script nello scratchpad (nomi dei file negli zip per parola chiave: impact, metal, electric, swish, grass, crack, pneumatic, explosion), scrivere le ricette con `L(...)`, costruire con `python -I tools/audio/build_sfx.py --only <ids> --preview`, importare con `godot_console --headless --path godot --editor --quit`.
+- [x] **Step 4:** audio_tests PASS; ascolto non possibile all'agente: dichiararlo e lasciare `output/audio/sfx_preview.wav` al proprietario.
+- [x] **Step 5:** commit "Armi, piano 5: suoni delle armi".
 
 ### Task 3: telegrafo delle attive
 
@@ -113,11 +113,11 @@ Armi: `seismic_stake`, `scrap_launcher`, `dig_charge`, `welder`, `crane_magnet`,
 
 Comportamento: con la mira manuale un anello piatto (mesh `TorusMesh` schiacciata, materiale unshaded, colore di classe al 70%) segue `aim_point()` della prima attiva carica, raggio = `stat(&"radius")` se esiste, altrimenti 1,5 m; alla partenza di un'attiva, in entrambe le mire, un lampo dell'anello di 0,35 s al punto colpito. Nessun anello con l'albero in pausa o senza attive.
 
-- [ ] **Step 1: test che falliscono:** con mira manuale e cursore finto oltre la portata l'anello sta entro `aim_range` dal giocatore; trigger → anello visibile per circa 0,35 s poi nascosto; in pausa nascosto; senza attive nessun nodo visibile.
-- [ ] **Step 2:** FAIL.
-- [ ] **Step 3:** implementare `ActiveTelegraph` (un `MeshInstance3D` per l'anello di mira e uno per il lampo; `_process` legge il loadout) e collegarlo in `WeaponLoadout._ready`.
-- [ ] **Step 4:** weapons_tests PASS.
-- [ ] **Step 5:** commit "Armi, piano 5: telegrafo delle attive".
+- [x] **Step 1: test che falliscono:** con mira manuale e cursore finto oltre la portata l'anello sta entro `aim_range` dal giocatore; trigger → anello visibile per circa 0,35 s poi nascosto; in pausa nascosto; senza attive nessun nodo visibile.
+- [x] **Step 2:** FAIL.
+- [x] **Step 3:** implementare `ActiveTelegraph` (un `MeshInstance3D` per l'anello di mira e uno per il lampo; `_process` legge il loadout) e collegarlo in `WeaponLoadout._ready`.
+- [x] **Step 4:** weapons_tests PASS.
+- [x] **Step 5:** commit "Armi, piano 5: telegrafo delle attive".
 
 ### Task 4: effetti leggibili, arma per arma
 
@@ -144,7 +144,7 @@ Obiettivi dalla spec: rottami in parabola con scia (Lanciarottami); dischi che r
 
 ### Task 6: chiusura
 
-- [ ] gate completo `tools/godot/Invoke-GodotChecks.ps1` verde;
-- [ ] catture finali in `output/weapons/fx/`, anteprima audio in `output/audio/sfx_preview.wav`;
-- [ ] `DECISIONS.md` (D-092: piano 5 fatto), `MIGRATION_STATUS.md`, roadmap, `INDEX.md` se nascono documenti;
-- [ ] commit.
+- [x] gate completo `tools/godot/Invoke-GodotChecks.ps1` verde;
+- [x] catture finali in `output/weapons/fx/`, anteprima audio in `output/audio/sfx_preview.wav`;
+- [x] `DECISIONS.md` (D-092: piano 5 fatto), `MIGRATION_STATUS.md`, roadmap, `INDEX.md` se nascono documenti;
+- [x] commit.

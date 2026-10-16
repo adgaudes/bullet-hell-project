@@ -70,7 +70,7 @@ func _ram_enemies() -> void:
 		_hit.append(enemy)
 		enemy.take_damage(int(stat(&"damage")))
 		if _fx_ready(&"hit", 0.08):
-			WeaponFx.burst(fx_parent(), enemy.global_position + Vector3(0.0, 0.5, 0.0), WeaponFx.DUST, 8, 5.0, 0.13)
+			WeaponFx.burst(fx_parent(), enemy.global_position + Vector3(0.0, 0.5, 0.0), WeaponFx.DUST, 8, 5.0, 0.13, true)
 		if enemy.self_driven:
 			continue
 		var offset := Vector3(enemy.global_position.x - p.x, 0.0, enemy.global_position.z - p.z)
@@ -87,7 +87,7 @@ func _write_path() -> void:
 		return
 	_last_write = p
 	if _fx_ready(&"trail", 0.1):
-		WeaponFx.dust(fx_parent(), Vector3(p.x, terrain_field.height_at(p), p.z), WeaponFx.EARTH if stat(&"trench") > 0.0 else WeaponFx.DUST, 0.5, 4)
+		WeaponFx.dust(fx_parent(), Vector3(p.x, terrain_field.height_at(p), p.z), WeaponFx.EARTH if stat(&"trench") > 0.0 else WeaponFx.DUST, 0.5, 4, 0.0, true)
 	if stat(&"trench") > 0.0:
 		write_queue.push_level(p, WRITE_RADIUS, terrain_field.base_height_at(p) - TRENCH_DEPTH, 1.0)
 	_flatten_ahead(p)

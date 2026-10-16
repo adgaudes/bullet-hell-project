@@ -37,7 +37,7 @@ func _sound(kind: StringName) -> void:
 ## Dove nascono gli effetti (WeaponFx): sotto il direttore, che resta nel mondo anche quando
 ## l'arma viene tolta o fusa; senza direttore sotto l'arma.
 func fx_parent() -> Node:
-	return director if director != null and director.is_inside_tree() else self
+	return director if is_instance_valid(director) and director.is_inside_tree() else self
 
 
 ## Vero se l'effetto [param key] puo ripartire: al piu uno ogni [param interval] secondi di gioco,

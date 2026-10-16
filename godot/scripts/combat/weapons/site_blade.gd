@@ -247,7 +247,7 @@ func _hit_enemies(disc: Dictionary) -> void:
 			enemy.take_damage(damage)
 			_sound(&"hit")
 			if _fx_ready(&"hit", 0.1):
-				WeaponFx.sparks(fx_parent(), enemy.global_position + Vector3(0.0, 0.5, 0.0), WeaponFx.SPARK, 6)
+				WeaponFx.sparks(fx_parent(), enemy.global_position + Vector3(0.0, 0.5, 0.0), WeaponFx.SPARK, 6, 6.0, true)
 
 
 ## Polvere dietro il disco che rotola; nella Ruspa a dischi piu fitta e piu larga.
@@ -255,8 +255,9 @@ func _dust(disc: Dictionary) -> void:
 	var big: bool = disc.big
 	disc.dust_left = DUST_EVERY * (0.5 if big else 1.0)
 	var p: Vector3 = disc.position
-	var node := WeaponFx.dust(fx_parent(), Vector3(p.x, _ground(p), p.z), WeaponFx.DUST, disc.radius, 6 if big else 3)
-	if fusion_id != &"":
+	# Polvere minore (cede il posto alle attive sotto carico); quella del disco enorme no.
+	var node := WeaponFx.dust(fx_parent(), Vector3(p.x, _ground(p), p.z), WeaponFx.DUST, disc.radius, 6 if big else 3, 0.0, not big)
+	if big:
 		_fusion_fx(node)
 
 

@@ -239,7 +239,7 @@ func _move_nails(delta: float) -> void:
 					nail.hit.append(enemy)
 					enemy.take_damage(damage)
 					if _fx_ready(&"nail", 0.08):
-						WeaponFx.sparks(fx_parent(), enemy.global_position + Vector3(0.0, 0.6, 0.0), NAIL_COLOR, 6, 5.0)
+						WeaponFx.sparks(fx_parent(), enemy.global_position + Vector3(0.0, 0.6, 0.0), NAIL_COLOR, 6, 5.0, true)
 					# La macchia nasce al primo nemico colpito, anche se il chiodo prosegue.
 					if fire_patches and nail.hit.size() == 1:
 						_spawn_patch(enemy.global_position)

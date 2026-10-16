@@ -153,7 +153,7 @@ func _cut(center: Vector3, positions: Array[Vector3]) -> void:
 				cut = true
 				if not clipped and _fx_ready(&"cut", 0.15):
 					clipped = true
-					WeaponFx.burst(fx_parent(), enemy.global_position + Vector3(0.0, 0.5, 0.0), WeaponFx.LEAF, 8, 4.0, 0.12)
+					WeaponFx.burst(fx_parent(), enemy.global_position + Vector3(0.0, 0.5, 0.0), WeaponFx.LEAF, 8, 4.0, 0.12, true)
 				break
 	if cut:
 		_sound(&"hit")
