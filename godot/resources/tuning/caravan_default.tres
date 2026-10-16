@@ -14,6 +14,7 @@ cargo_capacity = 5
 pickup_radius_from_player = 6.0
 collect_radius = 0.9
 supply_radius = 5.0
+cargo_search_interval = 0.2
 chassis_health = 6
 module_limit = 6
 contact_radius = 0.8

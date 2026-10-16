@@ -31,6 +31,9 @@ extends Resource
 @export var collect_radius := 0.9
 ## Un lampione si paga solo coi Cassoni entro questa distanza dal punto.
 @export var supply_radius := 5.0
+## Un Cassone ricerca il rottame da raccogliere al piu ogni tanti secondi (prima ricerca
+## subito; la meta si riperde se il rottame sparisce, il Cassone e pieno o il percorso cambia).
+@export var cargo_search_interval := 0.2
 
 @export_group("Chassis")
 ## Punti vita del telaio di una macchina.

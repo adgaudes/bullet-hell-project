@@ -1,0 +1,387 @@
+extends SceneTree
+## Carovana di macchine, piano A task 2 (spec D-093): Machine, Caravan e modulo Cassone sulla
+## scena `ruins_arena`, col compagno della scena fermo e lontano (la migrazione delle scene e
+## del task 3). La scena non ha un campo di percorso: il test ne aggiunge uno. Eseguire con:
+##   godot_console --headless --path godot --fixed-fps 60 --script res://tests/caravan_tests.gd
+
+const ArenaScene := preload("res://scenes/main/ruins_arena.tscn")
+const TUNING_PATH := "res://resources/tuning/caravan_default.tres"
+## Quota dell'origine del giocatore sul suolo.
+const PLAYER_CLEARANCE := 0.88
+
+var _failures := 0
+var _scene: Node3D
+var _player: PlayerCharacter
+var _field: TerrainField
+var _scraps: ScrapField
+var _path: PathField
+var _caravan: Caravan
+## Valori di `carried_changed` ricevuti dalla carovana corrente.
+var _emitted: Array[int] = []
+
+
+func _initialize() -> void:
+	Engine.physics_ticks_per_second = 60
+	await _load_scene()
+	_caravan = _new_caravan(Vector3(0.0, 0.0, 2.5))
+	await _frames(2)
+	_test_starts_with_cargo()
+	await _test_lead_follows_player()
+	await _test_pickup_near_player_only()
+	await _test_skips_scrap_behind_rampart()
+	await _test_ignores_sealed_scrap()
+	await _test_cluster_of_three()
+	_test_module_limit()
+	await _test_two_cargo_supply()
+	# T-12: i nodi messi in coda con queue_free vanno liberati prima di uscire.
+	await _frames(2)
+	print("PROTOTYPE01_TESTS %s failures=%d" % ["PASS" if _failures == 0 else "FAIL", _failures])
+	quit(1 if _failures > 0 else 0)
+
+
+func _check(condition: bool, label: String) -> void:
+	if condition:
+		print("  ok   %s" % label)
+	else:
+		_failures += 1
+		print("  FAIL %s" % label)
+
+
+## Una macchina col Cassone, 3 rottami su 5, sul layer visivo 2.
+func _test_starts_with_cargo() -> void:
+	print("caravan ready")
+	var lead := _caravan.lead()
+	_check(_caravan.machines.size() == 1 and lead != null and lead.has_module(&"cargo") and lead.cargo() != null,
+		"la carovana parte con una macchina col Cassone")
+	_check(_caravan.carried == 3 and _caravan.capacity == 5 and _caravan.room() == 2,
+		"3 rottami a bordo su 5 (%d/%d)" % [_caravan.carried, _caravan.capacity])
+	_check(_emitted.size() == 1 and _emitted[0] == 3, "carried_changed una volta, col totale (%s)" % [_emitted])
+	_check(lead.name == &"Machine1" and lead.get_parent() == _caravan and lead.slot == 0 and lead.primary_module_id() == &"cargo",
+		"Machine1, figlia della carovana, nel posto 0")
+	_check(lead.health == 6 and lead.max_health == 6 and lead.state == Machine.State.OK and not lead.is_broken(),
+		"telaio da 6 PV, in ordine")
+	_check(lead.collision_layer == 8 and lead.collision_mask == 1, "layer 8 e maschera 1, come il compagno")
+	_check(Machine.planar_distance(lead.global_position, _caravan.global_position) < 0.01, "nasce dove sta la carovana")
+	_check(lead._cargo.size() == 5 and lead._cargo.filter(func(c: MeshInstance3D) -> bool: return c.visible).size() == 3,
+		"cinque cubetti sul pianale, tre visibili")
+	var part := MeshInstance3D.new()
+	part.mesh = BoxMesh.new()
+	lead.mount_part(&"TestPart", part)
+	var visuals := lead.find_children("*", "VisualInstance3D", true, false)
+	var off_layer := visuals.filter(func(n: Node) -> bool: return (n as VisualInstance3D).layers != Machine.VISUAL_LAYER)
+	_check(visuals.size() >= 7 and off_layer.is_empty() and lead._parts.size() == 1,
+		"modello, cubetti e pezzi montati sul layer visivo 2 (%d visual, %d fuori)" % [visuals.size(), off_layer.size()])
+
+
+## Il capofila segue il giocatore che cammina 10 m e si ferma 2,5 m dietro di lui.
+func _test_lead_follows_player() -> void:
+	print("lead follows")
+	var lead := _caravan.lead()
+	var start := _player.global_position
+	Input.action_press(&"move_right")
+	for i in 240:
+		await physics_frame
+		if Machine.planar_distance(_player.global_position, start) >= 10.0:
+			break
+	Input.action_release(&"move_right")
+	var walked := _player.global_position - start
+	walked.y = 0.0
+	await _frames(150)
+	var offset := lead.global_position - _player.global_position
+	offset.y = 0.0
+	var along := offset.dot(walked.normalized())
+	_check(walked.length() >= 9.5, "il giocatore cammina 10 m (%.1f)" % walked.length())
+	_check(absf(offset.length() - 2.5) <= 0.6, "il capofila si ferma a 2,5 +- 0,6 m (%.2f)" % offset.length())
+	_check(along < -1.5, "dietro al giocatore (%.2f m lungo il cammino)" % along)
+	_check(Vector2(lead.velocity.x, lead.velocity.z).length() < 0.3, "e resta fermo (%.2f m/s)" % lead.velocity.length())
+
+
+## Raccoglie un rottame entro 6 m dal giocatore e ignora quello a 9 m.
+func _test_pickup_near_player_only() -> void:
+	print("pickup radius")
+	var center := Vector3(0.0, 0.0, -2.0)
+	_place_player(center)
+	var lead := _caravan.lead()
+	_place_machine(lead, center + Vector3(0.0, 0.0, 2.5))
+	await _frames(30)
+	var near := center + Vector3(-4.0, 0.0, 3.0)
+	var far := center + Vector3(0.0, 0.0, -9.0)
+	_scraps.spawn_on_ground(near)
+	_scraps.spawn_on_ground(far)
+	_emitted.clear()
+	await _frames(180)
+	_check(lead.cargo().carried == 4 and _caravan.carried == 4, "raccoglie il rottame a 5 m dal giocatore (carried %d)" % _caravan.carried)
+	_check(_scraps.nearest(near, 0.1) == null, "il rottame vicino non e piu a terra")
+	_check(_scraps.nearest(far, 0.1) != null, "quello a 9 m resta a terra")
+	_check(_emitted.size() == 1 and _emitted[0] == 4, "una notifica per la raccolta, col totale (%s)" % [_emitted])
+	_scraps.take_near(far, 0.5, 10)
+
+
+## Audit C-01 (oggi in arena_run_tests): un rottame raggiungibile solo aggirando un argine
+## non e una meta in linea retta, la macchina spingerebbe contro l'argine.
+func _test_skips_scrap_behind_rampart() -> void:
+	print("scrap behind rampart")
+	var p := Vector3(-6.0, 0.0, -8.0)
+	_field.set_protected(p, 16.0, false)
+	_place_player(p)
+	for x in range(-10, 11, 2):
+		_field.sculpt(p + Vector3(x, 0.0, 3.5), 1.6, 1.6)
+	var lead := _caravan.lead()
+	_place_machine(lead, p + Vector3(0.0, 0.0, 1.0))
+	_path.solve()
+	var scrap := p + Vector3(0.0, 0.0, 5.8)
+	_scraps.spawn_on_ground(scrap)
+	await _frames(2)
+	_check(_path.cost_at(scrap) != PathField.UNREACHABLE and Machine.planar_distance(scrap, _player.global_position) <= 6.0,
+		"il rottame ha una strada attorno all'argine ed e entro 6 m dal giocatore")
+	var destination := lead._choose_destination()
+	_check(Machine.planar_distance(destination, scrap) > 1.0,
+		"rottame dietro un argine: non e la meta della macchina (meta a %.1f m dal rottame)" % Machine.planar_distance(destination, scrap))
+	_field.reset_to_base(p + Vector3(0.0, 0.0, 3.5), Vector2(13.0, 3.0))
+	await _frames(2)
+	_path.solve()
+	destination = lead._choose_destination()
+	_check(Machine.planar_distance(destination, scrap) < 0.5,
+		"tolto l'argine il rottame torna la meta (meta a %.1f m)" % Machine.planar_distance(destination, scrap))
+	_scraps.take_near(scrap, 1.5, 10)
+
+
+## R-05 (oggi in boss_tests): la macchina non punta a un rottame chiuso in un anello di argini;
+## riaperto l'anello, al passo dopo la nuova soluzione del percorso, si.
+func _test_ignores_sealed_scrap() -> void:
+	print("sealed scrap")
+	var q := Vector3(-3.0, 0.0, 8.0)
+	_place_player(q)
+	var lead := _caravan.lead()
+	lead.cargo().carried = 0
+	_place_machine(lead, q + Vector3(-1.5, 0.0, 0.0))
+	var sealed := q + Vector3(5.5, 0.0, 0.0)
+	_seal_ring(sealed)
+	await _frames(2)
+	_path.solve()
+	var before := _scraps.count()
+	_scraps.spawn_on_ground(sealed)
+	_check(_path.cost_at(sealed) == PathField.UNREACHABLE, "il rottame e chiuso nell'anello")
+	var destination := lead._choose_destination()
+	_check(Machine.planar_distance(destination, sealed) > 1.0, "il rottame sigillato non e la meta della macchina")
+	_open_ring(sealed)
+	await _frames(2)
+	_path.solve()
+	destination = lead._choose_destination()
+	_check(Machine.planar_distance(destination, sealed) < 0.5,
+		"riaperto, il rottame torna la meta (costo %.1f, meta %s)" % [_path.cost_at(sealed), destination])
+	_scraps.take_near(sealed, 1.0, 1)
+	_check(_scraps.count() == before, "pulizia")
+	await _frames(2)
+
+
+## Tre macchine (Cassone, Torretta, Calamita) tengono i loro posti attorno al giocatore.
+func _test_cluster_of_three() -> void:
+	print("cluster of three")
+	var center := Vector3(-6.0, 0.0, -2.0)
+	_place_player(center)
+	var lead := _caravan.lead()
+	_place_machine(lead, center + Vector3(0.0, 0.0, 2.5))
+	await _frames(2)
+	var turret := _caravan.add_machine(&"turret")
+	var magnet := _caravan.add_machine(&"magnet")
+	_check(turret != null and magnet != null and _caravan.machines.size() == 3 and _caravan.module_count() == 3,
+		"add_machine di turret e magnet: tre macchine")
+	if turret == null or magnet == null:
+		return
+	_check(turret.slot == 1 and magnet.slot == 2 and turret.name == &"Machine2" and magnet.name == &"Machine3",
+		"posti 1 e 2, nomi crescenti")
+	_check(turret.has_module(&"turret") and turret.module(&"turret").get_script() == MachineModule and turret.cargo() == null,
+		"senza script del modulo (task 4) la Torretta e un modulo inerte")
+	_check(_caravan.lead() == lead, "il capofila resta la macchina col Cassone")
+	var ground := _field.height_at(turret.global_position) + Caravan.GROUND_CLEARANCE
+	_check(absf(turret.global_position.y - ground) < 0.05 and Machine.planar_distance(turret.global_position, _caravan.slot_target(turret)) < 0.05,
+		"la macchina nuova nasce sul suolo del suo posto")
+	# Quattro secondi di cammino in quadrato (il giocatore corre a 6 m/s, le macchine a 5),
+	# poi il grappolo si ricompone attorno a lui.
+	for action: StringName in [&"move_right", &"move_back", &"move_left", &"move_forward"]:
+		Input.action_press(action)
+		await _frames(60)
+		Input.action_release(action)
+	await _frames(90)
+	var cluster: Array[Machine] = [lead, turret, magnet]
+	var distances: Array[String] = []
+	var in_ring := true
+	for machine in cluster:
+		var distance := Machine.planar_distance(machine.global_position, _player.global_position)
+		distances.append("%.2f" % distance)
+		in_ring = in_ring and distance >= 2.0 and distance <= 4.0
+	var closest := INF
+	for i in cluster.size():
+		for j in range(i + 1, cluster.size()):
+			closest = minf(closest, Machine.planar_distance(cluster[i].global_position, cluster[j].global_position))
+	_check(in_ring, "dopo il cammino stanno fra 2 e 4 m dal giocatore (%s)" % ", ".join(distances))
+	_check(closest > 1.2, "e a piu di 1,2 m l'una dall'altra (%.2f)" % closest)
+
+
+## Al piu 6 moduli; un modulo fuori catalogo non aggiunge nulla.
+func _test_module_limit() -> void:
+	print("module limit")
+	_check(_caravan.add_machine(&"nope") == null and _caravan.machines.size() == 3, "un modulo fuori catalogo restituisce null")
+	for id: StringName in [&"beacon", &"drill", &"shovel"]:
+		_caravan.add_machine(id)
+	_check(_caravan.module_count() == 6 and not _caravan.has_room(), "sei moduli: carovana piena")
+	_check(_caravan.add_machine(&"welder") == null and _caravan.machines.size() == 6, "oltre il limite di 6 moduli add_machine restituisce null")
+	var slots: Array[int] = []
+	for machine in _caravan.machines:
+		slots.append(machine.slot)
+	var expected: Array[int] = [0, 1, 2, 3, 4, 5]
+	_check(slots == expected and _caravan.machines[5].name == &"Machine6", "posti da 0 a 5 (%s)" % [slots])
+	_check(_caravan.count_of(&"cargo") == 1 and _caravan.count_of(&"drill") == 1 and _caravan.modules_of(&"shovel").size() == 1,
+		"count_of e modules_of per tipo")
+
+
+## Due Cassoni: fornitura per distanza, prelievo dal piu vicino, una notifica per operazione.
+func _test_two_cargo_supply() -> void:
+	print("two cargo supply")
+	var p := Vector3(8.0, 0.0, 8.0)
+	await _replace_caravan(p + Vector3(0.0, 0.0, 2.5))
+	var queue := TerrainWriteQueue.new()
+	_caravan.configure({write_queue = queue})
+	var a := _caravan.lead()
+	var b := _caravan.add_machine(&"cargo")
+	_check(b != null and queue.bodies.has(a) and queue.bodies.has(b), "le macchine stanno in write_queue.bodies, anche quella aggiunta dopo")
+	if b == null:
+		queue.free()
+		return
+	await _frames(1)
+	a.set_physics_process(false)
+	b.set_physics_process(false)
+	_place_machine(a, p + Vector3(1.0, 0.0, 0.0))
+	_place_machine(b, p + Vector3(-4.0, 0.0, 0.0))
+	a.cargo().carried = 2
+	b.cargo().carried = 3
+	_check(_caravan.carried == 5 and _caravan.capacity == 10, "due Cassoni con 2 e 3 rottami: carried 5 (%d)" % _caravan.carried)
+	_check(_caravan.can_supply_count(p, 4), "entrambi entro 5 m dal punto: 4 rottami ci sono")
+	_place_machine(b, p + Vector3(-7.0, 0.0, 0.0))
+	_check(not _caravan.can_supply_count(p, 4), "uno a 7 m: 4 rottami no")
+	_check(_caravan.can_supply_count(p, 2) and _caravan.can_supply(p), "ma il vicino ne fornisce 2")
+	_place_machine(b, p + Vector3(-4.0, 0.0, 0.0))
+	_check(_caravan.can_supply_count(p, 4), "tornato entro 5 m: di nuovo si")
+	_emitted.clear()
+	_caravan.spend_count(3)
+	_check(a.cargo().carried == 0 and b.cargo().carried == 2,
+		"spend_count(3) preleva prima dal piu vicino al punto (vicino %d, lontano %d)" % [a.cargo().carried, b.cargo().carried])
+	_check(_emitted.size() == 1 and _emitted[0] == 2, "carried_changed una volta sola, col valore 2 (%s)" % [_emitted])
+
+	a.cargo().carried = 3
+	b.cargo().carried = 3
+	_emitted.clear()
+	var added := _caravan.add_scrap(10)
+	_check(added == 4 and _caravan.carried == 10 and _caravan.room() == 0, "add_scrap(10) con 4 posti liberi ne mette 4 (%d)" % added)
+	_check(_emitted.size() == 1 and _emitted[0] == 10, "una sola notifica (%s)" % [_emitted])
+	_caravan.carried = 3
+	_check(a.cargo().carried == 3 and b.cargo().carried == 0, "i rottami riempiono dal capofila in poi")
+
+	# Il Cassone guasto conta nel totale ma non fornisce (scelta 3 di D-093).
+	_caravan.carried = 7
+	b.state = Machine.State.BROKEN
+	_check(_caravan.carried == 7 and not _caravan.can_supply_count(p, 6), "i rottami del Cassone guasto contano ma non forniscono")
+	_emitted.clear()
+	_check(not _caravan.pay(6) and _caravan.carried == 7 and _emitted.is_empty(), "pay senza i guasti: tutto o niente")
+	_check(_caravan.pay(6, true) and _caravan.carried == 1 and _emitted.size() == 1, "pay coi guasti compresi")
+	b.state = Machine.State.OK
+
+	# La firma di fornitura del compagno di oggi.
+	_caravan.carried = 4
+	_check(_caravan.can_supply(p) and _caravan.can_supply_count(p, 4), "can_supply(punto) e can_supply_count(punto, n)")
+	_caravan.spend()
+	_check(_caravan.carried == 3, "spend() toglie un rottame")
+	_caravan.spend_count(2)
+	_check(_caravan.carried == 1, "spend_count(n) ne toglie n")
+
+	_caravan.add_cargo_capacity(2)
+	_check(_caravan.capacity == 14 and a.cargo().capacity == 7 and a._cargo.size() == 7, "add_cargo_capacity(2): 7 per Cassone, coi cubetti")
+	var c := _caravan.add_machine(&"cargo")
+	_check(c != null and c.cargo().capacity == 7 and _caravan.capacity == 21, "un Cassone aggiunto dopo ha la stessa capienza")
+	queue.free()
+
+
+func _load_scene() -> void:
+	_scene = ArenaScene.instantiate()
+	_scene.name = "Scene"
+	root.add_child(_scene)
+	_player = _scene.get_node(^"Player")
+	_field = _scene.get_node(^"TerrainField")
+	_scraps = _scene.get_node(^"ScrapField")
+	_path = PathField.new()
+	_path.name = "PathField"
+	_path.target = _player
+	_path.terrain_field = _field
+	_scene.add_child(_path)
+	await _frames(2)
+	# Il compagno della scena resta, fermo e lontano: la migrazione e del task 3.
+	var companion: Node3D = _scene.get_node(^"Companion")
+	companion.set_physics_process(false)
+	companion.global_position = Vector3(50.0, 0.3, 50.0)
+	companion.reset_physics_interpolation()
+	for i in 10:
+		if _path.is_ready():
+			break
+		await physics_frame
+	_check(_path.is_ready(), "campo di percorso pronto")
+
+
+func _new_caravan(spot: Vector3) -> Caravan:
+	var caravan := Caravan.new()
+	caravan.name = "Caravan"
+	caravan.tuning = load(TUNING_PATH) as CaravanTuning
+	caravan.player = _player
+	caravan.scrap_field = _scraps
+	caravan.path_field = _path
+	caravan.position = Vector3(spot.x, _field.height_at(spot) + Caravan.GROUND_CLEARANCE, spot.z)
+	_emitted.clear()
+	caravan.carried_changed.connect(_on_carried_changed)
+	_scene.add_child(caravan)
+	caravan.configure({terrain_field = _field})
+	return caravan
+
+
+func _replace_caravan(spot: Vector3) -> void:
+	_scene.remove_child(_caravan)
+	_caravan.queue_free()
+	await _frames(2)
+	_caravan = _new_caravan(spot)
+	await _frames(1)
+
+
+func _on_carried_changed(total: int) -> void:
+	_emitted.append(total)
+
+
+func _place_player(at: Vector3) -> void:
+	_player.global_position = Vector3(at.x, _field.height_at(at) + PLAYER_CLEARANCE, at.z)
+	_player.velocity = Vector3.ZERO
+	_player.reset_physics_interpolation()
+	_path.solve()
+
+
+func _place_machine(machine: Machine, at: Vector3) -> void:
+	machine.global_position = Vector3(at.x, _field.height_at(at) + Caravan.GROUND_CLEARANCE, at.z)
+	machine.velocity = Vector3.ZERO
+	machine.reset_physics_interpolation()
+
+
+## Anello di argini attorno a [param center] (come in boss_tests).
+func _seal_ring(center: Vector3, radius := 3.0) -> void:
+	var count := 16
+	var amount := 1.4 / RuinsDistrict.line_overlap(TAU * radius / count, 2.0)
+	for k in count:
+		var angle := TAU * k / count
+		_field.sculpt(center + Vector3(cos(angle), 0.0, sin(angle)) * radius, 2.0, amount)
+
+
+func _open_ring(center: Vector3, radius := 3.0) -> void:
+	# Due passate: la seconda spiana i bordi.
+	_field.level(center, radius + 3.0, _field.base_height_at(center), 1.0)
+	_field.level(center, radius + 3.0, _field.base_height_at(center), 1.0)
+
+
+func _frames(count: int) -> void:
+	for i in count:
+		await physics_frame
