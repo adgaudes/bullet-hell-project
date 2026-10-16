@@ -40,7 +40,7 @@ func _fire(at: Vector3) -> void:
 	add_child(marker)
 	var ground := terrain_field.height_at(at) if terrain_field != null else at.y
 	marker.global_position = Vector3(at.x, ground + 0.4, at.z)
-	WeaponFx.burst(fx_parent(), Vector3(at.x, ground + 0.2, at.z), WeaponFx.EARTH, 6, 2.5, 0.08)
+	WeaponFx.burst(fx_parent(), Vector3(at.x, ground + 0.2, at.z), WeaponFx.EARTH, 6, 2.5, 0.12)
 	_rings.append({center = Vector3(at.x, ground, at.z), radius = stat(&"ring_radius"), raise_left = stat(&"raise_delay"),
 		hold_left = stat(&"hold_seconds"), raised = false, spike_left = 0.0, marker = marker})
 

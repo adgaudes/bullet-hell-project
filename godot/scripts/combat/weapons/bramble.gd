@@ -77,7 +77,7 @@ func plant(at: Vector3) -> int:
 	for i: int in [0, half, points.size() - 1]:
 		var p: Vector3 = points[i]
 		var ground := terrain_field.height_at(p) if terrain_field != null else p.y
-		WeaponFx.burst(fx_parent(), Vector3(p.x, ground + 0.3, p.z), BrambleField.LEAF_COLOR, 6, 3.0, 0.1)
+		WeaponFx.burst(fx_parent(), Vector3(p.x, ground + 0.3, p.z), BrambleField.LEAF_COLOR, 6, 3.0, 0.13)
 	var mid: Vector3 = points[half]
 	WeaponFx.dust(fx_parent(), Vector3(mid.x, terrain_field.height_at(mid) if terrain_field != null else mid.y, mid.z), WeaponFx.EARTH, 1.2, 6)
 	return id

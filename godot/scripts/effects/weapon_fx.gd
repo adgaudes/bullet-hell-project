@@ -14,6 +14,8 @@ const SPARK := Color(1.0, 0.82, 0.35)
 const LEAF := Color(0.25, 0.55, 0.12)
 const CEMENT := Color(0.55, 0.55, 0.53)
 
+## Spento, nessun effetto nasce (confronto A/B del benchmark, `--no-fx`).
+static var enabled := true
 static var _ring_mesh: TorusMesh
 static var _dust_meshes: Dictionary[String, SphereMesh] = {}
 static var _spark_meshes: Dictionary[String, BoxMesh] = {}
@@ -21,7 +23,7 @@ static var _spark_fade: Curve
 
 
 static func _room(parent: Node) -> bool:
-	return parent != null and parent.is_inside_tree() and parent.get_tree().get_node_count_in_group(GROUP) < MAX_LIVE
+	return enabled and parent != null and parent.is_inside_tree() and parent.get_tree().get_node_count_in_group(GROUP) < MAX_LIVE
 
 
 ## Schegge che saltano (DebrisBurst) nel gruppo degli effetti delle armi.
@@ -104,7 +106,7 @@ static func dust(parent: Node, at: Vector3, color: Color, radius := 0.6, amount 
 
 ## Scintille brevi e luminose (archi, chiodi, lame sul metallo): niente luce dinamica, solo
 ## materiale che brilla.
-static func sparks(parent: Node, at: Vector3, color := SPARK, amount := 8, speed := 5.0) -> Node:
+static func sparks(parent: Node, at: Vector3, color := SPARK, amount := 10, speed := 6.0) -> Node:
 	if not _room(parent):
 		return null
 	if _spark_fade == null:
@@ -114,9 +116,11 @@ static func sparks(parent: Node, at: Vector3, color := SPARK, amount := 8, speed
 	var burst := CPUParticles3D.new()
 	burst.mesh = _spark_mesh(color)
 	burst.amount = amount
-	burst.lifetime = 0.3
+	burst.lifetime = 0.35
 	burst.one_shot = true
 	burst.explosiveness = 1.0
+	# Schegge allungate lungo la corsa: si leggono come scintille anche da 15 m.
+	burst.particle_flag_align_y = true
 	burst.direction = Vector3.UP
 	burst.spread = 80.0
 	burst.initial_velocity_min = speed * 0.5
@@ -144,7 +148,7 @@ static func _spark_mesh(color: Color) -> BoxMesh:
 		mat.emission = color.linear_to_srgb()
 		mat.emission_energy_multiplier = 2.0
 		mesh = BoxMesh.new()
-		mesh.size = Vector3(0.05, 0.05, 0.16)
+		mesh.size = Vector3(0.07, 0.32, 0.07)
 		mesh.material = mat
 		_spark_meshes[key] = mesh
 	return mesh

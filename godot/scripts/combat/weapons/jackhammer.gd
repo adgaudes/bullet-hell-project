@@ -119,7 +119,7 @@ func wave(center: Vector3) -> Array[Enemy]:
 	_show_ring(center)
 	var ground := Vector3(center.x, terrain_field.height_at(center) if terrain_field != null else center.y, center.z)
 	WeaponFx.dust(fx_parent(), ground, WeaponFx.DUST, 0.4, 10, wave_radius * 0.9)
-	WeaponFx.burst(fx_parent(), ground + Vector3(0.0, 0.2, 0.0), WeaponFx.EARTH, 6, 3.0, 0.08)
+	WeaponFx.burst(fx_parent(), ground + Vector3(0.0, 0.2, 0.0), WeaponFx.EARTH, 6, 3.0, 0.12)
 	return hit
 
 

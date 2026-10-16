@@ -70,7 +70,7 @@ func _ram_enemies() -> void:
 		_hit.append(enemy)
 		enemy.take_damage(int(stat(&"damage")))
 		if _fx_ready(&"hit", 0.08):
-			WeaponFx.burst(fx_parent(), enemy.global_position + Vector3(0.0, 0.5, 0.0), WeaponFx.DUST, 8, 5.0, 0.1)
+			WeaponFx.burst(fx_parent(), enemy.global_position + Vector3(0.0, 0.5, 0.0), WeaponFx.DUST, 8, 5.0, 0.13)
 		if enemy.self_driven:
 			continue
 		var offset := Vector3(enemy.global_position.x - p.x, 0.0, enemy.global_position.z - p.z)

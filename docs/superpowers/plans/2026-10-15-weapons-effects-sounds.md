@@ -8,7 +8,7 @@
 
 **Tech Stack:** Godot 4.7.2 GDScript, Python 3 + ffmpeg per i suoni, bundle Sonniss GDC 2024 fuori repo.
 
-**Stato (15 ottobre 2026):** task 1-3 fatti (`e4277c7`, `cd3ee10`, `8e77fe2`); task 4 iniziato (kit `godot/scripts/effects/weapon_fx.gd`: `burst`, `shockwave`, `dust`, tetto di 40 nodi vivi, gruppo `weapon_fx`; non ancora applicato alle armi); task 5 interrotto su richiesta del proprietario prima del gate: branch locale `spike/effekseer` (`58f55fe`, worktree `.claude/worktrees/agent-aab9726008e91510e`) con plugin 1.80.7 MIT (Windows e Linux x86_64, si carica e disegna su 4.7.2 Windows), campione `ef_fire03`, strumento `tests/tools/effekseer_spike.gd` e catture affiancate in `output/effekseer/` del worktree. Mancano: gate, misura del frame col preset Deck, prova su Linux/Deck, decisione. Gli `.efkefc` si fanno solo con l'editor Effekseer (app desktop).
+**Stato (15 ottobre 2026):** task 1-3 fatti (`e4277c7`, `cd3ee10`, `8e77fe2`); task 4 fatto il 16 ottobre (`02277d4`..: effetti su 12 armi e 6 fusioni, suite `weapon_fx_tests`, catture `capture_weapons.gd -- --fx` in `output/weapons/fx/`, riga `weapons_frame` e `--no-fx` nel benchmark; costo: righe `weapons` entro +0,07 ms, 40 effetti vivi 0,064 ms per frame su desktop, headless); task 5 interrotto su richiesta del proprietario prima del gate: branch locale `spike/effekseer` (`58f55fe`, worktree `.claude/worktrees/agent-aab9726008e91510e`) con plugin 1.80.7 MIT (Windows e Linux x86_64, si carica e disegna su 4.7.2 Windows), campione `ef_fire03`, strumento `tests/tools/effekseer_spike.gd` e catture affiancate in `output/effekseer/` del worktree. Mancano: gate, misura del frame col preset Deck, prova su Linux/Deck, decisione. Gli `.efkefc` si fanno solo con l'editor Effekseer (app desktop).
 
 **Spec:** `docs/superpowers/specs/2026-10-15-weapons-classes-design.md` (par. "Effetti", "Suoni", ordine dei piani punto 5); D-095 per Effekseer.
 
@@ -125,11 +125,11 @@ Comportamento: con la mira manuale un anello piatto (mesh `TorusMesh` schiacciat
 
 Obiettivi dalla spec: rottami in parabola con scia (Lanciarottami); dischi che rotolano e lasciano polvere (Ruspa a dischi); anello d'onda a terra (Picchetto); archi elettrici spezzati (Saldatrice, Bobina di Tesla); falci con scia (Falce); anelli di argine che salgono con polvere (Betoniera, Fortino); crateri con detriti (Carica, Mortaio); cemento grigio che si opacizza (Betoniera); rovi a cespuglio (Roveto). Regola: ogni effetto e un `CPUParticles3D` one-shot o una mesh che si libera da sola, al piu 32 particelle, mai una luce dinamica per colpo.
 
-- [ ] **Step 1: test che fallisce:** per ogni arma, dopo uno sparo con nemici davanti, nella scena compare almeno un nodo d'effetto nel gruppo `weapon_fx` e dopo 2 s non ce n'e piu nessuno.
-- [ ] **Step 2:** FAIL per le armi senza effetto.
-- [ ] **Step 3:** un'arma alla volta: aggiungere l'effetto, mettere il nodo nel gruppo `weapon_fx`, catturare con `capture_weapons.gd -- --class=<id>` in `output/weapons/fx/`, guardare la cattura, correggere.
-- [ ] **Step 4:** weapons_tests PASS; `benchmark_arena.gd -- --class=<id>` per le quattro classi: righe `weapons` e `weapons_fused` entro +0,15 ms da oggi (0,18-0,65 ms).
-- [ ] **Step 5:** commit per gruppo (comune, Guastatore, Meccanico, Erbacciaia, Ingegnere).
+- [x] **Step 1: test che fallisce:** per ogni arma, dopo uno sparo con nemici davanti, nella scena compare almeno un nodo d'effetto nel gruppo `weapon_fx` e dopo 2 s non ce n'e piu nessuno.
+- [x] **Step 2:** FAIL per le armi senza effetto.
+- [x] **Step 3:** un'arma alla volta: aggiungere l'effetto, mettere il nodo nel gruppo `weapon_fx`, catturare con `capture_weapons.gd -- --class=<id>` in `output/weapons/fx/`, guardare la cattura, correggere.
+- [x] **Step 4:** weapons_tests PASS; `benchmark_arena.gd -- --class=<id>` per le quattro classi: righe `weapons` e `weapons_fused` entro +0,15 ms da oggi (0,18-0,65 ms).
+- [x] **Step 5:** commit per gruppo (comune, Guastatore, Meccanico, Erbacciaia, Ingegnere).
 
 ### Task 5: prova di Effekseer (D-095)
 

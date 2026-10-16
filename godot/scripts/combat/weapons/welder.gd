@@ -143,7 +143,7 @@ func _chain(origin: Vector3, hit: Array[Enemy]) -> void:
 		if terrain_field != null and terrain_field.delta_at(at) < DITCH_DEPTH:
 			reach = ditch_jump_range
 		_strike(current, damage)
-		WeaponFx.sparks(fx_parent(), at + Vector3.UP * SOURCE_LIFT, ARC_COLOR, 6, 4.0)
+		WeaponFx.sparks(fx_parent(), at + Vector3.UP * SOURCE_LIFT, ARC_COLOR, 8, 5.0)
 		if count + 1 >= jumps:
 			break
 		current = _nearest(at, reach, hit)

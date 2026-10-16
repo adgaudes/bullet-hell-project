@@ -110,7 +110,7 @@ func _release(finished: bool) -> void:
 	if not finished or director == null:
 		return
 	# Il rilascio: un colpo secco al centro, e con la Polarita inversa l'onda che respinge.
-	WeaponFx.burst(fx_parent(), _center + Vector3(0.0, 0.4, 0.0), WeaponFx.RUST, 8, 4.0, 0.1)
+	WeaponFx.burst(fx_parent(), _center + Vector3(0.0, 0.4, 0.0), WeaponFx.RUST, 8, 4.0, 0.13)
 	if stat(&"repel") > 0.0:
 		WeaponFx.shockwave(fx_parent(), _center, stat(&"pull_radius"), FIELD_COLOR)
 	var radius := stat(&"pull_radius")

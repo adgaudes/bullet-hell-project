@@ -6,6 +6,7 @@ extends SceneTree
 ## `--enemies=N` (default: max_alive del tuning) per isolare il costo dell'orda; `--level=railway` misura il livello 2.
 ## `--no-motion` spegne il movimento procedurale degli attori (ActorMotion) per confronto;
 ## `--motion-ab` misura nello stesso processo il passo del direttore con e senza (riga `motion_ab`).
+## `--no-fx` spegne gli effetti delle armi (WeaponFx, piano 5) per confronto con la riga `weapons_frame`.
 ## `--preset=deck|low|medium|high|max` (restyling 2026-10-11) applica il preset grafico prima di
 ## costruire l'arena; il limite di fps viene tolto, cosi il frame misurato e il costo reale.
 ## Sul rilievo continuo (D-085) misura anche la base (`apply_base_relief`), 100 pennellate
@@ -52,7 +53,9 @@ func _bench_loadout(scene: Node, step: float) -> void:
 	loadout.add(&"cement_mixer")
 	_max_out(loadout, &"cement_mixer")
 	# L'orda nasce oltre la portata: per il caso peggiore 20 nemici robusti entro 6 m.
-	var player: Node3D = scene.get_node(^"Player")
+	var player: PlayerCharacter = scene.get_node(^"Player")
+	# L'orda robusta lo morde per tutta la misura: morto, il pannello di fine mette in pausa.
+	player.grant_invulnerability(120.0)
 	for i in 20:
 		var angle := TAU * i / 20.0
 		var enemy := run.director.spawn_at(player.global_position + Vector3(cos(angle), 0.0, sin(angle)) * (3.0 + 3.0 * (i % 2)))
@@ -63,6 +66,7 @@ func _bench_loadout(scene: Node, step: float) -> void:
 	for i in 120:
 		await physics_frame
 	var weapons_ms := _time_weapons(run, step)
+	await _weapons_frame(run)
 	var auto_id := kit[0]
 	var fused_ms := -1.0
 	if loadout.fuse(auto_id):
@@ -73,6 +77,45 @@ func _bench_loadout(scene: Node, step: float) -> void:
 	print("PROTOTYPE01_ARENA_BENCH weapons_fused class=%s worst_ms=%.3f slots=%s"
 		% [run.class_id, fused_ms, ",".join(PackedStringArray(loadout.all_ids()))])
 	_bench_writes(run, player, step, weapons_ms)
+
+
+## Frame medio con le armi del caso peggiore che sparano davvero, effetti compresi (piano 5):
+## la riga `weapons` misura il passo delle armi, non le particelle che ne nascono. Le attive
+## ripartono ogni secondo; con `--no-fx` lo stesso senza effetti.
+func _weapons_frame(run: ArenaRun) -> void:
+	# I livelli presi sopra (e l'esperienza dell'orda) aprono il menu di level-up, che mette in
+	# pausa: qui serve il gioco vivo, quindi la corsa non apre menu durante la misura.
+	var was_paused := paused
+	run.set_physics_process(false)
+	run.level_up_menu.close()
+	paused = false
+	await process_frame
+	if paused:
+		push_error("weapons_frame: albero ancora in pausa, misura non valida")
+	var frames := 900
+	var total := 0.0
+	var process_total := 0.0
+	var fx_total := 0
+	var fx_most := 0
+	var last := Time.get_ticks_usec()
+	for i in frames:
+		if i % 120 == 0:
+			for active in run.loadout.actives():
+				active.cooldown_left = 0.0
+			run.loadout.trigger_active(0)
+			run.loadout.trigger_active(1)
+		await process_frame
+		var now := Time.get_ticks_usec()
+		total += (now - last) / 1000.0
+		last = now
+		process_total += Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0
+		var fx := get_node_count_in_group(WeaponFx.GROUP)
+		fx_total += fx
+		fx_most = maxi(fx_most, fx)
+	paused = was_paused
+	run.set_physics_process(true)
+	print("PROTOTYPE01_ARENA_BENCH weapons_frame class=%s fx=%s avg_frame_ms=%.2f avg_process_ms=%.2f fx_avg=%.1f fx_max=%d"
+		% [run.class_id, WeaponFx.enabled, total / frames, process_total / frames, float(fx_total) / frames, fx_most])
 
 
 ## Passo medio (ms) di tutte le armi del loadout e della coda delle scritture, su 240 passi.
@@ -169,6 +212,9 @@ func _initialize() -> void:
 		elif arg == "--no-motion":
 			# Senza il movimento procedurale degli attori: misura quanto costa.
 			ActorMotion.enabled = false
+		elif arg == "--no-fx":
+			# Senza gli effetti delle armi (piano 5): confronto della riga `weapons_frame`.
+			WeaponFx.enabled = false
 		elif arg == "--night":
 			# Misura di notte: il ciclo e portato oltre il tramonto prima dell'orda.
 			night = true

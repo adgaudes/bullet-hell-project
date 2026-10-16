@@ -153,7 +153,7 @@ func _cut(center: Vector3, positions: Array[Vector3]) -> void:
 				cut = true
 				if not clipped and _fx_ready(&"cut", 0.15):
 					clipped = true
-					WeaponFx.burst(fx_parent(), enemy.global_position + Vector3(0.0, 0.5, 0.0), WeaponFx.LEAF, 8, 4.0, 0.08)
+					WeaponFx.burst(fx_parent(), enemy.global_position + Vector3(0.0, 0.5, 0.0), WeaponFx.LEAF, 8, 4.0, 0.12)
 				break
 	if cut:
 		_sound(&"hit")
@@ -221,7 +221,7 @@ func _drop_trail(positions: Array[Vector3], delta: float) -> void:
 	if not positions.is_empty():
 		var p := positions[0]
 		var ground := terrain_field.height_at(p) if terrain_field != null else p.y
-		_fusion_fx(WeaponFx.burst(fx_parent(), Vector3(p.x, ground + 0.3, p.z), BrambleField.LEAF_COLOR, 5, 2.5, 0.1))
+		_fusion_fx(WeaponFx.burst(fx_parent(), Vector3(p.x, ground + 0.3, p.z), BrambleField.LEAF_COLOR, 5, 2.5, 0.13))
 	for p in positions:
 		if not _trail.add_segment(_trail_id, p, seconds):
 			var first: Array[Vector3] = [p]

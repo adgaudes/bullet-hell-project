@@ -8,6 +8,8 @@ extends SceneTree
 ## Con `--class=sapper|mechanic|weeder` (piano 3) solo il kit della classe:
 ## <classe>_auto, <classe>_active (livello 1), <classe>_auto5, <classe>_active5 (livello 5 coi
 ## bivi di PICKS), <classe>_fusion; la tuta e tinta del colore di classe.
+## Con `--fx` (piano 5) una cattura per arma e fusione, `fx_<id>`, scattata FX_DELAY passi dopo
+## che il suo primo effetto (gruppo `weapon_fx`) e comparso: gli effetti durano mezzo secondo.
 
 ## Bivi delle catture di classe: quelli che si vedono di piu.
 const PICKS := {
@@ -17,6 +19,9 @@ const PICKS := {
 }
 
 var _out := "../output/weapons"
+var _fx := false
+## Passi di fisica fra la comparsa dell'effetto e la cattura.
+const FX_DELAY := 10
 var _run: ArenaRun
 var _player: PlayerCharacter
 var _director: EnemyDirector
@@ -26,6 +31,7 @@ func _initialize() -> void:
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--out="):
 			_out = arg.trim_prefix("--out=")
+		_fx = _fx or arg == "--fx"
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("res://").path_join(_out))
 	var scene: Node3D = preload("res://scenes/main/arena_run.tscn").instantiate()
 	root.add_child(scene)
@@ -42,6 +48,10 @@ func _initialize() -> void:
 	_player.global_position = Vector3(0.0, field.height_at(Vector3.ZERO) + 0.88, 0.0)
 	_player.velocity = Vector3.ZERO
 	var loadout := _run.loadout
+	if _fx:
+		await _fx_all(loadout)
+		quit()
+		return
 	if _run.class_id != ClassCatalog.DEFAULT:
 		await _class_kit(loadout, _run.class_id)
 		quit()
@@ -191,6 +201,76 @@ func _common_kit(loadout: WeaponLoadout) -> void:
 	loadout.trigger_active(1)
 	await _frames(int(1.0 * Engine.physics_ticks_per_second))
 	await _save("mixer")
+
+
+## Piano 5: ogni arma e fusione da sola, creata a mano accanto al giocatore come nella suite
+## weapon_fx_tests; le armi del loadout restano ferme.
+func _fx_all(loadout: WeaponLoadout) -> void:
+	_player._set_aim_device(PlayerCharacter.AimDevice.GAMEPAD)
+	for w: Weapon in loadout.autos() + loadout.actives():
+		w.process_mode = Node.PROCESS_MODE_DISABLED
+	loadout.telegraph.process_mode = Node.PROCESS_MODE_DISABLED
+	loadout.telegraph.hide()
+	var cases: Array = [
+		[&"nailgun", &"", AutoWeapon], [&"seismic_stake", &"", SeismicStake], [&"nailgun", &"fort", AutoWeapon],
+		[&"scrap_launcher", &"", ScrapLauncher], [&"dig_charge", &"", DigCharge], [&"scrap_launcher", &"mortar", ScrapLauncher],
+		[&"welder", &"", Welder], [&"crane_magnet", &"", CraneMagnet], [&"welder", &"tesla_coil", Welder],
+		[&"scythe", &"", Scythe], [&"bramble", &"", Bramble], [&"scythe", &"scythe_bramble", Scythe],
+		[&"site_blade", &"", SiteBlade], [&"ram", &"", Ram], [&"site_blade", &"disc_dozer", SiteBlade],
+		[&"jackhammer", &"", Jackhammer], [&"cement_mixer", &"", CementMixer], [&"jackhammer", &"compactor", Jackhammer],
+	]
+	for case: Array in cases:
+		var id: StringName = case[0]
+		var fusion: StringName = case[1]
+		_player.global_position = Vector3(0.0, _run.terrain_field.height_at(Vector3.ZERO) + 0.88, 0.0)
+		_player.velocity = Vector3.ZERO
+		_player.rotation.y = 0.0
+		# L'orda attorno lo morde per tutte le catture: deve arrivare in fondo.
+		_player.grant_invulnerability(60.0)
+		var weapon: Weapon = (case[2] as GDScript).new()
+		weapon.weapon_id = id
+		weapon.shooter = _player
+		weapon.director = _director
+		weapon.terrain_field = _run.terrain_field
+		_run.add_child(weapon)
+		loadout.give_services(weapon)
+		if fusion != &"":
+			weapon.fusion_id = fusion
+			weapon.set_level(WeaponCatalog.MAX_LEVEL)
+			# Il colpo della fusione subito, invece che dopo 4-10 s.
+			for key: StringName in [&"_fort_left", &"_big_left"]:
+				if key in weapon:
+					weapon.set(key, 0.05)
+			if weapon is ScrapLauncher:
+				(weapon as ScrapLauncher).shots = 3
+			if weapon is Jackhammer:
+				(weapon as Jackhammer).waves = 2
+		_horde(Vector3(0.0, 0.0, -5.0), 8, 1.6)
+		_horde(Vector3.ZERO, 6, 2.6)
+		var seen := false
+		for step in int(6.0 * Engine.physics_ticks_per_second):
+			if weapon is ActiveWeapon and step % 60 == 0:
+				(weapon as ActiveWeapon).cooldown_left = 0.0
+				(weapon as ActiveWeapon).trigger()
+			await physics_frame
+			if _fx_wanted(fusion):
+				seen = true
+				break
+		await _frames(FX_DELAY)
+		await _save("fx_%s" % (fusion if fusion != &"" else id))
+		if not seen:
+			push_warning("nessun effetto per %s" % id)
+		weapon.queue_free()
+		_director.clear_horde()
+		await _frames(int(1.2 * Engine.physics_ticks_per_second))
+
+
+## Vero quando c'e un effetto in scena (della fusione, se [param fusion] non e vuota).
+func _fx_wanted(fusion: StringName) -> bool:
+	for node in get_nodes_in_group(WeaponFx.GROUP):
+		if fusion == &"" or node.get_meta(&"fx_fusion", &"") == fusion:
+			return true
+	return false
 
 
 func _horde(center: Vector3, count: int, spread := 2.0) -> void:
