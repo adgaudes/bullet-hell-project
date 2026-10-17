@@ -374,10 +374,20 @@ func _test_repair_nearest_and_range(nominal: int, slow: int) -> void:
 	var lead := _caravan.lead()
 	_caravan.carried = 3
 	_place_player(AREA)
-	_place_machine(lead, AREA + Vector3(-1.0, 0.0, 0.0))
+	# Prima le posizioni scambiate: la Torretta, seconda nell'ordine della carovana, e la piu
+	# vicina. Un bersaglio "prima guasta della lista" sceglierebbe il Cassone.
+	_place_machine(lead, AREA + Vector3(0.0, 0.0, 1.7))
 	_break(lead)
-	_place_machine(_turret, AREA + Vector3(0.0, 0.0, 1.7))
+	_place_machine(_turret, AREA + Vector3(-1.0, 0.0, 0.0))
 	_break(_turret)
+	_check(_caravan.repair_target() == _turret,
+		"due guaste: il bersaglio e la piu vicina anche se non e la prima (Torretta a 1 m, Cassone a 1,7 m)")
+	# A pari distanza (1,3 m ai due lati, distanze identiche) vince la prima della carovana.
+	_place_machine(lead, AREA + Vector3(-1.3, 0.0, 0.0))
+	_place_machine(_turret, AREA + Vector3(1.3, 0.0, 0.0))
+	_check(_caravan.repair_target() == lead, "a pari distanza vince la prima nell'ordine della carovana (il Cassone)")
+	_place_machine(lead, AREA + Vector3(-1.0, 0.0, 0.0))
+	_place_machine(_turret, AREA + Vector3(0.0, 0.0, 1.7))
 	_check(_caravan.repair_target() == lead, "due guaste entro 2 m: il bersaglio e la piu vicina (il Cassone a 1 m)")
 	_player.interact_held = true
 	await _frames(nominal - 1)
