@@ -42,6 +42,7 @@ drill_interval = 4.0
 drill_reach = 5.0
 drill_radius = 1.2
 drill_depth = 0.6
+drill_flat_tolerance = 0.2
 shovel_interval = 5.0
 shovel_reach = 8.0
 shovel_radius = 1.0

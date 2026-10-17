@@ -90,7 +90,7 @@ func _physics_process(delta: float) -> void:
 
 
 ## Servizi della run (`director`, `terrain_field`, `write_queue`, `xp_field`, `light_field`,
-## `run_tuning`, e altri dei task successivi): li salva e li passa ai moduli, presenti e futuri.
+## `run_tuning`, `lamp_field`, `extraction_pad`): li salva e li passa ai moduli, presenti e futuri.
 ## I moduli gia presenti rifanno `apply_level`: chi e nato prima dei servizi (Torretta,
 ## Calamita, Faro) si registra ora.
 func configure(services: Dictionary) -> void:
@@ -260,6 +260,14 @@ func pay(amount: int, include_broken := false) -> bool:
 	return true
 
 
+## Rottami dei soli Cassoni funzionanti (quelli da cui `pay` preleva senza `include_broken`).
+func working_carried() -> int:
+	var total := 0
+	for cargo in _working_cargo():
+		total += cargo.carried
+	return total
+
+
 ## Chiamata da un Cassone quando il suo carico cambia: fuori da un'operazione della carovana
 ## (una raccolta, un'assegnazione diretta) avvisa subito, dentro una sola volta alla fine.
 func notify_cargo_changed() -> void:
@@ -409,7 +417,7 @@ func _on_ground(point: Vector3) -> Vector3:
 
 # --- Interni ---------------------------------------------------------------------------------
 
-## Script del modulo di ogni tipo: i tipi senza script (task 8) usano il modulo inerte.
+## Script del modulo di ogni tipo: un id fuori catalogo usa il modulo inerte.
 static func module_script_for(module_id: StringName) -> GDScript:
 	match module_id:
 		&"cargo":
@@ -420,6 +428,14 @@ static func module_script_for(module_id: StringName) -> GDScript:
 			return MagnetModule
 		&"beacon":
 			return BeaconModule
+		&"drill":
+			return DrillModule
+		&"shovel":
+			return ShovelModule
+		&"welder":
+			return WelderModule
+		&"siren":
+			return SirenModule
 	return MachineModule
 
 

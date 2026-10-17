@@ -1,11 +1,18 @@
 extends SceneTree
 ## Moduli Torretta, Calamita e Faro (spec D-093, task 4 del piano A) sulla run vera di
 ## `arena_run.tscn`: livelli per tipo e bonus della carovana che valgono anche per le macchine
-## aggiunte dopo, luci dei Faro col fattore di notte, il Cassone che non illumina piu.
+## aggiunte dopo, luci dei Faro col fattore di notte, il Cassone che non illumina piu. Poi, su una
+## seconda scena (la prima finisce con la carovana piena), Trivella, Pala, Saldatore e Sirena
+## (task 8).
 ## Eseguire con:
 ##   godot_console --headless --path godot --fixed-fps 60 --script res://tests/machine_modules_tests.gd
 
 const RunScene := preload("res://scenes/main/arena_run.tscn")
+## Piano aperto e quasi in piano attorno a z 16 (machine_damage_tests): i casi del task 8 stanno
+## lungo +-X, con z fra 12 e 20.
+const AREA := Vector3(0.0, 0.0, 16.0)
+## Il capofila a 2,5 m dal giocatore lungo -X: i posti 1-4 delle macchine nuove seguono lui.
+const LEAD_OFFSET := Vector3(-2.5, 0.0, 0.0)
 
 var _failures := 0
 var _scene: Node3D
@@ -15,6 +22,10 @@ var _player: PlayerCharacter
 var _caravan: Caravan
 var _director: EnemyDirector
 var _xp: XpField
+var _scraps: ScrapField
+var _lamps: LampField
+var _path: PathField
+var _pad: ExtractionPad
 ## Macchine aggiunte dalla suite, di giorno e di notte: ognuna va in write_queue.bodies.
 var _added: Array[Machine] = []
 ## Colpi della Torretta contati dal segnale `fired`.
@@ -23,26 +34,7 @@ var _shots := 0
 
 func _initialize() -> void:
 	Engine.physics_ticks_per_second = 60
-	_scene = RunScene.instantiate()
-	root.add_child(_scene)
-	_run = _scene.get_node(^"Run")
-	_field = _scene.get_node(^"TerrainField")
-	_player = _scene.get_node(^"Player")
-	_caravan = _scene.get_node(^"Caravan")
-	_director = _scene.get_node(^"EnemyDirector")
-	_xp = _scene.get_node(^"XpField")
-	_director.spawning = false
-	await _frames(5)
-	# Dopo il _ready della scena: la chiodatrice del giocatore non deve togliere i bersagli
-	# alla Torretta; niente level-up (i rottamatori uccisi lasciano frammenti), boss ne
-	# terremoto quando il tempo salta alla notte.
-	(_scene.get_node(^"PlayerWeapon") as AutoWeapon).set_physics_process(false)
-	_run.progression.xp_first_level = 100000
-	_run.boss_call_at = 0.0
-	for event: WorldEvent in [_run.quake_event, _run.train_event]:
-		if event != null:
-			event.schedule([])
-	_player._invulnerable_left = 3600.0
+	await _load_run()
 	_test_lead_gives_no_light()
 	await _test_turret_fires_and_stops()
 	_test_turret_levels()
@@ -55,6 +47,11 @@ func _initialize() -> void:
 	root.remove_child(_scene)
 	_check(lights.source_count() == 1, "tolta la scena, il Faro ha liberato la sua sorgente (%d)" % lights.source_count())
 	_scene.queue_free()
+	await _frames(2)
+	await _load_run()
+	await _test_new_modules()
+	root.remove_child(_scene)
+	_scene.queue_free()
 	# T-12: i nodi messi in coda con queue_free vanno liberati prima di uscire. In piu le
 	# campane della notte ancora in riproduzione si chiudono solo dopo un giro del server audio,
 	# che va col tempo vero e non coi passi (a scena tolta i passi durano pochi millisecondi):
@@ -65,6 +62,34 @@ func _initialize() -> void:
 		await process_frame
 	print("PROTOTYPE01_TESTS %s failures=%d" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
+
+
+## Istanzia la run e la prepara ai test: niente chiodatrice del giocatore (non deve togliere i
+## bersagli ai moduli), niente level-up (i rottamatori uccisi lasciano frammenti), boss ne eventi
+## quando il tempo salta alla notte; il giocatore non muore.
+func _load_run() -> void:
+	_scene = RunScene.instantiate()
+	root.add_child(_scene)
+	_run = _scene.get_node(^"Run")
+	_field = _scene.get_node(^"TerrainField")
+	_player = _scene.get_node(^"Player")
+	_caravan = _scene.get_node(^"Caravan")
+	_director = _scene.get_node(^"EnemyDirector")
+	_xp = _scene.get_node(^"XpField")
+	_scraps = _scene.get_node(^"ScrapField")
+	_lamps = _scene.get_node(^"LampField")
+	_path = _scene.get_node(^"PathField")
+	_pad = _scene.get_node(^"ExtractionPad")
+	_added.clear()
+	_director.spawning = false
+	await _frames(5)
+	(_scene.get_node(^"PlayerWeapon") as AutoWeapon).set_physics_process(false)
+	_run.progression.xp_first_level = 100000
+	_run.boss_call_at = 0.0
+	for event: WorldEvent in [_run.quake_event, _run.train_event]:
+		if event != null:
+			event.schedule([])
+	_player._invulnerable_left = 3600.0
 
 
 func _check(condition: bool, label: String) -> void:
@@ -338,3 +363,462 @@ func _test_added_machines_registered() -> void:
 	_check(_added.size() == 5 and missing.is_empty() and _director.caravan == _caravan,
 		"%d macchine aggiunte, tutte nella carovana e in write_queue.bodies (%d fuori)" % [_added.size(), missing.size()])
 	_check(_caravan.module_count() == 6 and not _caravan.has_room(), "sei moduli: carovana piena")
+
+
+# --- Trivella, Pala, Saldatore e Sirena (task 8), sulla seconda scena -----------------------
+
+## Giocatore in AREA, capofila a 2,5 m lungo -X, le quattro macchine nuove ai posti 1-4, spente:
+## ogni caso accende solo il suo modulo e ne riporta il timer all'intervallo intero subito dopo
+## un'attesa (i conti dei passi partono da li).
+func _test_new_modules() -> void:
+	print("new modules")
+	_scraps._veins.clear()
+	_scraps.take_near(AREA, 40.0, _scraps.count())
+	_check(_caravan.machines.size() == 1, "seconda scena: solo il capofila")
+	_place_player_solved(AREA)
+	_place_machine(_caravan.lead(), AREA + LEAD_OFFSET)
+	var drill := _add(&"drill")
+	var shovel := _add(&"shovel")
+	var welder := _add(&"welder")
+	var siren := _add(&"siren")
+	if drill == null or shovel == null or welder == null or siren == null:
+		return
+	_check(drill.module(&"drill") is DrillModule and shovel.module(&"shovel") is ShovelModule
+		and welder.module(&"welder") is WelderModule and siren.module(&"siren") is SirenModule,
+		"Trivella, Pala, Saldatore e Sirena hanno il loro script")
+	for each: Machine in [drill, shovel, welder, siren]:
+		var id := each.primary_module_id()
+		_check(_part_on_layer(each, NodePath("%sPart" % String(id).capitalize())), "pezzo di %s sul layer visivo" % id)
+		each.modules[0].set_active(false)
+	_gather_machines()
+	for each in _caravan.machines:
+		_check(await _settle(each), "%s fermo al suo posto" % each.primary_module_id())
+	await _test_drill(drill)
+	await _test_shovel(shovel)
+	await _test_welder(welder, drill)
+	await _test_siren(siren)
+	await _test_broken_idle(drill, shovel, welder, siren)
+
+
+## Trivella: senza vene una buca a 1 m dal rottamatore verso la macchina, ma mai su un cumulo,
+## vicino a un lampione, nella piazzola attiva o sul giocatore; da una vena un rottame a terra,
+## raggiungibile dal Cassone, senza scavare.
+func _test_drill(drill: Machine) -> void:
+	print("drill")
+	var tuning := _caravan.tuning
+	var module := drill.module(&"drill") as DrillModule
+	var queue := _run.write_queue
+	var n_drill := roundi(tuning.drill_interval * Engine.physics_ticks_per_second)
+	var d := drill.global_position
+	var w := _side(drill)
+	var ideal := d + w * 3.0
+	var enemy_at := d + w * 4.0
+	_spawn_still(enemy_at)
+	_check(_flat(ideal) and module.clear_spot(ideal, tuning.drill_radius), "(a) punto ideale in base e libero")
+	module.set_active(true)
+	module._drill_left = tuning.drill_interval
+	await _frames(n_drill + 3)
+	var floor_h := _field.base_height_at(ideal) - tuning.drill_depth
+	_check(absf(_field.height_at(ideal) - floor_h) < 0.05,
+		"(a) rottamatore a 4 m, nessuna vena: buca fra lui e la macchina (%.2f m dal fondo)" % (_field.height_at(ideal) - floor_h))
+	_field.reset_to_base(ideal, Vector2(2.0, 2.0))
+
+	# (b) Un cumulo senza vene sul punto ideale: oltre la tolleranza, niente buca.
+	_field.sculpt(ideal, 1.5, 0.8)
+	_check(_field.delta_at(ideal) > tuning.drill_flat_tolerance and module.clear_spot(ideal, tuning.drill_radius),
+		"(b) cumulo di %.2f m sul punto ideale, libero" % _field.delta_at(ideal))
+	await _frames(1)
+	module._drill_left = tuning.drill_interval
+	_check(await _no_write(n_drill + 3, [ideal]), "(b) cumulo senza vene: nessuna buca")
+	_field.reset_to_base(ideal, Vector2(2.0, 2.0))
+
+	# (c) Un lampione a 1,5 m dal punto ideale lo toglie: il lampione resta in piedi.
+	var lamp_at := ideal + Vector3(0.0, 0.0, 1.5 * _toward_area_z(ideal))
+	_check(_flat(ideal) and module.clear_spot(ideal, tuning.drill_radius) and _lamps.can_place(lamp_at),
+		"(c) punto ideale libero, lampione possibile a 1,5 m")
+	_lamps._build_post(lamp_at)
+	_check(not module.clear_spot(ideal, tuning.drill_radius), "(c) col lampione a 1,5 m il punto non e libero")
+	await _frames(1)
+	module._drill_left = tuning.drill_interval
+	_check(await _no_write(n_drill + 3, [ideal, lamp_at]) and _lamps.count() == 1, "(c) nessuna buca, il lampione resta in piedi")
+	_lamps.remove_all(&"test")
+
+	# (d) Piazzola di estrazione attiva: nessuna scrittura nel suo disco attorno al giocatore.
+	ideal = AREA + Vector3(-3.5, 0.0, 1.6)
+	enemy_at = ideal + _planar_unit(ideal - d)
+	_director.clear_horde()
+	_spawn_still(enemy_at)
+	_check(_flat(ideal) and module.clear_spot(ideal, tuning.drill_radius)
+		and Machine.planar_distance(enemy_at, d) <= tuning.drill_reach
+		and Machine.planar_distance(ideal, AREA) < _pad.radius_m + tuning.drill_radius,
+		"(d) punto ideale libero, nel disco della piazzola, rottamatore a portata")
+	_pad.hold_seconds = 3600.0
+	_pad.begin()
+	_check(not module.clear_spot(ideal, tuning.drill_radius), "(d) a estrazione attiva il punto non e libero")
+	await _frames(1)
+	module._drill_left = tuning.drill_interval
+	_check(await _no_write(n_drill + 3, [ideal]), "(d) piazzola attiva: nessuna scrittura nel suo disco")
+	_pad.active = false
+	if _pad._ring != null:
+		_pad._ring.hide_ring()
+	if _pad.hud != null:
+		_pad.hud.clear_event_warning(RunHud.WarningPriority.EXTRACTION)
+	_pad.hold_seconds = _run.tuning.extraction_hold_seconds
+
+	# (e) Il punto ideale e il giocatore: mai una scrittura entro `keep_clear` da lui.
+	enemy_at = AREA + _planar_unit(AREA - d)
+	_director.clear_horde()
+	_spawn_still(enemy_at)
+	var spot: Variant = module.point_toward(enemy_at, d, DrillModule.HOLE_GAP_M)
+	_check(spot != null and Machine.planar_distance(spot, AREA) < 0.01 and Machine.planar_distance(enemy_at, d) <= tuning.drill_reach
+		and not module.clear_spot(AREA, tuning.drill_radius), "(e) il punto ideale e sul giocatore")
+	await _frames(1)
+	module._drill_left = tuning.drill_interval
+	_check(await _no_write(n_drill + 3, [AREA]), "(e) nessuna scrittura sul giocatore")
+	_director.clear_horde()
+
+	# (f) Una vena a 3 m sotto un cumulo: un rottame in meno nella vena, uno a terra fuori dal
+	# cumulo in un punto aperto, il terreno com'era; poi il Cassone lo raccoglie.
+	var vein_at := d + w * 3.0
+	_field.sculpt(vein_at, 1.2, 1.0)
+	var samples: Array[Vector3] = [vein_at]
+	for k in 8:
+		samples.append(vein_at + Vector3(cos(TAU * k / 8.0), 0.0, sin(TAU * k / 8.0)) * 0.6)
+	var heights: Array[float] = []
+	for p in samples:
+		heights.append(_field.height_at(p))
+	_scraps.add_vein(vein_at, 1.2, 4, _field.base_height_at(vein_at))
+	_caravan.carried = tuning.starting_scrap
+	var scraps_before := _scraps.count()
+	await _frames(1)
+	module._drill_left = tuning.drill_interval
+	var drilled := false
+	var quiet := true
+	for k in roundi(4.5 * Engine.physics_ticks_per_second):
+		await physics_frame
+		quiet = quiet and queue.pending() == 0
+		if _scraps.vein_scrap_left(vein_at) == 3:
+			drilled = true
+			break
+	_check(drilled and _scraps.count() == scraps_before + 1, "(f) vena a 3 m: entro 4,5 s un rottame in meno e uno a terra")
+	var dropped := _scraps.positions_near(vein_at, 3.0)
+	_check(dropped.size() == 1 and _caravan.is_open_point(dropped[0]) and Machine.planar_distance(dropped[0], vein_at) > 1.2,
+		"(f) il rottame e fuori dal cumulo, in un punto aperto (%s)" % [dropped])
+	var same := true
+	for k in samples.size():
+		same = same and _field.height_at(samples[k]) == heights[k]
+	_check(quiet and queue.pending() == 0 and same, "(f) nessuna scrittura: il cumulo e com'era")
+	_scraps._veins.clear()
+	var collected := false
+	for k in 300:
+		await physics_frame
+		if _caravan.carried == tuning.starting_scrap + 1 and _scraps.count() == scraps_before:
+			collected = true
+			break
+	_check(collected, "(f) il Cassone raccoglie il rottame (%d a bordo)" % _caravan.carried)
+	module.set_active(false)
+	_field.reset_to_base(vein_at, Vector2(2.0, 2.0))
+	await _regather()
+
+
+## Pala: con un rottamatore a 6 m e 5 rottami un argine alto almeno base + 0,9 a 1,5 m da lui,
+## per un rottame; con la sola riserva per una riparazione nessun argine.
+func _test_shovel(shovel: Machine) -> void:
+	print("shovel")
+	var tuning := _caravan.tuning
+	var module := shovel.module(&"shovel") as ShovelModule
+	var n_shovel := roundi(tuning.shovel_interval * Engine.physics_ticks_per_second)
+	var sh := shovel.global_position
+	var w := _side(shovel)
+	var bank := sh + w * (6.0 - tuning.shovel_gap)
+	_spawn_still(sh + w * 6.0)
+	_check(_flat(bank) and module.clear_spot(bank, tuning.shovel_radius), "punto dell'argine in base e libero")
+	var reserve := tuning.shovel_cost + tuning.repair_cost - 1
+	_caravan.carried = reserve
+	module.set_active(true)
+	module._shovel_left = tuning.shovel_interval
+	_check(await _no_write(n_shovel + 3, [bank]) and _caravan.carried == reserve,
+		"%d rottami (sotto la riserva): nessun argine, nessun rottame speso" % reserve)
+	_caravan.carried = 5
+	module._shovel_left = tuning.shovel_interval
+	await _frames(n_shovel + 3)
+	_check(_caravan.carried == 5 - tuning.shovel_cost and _field.height_at(bank) >= _field.base_height_at(bank) + 0.9,
+		"5 rottami: argine a %.2f m sulla base fra lui e la macchina, %d rottami a bordo" % [_field.delta_at(bank), _caravan.carried])
+	module.set_active(false)
+	_field.reset_to_base(bank, Vector2(2.0, 2.0))
+	_caravan.carried = tuning.starting_scrap
+	await _clear_enemies()
+
+
+## Saldatore: +1 PV ogni `welder_interval` alla macchina danneggiata in raggio (non a se stesso);
+## una guasta in raggio riparte dopo `welder_broken_seconds`, gratis, anche se intanto la si
+## ripara a mano (Review Focus 2: la tenuta si azzera e non paga).
+func _test_welder(welder: Machine, drill: Machine) -> void:
+	print("welder")
+	var tuning := _caravan.tuning
+	var module := welder.module(&"welder") as WelderModule
+	var hz := Engine.physics_ticks_per_second
+	var n_heal := roundi(tuning.welder_interval * hz)
+	var n_fix := roundi(tuning.welder_broken_seconds * hz)
+	var nominal := roundi(tuning.repair_seconds * hz)
+	var here := welder.global_position
+
+	# (i) La Trivella ferma a 2 m, a 3 PV; il Saldatore a 2 PV non si salda da solo.
+	drill.set_physics_process(false)
+	_place_machine(drill, here + Vector3(0.0, 0.0, 2.0 * _toward_area_z(here)))
+	drill.health = 3
+	welder.health = 2
+	_check(drill.state == Machine.State.OK and welder.state == Machine.State.OK, "Trivella a 3 PV e Saldatore a 2 PV, in ordine")
+	module.set_active(true)
+	module._heal_left = tuning.welder_interval
+	var steps := await _steps_until_health(drill, 4, n_heal + 10)
+	_check(steps >= n_heal - 2 and steps <= n_heal + 2, "una macchina a 3 PV entro 4 m sale a 4 in %d passi (%d attesi)" % [steps, n_heal])
+	_check(welder.health == 2, "il Saldatore non salda se stesso (%d PV)" % welder.health)
+	drill.set_physics_process(true)
+	drill.health = drill.max_health
+	welder.health = welder.max_health
+
+	# (ii) Una guasta a 1,5 m dal giocatore e in raggio torna in ordine da sola, gratis.
+	var spot := AREA + _planar_unit(here - AREA) * 1.5
+	_check(Machine.planar_distance(spot, _player.global_position) <= tuning.repair_range
+		and Machine.planar_distance(spot, here) <= tuning.welder_range, "il punto e in raggio di riparazione e di saldatura")
+	var carried := _caravan.carried
+	_place_machine(drill, spot)
+	_break(drill)
+	# La saldatura e appena scattata: con `welder_broken_seconds` multiplo di `welder_interval`
+	# il +1 PV cadrebbe nel passo della riparazione. Il suo timer riparte un passo dopo.
+	await _frames(1)
+	module._heal_left = tuning.welder_interval
+	steps = -1
+	for k in n_fix + 10:
+		await physics_frame
+		if not drill.is_broken():
+			steps = k + 1
+			break
+	_check(steps >= n_fix - 2 and steps <= n_fix + 2, "la guasta torna in ordine in %d passi (%d attesi)" % [steps, n_fix])
+	_check(drill.health == ceili(drill.max_health * tuning.repair_health_fraction) and _caravan.carried == carried,
+		"a %d PV, senza spendere (%d rottami)" % [drill.health, _caravan.carried])
+	drill.module(&"drill").set_active(false)
+
+	# (iii) Riparazione a mano in corso quando salda il Saldatore: si azzera e non paga.
+	_caravan.carried = 3
+	_place_machine(drill, spot)
+	_break(drill)
+	await _frames(n_fix - roundi(nominal * 2.0 / 3.0))
+	_check(drill.is_broken() and _caravan.repair_target() == drill, "ancora guasta, bersaglio della riparazione")
+	_player.interact_held = true
+	var fixed := false
+	for k in 80:
+		await physics_frame
+		if not drill.is_broken():
+			fixed = true
+			break
+	_check(fixed and _caravan.repair_progress() > 0.5 and _caravan.carried == 3,
+		"la salda il Saldatore a riparazione a mano in corso (%.2f), nessun rottame speso" % _caravan.repair_progress())
+	await _frames(1)
+	_check(_caravan.repair_progress() == 0.0 and _caravan.repairing_machine() == null, "la riparazione a mano si azzera")
+	await _frames(nominal + 5)
+	_check(_caravan.carried == 3, "e non paga (%d rottami)" % _caravan.carried)
+	_player.interact_held = false
+	drill.module(&"drill").set_active(false)
+	module.set_active(false)
+	drill.health = drill.max_health
+	await _regather()
+
+
+## Sirena: nei primi `siren_active` secondi del ciclo un rottamatore a 7 m le arriva vicino, poi
+## non e piu tirato fino al ciclo dopo; boss e portatori in commissione non si tirano mai.
+func _test_siren(siren: Machine) -> void:
+	print("siren")
+	var tuning := _caravan.tuning
+	var module := siren.module(&"siren") as SirenModule
+	var n_on := roundi(tuning.siren_active * Engine.physics_ticks_per_second)
+	var n_cycle := roundi(tuning.siren_period * Engine.physics_ticks_per_second)
+	var sr := siren.global_position
+	var w := _side(siren)
+	var z := Vector3(0.0, 0.0, _toward_area_z(sr))
+	var pulled := _director.spawn_at(sr + w * 7.0)
+	pulled.health = 9999
+	pulled.speed_scale = 0.0
+	var boss := Enemy.new()
+	boss.self_driven = true
+	_director.add_enemy(boss, sr + w * 5.0 + z * 1.5 + Vector3(0.0, Enemy.spawn_height(), 0.0))
+	var carrier := _director.spawn_at(sr + w * 4.0 + z * 2.5)
+	carrier.speed_scale = 0.0
+	carrier.has_errand = true
+	carrier.errand_point = carrier.global_position
+	var all_in := true
+	for enemy: Enemy in [pulled, boss, carrier]:
+		all_in = all_in and Machine.planar_distance(enemy.global_position, sr) <= tuning.siren_range
+	_check(all_in, "rottamatore, boss e portatore entro il raggio della Sirena")
+	await _frames(1)
+	var boss_at := boss.global_position
+	var carrier_at := carrier.global_position
+	module.set_active(true)
+	module._cycle_time = 0.0
+	siren.grant_invulnerability(10.0)
+	await _frames(n_on - 1)
+	_check(module.is_attracting() and Machine.planar_distance(pulled.global_position, sr) < 3.0,
+		"nei primi %.0f s il rottamatore a 7 m le arriva vicino (%.2f m)" % [tuning.siren_active, Machine.planar_distance(pulled.global_position, sr)])
+	_check(boss.drift == Vector3.ZERO and Machine.planar_distance(boss.global_position, boss_at) < 0.05
+		and Machine.planar_distance(carrier.global_position, carrier_at) < 0.05, "il boss e il portatore in commissione non si tirano")
+	await _frames(1)
+	_check(not module.is_attracting(), "finiti i %.0f s non attira piu" % tuning.siren_active)
+	await _frames(30)
+	var stopped_at := pulled.global_position
+	await _frames(n_cycle - n_on - 35)
+	_check(Machine.planar_distance(pulled.global_position, stopped_at) < 0.05 and not module.is_attracting(),
+		"nel resto del ciclo il rottamatore non e piu tirato")
+	await _frames(5)
+	_check(module.is_attracting(), "al ciclo dopo attira di nuovo")
+	module.set_active(false)
+	await _clear_enemies()
+
+
+## Da guaste nessun modulo lavora: niente scritture, vena intatta, rottami e PV com'erano, la
+## Sirena non attira.
+func _test_broken_idle(drill: Machine, shovel: Machine, welder: Machine, siren: Machine) -> void:
+	print("broken idle")
+	var tuning := _caravan.tuning
+	var n_shovel := roundi(tuning.shovel_interval * Engine.physics_ticks_per_second)
+	var lead := _caravan.lead()
+	var four: Array[Machine] = [drill, shovel, welder, siren]
+	for each in four:
+		each.modules[0].set_active(true)
+	_place_machine(drill, AREA + Vector3(-8.0, 0.0, -2.0))
+	_break(drill)
+	var vein_at := drill.global_position + Vector3(-3.0, 0.0, 0.0)
+	_scraps.add_vein(vein_at, 1.2, 4, _field.base_height_at(vein_at))
+	_place_machine(shovel, AREA + Vector3(8.0, 0.0, -2.0))
+	_break(shovel)
+	_spawn_still(shovel.global_position + Vector3(6.0, 0.0, 0.0))
+	_caravan.carried = 5
+	_place_machine(welder, AREA + Vector3(-8.0, 0.0, 2.0))
+	_break(welder)
+	lead.set_physics_process(false)
+	_place_machine(lead, welder.global_position + Vector3(0.0, 0.0, 2.0 * _toward_area_z(welder.global_position)))
+	lead.health = 3
+	_place_machine(siren, AREA + Vector3(8.0, 0.0, 2.0))
+	_break(siren)
+	var lured := _director.spawn_at(siren.global_position + Vector3(7.0, 0.0, 0.0))
+	lured.health = 9999
+	lured.speed_scale = 0.0
+	var siren_module := siren.module(&"siren") as SirenModule
+	_check(four.all(func(m: Machine) -> bool: return not m.modules[0].active), "guaste, le quattro macchine hanno il modulo spento")
+	var scraps_before := _scraps.count()
+	var lured_at := lured.global_position
+	var quiet := true
+	for k in n_shovel + 3:
+		await physics_frame
+		quiet = quiet and _run.write_queue.pending() == 0 and not siren_module.is_attracting()
+	_check(quiet, "per %d passi nessuna scrittura e la Sirena non attira" % (n_shovel + 3))
+	_check(_scraps.vein_scrap_left(vein_at) == 4 and _scraps.count() == scraps_before and _caravan.carried == 5,
+		"la vena resta a 4, nessun rottame a terra, 5 rottami a bordo")
+	_check(lead.health == 3 and Machine.planar_distance(lured.global_position, lured_at) < 0.05,
+		"il capofila resta a 3 PV, il rottamatore non si muove")
+	lead.set_physics_process(true)
+	lead.health = lead.max_health
+	for each in four:
+		each.repair(1.0)
+		each.modules[0].set_active(false)
+	_scraps._veins.clear()
+	await _clear_enemies()
+
+
+## Come `_place_player`, poi risolve il campo di percorso dal punto nuovo (machine_damage_tests).
+func _place_player_solved(at: Vector3) -> void:
+	_place_player(at)
+	_path.solve()
+
+
+## Guasta subito, senza immunita ne invulnerabilita (subito dopo il posizionamento: una macchina
+## in ordine tornerebbe al suo posto fra un passo e l'altro).
+func _break(machine: Machine) -> void:
+	machine._hit_cooldown_left = 0.0
+	machine._invulnerable_left = 0.0
+	_check(machine.take_hit(machine.health) and machine.is_broken(), "%s guasto" % machine.primary_module_id())
+
+
+## Tutte le macchine al loro posto attorno al giocatore.
+func _gather_machines() -> void:
+	for each in _caravan.machines:
+		_place_machine(each, _caravan.slot_target(each))
+
+
+## Di nuovo tutte al loro posto, ferme. Prima il capofila al suo punto: se e andato a raccogliere,
+## i posti delle altre ruoterebbero con lui.
+func _regather() -> void:
+	_place_machine(_caravan.lead(), AREA + LEAD_OFFSET)
+	_gather_machines()
+	for each in _caravan.machines:
+		await _settle(each)
+
+
+## Rottamatore fermo (stordito a lungo) e robusto.
+func _spawn_still(at: Vector3) -> Enemy:
+	var enemy := _director.spawn_at(at)
+	enemy.health = 9999
+	enemy.stun(60.0)
+	return enemy
+
+
+func _clear_enemies() -> void:
+	_director.clear_horde()
+	await _frames(20)
+
+
+## Aspetta che [param machine] stia ferma per 10 passi (al piu 5 s).
+func _settle(machine: Machine) -> bool:
+	var still := 0
+	for i in 300:
+		await physics_frame
+		still = still + 1 if Vector2(machine.velocity.x, machine.velocity.z).length() < 0.05 else 0
+		if still >= 10:
+			return true
+	return false
+
+
+## Passi fino a che la vita arriva a [param health], -1 se non ci arriva entro [param limit].
+func _steps_until_health(machine: Machine, health: int, limit: int) -> int:
+	for i in limit:
+		await physics_frame
+		if machine.health == health:
+			return i
+	return -1
+
+
+## Lato del caso: +-X secondo la macchina rispetto ad AREA (-X entro 0,5 m), cosi i punti
+## restano con z fra 12 e 20.
+func _side(machine: Machine) -> Vector3:
+	var dx := machine.global_position.x - AREA.x
+	return Vector3(signf(dx) if absf(dx) >= 0.5 else -1.0, 0.0, 0.0)
+
+
+## Verso di AREA.z lungo Z da [param p] (-1 se e gia li).
+func _toward_area_z(p: Vector3) -> float:
+	var dz := AREA.z - p.z
+	return signf(dz) if absf(dz) > 0.01 else -1.0
+
+
+func _planar_unit(v: Vector3) -> Vector3:
+	return Vector3(v.x, 0.0, v.z).normalized()
+
+
+## Il suolo in [param p] e alla base (entro 5 cm).
+func _flat(p: Vector3) -> bool:
+	return absf(_field.delta_at(p)) < 0.05
+
+
+## Per [param steps] passi nessuna scrittura in coda (controllata a ogni passo), e alla fine le
+## quote di [param points] identiche a prima.
+func _no_write(steps: int, points: Array) -> bool:
+	var before: Array[float] = []
+	for p in points:
+		before.append(_field.height_at(p))
+	var quiet := true
+	for i in steps:
+		await physics_frame
+		quiet = quiet and _run.write_queue.pending() == 0
+	for i in points.size():
+		quiet = quiet and _field.height_at(points[i]) == before[i]
+	return quiet

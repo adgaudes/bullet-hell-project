@@ -1225,7 +1225,8 @@ func _setup_loadout() -> void:
 	# (restano alla stessa altezza sul suolo quando le armi alzano il terreno).
 	if caravan != null:
 		caravan.configure({director = director, terrain_field = terrain_field, write_queue = write_queue,
-			xp_field = xp_field, light_field = light_field, run_tuning = tuning})
+			xp_field = xp_field, light_field = light_field, run_tuning = tuning, lamp_field = lamp_field,
+			extraction_pad = extraction_pad})
 	loadout = WeaponLoadout.new()
 	loadout.name = "WeaponLoadout"
 	loadout.player = player

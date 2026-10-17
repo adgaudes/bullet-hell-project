@@ -211,6 +211,30 @@ func extract_from_veins(center: Vector3, radius: float, volume: float) -> int:
 	return spawned
 
 
+## Prima vena (nell'ordine di aggiunta) con rottami il cui disco tocca il cerchio di
+## [param radius] attorno a [param center] (piano XZ), o un dizionario vuoto.
+func vein_touching(center: Vector3, radius: float) -> Dictionary:
+	for vein in _veins:
+		if vein.scrap_left > 0 and _planar_distance(vein.center, center) <= vein.radius + radius:
+			return vein
+	return {}
+
+
+## La vena di `vein_touching` cede un rottame, che nasce a terra in [param drop_at] (la
+## Trivella): stessa contabilita e stessa tinta a vena finita di `extract_from_veins`, senza
+## toccare `dug_m3`. Falso se nessuna vena tocca il cerchio.
+func take_from_vein(center: Vector3, radius: float, drop_at: Vector3) -> bool:
+	var vein := vein_touching(center, radius)
+	if vein.is_empty():
+		return false
+	vein.scrap_left -= 1
+	spawn_on_ground(drop_at)
+	print("PROTOTYPE01_VEIN_SCRAP left=%d" % vein.scrap_left)
+	if vein.scrap_left == 0 and terrain_field != null:
+		terrain_field.tint(vein.center, vein.radius, vein.get("exhausted_tint", Color.WHITE), 1.0)
+	return true
+
+
 ## Il piu basso fra [param world] e ventiquattro punti su due anelli attorno (XZ).
 func lowest_point_near(world: Vector3, radius: float) -> Vector3:
 	var best := world

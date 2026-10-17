@@ -86,6 +86,8 @@ extends Resource
 @export var drill_reach := 5.0
 @export var drill_radius := 1.2
 @export var drill_depth := 0.6
+## Fuori da una vena la Trivella scava solo dove il suolo e entro tanti metri dalla base.
+@export var drill_flat_tolerance := 0.2
 ## Pala: ogni `shovel_interval` secondi un argine alto `shovel_height` sulla base, a
 ## `shovel_gap` dal nemico piu vicino entro `shovel_reach`, per `shovel_cost` rottami.
 @export var shovel_interval := 5.0

@@ -266,7 +266,8 @@ func _test_cluster_of_three() -> void:
 	_check(turret.has_module(&"turret") and turret.module(&"turret").get_script() == TURRET_SCRIPT and turret.cargo() == null,
 		"la Torretta ha il suo modulo (TurretModule)")
 	_check(magnet.has_module(&"magnet") and magnet.module(&"magnet").get_script() == MAGNET_SCRIPT, "la Calamita ha il suo modulo (MagnetModule)")
-	_check(Caravan.module_script_for(&"drill") == MachineModule, "un tipo ancora senza script (Trivella, task 8) resta un modulo inerte")
+	_check(Caravan.module_script_for(&"nope") == MachineModule and Caravan.module_script_for(&"drill") != MachineModule,
+		"un id fuori catalogo usa il modulo inerte, la Trivella ha il suo script")
 	# Scena senza regia: niente direttore, campo dei frammenti ne taratura della run. I moduli
 	# aspettano i servizi senza errori.
 	_check((turret.module(&"turret") as TurretModule).weapon().shooter == null, "senza direttore la Torretta non spara")
