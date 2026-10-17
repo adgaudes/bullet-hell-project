@@ -204,13 +204,14 @@ func _sweep_band() -> void:
 		return
 	var center := Vector3((lo + hi) * 0.5, 0.0, 0.0)
 	var half := Vector2((hi - lo) * 0.5, RailwayDistrict.TRACK_HALF_WIDTH)
-	# Prima di spianare: col suolo alla base casse e relitti si aprirebbero da soli.
+	# Prima di spianare: col suolo alla base casse e relitti si aprirebbero da soli. reset_to_base
+	# arriva al vertice della griglia oltre il bordo e la quota di un punto viene dai vertici
+	# entro una cella: si scarta con due celle di margine, o uno appena fuori si aprirebbe.
+	var buried_rect := Rect2(lo, -half.y, hi - lo, half.y * 2.0).grow(TerrainField.SPACING * 2.0)
 	if buried_caches != null:
-		buried_caches.discard_in_rect(Rect2(lo, -half.y, hi - lo, half.y * 2.0))
-	# reset_to_base arriva al vertice della griglia oltre il bordo e la quota di un punto viene
-	# dai vertici entro una cella: un relitto appena fuori dal tratto si aprirebbe lo stesso.
+		buried_caches.discard_in_rect(buried_rect)
 	if machine_wrecks != null:
-		machine_wrecks.discard_in_rect(Rect2(lo, -half.y, hi - lo, half.y * 2.0).grow(TerrainField.SPACING * 2.0))
+		machine_wrecks.discard_in_rect(buried_rect)
 	var volume := terrain_field.reset_to_base(center, half)
 	if volume > 0.01:
 		# Il tratto spianato torna massicciata di ghiaia (i cumuli dei vagoni erano ruggine).

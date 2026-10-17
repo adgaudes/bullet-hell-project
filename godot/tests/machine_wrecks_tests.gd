@@ -81,6 +81,26 @@ func _source_stroke(strokes: Array, p: Vector3) -> int:
 	return -1
 
 
+## Ogni relitto della run a meta raggio di una pennellata coi rottami ancora alta, sopra la
+## base + 0,1, una pennellata diversa per relitto e nessuna cassa dentro.
+func _wrecks_apart(run: ArenaRun) -> bool:
+	var strokes := run.district.terrain_strokes
+	var sources := {}
+	var placed := true
+	for i in run.wrecks.count():
+		var p := run.wrecks.position_of(i)
+		var source := _source_stroke(strokes, p)
+		placed = placed and source >= 0 and run.terrain_field.height_at(p) > p.y + BuriedCaches.OPEN_MARGIN
+		if source < 0:
+			continue
+		sources[source] = true
+		var center: Vector2 = strokes[source].center
+		for j in run.caches.count():
+			var cache := run.caches.position_of(j)
+			placed = placed and Vector2(cache.x, cache.z).distance_to(center) > float(strokes[source].radius)
+	return placed and sources.size() == run.wrecks.count()
+
+
 # --- Senza scena -------------------------------------------------------------------------
 
 func _test_pick_points_exclude() -> void:
@@ -244,23 +264,7 @@ func _test_run_wrecks() -> void:
 		scene.queue_free()
 		await _frames(2)
 		return
-	# Ogni relitto a meta raggio di una pennellata coi rottami ancora alta, diversa per i due e
-	# senza casse dentro.
-	var strokes := run.district.terrain_strokes
-	var sources := {}
-	var placed := true
-	for i in wrecks.count():
-		var p := wrecks.position_of(i)
-		var source := _source_stroke(strokes, p)
-		placed = placed and source >= 0 and run.terrain_field.height_at(p) > p.y + BuriedCaches.OPEN_MARGIN
-		if source < 0:
-			continue
-		sources[source] = true
-		var center: Vector2 = strokes[source].center
-		for j in run.caches.count():
-			var cache := run.caches.position_of(j)
-			placed = placed and Vector2(cache.x, cache.z).distance_to(center) > float(strokes[source].radius)
-	_check(placed and sources.size() == 2, "sotto due cumuli diversi, sopra la base + 0,1, mai dove c'e una cassa")
+	_check(_wrecks_apart(run), "sotto due cumuli diversi, sopra la base + 0,1, mai dove c'e una cassa")
 
 	# Menu del relitto: due moduli diversi; la scelta aggiunge la macchina e non tocca i level-up.
 	run._pending_level_ups = 0
@@ -343,7 +347,8 @@ func _test_run_wrecks() -> void:
 	await _frames(2)
 
 
-## Il treno spiana un vagone con un relitto sotto: il relitto si perde senza aprirsi.
+## Ferrovia: posa lontana dalle casse anche qui; il treno spiana i vagoni e porta via casse e
+## relitti senza aprirli, anche quelli appena fuori dal tratto spianato in un passo.
 func _test_train_takes_wreck() -> void:
 	print("train")
 	var scene: Node3D = RailwayScene.instantiate()
@@ -357,18 +362,49 @@ func _test_train_takes_wreck() -> void:
 	await _frames(5)
 	var wrecks := run.wrecks
 	_check(wrecks != null and train.machine_wrecks == wrecks, "il treno conosce i relitti")
-	var wagon := {}
+	var high: Array[Dictionary] = []
 	for stroke: Dictionary in run.district.terrain_strokes:
 		var center := Vector3(stroke.center.x, 0.0, stroke.center.y)
 		if stroke.kind == &"wagon" and field.height_at(center) > field.base_height_at(center) + 0.3:
-			wagon = stroke
-			break
-	_check(not wagon.is_empty(), "un vagone ancora in piedi")
-	if wrecks == null or wagon.is_empty():
+			high.append(stroke)
+	_check(high.size() >= 2, "almeno due vagoni ancora in piedi (%d)" % high.size())
+	if wrecks == null or high.size() < 2:
 		root.remove_child(scene)
 		scene.queue_free()
 		await _frames(2)
 		return
+	_check(wrecks.count() == 2 and _wrecks_apart(run), "ferrovia: due relitti sotto cumuli o vagoni diversi, mai dove c'e una cassa")
+	var opened := [0]
+	wrecks.cache_opened.connect(func(_at: Vector3) -> void: opened[0] += 1)
+	var caches_opened := [0]
+	run.caches.cache_opened.connect(func(_at: Vector3) -> void: caches_opened[0] += 1)
+
+	# Un passo guidato a mano sul secondo vagone: reset_to_base arrotonda alla griglia di 0,5 m e
+	# porta alla base anche i punti 0,2 m prima del rettangolo del passo; la cassa e il relitto
+	# posati li si scartano, non si aprono.
+	var edge: Dictionary = high[1]
+	var vertex := floorf((edge.center.x + field._half.x) / TerrainField.SPACING) * TerrainField.SPACING - field._half.x
+	var cache_index := run.caches.count()
+	var edge_cache: Array[Vector3] = [Vector3(vertex + 0.1, 0.0, edge.center.y - 0.5)]
+	run.caches.place(edge_cache)
+	var edge_index := wrecks.count()
+	var edge_wreck: Array[Vector3] = [Vector3(vertex + 0.1, 0.0, edge.center.y + 0.5)]
+	wrecks.place(edge_wreck)
+	_check(run.caches.count() == cache_index + 1 and wrecks.count() == edge_index + 1, "cassa e relitto sotto il secondo vagone")
+	if run.caches.count() == cache_index + 1 and wrecks.count() == edge_index + 1:
+		train._swept_x = vertex + 1.0
+		train._head_x = vertex + 0.9
+		train._sweep_band()
+		await _frames(2)
+		var cache_at := run.caches.position_of(cache_index)
+		var wreck_at := wrecks.position_of(edge_index)
+		_check(field.height_at(cache_at) <= cache_at.y + BuriedCaches.OPEN_MARGIN and field.height_at(wreck_at) <= wreck_at.y + BuriedCaches.OPEN_MARGIN,
+			"il passo porta alla base anche i punti appena fuori dal suo rettangolo")
+		_check(caches_opened[0] == 0 and opened[0] == 0 and run._pending_caches == 0 and run._pending_wrecks == 0 and not paused and not menu.is_open,
+			"cassa e relitto sul bordo del passo scartati, non aperti")
+
+	# Il passaggio vero sul primo vagone, col relitto sotto.
+	var wagon: Dictionary = high[0]
 	var index := wrecks.count()
 	var points: Array[Vector3] = [Vector3(wagon.center.x, 0.0, wagon.center.y)]
 	wrecks.place(points)
@@ -376,8 +412,6 @@ func _test_train_takes_wreck() -> void:
 	if wrecks.count() > index:
 		frame = wrecks.frame_of(index)
 	_check(frame != null, "relitto sotto il vagone, col telaio")
-	var opened := [0]
-	wrecks.cache_opened.connect(func(_at: Vector3) -> void: opened[0] += 1)
 	_place(run.player, field, Vector3(0.0, 0.0, 20.0), 0.88)
 	_place(caravan.lead(), field, Vector3(0.0, 0.0, 22.0), 0.3)
 	train.warning_seconds = 1.0
@@ -388,7 +422,8 @@ func _test_train_takes_wreck() -> void:
 		if train.passes >= 1:
 			break
 	_check(train.passes >= 1, "il treno e passato")
-	_check(opened[0] == 0 and not paused and not menu.is_open and run._pending_wrecks == 0, "nessun relitto aperto, nessun menu")
+	_check(opened[0] == 0 and caches_opened[0] == 0 and not paused and not menu.is_open and run._pending_wrecks == 0 and run._pending_caches == 0,
+		"nessuna cassa o relitto aperto, nessun menu")
 	_check(wrecks.frame_of(index) == null and not is_instance_valid(frame), "il telaio se ne va col vagone")
 	paused = false
 	root.remove_child(scene)
