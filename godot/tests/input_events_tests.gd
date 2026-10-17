@@ -4,12 +4,17 @@ extends SceneTree
 ##   godot_console --headless --path godot --fixed-fps 60 --script res://tests/input_events_tests.gd
 
 const SmokeTestScene := preload("res://scenes/main/smoke_test.tscn")
+## Giocatore, rottami e carovana collegati, senza run ne nemici: Interagisci e riparazione.
+const RuinsScene := preload("res://scenes/main/ruins_arena.tscn")
 const TRIGGER_RIGHT := JOY_AXIS_TRIGGER_RIGHT
 const LEFT_X := JOY_AXIS_LEFT_X
 
 var _failures := 0
 var _player: PlayerCharacter
 var _field: TerrainField
+var _caravan: Caravan
+## Emissioni di `interact_pressed` dall'inizio del caso.
+var _interact_presses := 0
 
 
 func _initialize() -> void:
@@ -35,6 +40,18 @@ func _initialize() -> void:
 	await _test_tool_released_without_event()
 	await _reload_scene()
 	await _test_active_weapon_keys()
+	root.get_node("Scene").free()
+	await _load_ruins_scene()
+	await _test_interact_repairs(true)
+	await _test_interact_repairs(false)
+	await _test_interact_release_resets()
+	await _test_interact_echo()
+	await _test_interact_focus_out()
+	await _test_interact_held_by_hand()
+	await _test_interact_cleared_at_death()
+	var ruins := root.get_node("Scene")
+	root.remove_child(ruins)
+	ruins.queue_free()
 	# T-12: i nodi messi in coda con queue_free vanno liberati prima di uscire, o
 	# il motore segnala istanze ObjectDB perse all'uscita.
 	await _frames(2)
@@ -334,6 +351,165 @@ func _test_active_weapon_keys() -> void:
 	_check(pressed == ([0, 1] as Array[int]), "grilletto sinistro una volta sola per pressione, dorsale destro per lo slot 2 (%s)" % [pressed])
 
 
+# --- Interagisci e riparazione (carovana D-093, task 7) --------------------------------------
+# Un evento passato a Input.parse_input_event arriva al giocatore un passo dopo: i conti dei
+# passi dal parse hanno qualche passo di tolleranza.
+
+## Tenere X (o R) accanto a una macchina guasta la ripara in `repair_seconds`: in ordine, a
+## meta vita, 2 rottami in meno.
+func _test_interact_repairs(joypad: bool) -> void:
+	var button_name := "X" if joypad else "R"
+	print("interact repairs (%s)" % button_name)
+	var lead := await _prepare_repair()
+	var tuning := _caravan.tuning
+	var nominal := roundi(tuning.repair_seconds * Engine.physics_ticks_per_second)
+	var press := _interact_event(joypad)
+	Input.parse_input_event(press)
+	var step := await _steps_until_repaired(lead, nominal + 30)
+	_check(step >= nominal - 2 and step <= nominal + 4, "%s tenuto: riparata al passo %d (%d nominali)" % [button_name, step, nominal])
+	_check(lead.state == Machine.State.OK and lead.health == ceili(lead.max_health * tuning.repair_health_fraction),
+		"di nuovo in ordine con %d PV" % lead.health)
+	_check(_caravan.carried == 1, "%d rottami spesi (ne resta %d)" % [tuning.repair_cost, _caravan.carried])
+	_check(_interact_presses == 1, "una sola interact_pressed per la pressione")
+	await _release_interact(press)
+
+
+## Rilasciato a 1 s il progresso torna a zero e non si spende niente.
+func _test_interact_release_resets() -> void:
+	print("interact release resets")
+	var lead := await _prepare_repair()
+	var press := _interact_event(false)
+	Input.parse_input_event(press)
+	await _frames(61)
+	_check(_caravan.repair_progress() > 0.6, "dopo 1 s tenuto il progresso supera 0,6 (%.2f)" % _caravan.repair_progress())
+	await _release_interact(press)
+	_check(_caravan.repair_progress() == 0.0 and _caravan.carried == 3 and lead.is_broken(),
+		"rilasciato: progresso 0, 3 rottami, ancora guasta")
+
+
+## Una ripetizione automatica di R non e ne rilascio ne nuova pressione.
+func _test_interact_echo() -> void:
+	print("interact echo")
+	await _prepare_repair()
+	var press := _interact_event(false)
+	Input.parse_input_event(press)
+	await _frames(31)
+	var before := _caravan.repair_progress()
+	var echo := press.duplicate() as InputEventKey
+	echo.echo = true
+	Input.parse_input_event(echo)
+	await _frames(2)
+	_check(_player.interact_held and _caravan.repair_progress() > before and _interact_presses == 1,
+		"dopo l'eco R resta tenuto, il progresso sale (%.2f -> %.2f), una sola pressione" % [before, _caravan.repair_progress()])
+	await _release_interact(press)
+
+
+## Perdita del focus a meta (Alt-Tab): la tenuta cade subito e il progresso torna a zero.
+func _test_interact_focus_out() -> void:
+	print("interact focus out")
+	await _prepare_repair()
+	var press := _interact_event(false)
+	Input.parse_input_event(press)
+	await _frames(46)
+	_check(_caravan.repair_progress() > 0.0, "a meta tenuta il progresso sale (%.2f)" % _caravan.repair_progress())
+	_player.notification(Node.NOTIFICATION_APPLICATION_FOCUS_OUT)
+	_check(not _player.interact_held, "finestra senza focus: Interagisci rilasciato subito")
+	await _frames(2)
+	_check(_caravan.repair_progress() == 0.0, "e il progresso torna a zero")
+	await _release_interact(press)
+
+
+## La rete di sicurezza vale solo per le pressioni nate da eventi: dopo una pressione e un
+## rilascio veri, `interact_held` impostato a mano (bot, catture) resta.
+func _test_interact_held_by_hand() -> void:
+	print("interact held by hand")
+	await _prepare_repair()
+	var press := _interact_event(false)
+	Input.parse_input_event(press)
+	await _frames(2)
+	await _release_interact(press)
+	_player.interact_held = true
+	await _frames(2)
+	_check(_player.interact_held, "tenuto a mano dopo un rilascio vero: la rete non lo spegne")
+	_player.interact_held = false
+	await _frames(2)
+
+
+## Alla morte del giocatore la tenuta cade subito.
+func _test_interact_cleared_at_death() -> void:
+	print("interact cleared at death")
+	await _prepare_repair()
+	var press := _interact_event(false)
+	Input.parse_input_event(press)
+	await _frames(2)
+	_check(_player.interact_held, "R tiene Interagisci")
+	_player.set_max_health(1)
+	_player.take_damage(1)
+	_check(not _player.is_alive() and not _player.interact_held, "giocatore morto: Interagisci rilasciato subito")
+	await _release_interact(press)
+
+
+## Ogni caso parte uguale: Interagisci rilasciato, contatore azzerato, 3 rottami, capofila
+## guasto a 1,2 m dal giocatore.
+func _prepare_repair() -> Machine:
+	_player.interact_held = false
+	_interact_presses = 0
+	_caravan.carried = 3
+	var lead := _caravan.lead()
+	if lead.is_broken():
+		lead.repair(1.0)
+	var q := _player.global_position + Vector3(1.2, 0.0, 0.0)
+	lead.global_position = Vector3(q.x, _field.height_at(q) + Caravan.GROUND_CLEARANCE, q.z)
+	lead.velocity = Vector3.ZERO
+	lead.reset_physics_interpolation()
+	_break(lead)
+	await _frames(2)
+	return lead
+
+
+func _break(machine: Machine) -> void:
+	machine._hit_cooldown_left = 0.0
+	machine._invulnerable_left = 0.0
+	_check(machine.take_hit(machine.health) and machine.is_broken(), "%s guasto" % machine.primary_module_id())
+
+
+## Passi fino alla riparazione di [param machine], -1 se non arriva entro [param limit].
+func _steps_until_repaired(machine: Machine, limit: int) -> int:
+	for i in limit:
+		await physics_frame
+		if not machine.is_broken():
+			return i
+	return -1
+
+
+## Pressione vera di Interagisci: X del controller o R della tastiera.
+func _interact_event(joypad: bool) -> InputEvent:
+	if joypad:
+		var button := InputEventJoypadButton.new()
+		button.device = 0
+		button.button_index = JOY_BUTTON_X
+		button.pressed = true
+		return button
+	var key := InputEventKey.new()
+	key.physical_keycode = KEY_R
+	key.pressed = true
+	return key
+
+
+func _release_interact(press: InputEvent) -> void:
+	var release := press.duplicate() as InputEvent
+	if release is InputEventKey:
+		(release as InputEventKey).pressed = false
+	else:
+		(release as InputEventJoypadButton).pressed = false
+	Input.parse_input_event(release)
+	await _frames(2)
+
+
+func _on_interact_pressed() -> void:
+	_interact_presses += 1
+
+
 func _mouse_button(button: MouseButton, pressed: bool) -> void:
 	var event := InputEventMouseButton.new()
 	event.button_index = button
@@ -363,6 +539,17 @@ func _load_scene() -> void:
 func _reload_scene() -> void:
 	root.get_node("Scene").free()
 	await _load_scene()
+
+
+func _load_ruins_scene() -> void:
+	var scene := RuinsScene.instantiate()
+	scene.name = "Scene"
+	root.add_child(scene)
+	_player = scene.get_node("Player")
+	_field = scene.get_node("TerrainField")
+	_caravan = scene.get_node("Caravan")
+	_player.interact_pressed.connect(_on_interact_pressed)
+	await _frames(2)
 
 
 ## I valori attesi sono quelli del riferimento Unreal, non del preset di default.

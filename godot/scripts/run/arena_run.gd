@@ -146,6 +146,11 @@ var _last_sculpt_frame := -1
 ## Le zolle che saltano mentre si scava: al piu una ogni DEBRIS_EVERY_SECONDS.
 const DEBRIS_EVERY_SECONDS := 0.2
 var _debris_left := 0.0
+## Striscia della carovana: vita, stato e riparazione mostrati per macchina (indice della
+## carovana), confrontati a ogni passo senza allocare.
+var _caravan_health_shown := PackedInt32Array()
+var _caravan_state_shown := PackedInt32Array()
+var _caravan_repair_shown := PackedFloat64Array()
 
 
 func _ready() -> void:
@@ -235,6 +240,7 @@ func _physics_process(delta: float) -> void:
 	_tick_start_protection(delta)
 	_tick_markers(delta)
 	_tick_weapon_hud()
+	_tick_caravan_hud()
 	_open_next_level_up()
 
 
@@ -1256,9 +1262,15 @@ func _setup_loadout() -> void:
 	if caravan != null:
 		progression.machine_cards = func() -> Array[Dictionary]: return MachineOffers.cards(caravan, class_id, _available_modules())
 	loadout.changed.connect(_refresh_weapon_hud)
+	# Striscia della carovana: macchine, stato e capienza (`changed`) e rottami (`carried_changed`).
+	if caravan != null and hud != null:
+		caravan.changed.connect(_refresh_caravan_hud)
+		caravan.carried_changed.connect(func(_carried: int) -> void: _refresh_caravan_hud())
 	if profile != null:
 		loadout.fused.connect(func(fusion_id: StringName) -> void: profile.discover_recipe(fusion_id))
 	_refresh_weapon_hud()
+	# Il primo Cassone ha gia avvisato (`changed` nel _ready della carovana, prima del nostro).
+	_refresh_caravan_hud()
 
 
 ## Armi comuni sbloccate in Officina (D-092, par. 6.2); senza profilo nessuna.
@@ -1304,6 +1316,50 @@ func _tick_weapon_hud() -> void:
 	for active in loadout.actives():
 		values.append(active.cooldown_left / maxf(active.cooldown_total(), 0.01))
 	hud.set_weapon_cooldowns(values)
+
+
+## Striscia della carovana (D-093): caselle rifatte quando la carovana cambia (macchine, stato,
+## capienza) o cambiano i rottami; vita, stato e riparazione li segue `_tick_caravan_hud`.
+func _refresh_caravan_hud() -> void:
+	if hud == null or caravan == null:
+		return
+	var machines := caravan.machines
+	var repairing := caravan.repairing_machine()
+	_caravan_health_shown.resize(machines.size())
+	_caravan_state_shown.resize(machines.size())
+	_caravan_repair_shown.resize(machines.size())
+	var entries: Array[Dictionary] = []
+	for i in machines.size():
+		var machine := machines[i]
+		var module := MachineCatalog.find(machine.primary_module_id())
+		var repair := caravan.repair_progress() if machine == repairing else 0.0
+		entries.append({icon = module.get(&"icon", &"crate"), color = module.get(&"color", UiPalette.BORDER),
+			health = machine.health, max_health = machine.max_health, state = machine.state, repair = repair})
+		_caravan_health_shown[i] = machine.health
+		_caravan_state_shown[i] = machine.state
+		_caravan_repair_shown[i] = repair
+	hud.set_caravan(entries, caravan.carried, caravan.capacity)
+
+
+## A ogni passo: tasto Ripara vicino a una macchina guasta; le caselle si rifanno solo se vita,
+## stato o riparazione di una macchina sono cambiati (i rottami arrivano coi segnali).
+func _tick_caravan_hud() -> void:
+	if hud == null or caravan == null:
+		return
+	hud.set_caravan_prompt(caravan.repair_target() != null)
+	var machines := caravan.machines
+	if machines.size() != _caravan_health_shown.size():
+		_refresh_caravan_hud()
+		return
+	var repairing := caravan.repairing_machine()
+	var progress := caravan.repair_progress()
+	for i in machines.size():
+		var machine := machines[i]
+		var repair := progress if machine == repairing else 0.0
+		if machine.health != _caravan_health_shown[i] or machine.state != _caravan_state_shown[i] \
+				or repair != _caravan_repair_shown[i]:
+			_refresh_caravan_hud()
+			return
 
 
 ## Mira commutabile (D-089): la scelta del giocatore resta nelle impostazioni.

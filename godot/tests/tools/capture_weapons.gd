@@ -10,6 +10,10 @@ extends SceneTree
 ## bivi di PICKS), <classe>_fusion; la tuta e tinta del colore di classe.
 ## Con `--fx` (piano 5) una cattura per arma e fusione, `fx_<id>`, scattata FX_DELAY passi dopo
 ## che il suo primo effetto (gruppo `weapon_fx`) e comparso: gli effetti durano mezzo secondo.
+## Con `--caravan` (carovana D-093, task 7) una cattura sola, `caravan_strip`: striscia della
+## carovana sopra quella delle armi (Torretta guasta in riparazione, Calamita in ritirata, Faro,
+## Saldatore), tasto Ripara e frecce degli indicatori verso il basso; stampa
+## `PROTOTYPE01_CAPTURE_CARAVAN column_top=... marker_y=...` (cima della colonna, freccia in basso).
 
 ## Bivi delle catture di classe: quelli che si vedono di piu.
 const PICKS := {
@@ -20,6 +24,7 @@ const PICKS := {
 
 var _out := "../output/weapons"
 var _fx := false
+var _caravan_shot := false
 ## Passi di fisica fra la comparsa dell'effetto e la cattura.
 const FX_DELAY := 10
 var _run: ArenaRun
@@ -32,6 +37,7 @@ func _initialize() -> void:
 		if arg.begins_with("--out="):
 			_out = arg.trim_prefix("--out=")
 		_fx = _fx or arg == "--fx"
+		_caravan_shot = _caravan_shot or arg == "--caravan"
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("res://").path_join(_out))
 	var scene: Node3D = preload("res://scenes/main/arena_run.tscn").instantiate()
 	root.add_child(scene)
@@ -50,6 +56,10 @@ func _initialize() -> void:
 	var loadout := _run.loadout
 	if _fx:
 		await _fx_all(loadout)
+		quit()
+		return
+	if _caravan_shot:
+		await _caravan_strip()
 		quit()
 		return
 	if _run.class_id != ClassCatalog.DEFAULT:
@@ -201,6 +211,38 @@ func _common_kit(loadout: WeaponLoadout) -> void:
 	loadout.trigger_active(1)
 	await _frames(int(1.0 * Engine.physics_ticks_per_second))
 	await _save("mixer")
+
+
+## Carovana (task 7): cinque macchine, la Torretta guasta a 1,2 m in riparazione da 0,7 s, la
+## Calamita in ritirata; poi la run si ferma (indicatori e HUD restano come sono) e tre frecce
+## verso il basso mostrano dove si fermano sopra la colonna.
+func _caravan_strip() -> void:
+	var caravan := _run.caravan
+	_player.grant_invulnerability(60.0)
+	var machines: Dictionary[StringName, Machine] = {}
+	for id: StringName in [&"turret", &"magnet", &"beacon", &"welder"]:
+		machines[id] = caravan.add_machine(id)
+	await _frames(int(1.0 * Engine.physics_ticks_per_second))
+	var turret := machines[&"turret"]
+	var at := _player.global_position + Vector3(1.2, 0.0, 0.0)
+	turret.global_position = Vector3(at.x, _run.terrain_field.height_at(at) + Caravan.GROUND_CLEARANCE, at.z)
+	turret.velocity = Vector3.ZERO
+	turret.reset_physics_interpolation()
+	turret._hit_cooldown_left = 0.0
+	turret._invulnerable_left = 0.0
+	turret.take_hit(turret.health)
+	machines[&"magnet"].health = 1
+	_player.interact_held = true
+	await _frames(int(0.7 * Engine.physics_ticks_per_second))
+	_run.set_physics_process(false)
+	_player.interact_held = false
+	var markers: Array[Dictionary] = []
+	for direction: Vector2 in [Vector2(0.0, 1.0), Vector2(0.9, 0.44), Vector2(1.0, 0.6)]:
+		markers.append({direction = direction, distance = 30.0, color = Color.WHITE, text = "X"})
+	_run.hud.set_markers(markers)
+	await _save("caravan_strip")
+	print("PROTOTYPE01_CAPTURE_CARAVAN column_top=%.0f marker_y=%.0f"
+		% [_run.hud._corner.get_global_rect().position.y, _run.hud._marker_arrows[0].position.y])
 
 
 ## Piano 5: ogni arma e fusione da sola, creata a mano accanto al giocatore come nella suite

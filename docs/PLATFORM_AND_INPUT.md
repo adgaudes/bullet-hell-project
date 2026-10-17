@@ -35,7 +35,7 @@ Il gioco avra un menu Impostazioni con le opzioni grafiche (D-031): limite di fp
 
 ## Implementazione Godot
 
-Implementata dal 3 ottobre 2026 con la **mappa input di progetto** di Godot (`godot/project.godot`, sezione `[input]`): 12 azioni semantiche con eventi controller e tastiera/mouse e dead zone per azione. Il gameplay legge solo azioni (`Input.get_vector`, `is_action_pressed`), mai tasti fisici. Rimappatura e inversione assi si appoggeranno a `InputMap` a runtime. L'implementazione Unreal precedente usava Enhanced Input con mapping costruiti in C++.
+Implementata dal 3 ottobre 2026 con la **mappa input di progetto** di Godot (`godot/project.godot`, sezione `[input]`), dead zone per azione. Al 17 ottobre 2026 le azioni del progetto sono 21: 19 di gioco, ognuna con un evento controller e uno tastiera/mouse tranne `aim_up`/`aim_down`/`aim_left`/`aim_right` (solo stick destro: col mouse si punta) e `camera_zoom_in`/`camera_zoom_out` (solo rotellina; col controller la distanza cambia con `camera_zoom_cycle`); 2 di debug solo da tastiera, `debug_next_tuning` (Tab) e `debug_cycle_vsync` (F2). In piu `ui_accept` e `ui_cancel`, ridefinite con A e B. L'ultima arrivata e `interact` (Interagisci, X / R: riparazione della carovana, D-093). Il gameplay legge solo azioni (`Input.get_vector`, `is_action_pressed`), mai tasti fisici. Rimappatura e inversione assi si appoggeranno a `InputMap` a runtime. L'implementazione Unreal precedente usava Enhanced Input con mapping costruiti in C++.
 
 Contesti previsti, da realizzare quando servono come gruppi di azioni attivati dal gioco:
 
@@ -57,7 +57,7 @@ Non e ancora approvato e verra verificato nel prototipo.
 | Mira o orientamento costruzione | stick destro | mouse |
 | Dash/evasione | pulsante frontale | Spazio |
 | Distanza camera, tre preset: 11, 15, 20 m (D-078) | Y cicla | C cicla; rotellina avvicina/allontana |
-| Interazione | pulsante frontale | E |
+| Interagisci (interact) | X | R |
 | Modalita costruzione | dorsale o grilletto | tasto dedicato |
 | Posizionamento/conferma | grilletto o pulsante frontale | clic sinistro |
 | Rotazione/modulo | dorsali o croce direzionale | rotella/tasti |

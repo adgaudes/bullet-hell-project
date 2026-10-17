@@ -26,6 +26,8 @@ signal aim_mode_changed(mode: int)
 signal charge_finished
 ## Tasto di un'arma attiva premuto (D-092): slot 0 (E, grilletto sinistro) o 1 (F, dorsale destro).
 signal active_weapon_pressed(slot: int)
+## Prima pressione di Interagisci (X, R; carovana D-093): tenerlo premuto ripara (`interact_held`).
+signal interact_pressed
 
 enum AimMode { AUTO, MANUAL }
 ## Dopo un colpo in mira automatica il corpo guarda il bersaglio per questo tempo (O-04).
@@ -39,7 +41,7 @@ enum AimDevice { GAMEPAD, MOUSE }
 
 ## Azioni con semantica Started di Unreal: un comando per pressione.
 const STARTED_ACTIONS: Array[StringName] = [&"dash", &"terrain_tool", &"terrain_mode", &"weapon_aim_mode",
-	&"weapon_active_1", &"weapon_active_2"]
+	&"weapon_active_1", &"weapon_active_2", &"interact"]
 
 const BODY_COLOR_LINEAR := Color(1.0, 0.35, 0.02)
 const HIT_COLOR_LINEAR := Color(1.0, 0.02, 0.02)
@@ -70,6 +72,10 @@ var terrain_tool_mode: int = TerrainField.ToolMode.DIG
 const TOOL_MODE_NAMES: Array[String] = ["Dig", "Raise", "Level", "Lamp"]
 ## Pennello continuo (D-082): vero finche il tasto del tool e premuto.
 var tool_held := false
+## Interagisci tenuto premuto (riparazione della carovana, D-093), per sorgente come `tool_held`.
+## Bot, test e catture possono impostarlo a mano: la rete di sicurezza vale solo per le pressioni
+## nate da eventi.
+var interact_held := false
 ## Attesa prima del prossimo affondo dell'animazione di scavo.
 var _dig_anim_left := 0.0
 var pack: SoilPack
@@ -234,12 +240,17 @@ func _unhandled_input(event: InputEvent) -> void:
 			if not was_held:
 				if action == &"terrain_tool" and terrain_field != null:
 					tool_held = true
+				elif action == &"interact":
+					interact_held = true
+					interact_pressed.emit()
 				else:
 					_pending_actions.append(action)
 		else:
 			sources.erase(source)
 			if action == &"terrain_tool" and terrain_field != null and sources.is_empty():
 				tool_held = false
+			if action == &"interact" and sources.is_empty():
+				interact_held = false
 
 
 ## Un rilascio avvenuto in pausa non arriva mai: alla ripresa nessuna azione e
@@ -251,6 +262,7 @@ func _notification(what: int) -> void:
 		_held_actions.clear()
 		_pending_actions.clear()
 		tool_held = false
+		interact_held = false
 		_left_stick = Vector2.ZERO
 
 
@@ -317,6 +329,12 @@ func _physics_process(delta: float) -> void:
 	if tool_held and _held_actions.has(&"terrain_tool") and not Input.is_action_pressed(&"terrain_tool"):
 		tool_held = false
 		_held_actions.erase(&"terrain_tool")
+	# Lo stesso per Interagisci, ma solo con una sorgente che lo tiene davvero (non `has`: la
+	# voce resta vuota dopo ogni rilascio e spegnerebbe la tenuta impostata a mano).
+	var interact_sources: Dictionary = _held_actions.get(&"interact", {})
+	if interact_held and not interact_sources.is_empty() and not Input.is_action_pressed(&"interact"):
+		interact_held = false
+		_held_actions.erase(&"interact")
 	if terrain_field != null and tool_held:
 		_apply_brush(delta)
 	else:
@@ -813,6 +831,7 @@ func take_damage(amount: int) -> bool:
 		if _animator != null:
 			_animator.play_death()
 		tool_held = false
+		interact_held = false
 		died.emit()
 	return true
 

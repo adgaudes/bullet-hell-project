@@ -2,7 +2,7 @@ extends SceneTree
 ## Danni alle macchine della carovana (spec D-093, task 6 del piano A) sulla run vera di
 ## `arena_run.tscn`: contatto dei rottamatori e dei boss, immunita dopo un colpo, guasto e
 ## riparazione, ritirata, rigenerazione, anello, fumo e segno del guasto, guinzaglio, incastro e
-## posti murati. Eseguire con:
+## posti murati; riparazione tenendo Interagisci (task 7). Eseguire con:
 ##   godot_console --headless --path godot --fixed-fps 60 --script res://tests/machine_damage_tests.gd
 
 const RunScene := preload("res://scenes/main/arena_run.tscn")
@@ -58,6 +58,7 @@ func _initialize() -> void:
 	await _test_breakdown_and_repair()
 	await _test_regeneration()
 	await _test_retreat()
+	await _test_repair()
 	await _test_retreating_cargo_leaves_scrap()
 	await _test_walled_slots()
 	await _test_walled_retreat_point()
@@ -311,6 +312,152 @@ func _test_regeneration() -> void:
 		var at_step := 480 + 240 * k
 		ok = ok and changes[k].y == expected[k] and absi(changes[k].x - at_step) <= 30
 	_check(ok, "8 s senza colpi poi +1 PV, poi +1 ogni 4 s fino a 6, poi piu nulla (%s)" % [changes])
+
+
+# --- Riparazione tenendo Interagisci (task 7) ---------------------------------------------------
+# `interact_held` si imposta subito dopo un await: `_frames(n)` sono n passi tenuti, conti esatti.
+
+func _test_repair() -> void:
+	print("repair")
+	var tuning := _caravan.tuning
+	var nominal := roundi(tuning.repair_seconds * Engine.physics_ticks_per_second)
+	var slow := roundi(tuning.repair_seconds_without_scrap * Engine.physics_ticks_per_second)
+	# Nessun rottame a terra: i Cassoni non raccolgono durante i conti.
+	_scraps.take_near(AREA, 30.0, _scraps.count())
+	await _frames(2)
+	await _test_repair_single_cargo(nominal, slow)
+	await _test_repair_nearest_and_range(nominal, slow)
+	await _test_repair_dead_and_level_up()
+	await _test_repair_without_player()
+	# Pulizia: niente tenuta, vita del giocatore, macchine in ordine e a vita piena, rottami di
+	# partenza (i casi dopo e il controllo finale sulla Torretta lo danno per scontato).
+	_player.interact_held = false
+	_player.set_max_health(_player.max_health)
+	for each in _caravan.machines:
+		each.repair(1.0)
+		each.heal(each.max_health)
+	_caravan.carried = tuning.starting_scrap
+	_hits.clear()
+	_states.clear()
+	_changed = 0
+	await _frames(2)
+
+
+## Un solo Cassone, guasto, con 1 rottame: la riparazione resta possibile, gratis e lenta
+## (`repair_seconds_without_scrap`); intanto i lampioni sono rifiutati; il rottame resta.
+func _test_repair_single_cargo(nominal: int, slow: int) -> void:
+	var lead := _caravan.lead()
+	_check(_caravan.count_of(&"cargo") == 1, "un solo Cassone")
+	_caravan.carried = 1
+	_place_player(AREA)
+	_place_machine(lead, AREA + Vector3(-1.2, 0.0, 0.0))
+	_break(lead)
+	_player.interact_held = true
+	await _frames(nominal)
+	_check(lead.is_broken() and _caravan.carried == 1, "1 rottame: dopo %.1f s ancora guasto, il rottame resta" % _seconds(nominal))
+	_check(not _caravan.can_supply_count(lead.global_position, 1), "Cassone guasto: non fornisce (lampioni rifiutati)")
+	_check(absf(_caravan.repair_progress() - float(nominal) / slow) < 1e-6,
+		"progresso %.4f su %.1f s (%.4f atteso)" % [_caravan.repair_progress(), _seconds(slow), float(nominal) / slow])
+	await _frames(slow - nominal - 1)
+	_check(lead.is_broken(), "un passo prima di %.1f s ancora guasto" % _seconds(slow))
+	await _frames(1)
+	_check(lead.state == Machine.State.OK and lead.health == 3 and _caravan.carried == 1,
+		"dopo %.1f s riparato gratis: 3 PV, il rottame resta (%d PV, %d rottami)" % [_seconds(slow), lead.health, _caravan.carried])
+	_check(_caravan.can_supply_count(lead.global_position, 1), "di nuovo in ordine fornisce il suo rottame")
+	_player.interact_held = false
+	await _frames(1)
+
+
+## Due guaste entro 2 m: si ripara la piu vicina (2 rottami, 1,5 s). Poi la seconda, ora lenta:
+## allontanarsi oltre 2 m azzera il progresso senza spendere; tornando riparte da zero.
+func _test_repair_nearest_and_range(nominal: int, slow: int) -> void:
+	var lead := _caravan.lead()
+	_caravan.carried = 3
+	_place_player(AREA)
+	_place_machine(lead, AREA + Vector3(-1.0, 0.0, 0.0))
+	_break(lead)
+	_place_machine(_turret, AREA + Vector3(0.0, 0.0, 1.7))
+	_break(_turret)
+	_check(_caravan.repair_target() == lead, "due guaste entro 2 m: il bersaglio e la piu vicina (il Cassone a 1 m)")
+	_player.interact_held = true
+	await _frames(nominal - 1)
+	_check(lead.is_broken() and _turret.is_broken(), "un passo prima di %.1f s entrambe guaste" % _seconds(nominal))
+	await _frames(1)
+	_check(lead.state == Machine.State.OK and _turret.is_broken() and _caravan.carried == 1,
+		"riparato il Cassone, la Torretta resta guasta, 2 rottami spesi (ne resta %d)" % _caravan.carried)
+	_player.interact_held = false
+	await _frames(1)
+	_check(_caravan.repair_progress() == 0.0, "rilasciato: progresso 0")
+	_player.interact_held = true
+	await _frames(int(nominal / 2.0))
+	_check(_caravan.repairing_machine() == _turret and _caravan.repair_progress() > 0.0, "ora si ripara la Torretta (%.3f)" % _caravan.repair_progress())
+	_place_player(AREA + Vector3(0.0, 0.0, -1.0))
+	_check(Machine.planar_distance(_player.global_position, _turret.global_position) >= 2.6, "il giocatore a oltre 2,6 m")
+	await _frames(1)
+	_check(_caravan.repair_progress() == 0.0 and _turret.is_broken() and _caravan.carried == 1,
+		"oltre 2 m: progresso 0, ancora guasta, nessun rottame speso")
+	_place_player(AREA + Vector3(0.0, 0.0, 0.5))
+	_check(Machine.planar_distance(_player.global_position, _turret.global_position) <= 1.5, "di nuovo entro 1,5 m")
+	await _frames(10)
+	_check(absf(_caravan.repair_progress() - 10.0 / slow) < 1e-6,
+		"tornati: si riparte da zero, 10 passi su %.1f s (%.4f)" % [_seconds(slow), _caravan.repair_progress()])
+	_player.interact_held = false
+	await _frames(1)
+
+
+## Sulla Torretta guasta: giocatore morto, nessun avanzamento; un level-up aperto a meta tenuta
+## (pausa) azzera tenuta e progresso.
+func _test_repair_dead_and_level_up() -> void:
+	_place_player(AREA + Vector3(0.0, 0.0, 0.5))
+	_player.interact_held = true
+	await _frames(30)
+	_check(_caravan.repair_progress() > 0.0, "tenuto 0,5 s accanto alla Torretta guasta (%.3f)" % _caravan.repair_progress())
+	_player.health = 0
+	_check(_caravan.repair_target() == null, "giocatore morto: nessun bersaglio")
+	await _frames(1)
+	_check(_caravan.repair_progress() == 0.0, "e il progresso torna a zero")
+	await _frames(300)
+	_check(_caravan.repair_progress() == 0.0 and _turret.is_broken() and _caravan.carried == 1,
+		"5 s da morto tenendo: nessun avanzamento, ancora guasta, rottami invariati")
+	_player.set_max_health(_player.max_health)
+	_player.interact_held = false
+	_check(not _run.is_over, "la run non e finita")
+	await _frames(1)
+	_player.interact_held = true
+	await _frames(30)
+	_run._pending_level_ups = 1
+	await _frames(2)
+	var opened := _run.level_up_menu.is_open and paused
+	_check(opened, "level-up aperto a meta tenuta: gioco in pausa%s" % ("" if opened else " (menu non aperto: offerta vuota?)"))
+	_check(_caravan.repair_progress() > 0.0, "in pausa il progresso resta fermo (%.3f)" % _caravan.repair_progress())
+	_run._pending_level_ups = 0
+	_run.level_up_menu.close()
+	_check(not _player.interact_held, "chiuso il menu senza scegliere: Interagisci rilasciato subito")
+	await _frames(1)
+	_check(_caravan.repair_progress() == 0.0 and _caravan.carried == 1, "progresso 0, rottami invariati")
+
+
+## Una carovana senza giocatore non ripara nessuno (le suite ne costruiscono): nessun errore.
+func _test_repair_without_player() -> void:
+	# La carovana della run non ha niente da riparare: conta solo quella senza giocatore.
+	_turret.repair(1.0)
+	var lone := Caravan.new()
+	lone.tuning = _caravan.tuning
+	_scene.add_child(lone)
+	_place_machine(lone.lead(), _player.global_position + Vector3(1.2, 0.0, 0.0))
+	_break(lone.lead())
+	_player.interact_held = true
+	await _frames(30)
+	_check(lone.repair_target() == null and lone.repair_progress() == 0.0 and lone.lead().is_broken(),
+		"carovana senza giocatore: nessun bersaglio, progresso 0, resta guasta")
+	_player.interact_held = false
+	_scene.remove_child(lone)
+	lone.queue_free()
+
+
+## Secondi di [param steps] passi fisici.
+func _seconds(steps: int) -> float:
+	return float(steps) / Engine.physics_ticks_per_second
 
 
 # --- Ritirata -----------------------------------------------------------------------------------
@@ -603,6 +750,14 @@ func _place_machine(machine: Machine, at: Vector3) -> void:
 	machine.global_position = Vector3(at.x, _field.height_at(at) + Caravan.GROUND_CLEARANCE, at.z)
 	machine.velocity = Vector3.ZERO
 	machine.reset_physics_interpolation()
+
+
+## Guasta subito, senza immunita ne invulnerabilita (subito dopo il posizionamento: una macchina
+## in ordine tornerebbe al suo posto fra un passo e l'altro).
+func _break(machine: Machine) -> void:
+	machine._hit_cooldown_left = 0.0
+	machine._invulnerable_left = 0.0
+	_check(machine.take_hit(machine.health) and machine.is_broken(), "%s guasto" % machine.primary_module_id())
 
 
 ## Tutte le macchine al loro posto attorno al giocatore.

@@ -5,6 +5,8 @@ extends Node3D
 ## (`carried`, `carried_changed`, `can_supply`, `spend`, `can_supply_count`, `spend_count`):
 ## lampioni e audio non cambiano chiamata. Le macchine tengono un posto del grappolo attorno
 ## al giocatore; la direzione "dietro" e quella del compagno, applicata al capofila.
+## Riparazione (Sezione 4): tenendo Interagisci entro `repair_range` da una macchina guasta la si
+## rimette in moto (`_tick_repair`); senza giocatore nessuna riparazione.
 
 signal carried_changed(carried: int)
 ## Macchine, moduli (aggiunti, livelli, accesi o spenti), capienza o stato di una macchina
@@ -17,6 +19,8 @@ const MACHINE_SCENE_PATH := "res://scenes/caravan/machine.tscn"
 const GROUND_CLEARANCE := 0.3
 ## Rotazioni (gradi) provate attorno al giocatore per un posto o una ritirata non percorribili.
 const SLOT_SEARCH_DEGREES: Array[float] = [0.0, 30.0, -30.0, 60.0, -60.0]
+## Margine sulla durata della riparazione: la somma dei passi non la raggiunge esatta.
+const REPAIR_EPSILON := 0.0001
 
 @export var tuning: CaravanTuning
 @export var player: PlayerCharacter
@@ -65,6 +69,11 @@ var _cargo_batch := 0
 var _last_carried := 0
 ## Ultimo punto chiesto a `can_supply_count`: `spend_count` preleva dal Cassone piu vicino.
 var _supply_point := Vector3.INF
+## Riparazione in corso: la macchina, i secondi tenuti e la durata letta in questo passo (con o
+## senza rottami).
+var _repair_machine: Machine
+var _repair_elapsed := 0.0
+var _repair_duration_now := 1.0
 
 
 func _ready() -> void:
@@ -72,6 +81,12 @@ func _ready() -> void:
 		tuning = CaravanTuning.new()
 	_add_machine(&"cargo", global_position, tuning.starting_scrap)
 	print("PROTOTYPE01_CARAVAN_READY machines=%d carried=%d" % [machines.size(), carried])
+
+
+## Dopo il giocatore e prima delle macchine (figlie) e della run: l'HUD legge il progresso di
+## questo passo. In pausa (level-up) si ferma.
+func _physics_process(delta: float) -> void:
+	_tick_repair(delta)
 
 
 ## Servizi della run (`director`, `terrain_field`, `write_queue`, `xp_field`, `light_field`,
@@ -261,6 +276,64 @@ func is_scrap_claimed(point: Vector3, by: MachineModule) -> bool:
 		if claimed != null and Machine.planar_distance(claimed, point) <= CargoModule.SAME_SCRAP_M:
 			return true
 	return false
+
+
+# --- Riparazione -----------------------------------------------------------------------------
+
+## La macchina guasta piu vicina al giocatore (distanza planare) entro `repair_range`, la prima
+## nell'ordine della carovana a pari distanza; null senza giocatore vivo. Non guarda se
+## Interagisci e tenuto: serve anche al tasto nel HUD.
+func repair_target() -> Machine:
+	if not is_instance_valid(player) or not player.is_alive():
+		return null
+	var best: Machine = null
+	var best_distance := INF
+	for machine in machines:
+		if not machine.is_broken():
+			continue
+		var distance := Machine.planar_distance(machine.global_position, player.global_position)
+		if distance <= tuning.repair_range and distance < best_distance:
+			best = machine
+			best_distance = distance
+	return best
+
+
+## La macchina che si sta riparando, o null.
+func repairing_machine() -> Machine:
+	return _repair_machine
+
+
+## Avanzamento della riparazione in corso, 0..1; 0 se nessuna.
+func repair_progress() -> float:
+	if _repair_machine == null:
+		return 0.0
+	return clampf(_repair_elapsed / _repair_duration_now, 0.0, 1.0)
+
+
+## Avanza finche il giocatore tiene Interagisci e il bersaglio resta lo stesso (guasto, entro
+## raggio, giocatore vivo); altrimenti torna a zero. Dura `repair_seconds` con almeno
+## `repair_cost` rottami nella carovana, altrimenti `repair_seconds_without_scrap` (gratis).
+## Finita: paga, ripara, marker.
+func _tick_repair(delta: float) -> void:
+	var target: Machine = repair_target() if is_instance_valid(player) and player.interact_held else null
+	if target != _repair_machine:
+		_repair_machine = target
+		_repair_elapsed = 0.0
+	if target == null:
+		return
+	_repair_duration_now = tuning.repair_seconds if carried >= tuning.repair_cost else tuning.repair_seconds_without_scrap
+	_repair_elapsed += delta
+	# float64: 90 x 1/60 = 1.4999999999999996.
+	if _repair_elapsed < _repair_duration_now - REPAIR_EPSILON:
+		return
+	var machine := _repair_machine
+	# Stato azzerato prima di pagare: `pay` e `repair` avvisano subito, e l'HUD legge gia 0.
+	_repair_machine = null
+	_repair_elapsed = 0.0
+	var module_id := machine.primary_module_id()
+	var paid := tuning.repair_cost if carried >= tuning.repair_cost and pay(tuning.repair_cost, true) else 0
+	machine.repair(tuning.repair_health_fraction)
+	print("PROTOTYPE01_MACHINE_REPAIR_PAID module=%s paid=%d" % [module_id, paid])
 
 
 # --- Grappolo --------------------------------------------------------------------------------

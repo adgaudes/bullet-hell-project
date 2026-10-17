@@ -18,6 +18,8 @@ const TITLE_COLOR := UiPalette.TEXT
 const ARROW_RADIUS_RATIO := 0.36
 ## Ingombro di una scritta degli indicatori, per non sovrapporle.
 const MARKER_LABEL_SIZE := Vector2(120.0, 20.0)
+## Aria fra le frecce degli indicatori verso il basso e la colonna in basso a destra.
+const MARKER_CLEARANCE := 20.0
 
 var _xp_bar: ProgressBar
 var _level_label: Label
@@ -58,6 +60,9 @@ var _boss_box: VBoxContainer
 var _boss_bar: ProgressBar
 var _root: Control
 var _controls: ButtonPrompts
+## Colonna in basso a destra: carovana (D-093) sopra le armi (D-092).
+var _corner: VBoxContainer
+var _caravan_strip: CaravanStrip
 var _weapons: WeaponStrip
 ## Indicatori a bordo schermo (punti di interesse, boss): freccia e distanza, riusati.
 var _marker_arrows: Array[Polygon2D] = []
@@ -211,13 +216,25 @@ func _ready() -> void:
 	_controls.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT, Control.PRESET_MODE_MINSIZE, 24)
 	_controls.grow_vertical = Control.GROW_DIRECTION_BEGIN
 
-	# Armi (D-092), in basso a destra: il basso a sinistra e della riga dei comandi.
+	# Carovana (D-093) sopra le armi (D-092), in una colonna in basso a destra: il basso a
+	# sinistra e della riga dei comandi. Senza carovana la sua striscia resta nascosta.
+	_corner = VBoxContainer.new()
+	_corner.name = "CornerColumn"
+	_corner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_corner.alignment = BoxContainer.ALIGNMENT_END
+	_caravan_strip = CaravanStrip.new()
+	_caravan_strip.name = "CaravanStrip"
+	_caravan_strip.size_flags_horizontal = Control.SIZE_SHRINK_END
+	_caravan_strip.hide()
+	_corner.add_child(_caravan_strip)
 	_weapons = WeaponStrip.new()
 	_weapons.name = "WeaponStrip"
-	root.add_child(_weapons)
-	_weapons.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT, Control.PRESET_MODE_MINSIZE, 24)
-	_weapons.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	_weapons.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	_weapons.size_flags_horizontal = Control.SIZE_SHRINK_END
+	_corner.add_child(_weapons)
+	root.add_child(_corner)
+	_corner.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT, Control.PRESET_MODE_MINSIZE, 24)
+	_corner.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	_corner.grow_vertical = Control.GROW_DIRECTION_BEGIN
 
 	set_xp(0, 1, 1)
 	set_time(0.0)
@@ -235,6 +252,23 @@ func set_weapon_cooldowns(values: Array) -> void:
 
 func weapon_strip() -> WeaponStrip:
 	return _weapons
+
+
+## Carovana (D-093): una casella per macchina (CaravanStrip.set_machines) e i rottami; la striscia
+## compare alla prima chiamata.
+func set_caravan(entries: Array, carried: int, capacity: int) -> void:
+	_caravan_strip.set_machines(entries)
+	_caravan_strip.set_scrap(carried, capacity)
+	_caravan_strip.show()
+
+
+## Tasto Interagisci ("Ripara") nella striscia della carovana: vicino a una macchina guasta.
+func set_caravan_prompt(shown: bool) -> void:
+	_caravan_strip.set_prompt(shown)
+
+
+func caravan_strip() -> CaravanStrip:
+	return _caravan_strip
 
 
 ## Annuncio dell'arrivo del boss: [param direction] e nel mondo (-Z = alto dello schermo).
@@ -300,8 +334,15 @@ func set_markers(markers: Array[Dictionary]) -> void:
 		_marker_labels.append(label)
 	var size := _root.size
 	var center := size * 0.5
-	# Margini: in alto e in basso ci sono le righe dell'HUD e la barra del boss.
-	var half := Vector2(maxf(center.x - 70.0, 10.0), maxf(center.y - 160.0, 10.0))
+	# Margini: in alto e in basso ci sono le righe dell'HUD e la barra del boss. Con la striscia
+	# della carovana la colonna in basso a destra e piu alta: le frecce verso il basso restano
+	# sopra di lei (senza carovana, come prima).
+	var half_x := maxf(center.x - 70.0, 10.0)
+	var half_up := maxf(center.y - 160.0, 10.0)
+	var bottom_inset := 160.0
+	if _caravan_strip.visible:
+		bottom_inset = maxf(160.0, 24.0 + _corner.get_combined_minimum_size().y + MARKER_CLEARANCE)
+	var half_down := maxf(center.y - bottom_inset, 10.0)
 	var placed: Array[Rect2] = []
 	for i in _marker_arrows.size():
 		var shown := i < markers.size()
@@ -314,7 +355,8 @@ func set_markers(markers: Array[Dictionary]) -> void:
 		if direction.is_zero_approx():
 			direction = Vector2.UP
 		direction = direction.normalized()
-		var reach := minf(half.x / maxf(absf(direction.x), 0.001), half.y / maxf(absf(direction.y), 0.001))
+		var half_y := half_down if direction.y > 0.0 else half_up
+		var reach := minf(half_x / maxf(absf(direction.x), 0.001), half_y / maxf(absf(direction.y), 0.001))
 		var spot := center + direction * reach
 		_marker_arrows[i].position = spot
 		_marker_arrows[i].rotation = direction.angle() + PI * 0.5
@@ -500,7 +542,7 @@ func _update_gauge_text() -> void:
 		TerrainField.ToolMode.LEVEL:
 			_gauge_hint.text = "spiani: prendi o rendi terra allo zaino"
 		_:
-			_gauge_hint.text = "un lampione costa %d rottami del carretto" % _gauge_lamp_cost
+			_gauge_hint.text = "un lampione costa %d rottami dei Cassoni" % _gauge_lamp_cost
 	_gauge_hint.add_theme_color_override(&"font_color", UiPalette.DANGER.lightened(0.3) if (empty and mode == TerrainField.ToolMode.RAISE) else UiPalette.TEXT_MUTED)
 
 
