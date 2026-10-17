@@ -4,7 +4,8 @@ extends Node3D
 ## un vagone, come le vene di ScrapField. Da vicino (GLINT_RANGE) un luccichio a terra le rivela;
 ## quando il suolo nel loro punto scende entro OPEN_MARGIN dalla base (scavo del giocatore,
 ## del Demolitore o delle armi) la cassa sale, sparisce e arriva `cache_opened`. La scelta
-## delle carte la fa ArenaRun.
+## delle carte la fa ArenaRun. Le sottoclassi (MachineWrecks) cambiano colore del luccichio,
+## nome del marker, telaio a vista (`_make_frame`) e oggetto che sale (`_make_marker`).
 
 signal cache_opened(at: Vector3)
 
@@ -28,8 +29,13 @@ const VANISH_SECONDS := 0.12
 @export var terrain_field: TerrainField
 ## Chi deve stare entro GLINT_RANGE perche il luccichio si veda (il giocatore).
 @export var player: Node3D
+## Colore del luccichio e nome nel marker `PROTOTYPE01_<nome>_OPENED`: le sottoclassi li
+## cambiano nel loro `_init()`.
+var glint_color := GLINT_COLOR
+var marker_name := "CACHE"
 
-## { position: Vector3 (alla quota di base), opened: bool, glint: MeshInstance3D }.
+## { position: Vector3 (alla quota di base), opened: bool, glint: MeshInstance3D,
+## frame: Node3D (null per le casse) }.
 var _caches: Array[Dictionary] = []
 var _glint_mesh := QuadMesh.new()
 var _glint_material := StandardMaterial3D.new()
@@ -47,7 +53,7 @@ func _ready() -> void:
 	_glint_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	_glint_material.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
 	_glint_material.no_depth_test = true
-	_glint_material.albedo_color = GLINT_COLOR
+	_glint_material.albedo_color = glint_color
 	_glint_material.albedo_texture = _star_texture()
 	_crate_mesh.size = Vector3.ONE * CRATE_SIZE
 	_crate_material.albedo_color = CRATE_COLOR.linear_to_srgb()
@@ -73,7 +79,13 @@ func place(points: Array[Vector3]) -> void:
 		glint.visible = false
 		add_child(glint)
 		glint.global_position = Vector3(at.x, ground + GLINT_LIFT, at.z)
-		_caches.append({position = at, opened = false, glint = glint})
+		var index := _caches.size()
+		_caches.append({position = at, opened = false, glint = glint, frame = null})
+		var frame := _make_frame(index)
+		if frame != null:
+			add_child(frame)
+			frame.global_position = Vector3(at.x, ground, at.z)
+			_caches[index].frame = frame
 	set_process(closed_count() > 0)
 
 
@@ -99,12 +111,32 @@ func glint_visible(index: int) -> bool:
 	return not _caches[index].opened and glint.visible
 
 
+## Telaio a vista della voce [param index]: null per le casse e dopo l'apertura o lo scarto.
+func frame_of(index: int) -> Node3D:
+	return _caches[index].frame
+
+
+## Telaio sempre a vista dalla posa all'apertura (o allo scarto), alla quota del suolo:
+## le casse non ne hanno.
+func _make_frame(_index: int) -> Node3D:
+	return null
+
+
+## Cio che sale dal suolo all'apertura (la cassa), poi rimpicciolisce e sparisce.
+func _make_marker(_index: int) -> Node3D:
+	var crate := MeshInstance3D.new()
+	crate.mesh = _crate_mesh
+	crate.material_override = _crate_material
+	return crate
+
+
 ## Punti per le casse: fra le pennellate con rottami (cumuli, vagoni), una cassa per pennellata
 ## a meta raggio dal centro in una direzione a caso; mai piu punti di quante sono le pennellate.
-static func pick_points(district_strokes: Array, rng: RandomNumberGenerator, count: int) -> Array[Vector3]:
+## Le pennellate che contengono (XZ) un punto di [param exclude] si saltano.
+static func pick_points(district_strokes: Array, rng: RandomNumberGenerator, count: int, exclude: Array[Vector3] = []) -> Array[Vector3]:
 	var candidates: Array[Dictionary] = []
 	for stroke: Dictionary in district_strokes:
-		if int(stroke.get(&"scrap", 0)) > 0:
+		if int(stroke.get(&"scrap", 0)) > 0 and not _holds_any(stroke, exclude):
 			candidates.append(stroke)
 	var points: Array[Vector3] = []
 	while points.size() < count and not candidates.is_empty():
@@ -116,6 +148,14 @@ static func pick_points(district_strokes: Array, rng: RandomNumberGenerator, cou
 	return points
 
 
+static func _holds_any(stroke: Dictionary, points: Array[Vector3]) -> bool:
+	var center: Vector2 = stroke.center
+	for e in points:
+		if Vector2(e.x, e.z).distance_to(center) <= float(stroke.radius):
+			return true
+	return false
+
+
 ## Casse chiuse col centro nel rettangolo XZ: perse senza aprirsi (il treno spazza i vagoni,
 ## come le vene). Va chiamata prima di riportare il suolo alla base. Ritorna quante.
 func discard_in_rect(rect: Rect2) -> int:
@@ -125,6 +165,7 @@ func discard_in_rect(rect: Rect2) -> int:
 		if not cache.opened and rect.has_point(Vector2(p.x, p.z)):
 			cache.opened = true
 			(cache.glint as MeshInstance3D).queue_free()
+			_free_frame(cache)
 			discarded += 1
 	if discarded > 0:
 		set_process(closed_count() > 0)
@@ -171,7 +212,8 @@ func _on_region_changed(aabb: AABB) -> void:
 ## luccichio segue il suolo nuovo.
 func _check_rect(rect: Rect2) -> void:
 	var area := rect.grow(0.5)
-	for cache in _caches:
+	for i in _caches.size():
+		var cache: Dictionary = _caches[i]
 		if cache.opened:
 			continue
 		var p: Vector3 = cache.position
@@ -179,28 +221,36 @@ func _check_rect(rect: Rect2) -> void:
 			continue
 		var ground := terrain_field.height_at(p)
 		if ground <= p.y + OPEN_MARGIN:
-			_open(cache, ground)
+			_open(i, ground)
 		else:
 			(cache.glint as MeshInstance3D).global_position.y = ground + GLINT_LIFT
+			if cache.frame != null:
+				(cache.frame as Node3D).global_position.y = ground
 
 
-func _open(cache: Dictionary, ground: float) -> void:
+func _open(index: int, ground: float) -> void:
+	var cache: Dictionary = _caches[index]
 	cache.opened = true
 	(cache.glint as MeshInstance3D).queue_free()
+	_free_frame(cache)
 	var p: Vector3 = cache.position
 	# La cassa sale dal suolo in RISE_SECONDS e sparisce; anche a gioco fermo (si apre la scelta).
-	var crate := MeshInstance3D.new()
-	crate.mesh = _crate_mesh
-	crate.material_override = _crate_material
-	add_child(crate)
-	crate.global_position = Vector3(p.x, ground, p.z)
+	var rising := _make_marker(index)
+	add_child(rising)
+	rising.global_position = Vector3(p.x, ground, p.z)
 	var tween := create_tween()
 	tween.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
-	tween.tween_property(crate, "position:y", crate.position.y + RISE_HEIGHT, RISE_SECONDS).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
-	tween.parallel().tween_property(crate, "rotation:y", PI, RISE_SECONDS)
-	tween.tween_property(crate, "scale", Vector3.ONE * 0.05, VANISH_SECONDS)
-	tween.tween_callback(crate.queue_free)
+	tween.tween_property(rising, "position:y", rising.position.y + RISE_HEIGHT, RISE_SECONDS).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+	tween.parallel().tween_property(rising, "rotation:y", PI, RISE_SECONDS)
+	tween.tween_property(rising, "scale", Vector3.ONE * 0.05, VANISH_SECONDS)
+	tween.tween_callback(rising.queue_free)
 	if closed_count() == 0:
 		set_process(false)
-	print("PROTOTYPE01_CACHE_OPENED x=%.1f z=%.1f" % [p.x, p.z])
+	print("PROTOTYPE01_%s_OPENED x=%.1f z=%.1f" % [marker_name, p.x, p.z])
 	cache_opened.emit(p)
+
+
+func _free_frame(cache: Dictionary) -> void:
+	if cache.frame != null:
+		(cache.frame as Node3D).queue_free()
+		cache.frame = null

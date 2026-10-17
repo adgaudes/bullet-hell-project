@@ -115,8 +115,11 @@ func _planar(v: Vector3) -> Vector2:
 
 
 ## La fascia dei binari e l'unico corridoio garantito libero da rovine: i test di
-## carica si fanno li, con i vagoni gia spianati e il cortile di partenza non protetto.
+## carica si fanno li, con i vagoni gia spianati e il cortile di partenza non protetto. Casse
+## e relitti dei vagoni si scartano prima: col suolo alla base si aprirebbero e il loro menu
+## fermerebbe il gioco (come fa il treno).
 func _clear_tracks() -> void:
+	_run.discard_buried_in_rect((_run.district as RailwayDistrict).track_rect())
 	_field.reset_to_base(Vector3.ZERO, Vector2(_run.district.half_x(), RailwayDistrict.TRACK_HALF_WIDTH))
 	_run._start_protect_left = 0.0
 	_field.set_protected(Vector3.ZERO, _field.tuning.start_protected_radius_m, false)

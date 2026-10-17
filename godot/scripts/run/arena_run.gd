@@ -112,6 +112,12 @@ var caches: BuriedCaches
 var _pending_caches := 0
 var _cache_menu := false
 const CACHE_FALLBACK_SCRAP := 2
+## Relitti sepolti (D-093): aperti e non ancora scelti; `_wreck_menu` vale se la scelta aperta
+## viene da un relitto; carte estratte col seme della run + 7. I numeri sono in CaravanTuning.
+var wrecks: MachineWrecks
+var _pending_wrecks := 0
+var _wreck_menu := false
+var _wreck_rng := RandomNumberGenerator.new()
 ## Punti di interesse ancora da indicare: { center: Vector3, text: String, color: Color, kind: StringName }.
 var _marker_targets: Array[Dictionary] = []
 var _marker_refresh_left := 0.0
@@ -672,6 +678,7 @@ func _build_terrain_relief() -> void:
 		district.apply_base_relief(terrain_field)
 	district.apply_strokes(terrain_field, _scrap_field())
 	_place_caches()
+	_place_wrecks()
 	var margin: float = terrain_field.tuning.protected_radius_m
 	for rect: Rect2 in district.block_rects():
 		var center := rect.get_center()
@@ -696,9 +703,7 @@ func _build_terrain_relief() -> void:
 func _place_caches() -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = run_seed + 5
-	var raised := district.terrain_strokes.filter(func(stroke: Dictionary) -> bool:
-		var center := Vector3(stroke.center.x, 0.0, stroke.center.y)
-		return terrain_field.height_at(center) > terrain_field.base_height_at(center) + BuriedCaches.OPEN_MARGIN)
+	var raised := _raised_strokes()
 	caches = BuriedCaches.new()
 	caches.name = "BuriedCaches"
 	caches.terrain_field = terrain_field
@@ -709,6 +714,46 @@ func _place_caches() -> void:
 	if train_event != null:
 		train_event.buried_caches = caches
 	print("PROTOTYPE01_CACHE_PLACED count=%d" % caches.count())
+
+
+## Relitti sepolti (D-093, Sezione 5): `wrecks_per_level` sotto i cumuli e i vagoni ancora in
+## piedi, mai sotto la pennellata di una cassa (seme della run + 6). Solo con la carovana.
+func _place_wrecks() -> void:
+	if caravan == null:
+		return
+	_wreck_rng.seed = run_seed + 7
+	var rng := RandomNumberGenerator.new()
+	rng.seed = run_seed + 6
+	var exclude: Array[Vector3] = []
+	for i in caches.count():
+		exclude.append(caches.position_of(i))
+	wrecks = MachineWrecks.new()
+	wrecks.name = "MachineWrecks"
+	wrecks.terrain_field = terrain_field
+	wrecks.player = player
+	add_child(wrecks)
+	wrecks.place(BuriedCaches.pick_points(_raised_strokes(), rng, caravan.tuning.wrecks_per_level, exclude))
+	wrecks.cache_opened.connect(_on_wreck_opened)
+	if train_event != null:
+		train_event.machine_wrecks = wrecks
+	print("PROTOTYPE01_WRECK_PLACED count=%d" % wrecks.count())
+
+
+## Pennellate del quartiere ancora alte dopo la posa (sulla fascia dei binari i cumuli sono
+## spianati): sotto ci vanno casse e relitti.
+func _raised_strokes() -> Array:
+	return district.terrain_strokes.filter(func(stroke: Dictionary) -> bool:
+		var center := Vector3(stroke.center.x, 0.0, stroke.center.y)
+		return terrain_field.height_at(center) > terrain_field.base_height_at(center) + BuriedCaches.OPEN_MARGIN)
+
+
+## Casse e relitti chiusi col centro nel rettangolo XZ: persi senza aprirsi. Va chiamata prima
+## di riportare il suolo alla base, altrimenti si aprono e la loro scelta ferma il gioco.
+func discard_buried_in_rect(rect: Rect2) -> void:
+	if caches != null:
+		caches.discard_in_rect(rect)
+	if wrecks != null:
+		wrecks.discard_in_rect(rect)
 
 
 ## Prato a particelle quando Terrain3D e pronto (playtest del 14 ottobre 2026, O-09).
@@ -990,10 +1035,11 @@ func _on_xp_collected(amount: int) -> void:
 func _open_next_level_up() -> void:
 	if level_up_menu.is_open or is_over:
 		return
-	# Casse e level-up in coda (D-092): un menu alla volta, prima le casse.
-	if _open_next_cache() or _pending_level_ups <= 0:
+	# Casse, relitti e level-up in coda (D-092, D-093): un menu alla volta, in quest'ordine.
+	if _open_next_cache() or _open_next_wreck() or _pending_level_ups <= 0:
 		return
 	_cache_menu = false
+	_wreck_menu = false
 	var offer := progression.roll_offer()
 	if offer.is_empty():
 		_pending_level_ups = 0
@@ -1005,6 +1051,9 @@ func _open_next_level_up() -> void:
 
 
 func _on_upgrade_chosen(id: StringName) -> void:
+	if _wreck_menu:
+		_on_wreck_card(id)
+		return
 	if WeaponOffers.is_weapon_card(id):
 		_on_weapon_card(id)
 		return
@@ -1071,6 +1120,7 @@ func _open_next_cache() -> bool:
 		var offer := progression.roll_weapon_offer(WeaponOffers.cards(loadout, class_id, _unlocked_weapons()))
 		if not offer.is_empty():
 			_cache_menu = true
+			_wreck_menu = false
 			var ids := offer.map(func(u: Dictionary) -> String: return str(u.id))
 			print("PROTOTYPE01_CACHE_OFFER offer=%s" % ",".join(PackedStringArray(ids)))
 			level_up_menu.open(offer, {}, progression.level, "CASSA SEPOLTA", "scegli un'arma")
@@ -1091,6 +1141,58 @@ func _cache_scrap_fallback() -> void:
 			_scrap_field().spawn_on_ground(player.global_position + Vector3(0.8 * (i + 1), 0.0, 0.0))
 	hud.show_notice("CASSA SEPOLTA: +%d ROTTAMI" % CACHE_FALLBACK_SCRAP, 3.0, RunHud.TITLE_COLOR)
 	print("PROTOTYPE01_CACHE_SCRAP given=%d" % given)
+
+
+## Relitto scoperto (dallo scavo, a meta passo): la scelta si apre a fine passo, dopo le casse.
+func _on_wreck_opened(_at: Vector3) -> void:
+	if is_over:
+		return
+	_pending_wrecks += 1
+
+
+## Prossimo relitto in coda: `wreck_choices` carte "Nuova macchina" di moduli diversi; a
+## carovana piena `wreck_full_scrap` rottami e un avviso al posto del menu. Vero se ha aperto il menu.
+func _open_next_wreck() -> bool:
+	while _pending_wrecks > 0:
+		var offer: Array[Dictionary] = []
+		if caravan != null and caravan.has_room():
+			offer = MachineOffers.wreck_cards(_available_modules(), class_id, _wreck_rng, caravan.tuning.wreck_choices)
+		if not offer.is_empty():
+			_wreck_menu = true
+			_cache_menu = false
+			var ids := offer.map(func(u: Dictionary) -> String: return str(u.id))
+			print("PROTOTYPE01_WRECK_OFFER offer=%s" % ",".join(PackedStringArray(ids)))
+			level_up_menu.open(offer, {}, progression.level, "RELITTO SEPOLTO", "scegli una macchina")
+			return true
+		_pending_wrecks -= 1
+		_wreck_scrap_fallback()
+	return false
+
+
+## Carta del relitto (D-093): la macchina col modulo scelto, al suo posto nella carovana.
+## Consuma il relitto, non un level-up, e non scrive i livelli: la carta resta "NUOVO".
+func _on_wreck_card(id: StringName) -> void:
+	var module := MachineOffers.module_of(id)
+	_wreck_menu = false
+	_pending_wrecks -= 1
+	if caravan != null:
+		caravan.add_machine(module)
+	print("PROTOTYPE01_WRECK_CHOSEN module=%s" % module)
+	_open_next_level_up.call_deferred()
+
+
+## Relitto a carovana piena: i rottami vanno nei Cassoni, quelli che non ci stanno restano a
+## terra vicino al giocatore, come per la cassa.
+func _wreck_scrap_fallback() -> void:
+	if caravan == null:
+		return
+	var amount := caravan.tuning.wreck_full_scrap
+	var given := caravan.add_scrap(amount)
+	if _scrap_field() != null:
+		for i in amount - given:
+			_scrap_field().spawn_on_ground(player.global_position + Vector3(0.8 * (i + 1), 0.0, 0.0))
+	hud.show_notice("RELITTO: +%d ROTTAMI" % amount, 3.0, RunHud.TITLE_COLOR)
+	print("PROTOTYPE01_WRECK_SCRAP given=%d" % given)
 
 
 ## Effetto di un upgrade al suo nuovo livello.

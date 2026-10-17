@@ -51,6 +51,8 @@ const DIRECTION_NAMES: Dictionary[int, String] = {-1: "EST", 1: "OVEST"}
 @export var hud: RunHud
 ## Casse sepolte nei vagoni (D-092): il treno le spazza via come le vene, senza aprirle.
 var buried_caches: BuriedCaches
+## Relitti sepolti (D-093): come le casse, spazzati via senza aprirsi.
+var machine_wrecks: MachineWrecks
 
 var warning_seconds := 10.0
 var speed := 18.0
@@ -202,9 +204,13 @@ func _sweep_band() -> void:
 		return
 	var center := Vector3((lo + hi) * 0.5, 0.0, 0.0)
 	var half := Vector2((hi - lo) * 0.5, RailwayDistrict.TRACK_HALF_WIDTH)
-	# Prima di spianare: col suolo alla base le casse si aprirebbero da sole.
+	# Prima di spianare: col suolo alla base casse e relitti si aprirebbero da soli.
 	if buried_caches != null:
 		buried_caches.discard_in_rect(Rect2(lo, -half.y, hi - lo, half.y * 2.0))
+	# reset_to_base arriva al vertice della griglia oltre il bordo e la quota di un punto viene
+	# dai vertici entro una cella: un relitto appena fuori dal tratto si aprirebbe lo stesso.
+	if machine_wrecks != null:
+		machine_wrecks.discard_in_rect(Rect2(lo, -half.y, hi - lo, half.y * 2.0).grow(TerrainField.SPACING * 2.0))
 	var volume := terrain_field.reset_to_base(center, half)
 	if volume > 0.01:
 		# Il tratto spianato torna massicciata di ghiaia (i cumuli dei vagoni erano ruggine).

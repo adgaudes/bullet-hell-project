@@ -192,9 +192,9 @@ func _test_half_dug_wagon() -> void:
 	print("half dug wagon")
 	_scrap.take_in_rect(Rect2(-200.0, -70.0, 400.0, 140.0), 1000)
 	_scrap._veins.clear()
-	# Il rilievo ricaricato torna alla base ovunque: le casse sepolte si aprirebbero tutte
-	# e la loro scelta fermerebbe il gioco (D-092). Qui non servono.
-	_run.caches.discard_in_rect(Rect2(-200.0, -70.0, 400.0, 140.0))
+	# Il rilievo ricaricato torna alla base ovunque: casse e relitti sepolti si aprirebbero
+	# tutti e la loro scelta fermerebbe il gioco (D-092, D-093). Qui non servono.
+	_run.discard_buried_in_rect(Rect2(-200.0, -70.0, 400.0, 140.0))
 	_field.load_base(_run.base_relief_path(), _run.district.layout_seed)
 	_run.district.apply_strokes(_field, _scrap)
 	var wagon: Dictionary = _wagons()[0]
