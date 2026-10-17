@@ -10,7 +10,7 @@
 
 **Spec:** `docs/superpowers/specs/2026-10-15-caravan-machines-design.md` (Sezioni 1, 4, 5, 6, 7; "Architettura del codice"; "Valori di partenza"; "Verifica"). Convenzioni dai piani delle armi `docs/superpowers/plans/2026-10-15-weapons-*.md` (servizi, carte dinamiche, casse). Ricognizione del codice (16 ottobre 2026, prima del piano A): rapporti `r_*.txt` in `.superpowers/caravan-plan-a/recon/` (locali, ignorati da Git; le righe citate vanno riverificate sul codice attuale).
 
-**Stato:** task 1-6 fatti il 16 ottobre 2026, task 7-9 il 17 ottobre; prossimo il task 10 (bot, benchmark, catture, gate, documenti), dopo il playtest del proprietario.
+**Stato:** task 1-6 fatti il 16 ottobre 2026, task 7-9 il 17 ottobre; task 10 a meta (commit WIP b5498bb del 17 ottobre sera: strumenti scritti, non revisionati; regole in `.superpowers/sdd/.../task-10-rulings.md`). Alla ripresa: finire il task 10, poi la revisione finale del branch.
 
 ## Global Constraints
 
