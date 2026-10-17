@@ -6,7 +6,9 @@ extends SceneTree
 ##   godot_console --headless --path godot --fixed-fps 60 --script res://tests/tools/simulate_runs.gd -- --bots=kiter --seeds=1-10
 ## Opzioni (dopo `--`):
 ##   --bots=passive,novice,kiter,scrapper   bot da provare (default: tutti)
-##   --seeds=1-10 | --seeds=3,7,9    semi delle run (default 1-5); `--seed=N` = una sola
+##   --seeds=1-10 | --seeds=3,7,9    semi delle run (default 1-5); `--seed=N` = una sola, mai
+##                                   insieme a `--seeds=`: ArenaRun legge prima `--seed=`
+##                                   (RunLaunchOptions) e casse, relitti ed eventi seguirebbero quello
 ##   --profile=base_health:1,cargo:2 upgrade permanenti gia comprati (profilo in memoria)
 ##   --max-seconds=1500              oltre questo tempo di gioco la run e interrotta
 ##   --hz=60                         passi fisici al secondo (il gioco ne usa 120)
@@ -15,7 +17,9 @@ extends SceneTree
 ##   --level=railway                 livello da simulare (LevelCatalog; default il quartiere)
 ##   Lo scrapper, di notte, piazza un lampione dove sta (3 rottami, max 6): riga `lamps=`.
 ## Con `--fixed-fps 60` e 60 passi fisici al secondo una run e ripetibile: stesso
-## seme e stesso bot danno la stessa riga. Senza finestra gira gia alla massima
+## seme e stesso bot danno la stessa riga (il seme arriva ad ArenaRun dalla variabile
+## `PROTOTYPE01_SEED`, impostata prima di istanziare la scena: casse, relitti, treno,
+## terremoto ed eventi del mondo lo seguono). Senza finestra gira gia alla massima
 ## velocita della CPU (una run fino al boss costa 2-5 minuti): per fare prima si
 ## lanciano piu processi in parallelo, uno per bot o per gruppo di semi. Piu passi
 ## fisici per frame (`--fixed-fps 10`) non accelerano in modo misurabile e possono
@@ -26,18 +30,29 @@ extends SceneTree
 ## Bot:
 ##   passive   fermo nel cortile di partenza;
 ##   novice    vede solo i nemici vicini, reagisce ogni mezzo secondo, non cerca
-##             l'esperienza e prende sempre la prima carta;
+##             l'esperienza e prende sempre la prima carta (anche una Nuova macchina);
 ##   kiter     si allontana dai nemici e raccoglie esperienza, non tocca il terreno;
 ##   scrapper  come kiter, e in piu scava quando puo per riempire il cassone e
 ##             prende presto la carta del cassone. Sul rilievo continuo (D-085) scava
 ##             la vena piu vicina (entro 70 m) tenendo il pennello finche ha rottami e,
-##             dopo 60 s di livello, alza una volta un argine di 3 s dove sta.
+##             dopo 60 s di livello, alza una volta un argine di 3 s dove sta. Prima delle
+##             vene, anche col cassone pieno, scava il relitto sepolto piu vicino (D-093):
+##             se in 20 s di scavo a portata il suolo sul relitto non scende di 5 cm lo
+##             lascia per la run (riga `PROTOTYPE01_SIM_WRECK_SKIP`).
+## Carovana (D-093): tutti i bot tranne passive riparano. Con una macchina guasta e nessun
+## nemico entro 3,5 m vanno alla guasta piu vicina e, entro 1,5 m, tengono Interagisci
+## finche non e riparata, anche coi nemici addosso; si staccano oltre 1,8 m. Nessuna soglia
+## di rottami (scelta 3 del piano A: sotto i 2 la riparazione e gratis e dura 4,5 s). Fra le
+## carte, "Nuova macchina" viene subito dopo le armi (kiter e scrapper; il novice prende la prima).
 ## Col boss in campo i bot che si muovono gli girano attorno a portata di chiodatrice.
 ## Movimento e mira passano dalle azioni di input (`Input.action_press`), il tool
 ## da un `InputEventAction`; le carte del level-up da `LevelUpMenu.press`.
-## Marker: PROTOTYPE01_SIM (una riga per run), PROTOTYPE01_SIM_SUMMARY,
-## PROTOTYPE01_SIM_AFFORD (run necessarie per ogni livello dell'Officina),
-## PROTOTYPE01_SIM_BRUSH (ogni pennellata del bot sul rilievo: tempo, modo, punto).
+## Marker: PROTOTYPE01_SIM (una riga per run; con `machines` = macchine a fine run, Cassone
+## compreso, `repairs` = riparazioni finite dal bot, `repairs_free` = quelle gratis, `wrecks` =
+## relitti aperti da chiunque: il novice non scava, per lui sono armi o boss),
+## PROTOTYPE01_SIM_SUMMARY, PROTOTYPE01_SIM_AFFORD (run necessarie per ogni livello
+## dell'Officina), PROTOTYPE01_SIM_BRUSH (ogni pennellata del bot sul rilievo: tempo, modo,
+## punto), PROTOTYPE01_SIM_WRECK_SKIP (relitto lasciato dallo scrapper).
 
 ## Scena del livello scelto con `--level=` (default: il primo del catalogo).
 var _scene_path := LevelCatalog.scene_of(LevelCatalog.first())
@@ -56,14 +71,14 @@ const LOOKAHEAD := 3.0
 const BOSS_ORBIT_DISTANCE := 5.5
 const BOSS_TOO_CLOSE := 3.0
 ## Priorita fissa delle carte dopo le armi (D-092: carte arma e trasformazioni vincono
-## sempre): prima il danno, poi la vita, poi il resto. Torretta veloce e Calamita potente
-## compaiono solo con quel modulo in carovana (task 4 di D-093): fino alle carte Nuova
-## macchina (task 5) solo per il Meccanico con la Torretta fissa.
+## sempre) e dopo le carte "Nuova macchina" (D-093; riconosciute dal nome, il menu non
+## espone gli id): prima il danno, poi la vita, poi il resto. Torretta veloce e Calamita
+## potente compaiono solo con quel modulo in carovana.
 const CARD_PRIORITY: Array[StringName] = [
 	&"turret_rate", &"patch", &"boots",
 	&"magnet_range", &"reach", &"companion_cargo", &"dig_blast", &"spiked_wall",
 ]
-## Lo scrapper vuole il cassone grande subito dopo le armi.
+## Lo scrapper vuole il cassone grande subito dopo le armi e le macchine.
 const CARD_PRIORITY_SCRAPPER: Array[StringName] = [
 	&"companion_cargo", &"turret_rate", &"patch",
 	&"boots", &"magnet_range", &"reach", &"dig_blast", &"spiked_wall",
@@ -99,6 +114,16 @@ const VEIN_WALK_SAFE_M := 8.0
 const BRUSH_SAFE_M := 3.5
 const RAMPART_AT_SECONDS := 60.0
 const RAMPART_HOLD_SECONDS := 3.0
+## Riparazione: il bot si ferma entro REPAIR_STOP_M dalla guasta e tiene Interagisci finche
+## resta entro REPAIR_HOLD_M (`repair_range` 2 m meno 0,2 di margine).
+const REPAIR_STOP_M := 1.5
+const REPAIR_HOLD_M := 1.8
+## Un relitto a portata il cui suolo non scende di WRECK_PROGRESS_M in WRECK_GIVE_UP_S
+## secondi (punto protetto, bot troppo vicino) si lascia per il resto della run.
+const WRECK_GIVE_UP_S := 20.0
+const WRECK_PROGRESS_M := 0.05
+## Inizio del nome delle carte macchina (MachineOffers.card): il menu non espone gli id.
+const MACHINE_CARD_NAME := "Nuova macchina: "
 var _director: EnemyDirector
 var _path: PathField
 var _scrap: ScrapField
@@ -121,6 +146,21 @@ var _stuck_seconds := 0.0
 var _escape_left := 0.0
 var _digs := 0
 var _hits := 0
+## Riparazione (D-093): macchina guasta puntata, Interagisci tenuto, e se il prossimo fine
+## riparazione e del bot (la riparazione in corso e la sua, quasi finita) e gratis.
+var _repair_target: Machine
+var _repair_holding := false
+var _repair_mine := false
+var _repair_free := false
+var _repairs := 0
+var _repairs_free := 0
+## Relitti aperti nella run (da chiunque), relitto puntato, quelli lasciati e lo scavo a portata
+## senza progresso: quota piu bassa vista sul relitto e secondi da allora.
+var _wrecks := 0
+var _wreck_index := -1
+var _wrecks_skipped: Array[int] = []
+var _wreck_best := INF
+var _wreck_stall := 0.0
 ## Stato all'arrivo del boss: vita e livello (-1 se non e mai arrivato).
 var _health_at_boss := -1
 var _level_at_boss := -1
@@ -197,6 +237,9 @@ func _simulate(bot: StringName, run_seed: int) -> Dictionary:
 		if _profile_levels[id] > 0:
 			profile.levels[id] = _profile_levels[id]
 
+	# Il seme arriva al `_ready` di ArenaRun da qui (RunLaunchOptions.run_seed), sopra a quello
+	# del gate: casse (+5), relitti (+6, +7), treno (+3), terremoto (+4), eventi (+5).
+	OS.set_environment("PROTOTYPE01_SEED", str(run_seed))
 	_scene = (load(_scene_path) as PackedScene).instantiate()
 	root.add_child(_scene)
 	_run = _scene.get_node(^"Run")
@@ -210,9 +253,12 @@ func _simulate(bot: StringName, run_seed: int) -> Dictionary:
 	_scrap = _scene.get_node(^"ScrapField")
 	_xp = _scene.get_node(^"XpField")
 	_menu = _scene.get_node(^"LevelUpMenu")
-	# `_ready` della scena arriva al primo frame; poi il seme, come fa ArenaRun con
-	# `--seed=N` (nessun generatore e stato ancora usato).
+	# Il seme e gia arrivato al `_ready` della scena (primo frame) dalla variabile d'ambiente
+	# impostata prima di istanziarla; qui i generatori tornano al seme dopo il primo frame,
+	# come prima (deterministico).
 	await physics_frame
+	if _run.wrecks != null:
+		_run.wrecks.cache_opened.connect(func(_at: Vector3) -> void: _wrecks += 1)
 	_run.run_seed = run_seed
 	_run.progression.setup(run_seed)
 	_director.rng.seed = run_seed + 1
@@ -229,6 +275,17 @@ func _simulate(bot: StringName, run_seed: int) -> Dictionary:
 	_escape_left = 0.0
 	_digs = 0
 	_actives_used = 0
+	_repair_target = null
+	_repair_holding = false
+	_repair_mine = false
+	_repair_free = false
+	_repairs = 0
+	_repairs_free = 0
+	_wrecks = 0
+	_wreck_index = -1
+	_wrecks_skipped.clear()
+	_wreck_best = INF
+	_wreck_stall = 0.0
 	_hits = 0
 	_dark_samples = 0
 	_lamps_bought = 0
@@ -275,15 +332,16 @@ func _simulate(bot: StringName, run_seed: int) -> Dictionary:
 		bot = bot, seed = run_seed, time = _run.elapsed, victory = victory, timed_out = timed_out,
 		level = _run.progression.level, kills = _director.kills, boss = boss_state, boss_health = boss_health,
 		health = _player.health, digs = _digs, carried = _caravan.carried, capacity = _caravan.capacity,
-		scrap_out = _run.scrap_out(victory), hits = _hits,
+		scrap_out = _run.scrap_out(victory), hits = _hits, machines = _caravan.machines.size(),
+		repairs = _repairs, repairs_free = _repairs_free, wrecks = _wrecks,
 	}
 	var outcome := "victory_at" if victory else ("timeout_at" if timed_out else "died_at")
 	var night_phase := DayNightCycle.PHASE_NAMES[_run.day_night.phase] if _run.day_night != null else "DAY"
-	print("PROTOTYPE01_SIM seed=%d bot=%s %s=%.1f level=%d kills=%d boss=%s boss_hp=%d hp=%d hits=%d hp_at_boss=%d level_at_boss=%d digs=%d scrap_carried=%d capacity=%d scrap_out=%d upgrades=%s night=%s dark_contacts=%d dark_decisions=%d lamps=%d actives=%d class=%s wall_s=%.1f"
+	print("PROTOTYPE01_SIM seed=%d bot=%s %s=%.1f level=%d kills=%d boss=%s boss_hp=%d hp=%d hits=%d hp_at_boss=%d level_at_boss=%d digs=%d scrap_carried=%d capacity=%d scrap_out=%d upgrades=%s night=%s dark_contacts=%d dark_decisions=%d lamps=%d actives=%d machines=%d repairs=%d repairs_free=%d wrecks=%d class=%s wall_s=%.1f"
 		% [run_seed, bot, outcome, result.time, result.level, result.kills, boss_state, boss_health, result.health,
 			_hits, _health_at_boss, _level_at_boss, _digs, result.carried, result.capacity, result.scrap_out, ",".join(upgrades),
-			night_phase, _director.dark_contacts, _dark_samples, _lamps_bought, _actives_used, _run.class_id,
-			(Time.get_ticks_msec() - wall_start) / 1000.0])
+			night_phase, _director.dark_contacts, _dark_samples, _lamps_bought, _actives_used, result.machines,
+			_repairs, _repairs_free, _wrecks, _run.class_id, (Time.get_ticks_msec() - wall_start) / 1000.0])
 
 	paused = false
 	root.remove_child(_scene)
@@ -318,10 +376,79 @@ func _tick_bot(step: float) -> void:
 				_dark_samples += 1
 			if _escape_left <= 0.0:
 				_move = _choose_direction()
-		if _params.digs and not _tick_lamps():
+		var repairing := _tick_repair()
+		if not repairing and _params.digs and not _tick_lamps():
 			_tick_relief_brush(step)
-		_tick_actives()
+		# Tenendo Interagisci nessuna attiva: la carica dell'Ariete lo porterebbe fuori portata.
+		if not _repair_holding:
+			_tick_actives()
 	_apply_inputs()
+
+
+## Riparazione (D-093, scelta 3 del piano A: nessuna soglia di rottami). Con una macchina
+## guasta e il nemico piu vicino oltre BRUSH_SAFE_M il bot punta la guasta piu vicina, ci va e,
+## entro REPAIR_STOP_M, tiene Interagisci a ogni passo (la ripresa dalla pausa lo azzera) finche
+## non e riparata, senza staccarsi per i nemici; oltre REPAIR_HOLD_M lascia, e con un nemico
+## entro BRUSH_SAFE_M rinuncia. Conta come sua una riparazione che vede quasi finita (>= 0,9)
+## sulla macchina puntata: non quelle del Saldatore. Vero finche ha un bersaglio (niente pennello).
+func _tick_repair() -> bool:
+	if _repair_target != null and (not is_instance_valid(_repair_target) or not _repair_target.is_broken()):
+		if _repair_mine:
+			_repairs += 1
+			if _repair_free:
+				_repairs_free += 1
+		_drop_repair()
+	if _repair_target == null:
+		if _caravan.broken_machines().is_empty() or _nearest_enemy_distance() < BRUSH_SAFE_M:
+			return false
+		_repair_target = _nearest_broken()
+		if _repair_target == null:
+			return false
+	# La carovana ripara la guasta piu vicina al giocatore: se e un'altra, il bot punta quella.
+	var repairing := _caravan.repairing_machine()
+	if repairing != null and repairing != _repair_target and repairing.is_broken():
+		_repair_target = repairing
+		_repair_mine = false
+	_player.tool_held = false
+	_aim = Vector2.ZERO
+	var distance := Machine.planar_distance(_repair_target.global_position, _player.global_position)
+	if distance > (REPAIR_HOLD_M if _repair_holding else REPAIR_STOP_M):
+		_player.interact_held = false
+		_repair_holding = false
+		_repair_mine = false
+		if _nearest_enemy_distance() < BRUSH_SAFE_M:
+			_drop_repair()
+			return false
+		if _escape_left <= 0.0:
+			_move = (_planar(_repair_target.global_position) - _planar(_player.global_position)).normalized()
+		return true
+	_repair_holding = true
+	_move = Vector2.ZERO
+	_player.interact_held = true
+	_repair_mine = _caravan.repairing_machine() == _repair_target and _caravan.repair_progress() >= 0.9
+	_repair_free = _caravan.carried < _caravan.tuning.repair_cost
+	return true
+
+
+## La guasta piu vicina al giocatore (piano XZ), o null.
+func _nearest_broken() -> Machine:
+	var best: Machine = null
+	var best_distance := INF
+	for machine in _caravan.broken_machines():
+		var distance := Machine.planar_distance(machine.global_position, _player.global_position)
+		if distance < best_distance:
+			best = machine
+			best_distance = distance
+	return best
+
+
+func _drop_repair() -> void:
+	_repair_target = null
+	_repair_holding = false
+	_repair_mine = false
+	_repair_free = false
+	if is_instance_valid(_player):
+		_player.interact_held = false
 
 
 ## Attive appena cariche, se un nemico e entro la loro portata (il punto lo sceglie la mira).
@@ -506,6 +633,16 @@ func _tick_relief_brush(step: float) -> void:
 		_rampart_left = RAMPART_HOLD_SECONDS
 		_hold_brush(TerrainField.ToolMode.RAISE)
 		return
+	# Relitti sepolti (D-093) prima delle vene e anche col cassone pieno: la macchina conta
+	# piu dei rottami. Il relitto puntato resta finche il suo telaio c'e (non aperto ne scartato).
+	if _field != null and _run.wrecks != null:
+		if _wreck_index < 0 or _run.wrecks.frame_of(_wreck_index) == null:
+			_pick_wreck()
+		if _wreck_index >= 0:
+			var wreck_at := _run.wrecks.position_of(_wreck_index)
+			if _dig_toward(wreck_at):
+				_track_wreck(wreck_at, step)
+			return
 	var waiting := _scrap.positions_near(_player.global_position, _caravan.tuning.pickup_radius_from_player).size()
 	if _caravan.carried + waiting >= _caravan.capacity:
 		_player.tool_held = false
@@ -515,21 +652,70 @@ func _tick_relief_brush(step: float) -> void:
 	if _vein_target == Vector3.INF:
 		_player.tool_held = false
 		return
+	_dig_toward(_vein_target)
+
+
+## Si avvicina a [param target] (centro di una vena o punto di un relitto) solo col campo
+## libero, poi lo mira e scava tenendo il pennello. Vero se il bersaglio e a portata.
+func _dig_toward(target: Vector3) -> bool:
 	var here := _planar(_player.global_position)
-	var to_vein := _planar(_vein_target) - here
+	var to_target := _planar(target) - here
 	var reach := _planar(_player.terrain_target).distance_to(here)
-	if to_vein.length() > reach + 1.0:
-		# Troppo lontana: ci si avvicina solo col campo libero (la mira segue la marcia).
+	if to_target.length() > reach + 1.0:
+		# Troppo lontano: ci si avvicina solo col campo libero (la mira segue la marcia).
 		_player.tool_held = false
 		if _move.is_zero_approx() and _nearest_enemy_distance() > VEIN_WALK_SAFE_M:
-			_move = to_vein.normalized()
-		return
-	_aim = to_vein.normalized()
+			_move = to_target.normalized()
+		return false
+	_aim = to_target.normalized()
 	var facing := _planar(-_player.global_basis.z).normalized()
 	if facing.dot(_aim) > 0.95:
 		_hold_brush(TerrainField.ToolMode.DIG)
 	else:
 		_player.tool_held = false
+	return true
+
+
+## Il relitto chiuso piu vicino (entro VEIN_SEARCH_M e raggiungibile, come le vene), o -1.
+func _nearest_wreck() -> int:
+	var wrecks := _run.wrecks
+	if wrecks == null:
+		return -1
+	var here := _planar(_player.global_position)
+	var best := -1
+	var best_distance := VEIN_SEARCH_M
+	for i in wrecks.count():
+		if wrecks.frame_of(i) == null or _wrecks_skipped.has(i):
+			continue
+		var at := wrecks.position_of(i)
+		var distance := _planar(at).distance_to(here)
+		if distance < best_distance and _path.cost_at(at) != PathField.UNREACHABLE:
+			best_distance = distance
+			best = i
+	return best
+
+
+func _pick_wreck() -> void:
+	_wreck_index = _nearest_wreck()
+	_wreck_best = INF
+	_wreck_stall = 0.0
+
+
+## Scavo a portata del relitto puntato: se il suolo sul relitto non scende di WRECK_PROGRESS_M
+## sotto la quota piu bassa vista per WRECK_GIVE_UP_S secondi, il relitto si lascia.
+func _track_wreck(at: Vector3, step: float) -> void:
+	var ground := _field.height_at(at)
+	if ground < _wreck_best - WRECK_PROGRESS_M:
+		_wreck_best = ground
+		_wreck_stall = 0.0
+		return
+	_wreck_stall += step
+	if _wreck_stall < WRECK_GIVE_UP_S:
+		return
+	_wrecks_skipped.append(_wreck_index)
+	print("PROTOTYPE01_SIM_WRECK_SKIP seed=%d bot=%s x=%.1f z=%.1f" % [_run.run_seed, _bot, at.x, at.z])
+	_player.tool_held = false
+	_pick_wreck()
 
 
 ## Tiene premuto il pennello nel modo voluto (lo stesso flag che imposta l'input del giocatore).
@@ -608,18 +794,25 @@ func _press_tool() -> void:
 func _pick_card() -> void:
 	var priority := CARD_PRIORITY_SCRAPPER if _bot == &"scrapper" else CARD_PRIORITY
 	var best_index := 0
-	var best_rank := priority.size()
+	var unknown := priority.size() + 2
+	var best_rank := unknown
+	# Il novice (`first_card`) non guarda le carte: preme sempre la prima, anche una macchina.
 	for i in (0 if _params.first_card else _menu.card_count()):
 		# Righe della carta: rarita, nome, tipo, testo. Un'arma o una sua trasformazione (D-092)
-		# vince su tutto; le altre seguono la priorita (spostata di uno).
+		# vince su tutto, poi una "Nuova macchina" (D-093, anche nel menu del relitto); le altre
+		# seguono la priorita (spostata di due).
 		var lines := _menu.card_text(i).split("\n")
 		var card_name := lines[1] if lines.size() > 1 else ""
-		var rank := 0 if _is_weapon_card_name(card_name) else priority.size()
-		if rank > 0:
+		var rank := unknown
+		if _is_weapon_card_name(card_name):
+			rank = 0
+		elif card_name.begins_with(MACHINE_CARD_NAME):
+			rank = 1
+		else:
 			for upgrade in UpgradeCatalog.all():
 				if upgrade.name == card_name:
 					var found := priority.find(upgrade.id)
-					rank = found + 1 if found >= 0 else priority.size()
+					rank = found + 2 if found >= 0 else unknown
 					break
 		if rank < best_rank:
 			best_rank = rank

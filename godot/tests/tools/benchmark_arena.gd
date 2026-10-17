@@ -12,6 +12,15 @@ extends SceneTree
 ## Sul rilievo continuo (D-085) misura anche la base (`apply_base_relief`), 100 pennellate
 ## casuali del giocatore e l'aggiornamento dei chunk di collisione (riga `terrain`); poi una
 ## corsa di 6 s con il costo massimo del ricentro del campo di percorso (riga `run`).
+## `--night` porta il ciclo alla notte con sei lampioni e sei Faro accesi (carovana D-093: la
+## luce viene solo dai Faro; tuning della carovana copiato in memoria col settimo posto): 13
+## luci logiche con la torcia (riga `night`).
+## Carovana (D-093, budget 0,5 ms per passo sul preset Deck): righe `caravan` (passo medio e
+## peggiore della carovana in un ciclo della Sirena, contatto dei rottamatori come A/B del
+## direttore), `caravan_writes` (scritture della coda nel ciclo) e `caravan_slots` (calcolo del
+## posto di ogni macchina); di giorno Cassone, due Torrette, Trivella, Pala e Sirena, di notte
+## il Cassone e i sei Faro. Poi le armi (`weapons`, `weapons_fused`, `weapons_frame`), con le
+## macchine immuni e i moduli fermi tranne il capofila.
 ## Marker: PROTOTYPE01_ARENA_BENCH ...
 
 const WARMUP_FRAMES := 120
@@ -56,6 +65,11 @@ func _bench_loadout(scene: Node, step: float) -> void:
 	var player: PlayerCharacter = scene.get_node(^"Player")
 	# L'orda robusta lo morde per tutta la misura: morto, il pannello di fine mette in pausa.
 	player.grant_invulnerability(120.0)
+	# Anche le macchine della carovana (D-093): i robusti le mordono, e una guasta cambierebbe
+	# la misura.
+	if run.caravan != null:
+		for machine in run.caravan.machines:
+			machine.grant_invulnerability(120.0)
 	for i in 20:
 		var angle := TAU * i / 20.0
 		var enemy := run.director.spawn_at(player.global_position + Vector3(cos(angle), 0.0, sin(angle)) * (3.0 + 3.0 * (i % 2)))
@@ -173,6 +187,153 @@ func _bench_writes(run: ArenaRun, player: Node3D, step: float, weapons_ms: float
 		% [run.class_id, weapons_ms, raise_ms])
 
 
+## Carovana (D-093, piano A; budget 0,5 ms per passo sul preset Deck). Di giorno sei macchine
+## (Cassone, due Torrette, Trivella, Pala, Sirena), di notte il Cassone e i sei Faro accesi messi
+## dalla riga `night`; giocatore e macchine immuni, 20 rottamatori robusti a 2-4 m dal grappolo
+## (con i 70 dell'orda circa 90 nemici: riga prudente). Si misura un ciclo intero della Sirena
+## (attiva e ferma) passo per passo, come `_time_weapons`: carovana, macchine coi figli che hanno
+## un passo (le torrette) e la coda delle scritture (buche della Trivella, argini della Pala);
+## `step_ms` e la media, `max_ms` il passo peggiore. Il contatto coi rottamatori sta nel passo del
+## direttore: A/B a blocchi alterni con e senza carovana, come `--motion-ab` (la scansione gira
+## anche sulle macchine immuni). Riga `caravan_slots`: `slot_target` di tutte le macchine, il
+## posto che ogni macchina ricalcola a ogni passo. Il costo delle luci dei Faro accesi sta nelle
+## righe `step`, `frame` e `render` (di notte il direttore rinfresca il campo di luce a ogni passo).
+## Alla fine i moduli si spengono (tranne il capofila) e i robusti spariscono.
+func _bench_caravan(scene: Node, step: float, preset: String, night: bool) -> void:
+	var run: ArenaRun = scene.get_node(^"Run")
+	var caravan := run.caravan
+	if caravan == null or caravan.lead() == null:
+		print("PROTOTYPE01_ARENA_BENCH caravan skipped=no_caravan")
+		return
+	var director := run.director
+	var player: PlayerCharacter = scene.get_node(^"Player")
+	var queue := run.write_queue
+	# Gioco vivo e niente menu, come `_weapons_frame`: l'esperienza dell'orda aprirebbe il level-up.
+	var was_paused := paused
+	var run_was_on := run.is_physics_processing()
+	run.set_physics_process(false)
+	run.level_up_menu.close()
+	paused = false
+	# `--motion-ab` lascia spento il passo del direttore: qui l'orda deve arrivare al grappolo.
+	var director_was_on := director.is_physics_processing()
+	director.set_physics_process(true)
+	if not night:
+		for id: StringName in [&"turret", &"turret", &"drill", &"shovel", &"siren"]:
+			if caravan.add_machine(id) == null:
+				push_error("caravan bench: add_machine(%s) e null" % id)
+		if caravan.module_count() != 6:
+			push_error("caravan bench: %d moduli invece di 6" % caravan.module_count())
+		# La Pala paga 1 rottame solo se ne restano 2 per una riparazione: Cassone pieno.
+		caravan.add_cargo_capacity(18)
+		caravan.add_scrap(18)
+	player.grant_invulnerability(120.0)
+	for machine in caravan.machines:
+		machine.grant_invulnerability(120.0)
+	for i in 60:
+		await physics_frame
+	var centroid := Vector3.ZERO
+	for machine in caravan.machines:
+		centroid += machine.global_position
+	centroid /= caravan.machines.size()
+	var robust: Array[Enemy] = []
+	for i in 20:
+		var angle := TAU * i / 20.0
+		var enemy := director.spawn_at(centroid + Vector3(cos(angle), 0.0, sin(angle)) * (2.0 + 2.0 * (i % 2)))
+		enemy.health = 1000
+		enemy.max_health = 1000
+		robust.append(enemy)
+	for i in 120:
+		await physics_frame
+
+	# Nodi col passo della carovana: lei (riparazione), ogni macchina e i suoi discendenti col
+	# passo (TurretWeapon), poi la coda delle scritture; spenti durante la misura.
+	var nodes: Array[Node] = [caravan]
+	for machine in caravan.machines:
+		nodes.append(machine)
+		for child in machine.find_children("*", "", true, false):
+			if child.is_physics_processing() and not nodes.has(child):
+				nodes.append(child)
+	nodes.append(queue)
+	var was_on: Array[bool] = []
+	for node in nodes:
+		was_on.append(node.is_physics_processing())
+		node.set_physics_process(false)
+	# Coda vuota prima della misura (senza tempo) e moduli all'inizio della loro fase: Trivella e
+	# Pala lavorano al primo passo, la Sirena parte attiva.
+	while queue.pending() > 0:
+		queue._physics_process(step)
+	for module in caravan.modules_of(&"drill"):
+		(module as DrillModule)._drill_left = 0.0
+	for module in caravan.modules_of(&"shovel"):
+		(module as ShovelModule)._shovel_left = 0.0
+	for module in caravan.modules_of(&"siren"):
+		(module as SirenModule)._cycle_time = 0.0
+	var steps := int(round(caravan.tuning.siren_period * Engine.physics_ticks_per_second))
+	var total_usec := 0
+	var max_usec := 0
+	var writes := 0
+	for i in steps:
+		var t0 := Time.get_ticks_usec()
+		for node in nodes:
+			if node == queue:
+				var before := queue.pending()
+				queue._physics_process(step)
+				writes += before - queue.pending()
+			else:
+				node._physics_process(step)
+		var took := Time.get_ticks_usec() - t0
+		total_usec += took
+		max_usec = maxi(max_usec, took)
+	for i in nodes.size():
+		nodes[i].set_physics_process(was_on[i])
+	print("PROTOTYPE01_ARENA_BENCH caravan_writes writes=%d steps=%d" % [writes, steps])
+
+	# Contatto dei rottamatori (EnemyDirector._apply_machine_contacts): stesso processo, blocchi
+	# alterni con e senza carovana nel direttore.
+	director.set_physics_process(false)
+	var totals := [0, 0]
+	for block in 40:
+		director.caravan = caravan if block % 2 == 0 else null
+		var b0 := Time.get_ticks_usec()
+		for i in 30:
+			director._physics_process(step)
+		totals[block % 2] += Time.get_ticks_usec() - b0
+	director.caravan = caravan
+	var modules: PackedStringArray = []
+	for machine in caravan.machines:
+		modules.append(String(machine.primary_module_id()))
+	print("PROTOTYPE01_ARENA_BENCH caravan preset=%s machines=%d modules=%s enemies=%d step_ms=%.3f director_on_ms=%.3f director_off_ms=%.3f max_ms=%.3f"
+		% [preset, caravan.machines.size(), ",".join(modules), director.enemies.size(), total_usec / float(steps) / 1000.0,
+			totals[0] / 600000.0, totals[1] / 600000.0, max_usec / 1000.0])
+	# Posto nel grappolo (task 6): ogni macchina lo ricalcola a ogni passo; un passo = tutte.
+	var s0 := Time.get_ticks_usec()
+	for i in 240:
+		for machine in caravan.machines:
+			caravan.slot_target(machine)
+	print("PROTOTYPE01_ARENA_BENCH caravan_slots machines=%d slot_target_ms=%.4f"
+		% [caravan.machines.size(), (Time.get_ticks_usec() - s0) / 240.0 / 1000.0])
+
+	# Pulizia: moduli spenti tranne il capofila, robusti tolti senza esperienza (non con
+	# `clear_horde`, il cui tween a gioco fermo non finisce), coda vuota, stati di prima.
+	var lead := caravan.lead()
+	for machine in caravan.machines:
+		if machine != lead:
+			for module in machine.modules:
+				module.set_active(false)
+	for enemy in robust:
+		if not is_instance_valid(enemy) or enemy.is_dead:
+			continue
+		enemy.is_dead = true
+		enemy.collision_layer = 0
+		enemy.collision_mask = 0
+		director.enemies.erase(enemy)
+		enemy.queue_free()
+	queue.clear()
+	director.set_physics_process(director_was_on)
+	run.set_physics_process(run_was_on)
+	paused = was_paused
+
+
 static func _max_out(loadout: WeaponLoadout, id: StringName) -> void:
 	while loadout.level_of(id) > 0 and loadout.level_of(id) < WeaponCatalog.MAX_LEVEL:
 		if loadout.needs_branch(id):
@@ -272,25 +433,63 @@ func _initialize() -> void:
 			% [brush_total / 100000.0, brush_max / 1000.0, collision.chunk_count(), refreshed,
 				(brush_total / 1000.0) / maxi(refreshed, 1), grid_usec / 1000.0, layout_usec / 1000.0])
 
+	var run: ArenaRun = scene.get_node(^"Run")
+	var lamps: LampField = scene.get_node_or_null(^"LampField")
+	var caravan: Caravan = scene.get_node_or_null(^"Caravan")
+	var lead: Machine = caravan.lead() if caravan != null else null
 	if night:
-		var run: ArenaRun = scene.get_node(^"Run")
 		run.elapsed = run.day_night.night_start_seconds + run.day_night.dusk_seconds + 1.0
 		await physics_frame
-		# Sei lampioni attorno al giocatore: il massimo di luci logiche della tappa 2.
-		var lamps: LampField = scene.get_node(^"LampField")
-		var caravan: Caravan = scene.get_node(^"Caravan")
-		var lead := caravan.lead()
+		# Sei lampioni attorno al giocatore: il massimo di luci logiche della tappa 2. Il punto
+		# dell'esagono a 8 m puo non essere piano (cumuli, terremoto del seme): si prova
+		# piu lontano o un poco girato, finche LampField lo accetta.
 		caravan.add_cargo_capacity(18)
 		caravan.add_scrap(18)
+		lead.grant_invulnerability(120.0)
 		for i in 6:
-			var world: Vector3 = player.global_position + Vector3(cos(i * TAU / 6.0) * 8.0, 0.0, sin(i * TAU / 6.0) * 8.0)
+			var world: Variant = null
+			for radius: float in [8.0, 9.5, 6.5, 11.0]:
+				for turn: float in [0.0, 0.25, -0.25, 0.5, -0.5]:
+					var angle := i * TAU / 6.0 + turn
+					var candidate: Vector3 = player.global_position + Vector3(cos(angle) * radius, 0.0, sin(angle) * radius)
+					if world == null and lamps.can_place(candidate):
+						world = candidate
+			if world == null:
+				continue
 			lead.global_position = world + Vector3(0.0, 0.3, 1.5)
+			lead.reset_physics_interpolation()
 			lamps.place_at(world)
 		lead.global_position = player.global_position + Vector3(3.0, 0.3, 0.0)
-		print("PROTOTYPE01_ARENA_BENCH night phase=%s lamps=%d" % [DayNightCycle.PHASE_NAMES[run.day_night.phase], lamps.count()])
+		lead.reset_physics_interpolation()
+		# Sei Faro accesi (D-093: di notte illuminano solo i Faro). Il tuning della carovana e una
+		# copia in memoria col settimo posto (mai scrivere caravan_default.tres): Cassone + sei Faro.
+		caravan.tuning = caravan.tuning.duplicate()
+		caravan.tuning.module_limit = 7
+		for i in 6:
+			var beacon := caravan.add_machine(&"beacon")
+			if beacon == null:
+				push_error("night bench: add_machine(beacon) e null")
+				quit(1)
+				return
+			beacon.grant_invulnerability(120.0)
+		# La ricostruzione del rilievo qui sopra apre casse e relitti, e il loro menu ferma l'albero:
+		# ArenaRun non passa e non accenderebbe le luci dei Faro nuovi. Il fattore di notte si
+		# applica ora, come al suo passo (`_update_game_lights`).
+		run._update_game_lights()
 	# Orda piena: tutti i nemici vivi, giocatore invulnerabile.
 	for i in WARMUP_FRAMES:
 		await physics_frame
+	if night:
+		# Dopo il riscaldamento: il fattore di notte e applicato alle luci dei Faro.
+		var beacons := caravan.beacon_lights()
+		var lights := run.light_field.source_count()
+		print("PROTOTYPE01_ARENA_BENCH night phase=%s lamps=%d beacons=%d lights=%d"
+			% [DayNightCycle.PHASE_NAMES[run.day_night.phase], lamps.count(), beacons.size(), lights])
+		if beacons.size() != 6 or lights != 13:
+			push_error("night bench: %d Faro e %d luci invece di 6 e 13" % [beacons.size(), lights])
+		for entry in beacons:
+			if not (entry.light as OmniLight3D).visible:
+				push_error("night bench: la luce di un Faro e spenta")
 	while director.enemies.size() < enemy_target:
 		var spot: Variant = director._find_spawn_point()
 		if spot == null:
@@ -366,6 +565,8 @@ func _initialize() -> void:
 		ActorMotion.enabled = true
 		print("PROTOTYPE01_ARENA_BENCH motion_ab enemies=%d director_on_ms=%.3f director_off_ms=%.3f delta=%.1f%%"
 			% [director.enemies.size(), totals[0] / 600000.0, totals[1] / 600000.0, (float(totals[0]) / totals[1] - 1.0) * 100.0])
-	# Ultima: aggiunge nemici e scrive anelli permanenti, non deve sporcare le misure sopra.
+	# Ultime due: aggiungono nemici (la carovana anche macchine e scritture, le armi anelli
+	# permanenti), non devono sporcare le misure sopra.
+	await _bench_caravan(scene, step, preset_name, night)
 	await _bench_loadout(scene, 1.0 / Engine.physics_ticks_per_second)
 	quit()
