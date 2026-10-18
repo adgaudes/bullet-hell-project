@@ -115,3 +115,55 @@ extends Resource
 @export var wrecks_per_level := 2
 @export var wreck_choices := 2
 @export var wreck_full_scrap := 3
+
+@export_group("Fusion")
+## Moduli minimi di ogni taglia (Piccola, Media, Grande, Colosso) e massimo per macchina (piano B).
+@export var size_min_modules := PackedInt32Array([1, 2, 4, 6])
+@export var max_modules_per_machine := 6
+## Forza dei moduli: +`power_per_extra_module` per ogni modulo oltre il primo (scelta 4 di D-093).
+@export var power_per_extra_module := 0.15
+## Per taglia: vita +`health_bonus_per_size` del totale dei telai, velocita -`speed_malus_per_size`.
+@export var health_bonus_per_size := 0.25
+@export var speed_malus_per_size := 0.10
+## Scala di modello, pezzi, anello a terra e raggio di contatto per taglia.
+@export var size_model_scale := PackedFloat32Array([1.0, 1.25, 1.5, 1.8])
+## Travolgere: da `trample_min_size` in su, in moto a piu di `trample_min_speed` m/s,
+## `trample_damage` a ogni rottamatore in contatto al piu ogni `trample_interval` secondi.
+@export var trample_min_size := 1
+@export var trample_damage := 1
+@export var trample_interval := 0.5
+@export var trample_min_speed := 1.0
+## Rottami per modulo assorbito in una fusione, e per uno sgancio.
+@export var fuse_cost_per_module := 1
+@export var detach_cost_per_module := 1
+
+@export_group("Fusion pad")
+## La piazzola si annuncia a `pad_boss_fraction` del livello, atterra dopo `pad_warning_seconds`
+## fra `pad_distance_min` e `pad_distance_max` dal giocatore: `pad_cells` x `pad_cells` celle
+## da `pad_cell_m`, piana entro `pad_flat_tolerance`.
+@export var pad_boss_fraction := 0.5
+@export var pad_warning_seconds := 15.0
+@export var pad_distance_min := 20.0
+@export var pad_distance_max := 30.0
+@export var pad_cells := 4
+@export var pad_cell_m := 1.5
+@export var pad_flat_tolerance := 0.35
+## Ricerca del punto: candidati per passo e secondi d'anticipo sull'atterraggio.
+@export var pad_candidates_per_step := 10
+@export var pad_search_lead_seconds := 1.0
+## Raggio della luce visiva della piazzola (non e una sorgente di LightField).
+@export var pad_light_radius := 9.0
+
+@export_group("Combinations")
+## Riflettore e Trappola: danno della Torretta x `combo_damage_scale`; Esca blindata: danno
+## subito x `combo_hit_scale`; Estrattore: rottami entro `extractor_radius` dalla buca.
+@export var combo_damage_scale := 2.0
+@export var combo_hit_scale := 0.5
+@export var extractor_radius := 3.0
+## Ruspa: ogni `dozer_spacing` metri un fossato dietro la macchina e un argine a lato.
+@export var dozer_spacing := 1.5
+@export var dozer_ditch_radius := 0.8
+@export var dozer_ditch_depth := 0.4
+@export var dozer_bank_offset := 1.6
+@export var dozer_bank_radius := 0.8
+@export var dozer_bank_height := 0.6

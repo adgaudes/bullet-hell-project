@@ -7,10 +7,14 @@ extends RefCounted
 ## disponibili per prova fino alla scheda Macchine dell'Officina (piano C, scelta 2 di D-093).
 
 const MODULES: Array[StringName] = [&"cargo", &"turret", &"magnet", &"beacon", &"drill", &"shovel", &"welder", &"siren"]
+## Combinazioni del piano B (scelta 7 di D-093): valgono coi due moduli nella stessa macchina.
+const COMBOS: Array[StringName] = [&"extractor", &"reflector", &"mobile_mixer", &"armored_bait", &"dozer", &"trap"]
 
 ## Costruito una volta sola: le voci sono condivise, chi le legge non le modifica.
 static var _entries: Array[Dictionary] = []
 static var _by_id: Dictionary[StringName, Dictionary] = {}
+static var _combos: Array[Dictionary] = []
+static var _combos_by_id: Dictionary[StringName, Dictionary] = {}
 
 
 static func all() -> Array[Dictionary]:
@@ -52,3 +56,45 @@ static func find(id: StringName) -> Dictionary:
 ## Nome del modulo, o stringa vuota se sconosciuto.
 static func name_of(id: StringName) -> String:
 	return String(find(id).get(&"name", ""))
+
+
+## Combinazioni nell'ordine di COMBOS, costruite una volta. Ogni voce: id, name, parts (i due
+## moduli), text (una riga, per il banco e il Ricettario).
+static func combos() -> Array[Dictionary]:
+	if _combos.is_empty():
+		_combos = [
+			_combo(&"extractor", "Estrattore", &"drill", &"magnet", "Le buche risucchiano i rottami vicini nel Cassone."),
+			_combo(&"reflector", "Riflettore", &"turret", &"beacon", "I nemici illuminati prendono doppio danno dalla Torretta."),
+			_combo(&"mobile_mixer", "Betoniera mobile", &"shovel", &"cargo", "Gli argini della Pala sono gratis."),
+			_combo(&"armored_bait", "Esca blindata", &"welder", &"siren", "Mentre attira subisce meta danno."),
+			_combo(&"dozer", "Ruspa", &"drill", &"shovel", "Scava un fossato con un argine a lato dove passa."),
+			_combo(&"trap", "Trappola", &"turret", &"siren", "Chi e attirato prende doppio danno dalla Torretta."),
+		]
+		for entry in _combos:
+			_combos_by_id[entry.id] = entry
+	return _combos
+
+
+static func _combo(id: StringName, combo_name: String, a: StringName, b: StringName, text: String) -> Dictionary:
+	var parts: Array[StringName] = [a, b]
+	return {id = id, name = combo_name, parts = parts, text = text}
+
+
+## Voce della combinazione, o dizionario vuoto.
+static func find_combo(id: StringName) -> Dictionary:
+	combos()
+	return _combos_by_id.get(id, {})
+
+
+## Combinazioni presenti fra [param module_ids], nell'ordine di COMBOS, ognuna una volta sola.
+static func combos_of(module_ids: Array[StringName]) -> Array[StringName]:
+	var found: Array[StringName] = []
+	for entry in combos():
+		var complete := true
+		for part: StringName in entry.parts:
+			if not module_ids.has(part):
+				complete = false
+				break
+		if complete:
+			found.append(entry.id)
+	return found
