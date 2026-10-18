@@ -104,7 +104,9 @@ func _initialize() -> void:
 	turret.repair(1.0)
 	turret.grant_invulnerability(3000.0)
 
-	# Ritirata: una macchina a 1 PV, otto rottamatori da un lato soltanto.
+	# Ritirata: una macchina a 1 PV, otto rottamatori da un lato soltanto (nessun altro nemico).
+	_director.clear_horde()
+	await _seconds(0.5)
 	turret.health = 1
 	for i in 8:
 		var at := _player.global_position + Vector3(8.0 + 2.0 * (i % 2), 0.0, -3.0 + i * 0.85)

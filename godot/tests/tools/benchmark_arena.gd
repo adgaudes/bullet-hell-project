@@ -24,6 +24,8 @@ extends SceneTree
 ## Marker: PROTOTYPE01_ARENA_BENCH ...
 
 const WARMUP_FRAMES := 120
+## Anello dei robusti durante la finestra della carovana (`_bench_caravan`), dal giocatore: 7 e 9 m.
+const WRITE_RING_M := 7.0
 const MEASURE_FRAMES := 600
 const PRESET_ARGS := {"deck": GameSettingsService.Preset.STEAM_DECK, "low": GameSettingsService.Preset.LOW,
 	"medium": GameSettingsService.Preset.MEDIUM, "high": GameSettingsService.Preset.HIGH, "max": GameSettingsService.Preset.MAX}
@@ -192,7 +194,8 @@ func _bench_writes(run: ArenaRun, player: Node3D, step: float, weapons_ms: float
 ## dalla riga `night`; giocatore e macchine immuni, 20 rottamatori robusti a 2-4 m dal grappolo
 ## (con i 70 dell'orda circa 90 nemici: riga prudente). Si misura un ciclo intero della Sirena
 ## (attiva e ferma) passo per passo, come `_time_weapons`: carovana, macchine coi figli che hanno
-## un passo (le torrette) e la coda delle scritture (buche della Trivella, argini della Pala);
+## un passo (le torrette) e la coda delle scritture (buche della Trivella, argini della Pala; per
+## la finestra i robusti stanno a 7-9 m dal giocatore, cosi Trivella e Pala scrivono davvero);
 ## `step_ms` e la media, `max_ms` il passo peggiore. Il contatto coi rottamatori sta nel passo del
 ## direttore: A/B a blocchi alterni con e senza carovana, come `--motion-ab` (la scansione gira
 ## anche sulle macchine immuni). Riga `caravan_slots`: `slot_target` di tutte le macchine, il
@@ -258,6 +261,24 @@ func _bench_caravan(scene: Node, step: float, preset: String, night: bool) -> vo
 	for node in nodes:
 		was_on.append(node.is_physics_processing())
 		node.set_physics_process(false)
+	# Trivella e Pala scrivono solo verso un nemico lontano dalla macchina: la buca nasce a 1 m da
+	# lui e l'argine a `shovel_gap`, mai entro `keep_clear` da macchine e giocatore. I robusti
+	# arrivati addosso al grappolo (circa 2,4 m dalla Trivella e dalla Pala) non danno scritture,
+	# e nella finestra non si muovono (il direttore e fermo). Per la finestra vanno su un anello a
+	# WRITE_RING_M dal giocatore: dai posti a 3,5 m di Trivella e Pala il piu vicino sta a 3,5-4 m,
+	# dentro `drill_reach` e `shovel_reach`, e buca e argine cadono fuori da ogni `keep_clear`.
+	# Dopo la finestra tornano dov'erano, per l'A/B del contatto.
+	var field := run.terrain_field
+	var held_at: Array[Vector3] = []
+	for i in robust.size():
+		var enemy := robust[i]
+		held_at.append(enemy.global_position if is_instance_valid(enemy) else Vector3.ZERO)
+		if not is_instance_valid(enemy) or enemy.is_dead:
+			continue
+		var angle := TAU * i / robust.size()
+		var ring := player.global_position + Vector3(cos(angle), 0.0, sin(angle)) * (WRITE_RING_M + 2.0 * (i % 2))
+		ring.y = (field.height_at(ring) if field != null else player.global_position.y) + enemy.spawn_center_height()
+		_teleport_enemy(enemy, ring)
 	# Coda vuota prima della misura (senza tempo) e moduli all'inizio della loro fase: Trivella e
 	# Pala lavorano al primo passo, la Sirena parte attiva.
 	while queue.pending() > 0:
@@ -286,6 +307,9 @@ func _bench_caravan(scene: Node, step: float, preset: String, night: bool) -> vo
 		max_usec = maxi(max_usec, took)
 	for i in nodes.size():
 		nodes[i].set_physics_process(was_on[i])
+	for i in robust.size():
+		if is_instance_valid(robust[i]) and not robust[i].is_dead:
+			_teleport_enemy(robust[i], held_at[i])
 	print("PROTOTYPE01_ARENA_BENCH caravan_writes writes=%d steps=%d" % [writes, steps])
 
 	# Contatto dei rottamatori (EnemyDirector._apply_machine_contacts): stesso processo, blocchi
@@ -332,6 +356,12 @@ func _bench_caravan(scene: Node, step: float, preset: String, night: bool) -> vo
 	director.set_physics_process(director_was_on)
 	run.set_physics_process(run_was_on)
 	paused = was_paused
+
+
+static func _teleport_enemy(enemy: Enemy, at: Vector3) -> void:
+	enemy.global_position = at
+	enemy.velocity = Vector3.ZERO
+	enemy.reset_physics_interpolation()
 
 
 static func _max_out(loadout: WeaponLoadout, id: StringName) -> void:
