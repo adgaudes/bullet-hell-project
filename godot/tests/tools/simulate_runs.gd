@@ -642,18 +642,19 @@ func _tick_relief_brush(step: float) -> void:
 		_hold_brush(TerrainField.ToolMode.RAISE)
 		return
 	# Relitti sepolti (D-093) prima delle vene e anche col cassone pieno: la macchina conta
-	# piu dei rottami. Il relitto puntato resta finche il suo telaio c'e e il campo di percorso
-	# lo raggiunge; toglie il posto alle vene solo se il bot e a portata o ci sta andando,
-	# altrimenti si passa alle vene (e il tempo senza avvicinarsi conta per l'abbandono).
+	# piu dei rottami. Il relitto puntato resta finche il suo telaio c'e e sta dentro la finestra
+	# del campo di percorso (non conta la pendenza: lo scavo rende ripida la sua stessa cella);
+	# toglie il posto alle vene solo se il bot e a portata o ci sta andando, altrimenti si passa
+	# alle vene senza toccare il pennello (e il tempo senza avvicinarsi conta per l'abbandono).
 	if _field != null and _run.wrecks != null:
 		if _wreck_index >= 0 and (_run.wrecks.frame_of(_wreck_index) == null
-				or _path.cost_at(_run.wrecks.position_of(_wreck_index)) == PathField.UNREACHABLE):
+				or not _path.is_inside(_path.cell_of(_run.wrecks.position_of(_wreck_index)))):
 			_wreck_index = -1
 		if _wreck_index < 0:
 			_pick_wreck()
 		if _wreck_index >= 0:
 			var wreck_at := _run.wrecks.position_of(_wreck_index)
-			var state := _dig_toward(wreck_at)
+			var state := _dig_toward(wreck_at, true)
 			_track_wreck(wreck_at, state == Dig.IN_REACH, step)
 			if state != Dig.IDLE:
 				return
@@ -670,17 +671,24 @@ func _tick_relief_brush(step: float) -> void:
 
 
 ## Si avvicina a [param target] (centro di una vena o punto di un relitto) solo col campo
-## libero, poi lo mira e scava tenendo il pennello (Dig: IDLE, WALKING, IN_REACH).
-func _dig_toward(target: Vector3) -> Dig:
+## libero, poi lo mira e scava tenendo il pennello (Dig: IDLE, WALKING, IN_REACH). Per un
+## relitto ([param wreck]) la marcia continua finche `_move` lo punta ancora (la direzione resta
+## fra i passi fino alla prossima decisione) e un IDLE non tocca il pennello: decide la vena
+## che viene dopo, cosi una pennellata non si riconta a ogni passo. Le vene come prima.
+func _dig_toward(target: Vector3, wreck := false) -> Dig:
 	var here := _planar(_player.global_position)
 	var to_target := _planar(target) - here
 	var reach := _planar(_player.terrain_target).distance_to(here)
 	if to_target.length() > reach + 1.0:
 		# Troppo lontano: ci si avvicina solo col campo libero (la mira segue la marcia).
-		_player.tool_held = false
-		if _move.is_zero_approx() and _nearest_enemy_distance() > VEIN_WALK_SAFE_M:
-			_move = to_target.normalized()
+		var direction := to_target.normalized()
+		var heading := _move.is_zero_approx() or (wreck and _move.normalized().dot(direction) > 0.95)
+		if heading and _nearest_enemy_distance() > VEIN_WALK_SAFE_M:
+			_player.tool_held = false
+			_move = direction
 			return Dig.WALKING
+		if not wreck:
+			_player.tool_held = false
 		return Dig.IDLE
 	_aim = to_target.normalized()
 	var facing := _planar(-_player.global_basis.z).normalized()
