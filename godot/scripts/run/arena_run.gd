@@ -1209,8 +1209,9 @@ func apply_upgrade(id: StringName, new_level: int) -> void:
 			if caravan != null:
 				caravan.set_module_level(&"beacon", new_level)
 		&"companion_cargo":
-			caravan.add_cargo_capacity(int(UpgradeCatalog.value(id, &"capacity")))
-			caravan.add_scrap(int(UpgradeCatalog.value(id, &"scrap_now")))
+			if caravan != null:
+				caravan.add_cargo_capacity(int(UpgradeCatalog.value(id, &"capacity")))
+				caravan.add_scrap(int(UpgradeCatalog.value(id, &"scrap_now")))
 		&"dig_blast":
 			dig_blast_radius = UpgradeCatalog.value(id, &"radius") + UpgradeCatalog.value(id, &"radius_per_level") * (new_level - 1)
 		&"spiked_wall":

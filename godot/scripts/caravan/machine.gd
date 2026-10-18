@@ -59,18 +59,25 @@ const CARGO_WOBBLE_HOP := 0.07
 const CARGO_WOBBLE_TWIST := 0.3
 
 # --- Guinzaglio e ritirata.
-## Incastrata: in un passo si sposta meno di STUCK_SPEED (m/s) restando a piu di
-## STUCK_GOAL_DISTANCE (m) dalla meta finale.
+## Incastrata: in una finestra di STUCK_WINDOW secondi si sposta in tutto meno di
+## STUCK_SPEED x finestra (m) restando a piu di STUCK_GOAL_DISTANCE (m) dalla meta finale;
+## oppure sta su un punto non aperto per la carovana (`Caravan.is_open_point`: buca scavata,
+## da li il giocatore non si raggiunge), a qualunque distanza dalla meta.
 const STUCK_GOAL_DISTANCE := 2.0
 const STUCK_SPEED := 0.5
+const STUCK_WINDOW := 0.5
 ## In ritirata il nemico piu vicino si ricerca al piu ogni tanti secondi.
 const THREAT_REFRESH := 0.25
 
 # --- Segni dello stato: anello a terra, fumo e punto esclamativo del guasto.
 ## Scatola del Decal dell'anello (raggio 0,75 m = meta del lato), centrata sul suolo.
 const RING_SIZE := Vector3(1.5, 0.6, 1.5)
-## Lineare: fumo grigio scuro della macchina guasta.
-const SMOKE_COLOR := Color(0.05, 0.05, 0.05)
+## Lineare: fumo grigio medio della macchina guasta, leggibile anche sull'asfalto scuro
+## (revisione finale, A2; prima 0,05, invisibile dalla camera di gioco). Sbuffi di raggio
+## SMOKE_RADIUS (m) e opacita SMOKE_ALPHA.
+const SMOKE_COLOR := Color(0.4, 0.4, 0.4)
+const SMOKE_RADIUS := 0.28
+const SMOKE_ALPHA := 0.7
 ## Altezza del punto esclamativo sull'origine della macchina.
 const BROKEN_MARK_HEIGHT := 1.5
 
@@ -120,7 +127,14 @@ var _regen_given := 0
 # --- Guinzaglio e ritirata.
 ## Meta finale dell'ultimo `_choose_destination` (ritirata, modulo o posto; mai un waypoint).
 var _goal_point := Vector3.ZERO
+## Secondi d'incastro: il maggiore fra `_slow_time` (finestre quasi ferme lontano dalla meta) e
+## `_trapped_time` (passi di fila su un punto non aperto). A `stuck_seconds` si torna al posto.
 var _stuck_time := 0.0
+var _slow_time := 0.0
+var _trapped_time := 0.0
+## Finestra in corso: posizione all'inizio e secondi trascorsi.
+var _window_start := Vector3.INF
+var _window_time := 0.0
 var _threat_left := 0.0
 ## Dal nemico piu vicino verso il giocatore (piano XZ, normalizzata); ZERO senza minaccia.
 var _threat_direction := Vector3.ZERO
@@ -128,6 +142,9 @@ var _threat_direction := Vector3.ZERO
 # --- Segni dello stato (figli diretti, fuori dal telaio).
 var _ring: Decal
 var _smoke: CPUParticles3D
+## Dopo la riparazione: secondi finche gli sbuffi gia partiti non sono spariti (poi il fumo si
+## nasconde).
+var _smoke_left := 0.0
 var _broken_mark: Label3D
 ## Sbuffo del fumo, condiviso da tutte le macchine (con materiale, crescita e sfumatura): mai
 ## una mesh o un materiale per macchina.
@@ -240,6 +257,10 @@ func repair(fraction: float) -> void:
 func _tick_health(delta: float) -> void:
 	_hit_cooldown_left = maxf(_hit_cooldown_left - delta, 0.0)
 	_invulnerable_left = maxf(_invulnerable_left - delta, 0.0)
+	if _smoke_left > 0.0:
+		_smoke_left -= delta
+		if _smoke_left <= 0.0 and not is_broken():
+			_smoke.visible = false
 	_update_state()
 	if is_broken() or health >= max_health:
 		_since_hit = 0.0
@@ -284,6 +305,7 @@ func _set_state(next: State) -> void:
 		if _smoke != null:
 			_smoke.visible = true
 			_smoke.emitting = true
+			_smoke_left = 0.0
 			_broken_mark.visible = true
 		print("PROTOTYPE01_MACHINE_BROKEN module=%s" % primary_module_id())
 	elif was_broken:
@@ -291,9 +313,10 @@ func _set_state(next: State) -> void:
 			each.set_active(true)
 		if _smoke != null:
 			_smoke.emitting = false
+			_smoke_left = _smoke.lifetime
 			_broken_mark.visible = false
 	_refresh_ring()
-	_stuck_time = 0.0
+	_reset_stuck()
 	_threat_left = 0.0
 	_threat_direction = Vector3.ZERO
 	state_changed.emit(state)
@@ -338,9 +361,8 @@ func _physics_process(delta: float) -> void:
 		velocity.y = 0.0
 	else:
 		velocity += get_gravity() * delta
-	var before := global_position
 	move_and_slide()
-	_track_stuck(before, delta)
+	_track_stuck(delta)
 
 	if planar.length() > 0.3:
 		rotation.y = lerp_angle(rotation.y, atan2(-planar.x, -planar.z), minf(delta * 10.0, 1.0))
@@ -433,14 +455,39 @@ func _retreat_point() -> Vector3:
 	return point if point != null else caravan.slot_target(self)
 
 
-## Incastrata: in questo passo si e spostata meno di STUCK_SPEED x delta restando a piu di
-## STUCK_GOAL_DISTANCE dalla meta finale. Chi si muove, o e arrivata, riparte da zero.
-func _track_stuck(before: Vector3, delta: float) -> void:
-	if planar_distance(before, global_position) < STUCK_SPEED * delta \
-			and planar_distance(global_position, _goal_point) > STUCK_GOAL_DISTANCE:
-		_stuck_time += delta
+## Incastro (vedi STUCK_*): spostamento netto per finestre di STUCK_WINDOW secondi, non la
+## velocita di un passo (una macchina che scivola avanti e indietro contro la parete di una
+## buca resta "ferma"); e, a ogni passo, il punto non aperto per la carovana (sul fondo di una
+## buca anche a meno di 2 m dal posto). Chi si muove davvero, o e arrivata su un punto aperto,
+## riparte da zero.
+func _track_stuck(delta: float) -> void:
+	if caravan.is_open_point(global_position):
+		_trapped_time = 0.0
 	else:
-		_stuck_time = 0.0
+		_trapped_time += delta
+	if _window_start == Vector3.INF:
+		_window_start = global_position
+		_window_time = 0.0
+	_window_time += delta
+	# float64: 30 x 1/60 non fa 0,5 esatto.
+	if _window_time >= STUCK_WINDOW - 0.0001:
+		if planar_distance(_window_start, global_position) < STUCK_SPEED * _window_time \
+				and planar_distance(global_position, _goal_point) > STUCK_GOAL_DISTANCE:
+			_slow_time += _window_time
+		else:
+			_slow_time = 0.0
+		_window_start = global_position
+		_window_time = 0.0
+	_stuck_time = maxf(_slow_time, _trapped_time)
+
+
+## Incastro azzerato: cambio di stato, ritorno al posto.
+func _reset_stuck() -> void:
+	_stuck_time = 0.0
+	_slow_time = 0.0
+	_trapped_time = 0.0
+	_window_start = Vector3.INF
+	_window_time = 0.0
 
 
 ## Teletrasporto al posto nel grappolo (guinzaglio o incastro), poggiata sul suolo. Falso, e si
@@ -453,7 +500,7 @@ func _return_to_slot() -> bool:
 	velocity = Vector3.ZERO
 	_last_local_velocity = Vector3.ZERO
 	_bounce = Vector2.ZERO
-	_stuck_time = 0.0
+	_reset_stuck()
 	_threat_left = 0.0
 	reset_physics_interpolation()
 	return true
@@ -617,7 +664,7 @@ func _refresh_ring() -> void:
 		_ring.modulate = MachineCatalog.find(primary_module_id()).get(&"color", Color.WHITE)
 
 
-## Sbuffo del fumo, creato una volta per tutte le macchine: sfera scura e trasparente che
+## Sbuffo del fumo, creato una volta per tutte le macchine: sfera grigia e trasparente che
 ## cresce e sfuma salendo.
 static func _smoke_puff() -> SphereMesh:
 	if _smoke_mesh == null:
@@ -625,10 +672,10 @@ static func _smoke_puff() -> SphereMesh:
 		material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 		material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 		material.vertex_color_use_as_albedo = true
-		material.albedo_color = Color(SMOKE_COLOR.linear_to_srgb(), 0.6)
+		material.albedo_color = Color(SMOKE_COLOR.linear_to_srgb(), SMOKE_ALPHA)
 		_smoke_mesh = SphereMesh.new()
-		_smoke_mesh.radius = 0.16
-		_smoke_mesh.height = 0.32
+		_smoke_mesh.radius = SMOKE_RADIUS
+		_smoke_mesh.height = SMOKE_RADIUS * 2.0
 		_smoke_mesh.radial_segments = 8
 		_smoke_mesh.rings = 4
 		_smoke_mesh.material = material

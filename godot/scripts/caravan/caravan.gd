@@ -69,11 +69,12 @@ var _cargo_batch := 0
 var _last_carried := 0
 ## Ultimo punto chiesto a `can_supply_count`: `spend_count` preleva dal Cassone piu vicino.
 var _supply_point := Vector3.INF
-## Riparazione in corso: la macchina, i secondi tenuti e la durata letta in questo passo (con o
-## senza rottami).
+## Riparazione in corso: la macchina, i secondi tenuti, e durata e pagamento decisi all'inizio
+## della tenuta (con o senza rottami; revisione finale, A3).
 var _repair_machine: Machine
 var _repair_elapsed := 0.0
 var _repair_duration_now := 1.0
+var _repair_paid := false
 
 
 func _ready() -> void:
@@ -319,17 +320,21 @@ func repair_progress() -> float:
 
 
 ## Avanza finche il giocatore tiene Interagisci e il bersaglio resta lo stesso (guasto, entro
-## raggio, giocatore vivo); altrimenti torna a zero. Dura `repair_seconds` con almeno
-## `repair_cost` rottami nella carovana, altrimenti `repair_seconds_without_scrap` (gratis).
-## Finita: paga, ripara, marker.
+## raggio, giocatore vivo); altrimenti torna a zero. All'inizio della tenuta (e a ogni cambio di
+## bersaglio) si decide: con almeno `repair_cost` rottami nella carovana dura `repair_seconds`
+## e si paga, altrimenti `repair_seconds_without_scrap` gratis. Rottami arrivati o spariti a
+## meta tenuta non cambiano la durata. Finita: paga (se i rottami non ci sono piu, gratis),
+## ripara, marker.
 func _tick_repair(delta: float) -> void:
 	var target: Machine = repair_target() if is_instance_valid(player) and player.interact_held else null
 	if target != _repair_machine:
 		_repair_machine = target
 		_repair_elapsed = 0.0
+		if target != null:
+			_repair_paid = carried >= tuning.repair_cost
+			_repair_duration_now = tuning.repair_seconds if _repair_paid else tuning.repair_seconds_without_scrap
 	if target == null:
 		return
-	_repair_duration_now = tuning.repair_seconds if carried >= tuning.repair_cost else tuning.repair_seconds_without_scrap
 	_repair_elapsed += delta
 	# float64: 90 x 1/60 = 1.4999999999999996.
 	if _repair_elapsed < _repair_duration_now - REPAIR_EPSILON:
@@ -339,7 +344,7 @@ func _tick_repair(delta: float) -> void:
 	_repair_machine = null
 	_repair_elapsed = 0.0
 	var module_id := machine.primary_module_id()
-	var paid := tuning.repair_cost if carried >= tuning.repair_cost and pay(tuning.repair_cost, true) else 0
+	var paid := tuning.repair_cost if _repair_paid and pay(tuning.repair_cost, true) else 0
 	machine.repair(tuning.repair_health_fraction)
 	print("PROTOTYPE01_MACHINE_REPAIR_PAID module=%s paid=%d" % [module_id, paid])
 

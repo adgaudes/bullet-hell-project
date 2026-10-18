@@ -64,6 +64,7 @@ func _initialize() -> void:
 	await _test_walled_retreat_point()
 	await _test_leash()
 	await _test_pit()
+	await _test_wide_pit()
 	await _test_run_without_teleport()
 	# Ruling 17: una macchina guasta (fumo acceso) si libera con la scena senza errori.
 	_turret.take_hit(_turret.health)
@@ -278,6 +279,7 @@ func _test_breakdown_and_repair() -> void:
 	_check(machine.health == 3 and machine.state == Machine.State.OK, "riparata a meta vita: 3 PV, in ordine")
 	_check(gun.shooter == machine and module.active, "la Torretta riaccesa spara di nuovo dalla macchina")
 	_check(not smoke.emitting and not mark.visible, "niente piu fumo ne esclamativo")
+	_check(smoke.visible, "gli sbuffi gia partiti restano visibili finche non svaniscono")
 	_check(ring.modulate.is_equal_approx(MachineCatalog.find(&"turret").color), "anello di nuovo del colore del modulo")
 	_check(_states_of(machine) == [Machine.State.OK] and _changed > 0 and _caravan.broken_machines().is_empty(),
 		"state_changed(OK), changed, nessuna macchina guasta")
@@ -288,6 +290,7 @@ func _test_breakdown_and_repair() -> void:
 	# Dopo la riparazione la vita risale come dopo un colpo: +1 PV a 8 s.
 	var steps := await _steps_until_health(machine, 4, 9 * 60)
 	_check(steps >= 450 and steps <= 510, "riparata: 3 PV a 7,5 s, 4 entro 8,5 s (passo %d)" % steps)
+	_check(not smoke.visible and not smoke.emitting, "passata la vita degli sbuffi il fumo si nasconde")
 
 
 ## Rigenerazione da un colpo vero: +1 PV dopo 8 s senza colpi, poi uno ogni 4 s fino a 6.
@@ -328,6 +331,7 @@ func _test_repair() -> void:
 	await _test_repair_single_cargo(nominal, slow)
 	await _test_repair_nearest_and_range(nominal, slow)
 	await _test_repair_dead_and_level_up()
+	await _test_repair_duration_fixed(nominal, slow)
 	await _test_repair_without_player()
 	# Pulizia: niente tenuta, vita del giocatore, macchine in ordine e a vita piena, rottami di
 	# partenza (i casi dopo e il controllo finale sulla Torretta lo danno per scontato).
@@ -445,6 +449,45 @@ func _test_repair_dead_and_level_up() -> void:
 	_check(not _player.interact_held, "chiuso il menu senza scegliere: Interagisci rilasciato subito")
 	await _frames(1)
 	_check(_caravan.repair_progress() == 0.0 and _caravan.carried == 1, "progresso 0, rottami invariati")
+
+
+## Durata e pagamento si decidono all'inizio della tenuta (revisione finale, A3): rottami arrivati
+## a meta tenuta non accorciano la riparazione lenta (resta gratis); rottami spariti a meta non
+## la allungano ne la fanno ripartire: finisce alla durata decisa, gratis.
+func _test_repair_duration_fixed(nominal: int, slow: int) -> void:
+	_place_player(AREA + Vector3(0.0, 0.0, 0.5))
+	_place_machine(_turret, AREA + Vector3(0.0, 0.0, 1.7))
+	_check(_turret.is_broken() and _caravan.repair_target() == _turret, "la Torretta guasta e il bersaglio")
+	_caravan.carried = 1
+	_player.interact_held = true
+	await _frames(nominal / 2)
+	_caravan.carried = 3
+	await _frames(nominal - nominal / 2)
+	_check(_turret.is_broken() and absf(_caravan.repair_progress() - float(nominal) / slow) < 1e-6,
+		"rottami arrivati a meta tenuta: dopo %.1f s ancora guasta, progresso %.4f su %.1f s" % [_seconds(nominal), _caravan.repair_progress(), _seconds(slow)])
+	await _frames(slow - nominal - 1)
+	_check(_turret.is_broken(), "un passo prima di %.1f s ancora guasta" % _seconds(slow))
+	await _frames(1)
+	_check(not _turret.is_broken() and _caravan.carried == 3,
+		"a %.1f s riparata gratis, come deciso all'inizio: i rottami restano (%d)" % [_seconds(slow), _caravan.carried])
+	_player.interact_held = false
+	await _frames(1)
+	_place_machine(_turret, AREA + Vector3(0.0, 0.0, 1.7))
+	_break(_turret)
+	_caravan.carried = 3
+	_player.interact_held = true
+	await _frames(nominal / 2)
+	_caravan.carried = 0
+	await _frames(1)
+	var expected := float(nominal / 2 + 1) / nominal
+	_check(absf(_caravan.repair_progress() - expected) < 1e-6,
+		"rottami spariti a meta tenuta: il progresso continua sulla durata di %.1f s (%.4f, atteso %.4f)" % [_seconds(nominal), _caravan.repair_progress(), expected])
+	await _frames(nominal - nominal / 2 - 2)
+	_check(_turret.is_broken(), "un passo prima di %.1f s ancora guasta" % _seconds(nominal))
+	await _frames(1)
+	_check(not _turret.is_broken() and _caravan.carried == 0, "a %.1f s riparata gratis: i rottami non ci sono piu" % _seconds(nominal))
+	_player.interact_held = false
+	await _frames(1)
 
 
 ## Una carovana senza giocatore non ripara nessuno (le suite ne costruiscono): nessun errore.
@@ -679,6 +722,86 @@ func _test_pit() -> void:
 	_field.reset_to_base(pit, Vector2(4.0, 4.0))
 	await _frames(2)
 	_path.solve()
+
+
+## Buca larga 10 m dal fondo piatto, profonda 1,5 m, scavata sotto il Cassone col giocatore sul
+## bordo (revisione finale, A1): il posto sta a meno di 2 m dalla parete e, col giocatore che si
+## muove, il Cassone scivola lungo la parete. Fermo e poi in moto, il giocatore resta entro 6 m:
+## il Cassone torna su un punto aperto entro `stuck_seconds` + 1 s, senza il guinzaglio di 20 m.
+func _test_wide_pit() -> void:
+	print("wide pit")
+	var machine := _caravan.lead()
+	var center := AREA + Vector3(-4.0, 0.0, 0.0)
+	var p := center + Vector3(6.0, 0.0, 0.0)
+	_place_player(p)
+	# Le altre macchine ferme, parcheggiate a est del giocatore, lontano dalla buca.
+	var parked: Array[Vector3] = [Vector3(4.0, 0.0, -2.0), Vector3(4.0, 0.0, 2.0), Vector3(5.5, 0.0, 0.0), Vector3(5.5, 0.0, 3.0)]
+	var others: Array[Machine] = []
+	for each in _caravan.machines:
+		if each != machine:
+			others.append(each)
+	_check(others.size() <= parked.size(), "al piu %d altre macchine da parcheggiare (%d)" % [parked.size(), others.size()])
+	for i in mini(others.size(), parked.size()):
+		others[i].set_physics_process(false)
+		_place_machine(others[i], p + parked[i])
+	var floor_y := _field.height_at(center) - 1.5
+	_field.set_protected(center, 8.0, false)
+	_field.level(center, 5.0, floor_y, 20.0)
+	await _frames(2)
+	_path.solve()
+	_check(_field.height_at(center + Vector3(3.5, 0.0, 0.0)) < floor_y + 0.05 and _field.height_at(p) > floor_y + 1.4,
+		"buca dal fondo piatto fino a 3,5 m dal centro, il giocatore sul bordo")
+	var stuck := _caravan.tuning.stuck_seconds
+	var limit := int((stuck + 1.0) * 60.0)
+	# Fermo: il Cassone sul fondo a 2,5 m dal giocatore; il posto (verso la buca, ruotato
+	# fuori) e a meno di 2 m dalla parete su cui si appoggia.
+	_place_machine(machine, p + Vector3(-2.5, 0.0, 0.0))
+	_check(not _caravan.is_open_point(machine.global_position), "sul fondo della buca: punto non aperto")
+	var idle := await _steps_until_out(machine, floor_y, limit, [])
+	_check(idle.x >= 0 and idle.y < 6.0,
+		"giocatore fermo entro 6 m (al piu %.1f m): esce entro %.0f s (passo %d)" % [idle.y, stuck + 1.0, idle.x])
+	# In moto: il giocatore va avanti e indietro lungo il bordo (gira ogni 0,25 s), il Cassone
+	# insegue il posto che cambia lato e scivola sulla parete.
+	_place_player(p)
+	_place_machine(machine, p + Vector3(-2.5, 0.0, 0.0))
+	var moving := await _steps_until_out(machine, floor_y, limit, [&"move_forward", &"move_back"])
+	_check(moving.x >= 0 and moving.y < 6.0 and moving.z > 0.5,
+		"giocatore in moto (fino a %.1f m dalla partenza) entro 6 m (al piu %.1f m): esce entro %.0f s (passo %d)" % [moving.z, moving.y, stuck + 1.0, moving.x])
+	await _check_on_ground(machine)
+	_field.reset_to_base(center, Vector2(6.0, 6.0))
+	await _frames(2)
+	_place_player(p)
+	for each in others:
+		each.set_physics_process(true)
+	_gather_machines()
+	await _frames(30)
+
+
+## Passi fino a che [param machine] sta su un punto aperto sopra [param floor_y] + 1 m (fuori
+## dalla buca), -1 se non ci arriva entro [param limit]; con [param actions] il giocatore le
+## preme a turno, 15 passi ciascuna. Vector3(passo, distanza massima dal giocatore, strada
+## massima del giocatore dalla partenza).
+func _steps_until_out(machine: Machine, floor_y: float, limit: int, actions: Array[StringName]) -> Vector3:
+	var farthest := 0.0
+	var moved := 0.0
+	var start := _player.global_position
+	var found := -1
+	var pressed := &""
+	for i in limit:
+		if not actions.is_empty() and i % 15 == 0:
+			if pressed != &"":
+				Input.action_release(pressed)
+			pressed = actions[(i / 15) % actions.size()]
+			Input.action_press(pressed)
+		await physics_frame
+		farthest = maxf(farthest, Machine.planar_distance(machine.global_position, _player.global_position))
+		moved = maxf(moved, Machine.planar_distance(_player.global_position, start))
+		if machine.global_position.y > floor_y + 1.0 and _caravan.is_open_point(machine.global_position):
+			found = i
+			break
+	if pressed != &"":
+		Input.action_release(pressed)
+	return Vector3(found, farthest, moved)
 
 
 ## Il giocatore corre a 6 m/s per 5 s dritto, poi 3 s a zig-zag (gira ogni 0,25 s): nessuna
