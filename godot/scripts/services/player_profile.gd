@@ -2,7 +2,8 @@ class_name PlayerProfileService
 extends Node
 ## Profilo permanente del giocatore (D-049): rottami in Officina, upgrade
 ## permanenti comprati (anche gli sblocchi delle armi), run giocate e vinte, ultima classe
-## scelta e fusioni scoperte (versione 2, D-092). Salvato in `user://profile.cfg`,
+## scelta e fusioni scoperte (versione 2, D-092), combinazioni delle macchine scoperte
+## (versione 3, D-093: sezione [machines]). Salvato in `user://profile.cfg`,
 ## separato dalle impostazioni. Registrato come autoload `PlayerProfile`; gli
 ## altri script lo raggiungono con `get_node("/root/PlayerProfile")` tipizzato
 ## `PlayerProfileService` (il nome globale non esiste in --check-only ne nei test).
@@ -12,7 +13,7 @@ signal changed
 const DEFAULT_PATH := "user://profile.cfg"
 ## Versione del file (R-19): un profilo di versione piu alta viene letto per quello che si
 ## capisce; le voci sconosciute si conservano e si riscrivono, non si perdono.
-const VERSION := 2
+const VERSION := 3
 
 ## Percorso del salvataggio; vuoto = non si salva (test).
 var profile_path := DEFAULT_PATH
@@ -30,6 +31,9 @@ var completed_levels: PackedStringArray = []
 var last_class: StringName = ClassCatalog.DEFAULT
 ## Fusioni scoperte almeno una volta (ricettario dell'Officina, versione 2).
 var recipes: PackedStringArray = []
+## Combinazioni delle macchine scoperte almeno una volta (versione 3, D-093): id di
+## MachineCatalog; quelli che questa versione non conosce si conservano.
+var machine_combos: PackedStringArray = []
 ## Esito dell'ultimo salvataggio (R-18): OK, oppure l'errore che i pannelli possono mostrare.
 var last_save_error := OK
 ## Versione letta dal file (0 = file senza versione o assente).
@@ -43,6 +47,8 @@ var _unknown_upgrades: Dictionary[String, int] = {}
 ## Chiavi di [profile] e sezioni intere che questa versione non conosce (S-03): si riscrivono.
 var _unknown_profile_keys: Dictionary[String, Variant] = {}
 var _unknown_sections: Dictionary[String, Dictionary] = {}
+## Chiavi di [machines] diverse da `combinations` (versioni future): si riscrivono tali e quali.
+var _unknown_machine_keys: Dictionary[String, Variant] = {}
 
 const KNOWN_PROFILE_KEYS: Array[String] = ["version", "scrap", "runs", "victories", "levels_unlocked", "completed_levels", "last_class"]
 
@@ -70,12 +76,14 @@ func reset() -> void:
 	completed_levels.clear()
 	last_class = ClassCatalog.DEFAULT
 	recipes.clear()
+	machine_combos.clear()
 	loaded_version = 0
 	load_source = ""
 	corrupt_copy = ""
 	_unknown_upgrades.clear()
 	_unknown_profile_keys.clear()
 	_unknown_sections.clear()
+	_unknown_machine_keys.clear()
 
 
 func level_of(id: StringName) -> int:
@@ -129,6 +137,21 @@ func discover_recipe(id: StringName) -> bool:
 
 func has_recipe(id: StringName) -> bool:
 	return recipes.has(String(id))
+
+
+## Segna la combinazione delle macchine come scoperta; vero la prima volta (e salva).
+func discover_combo(id: StringName) -> bool:
+	if has_combo(id):
+		return false
+	machine_combos.append(String(id))
+	print("PROTOTYPE01_COMBO_DISCOVERED id=%s" % id)
+	save_profile()
+	changed.emit()
+	return true
+
+
+func has_combo(id: StringName) -> bool:
+	return machine_combos.has(String(id))
 
 
 ## Armi comuni sbloccate in Officina (voci `unlock_<arma>` comprate).
@@ -201,6 +224,16 @@ func load_profile(path_override: String = "") -> Error:
 		for key in config.get_section_keys("recipes"):
 			if config.get_value("recipes", key, false) == true and not recipes.has(key):
 				recipes.append(key)
+	# [machines] (versione 3): una lista di id non valida vale vuota, senza errori.
+	if config.has_section("machines"):
+		for key in config.get_section_keys("machines"):
+			var value: Variant = config.get_value("machines", key)
+			if key != "combinations":
+				_unknown_machine_keys[key] = value
+			elif value is PackedStringArray or value is Array:
+				for item: Variant in value:
+					if item is String and not machine_combos.has(item):
+						machine_combos.append(item)
 	for entry in PermanentCatalog.all():
 		var id: StringName = entry.id
 		var level := mini(_validated_count(config.get_value("upgrades", String(id), 0)), (entry.costs as Array).size())
@@ -211,7 +244,7 @@ func load_profile(path_override: String = "") -> Error:
 			if PermanentCatalog.find(StringName(key)).is_empty():
 				_unknown_upgrades[key] = _validated_count(config.get_value("upgrades", key, 0))
 	for section in config.get_sections():
-		if section == "upgrades" or section == "recipes":
+		if section == "upgrades" or section == "recipes" or section == "machines":
 			continue
 		for key in config.get_section_keys(section):
 			if section == "profile":
@@ -245,6 +278,9 @@ func save_profile(path_override: String = "") -> Error:
 	config.set_value("profile", "last_class", String(last_class))
 	for id in recipes:
 		config.set_value("recipes", id, true)
+	config.set_value("machines", "combinations", machine_combos)
+	for key in _unknown_machine_keys:
+		config.set_value("machines", key, _unknown_machine_keys[key])
 	for id: StringName in levels:
 		config.set_value("upgrades", String(id), levels[id])
 	for key in _unknown_upgrades:

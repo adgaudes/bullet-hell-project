@@ -4,7 +4,8 @@ extends CanvasLayer
 ## in upgrade permanenti. Si apre dalla schermata di fine livello, a gioco fermo;
 ## controller (croce o stick, A compra, B torna) e mouse o tastiera. Schede per sezione
 ## (D-092, come le Impostazioni di D-091): Comune, una per classe e il Ricettario delle
-## fusioni; LB/RB o PagSu/PagGiu cambiano scheda.
+## fusioni, che sotto le fusioni delle armi mostra le combinazioni delle macchine (D-093);
+## LB/RB o PagSu/PagGiu cambiano scheda.
 
 signal closed
 signal purchased(id: StringName)
@@ -23,6 +24,10 @@ var _overlay: ColorRect
 var _scrap_label: Label
 var _buttons: Dictionary[StringName, Button] = {}
 var _recipe_buttons: Dictionary[StringName, Button] = {}
+var _combo_buttons: Dictionary[StringName, Button] = {}
+## Sezione delle combinazioni sotto la griglia del Ricettario: visibile con quella.
+var _combos_box: VBoxContainer
+var _recipe_grid: GridContainer
 var _tab_buttons: Array[Button] = []
 ## Una griglia di carte per scheda, nell'ordine di TAB_NAMES.
 var _tab_grids: Array[GridContainer] = []
@@ -95,15 +100,19 @@ func _ready() -> void:
 		for entry in PermanentCatalog.all():
 			if entry.get("group", &"common") == group[0]:
 				grid.add_child(_make_card(entry))
-	var book := _make_grid(cards, "Grid_recipes")
+	_recipe_grid = _make_grid(cards, "Grid_recipes")
 	for id in PermanentCatalog.RECIPES:
-		book.add_child(_make_recipe_card(id))
-	# Altezza della scheda piu lunga: cambiando scheda il pannello non salta su e giu.
-	var most := 0
+		_recipe_grid.add_child(_make_recipe_card(id))
+	_make_combos(cards)
+	# Altezza della scheda piu lunga: cambiando scheda il pannello non salta su e giu. Il
+	# Ricettario conta anche la sezione delle combinazioni.
+	var most := 0.0
 	for grid in _tab_grids:
-		most = maxi(most, grid.get_child_count())
-	var rows := ceili(most / 2.0)
-	cards.custom_minimum_size = Vector2(0, rows * CARD_SIZE.y + maxi(rows - 1, 0) * CARD_GAP)
+		var height := _grid_height(grid.get_child_count())
+		if grid == _recipe_grid:
+			height += cards.get_theme_constant(&"separation") + _combos_box.get_combined_minimum_size().y
+		most = maxf(most, height)
+	cards.custom_minimum_size = Vector2(0, most)
 	body.add_child(_make_detail())
 	_back = Button.new()
 	_back.text = "Torna"
@@ -139,16 +148,48 @@ func _make_tab_bar() -> HBoxContainer:
 	return bar
 
 
+## Griglia di una scheda: entra in `_tab_grids`.
 func _make_grid(parent: Control, grid_name: String) -> GridContainer:
+	var grid := _new_grid(grid_name)
+	parent.add_child(grid)
+	_tab_grids.append(grid)
+	return grid
+
+
+func _new_grid(grid_name: String) -> GridContainer:
 	var grid := GridContainer.new()
 	grid.name = grid_name
 	grid.columns = 2
 	grid.add_theme_constant_override(&"h_separation", CARD_GAP)
 	grid.add_theme_constant_override(&"v_separation", CARD_GAP)
 	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	parent.add_child(grid)
-	_tab_grids.append(grid)
 	return grid
+
+
+## Altezza di [param count] carte su due colonne.
+func _grid_height(count: int) -> float:
+	var rows := ceili(count / 2.0)
+	return rows * CARD_SIZE.y + maxi(rows - 1, 0) * CARD_GAP
+
+
+## Sezione "Combinazioni delle macchine" sotto le fusioni: un'etichetta e una carta per
+## combinazione. La croce in giu dall'ultima fusione porta alla prima combinazione.
+func _make_combos(parent: Control) -> void:
+	_combos_box = VBoxContainer.new()
+	_combos_box.name = "Combos"
+	_combos_box.add_theme_constant_override(&"separation", CARD_GAP)
+	parent.add_child(_combos_box)
+	var title := Label.new()
+	title.name = "Title"
+	title.text = "Combinazioni delle macchine"
+	title.theme_type_variation = &"SectionLabel"
+	_combos_box.add_child(title)
+	var grid := _new_grid("Grid_combos")
+	_combos_box.add_child(grid)
+	for id in MachineCatalog.COMBOS:
+		grid.add_child(_make_combo_card(id))
+	var last_recipe := _recipe_grid.get_child(_recipe_grid.get_child_count() - 1) as Control
+	last_recipe.focus_neighbor_bottom = last_recipe.get_path_to(grid.get_child(0))
 
 
 ## Carta vuota nello stile dell'Officina, con l'icona a sinistra; il dettaglio la segue.
@@ -221,6 +262,44 @@ func _recipe_known(id: StringName) -> bool:
 	return _profile != null and _profile.has_recipe(id)
 
 
+## Carta di una combinazione delle macchine: si guarda come le fusioni.
+func _make_combo_card(id: StringName) -> Button:
+	var button := _card_button(id, &"lock")
+	button.name = "Combo_%s" % id
+	_combo_buttons[id] = button
+	return button
+
+
+func _combo_known(id: StringName) -> bool:
+	return _profile != null and _profile.has_combo(id)
+
+
+## "Trivella + Calamita" se scoperta, "Trivella + ?" se no.
+func _combo_parts(combo: Dictionary, known: bool) -> String:
+	var parts: Array = combo.get(&"parts", [])
+	if parts.size() < 2:
+		return "?"
+	return "%s + %s" % [MachineCatalog.name_of(parts[0]), MachineCatalog.name_of(parts[1]) if known else "?"]
+
+
+## Icona del primo modulo se scoperta, il lucchetto se no.
+func _combo_icon(combo: Dictionary, known: bool) -> StringName:
+	var parts: Array = combo.get(&"parts", [])
+	if not known or parts.is_empty():
+		return &"lock"
+	return MachineCatalog.find(parts[0]).get(&"icon", &"lock")
+
+
+## Testo della carta della combinazione [param id]: "???\nTrivella + ?" da scoprire,
+## "Estrattore\nTrivella + Calamita" scoperta.
+func combo_text(id: StringName) -> String:
+	var combo := MachineCatalog.find_combo(id)
+	if combo.is_empty():
+		return ""
+	var known := _combo_known(id)
+	return "%s\n%s" % [combo.name if known else "???", _combo_parts(combo, known)]
+
+
 ## Dettaglio: cosa fa l'upgrade, a che livello sei, quanto costa il prossimo.
 func _make_detail() -> Control:
 	var panel := PanelContainer.new()
@@ -254,6 +333,9 @@ func _make_detail() -> Control:
 
 func _show_detail(id: StringName) -> void:
 	_detail_id = id
+	if _combo_buttons.has(id):
+		_show_combo_detail(id)
+		return
 	if _recipe_buttons.has(id):
 		_show_recipe_detail(id)
 		return
@@ -292,6 +374,21 @@ func _show_recipe_detail(id: StringName) -> void:
 	_detail_price.remove_theme_color_override(&"font_color")
 
 
+## Dettaglio di una combinazione delle macchine: come quello delle fusioni.
+func _show_combo_detail(id: StringName) -> void:
+	var combo := MachineCatalog.find_combo(id)
+	var known := _combo_known(id)
+	_detail_icon.kind = _combo_icon(combo, known)
+	_detail_name.text = combo.get(&"name", "") if known else "???"
+	if known:
+		_detail_text.text = "%s\n\n%s" % [_combo_parts(combo, true), combo.get(&"text", "")]
+	else:
+		_detail_text.text = "%s\n\nSi scopre la prima volta che fondi queste due macchine in partita." % _combo_parts(combo, false)
+	_detail_level.text = "Combinazione scoperta" if known else "Combinazione da scoprire"
+	_detail_price.text = ""
+	_detail_price.remove_theme_color_override(&"font_color")
+
+
 func _input(event: InputEvent) -> void:
 	if is_open and event.is_action_pressed(&"ui_cancel"):
 		get_viewport().set_input_as_handled()
@@ -325,6 +422,7 @@ func show_tab(index: int) -> void:
 	current_tab = clampi(index, 0, TAB_NAMES.size() - 1)
 	for i in _tab_grids.size():
 		_tab_grids[i].visible = i == current_tab
+	_combos_box.visible = _recipe_grid.visible
 	# Senza segnale il ButtonGroup non spegne le altre schede: si spengono qui.
 	for i in _tab_buttons.size():
 		_tab_buttons[i].set_pressed_no_signal(i == current_tab)
@@ -435,6 +533,12 @@ func _refresh() -> void:
 		var button := _recipe_buttons[id]
 		button.text = "%s\n%s" % [fusion.get(&"name", "") if known else "???", _recipe_parts(id, known)]
 		(button.get_node(^"Icon") as UiIcon).kind = fusion.get(&"icon", &"scrap") if known else &"lock"
+		_set_ink(button, INK if known else INK_MUTED)
+	for id in MachineCatalog.COMBOS:
+		var known := _combo_known(id)
+		var button := _combo_buttons[id]
+		button.text = combo_text(id)
+		(button.get_node(^"Icon") as UiIcon).kind = _combo_icon(MachineCatalog.find_combo(id), known)
 		_set_ink(button, INK if known else INK_MUTED)
 	if _detail_id != &"":
 		_show_detail(_detail_id)

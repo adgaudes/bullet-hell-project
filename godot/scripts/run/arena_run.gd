@@ -878,6 +878,11 @@ func _setup_fusion_pad() -> void:
 	fusion_bench.name = "FusionBench"
 	add_child(fusion_bench)
 	fusion_bench.closed.connect(func() -> void: _open_next_level_up.call_deferred())
+	# Le combinazioni formate in partita entrano nel profilo (task 7); il banco le nomina da
+	# conosciute. Senza profilo il banco resta col suo default ("???" per tutte).
+	if _profile != null:
+		caravan.combo_formed.connect(_profile.discover_combo)
+		fusion_bench.combo_known = _profile.has_combo
 
 
 func _setup_quake() -> void:

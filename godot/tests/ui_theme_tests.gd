@@ -273,8 +273,9 @@ func _test_cards_and_panels() -> void:
 	for row in rows:
 		if row.theme_type_variation == &"CardButton":
 			card_rows += 1
-	# Le carte dell'Officina: gli upgrade piu le sei fusioni del ricettario (D-092).
-	var workshop_cards := PermanentCatalog.all().size() + PermanentCatalog.RECIPES.size()
+	# Le carte dell'Officina: gli upgrade, le sei fusioni del ricettario (D-092) e le sei
+	# combinazioni delle macchine (D-093).
+	var workshop_cards := PermanentCatalog.all().size() + PermanentCatalog.RECIPES.size() + MachineCatalog.COMBOS.size()
 	_check(card_rows == workshop_cards, "righe dell'Officina in CardButton (%d)" % card_rows)
 	_check(workshop._scrap_label.theme_type_variation == &"ScrapLabel", "contatore rottami in ScrapLabel")
 	var rows_with_icon := 0

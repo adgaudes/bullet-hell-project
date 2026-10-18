@@ -77,7 +77,7 @@ func _test_v1_loads() -> void:
 	_check(profile.save_profile() == OK, "si salva")
 	var reread := ConfigFile.new()
 	reread.load(PATH)
-	_check(reread.get_value("profile", "version", 0) == 2, "salvato come versione 2")
+	_check(reread.get_value("profile", "version", 0) == PlayerProfileService.VERSION, "salvato nella versione corrente (%d)" % PlayerProfileService.VERSION)
 	_check(reread.get_value("mystery", "answer", 0) == 42, "la sezione sconosciuta resta")
 	profile.free()
 

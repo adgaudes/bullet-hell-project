@@ -4,7 +4,8 @@ extends SceneTree
 ## della scena `ruins_arena` (task 2), macchine a piu moduli, `fuse`, `detach` e `remove_machine`
 ## e la regola del capofila; la piazzola di fusione (task 4), su un campo creato qui e nella
 ## scena `arena_run`; infine il banco di fusione (task 5) sulla run vera, con eventi di input veri
-## del controller e della tastiera. Eseguire con:
+## del controller e della tastiera; poi il profilo versione 3 (task 7): sezione [machines], file v2,
+## futuri e non validi, e la scoperta di una combinazione fondendo dal banco. Eseguire con:
 ##   godot_console --headless --path godot --fixed-fps 60 --script res://tests/fusion_tests.gd
 
 const TUNING_PATH := "res://resources/tuning/caravan_default.tres"
@@ -12,6 +13,9 @@ const ArenaScene := preload("res://scenes/main/ruins_arena.tscn")
 const RunScene := preload("res://scenes/main/arena_run.tscn")
 ## Posizione del pezzo della Torretta sulla macchina (TurretModule.build_part).
 const TURRET_PART_POSITION := Vector3(0.0, 0.42, -0.25)
+const ProfileScript := preload("res://scripts/services/player_profile.gd")
+## File di prova del profilo: mai `user://profile.cfg` del giocatore.
+const PROFILE_PATH := "user://profile_fusion_test.cfg"
 
 var _failures := 0
 var t: CaravanTuning
@@ -43,6 +47,7 @@ func _initialize() -> void:
 		_test_combos()
 		_test_preview()
 		_test_tuning()
+		_test_profile()
 		await _test_caravan()
 		await _test_pad()
 		await _test_pad_in_run()
@@ -708,6 +713,7 @@ func _test_bench() -> void:
 	await _test_bench_broken_and_short()
 	await _test_bench_repair_wins()
 	await _test_bench_menu_queue()
+	await _test_discovery_from_fusion()
 	paused = false
 	root.remove_child(_scene)
 	_scene.queue_free()
@@ -984,3 +990,166 @@ func _test_bench_menu_queue() -> void:
 		"richiesta e call_boss() nello stesso passo: pedana chiusa, nessun banco")
 	_send_joypad_button(JOY_BUTTON_X, false)
 	await _frames(2)
+
+
+## Trivella + Calamita fuse dal banco: il profilo (autoload, senza file sotto i test) scopre
+## l'Estrattore; riaperto il banco, un'altra Trivella + Calamita lo mostra per nome.
+func _test_discovery_from_fusion() -> void:
+	print("discovery from fusion")
+	var bench := _run.fusion_bench
+	var profile := root.get_node(^"PlayerProfile") as PlayerProfileService
+	_check(profile != null and not profile.has_combo(&"extractor") and not bench.combo_known.call(&"extractor"),
+		"prima della fusione l'Estrattore non e conosciuto")
+	if profile == null:
+		return
+	var drill: Machine = _caravan.machines.filter(func(m: Machine) -> bool: return m.module_ids() == [&"drill"])[0]
+	var magnet: Machine = _caravan.machines.filter(func(m: Machine) -> bool: return m.module_ids() == [&"magnet"])[0]
+	bench.open(_caravan)
+	_check(bench.fuse(_caravan.machines.find(drill), _caravan.machines.find(magnet)) and drill.module_ids() == [&"drill", &"magnet"],
+		"Trivella + Calamita fuse dal banco")
+	_check(profile.has_combo(&"extractor") and profile.machine_combos == PackedStringArray(["extractor"]) and bench.combo_known.call(&"extractor"),
+		"il profilo ha scoperto l'Estrattore, il banco lo sa")
+	bench.close()
+	await _frames(1)
+	var drill_2 := _caravan.add_machine(&"drill")
+	var magnet_2 := _caravan.add_machine(&"magnet")
+	_check(drill_2 != null and magnet_2 != null, "un'altra Trivella e un'altra Calamita")
+	if drill_2 != null and magnet_2 != null:
+		bench.open(_caravan)
+		bench.select(_caravan.machines.find(drill_2))
+		bench.card(_caravan.machines.find(magnet_2)).grab_focus()
+		var preview := bench.preview_text()
+		_check("Combinazioni: Estrattore (nuova)" in preview and not "???" in preview,
+			"riaperto il banco l'anteprima dice Estrattore (%s)" % preview.replace("\n", " | "))
+		bench.close()
+		await _frames(1)
+	profile.reset()
+
+
+# --- Profilo versione 3 (task 7) --------------------------------------------------------------
+
+## Conta gli errori del motore (push_error, errori di parsing): un file non valido non ne stampa.
+class ErrorCounter extends Logger:
+	var errors := 0
+
+	func _log_error(_function: String, _file: String, _line: int, _code: String, _rationale: String,
+			_editor_notify: bool, _error_type: int, _script_backtraces: Array[ScriptBacktrace]) -> void:
+		errors += 1
+
+
+func _test_profile() -> void:
+	_test_profile_v2_loads()
+	_test_profile_v3_round_trip()
+	_test_profile_future_machines()
+	_test_profile_junk_machines()
+	_remove_profile(PROFILE_PATH)
+
+
+func _new_profile() -> PlayerProfileService:
+	var profile: PlayerProfileService = ProfileScript.new()
+	profile.profile_path = ""
+	return profile
+
+
+func _remove_profile(path: String) -> void:
+	for suffix in ["", ".tmp", ".bak"]:
+		if FileAccess.file_exists(path + suffix):
+			DirAccess.remove_absolute(ProjectSettings.globalize_path(path + suffix))
+
+
+## Un profilo v2 scritto a mano si carica intatto, senza combinazioni; risalvato e v3 con [machines].
+func _test_profile_v2_loads() -> void:
+	print("profile v2 loads")
+	_remove_profile(PROFILE_PATH)
+	var config := ConfigFile.new()
+	config.set_value("profile", "version", 2)
+	config.set_value("profile", "scrap", 9)
+	config.set_value("profile", "last_class", "sapper")
+	config.set_value("recipes", "mortar", true)
+	config.set_value("upgrades", "tool_reach", 1)
+	config.set_value("mystery", "answer", 42)
+	config.save(PROFILE_PATH)
+	var p := _new_profile()
+	_check(p.load_profile(PROFILE_PATH) == OK and p.loaded_version == 2, "il file v2 si carica")
+	_check(p.scrap == 9 and p.has_recipe(&"mortar") and p.level_of(&"tool_reach") == 1 and p.last_class == &"sapper", "v2 intatto")
+	_check(p.machine_combos.is_empty() and p.save_profile() == OK, "nessuna combinazione, si salva")
+	var reread := ConfigFile.new()
+	reread.load(PROFILE_PATH)
+	_check(reread.get_value("profile", "version", 0) == 3 and reread.get_value("mystery", "answer", 0) == 42 and reread.has_section("machines"),
+		"salvato v3, sezione sconosciuta intatta")
+	_check(reread.get_value("machines", "combinations", PackedStringArray(["x"])) == PackedStringArray() and reread.get_section_keys("machines").size() == 1
+		and reread.get_value("profile", "scrap", 0) == 9 and reread.get_value("recipes", "mortar", false) == true
+		and reread.get_value("upgrades", "tool_reach", 0) == 1 and reread.get_value("profile", "last_class", "") == "sapper",
+		"risalvato: combinazioni vuote, il resto del v2 com'era")
+	p.free()
+
+
+func _test_profile_v3_round_trip() -> void:
+	print("profile v3 round trip")
+	_remove_profile(PROFILE_PATH)
+	var p := _new_profile()
+	p.profile_path = PROFILE_PATH
+	var changes := [0]
+	p.changed.connect(func() -> void: changes[0] += 1)
+	_check(p.discover_combo(&"extractor") and changes[0] == 1 and p.has_combo(&"extractor"), "prima scoperta dell'Estrattore: vero, changed")
+	_check(not p.discover_combo(&"extractor") and changes[0] == 1 and p.machine_combos.size() == 1, "seconda volta: falso, nessun doppione")
+	_check(not p.has_combo(&"dozer"), "la Ruspa resta da scoprire")
+	var loaded := _new_profile()
+	_check(loaded.load_profile(PROFILE_PATH) == OK and loaded.has_combo(&"extractor") and not loaded.has_combo(&"dozer"), "ricaricato: Estrattore ricordato")
+	var reread := ConfigFile.new()
+	reread.load(PROFILE_PATH)
+	_check(reread.get_value("profile", "version", 0) == 3 and reread.get_value("machines", "combinations", PackedStringArray()) == PackedStringArray(["extractor"]),
+		"[machines] combinations == [extractor], versione 3")
+	loaded.save_profile()
+	reread.load(PROFILE_PATH)
+	_check(reread.get_section_keys("machines") == PackedStringArray(["combinations"])
+		and reread.get_value("machines", "combinations", PackedStringArray()) == PackedStringArray(["extractor"]),
+		"risalvato: nessuna chiave doppia in [machines]")
+	p.free()
+	loaded.free()
+
+
+## Un file di una versione futura: combinazioni sconosciute e chiavi nuove di [machines] restano.
+func _test_profile_future_machines() -> void:
+	print("profile future machines")
+	_remove_profile(PROFILE_PATH)
+	var config := ConfigFile.new()
+	config.set_value("profile", "version", 5)
+	config.set_value("machines", "combinations", ["trap", "laser"])
+	config.set_value("machines", "unlocked_modules", ["drill"])
+	config.save(PROFILE_PATH)
+	var p := _new_profile()
+	_check(p.load_profile(PROFILE_PATH) == OK and p.loaded_version == 5, "il file della versione 5 si carica")
+	_check(p.has_combo(&"trap") and p.has_combo(&"laser") and not p.has_combo(&"extractor"), "Trappola e laser (sconosciuta) conosciute")
+	_check(p.save_profile() == OK, "si salva")
+	var reread := ConfigFile.new()
+	reread.load(PROFILE_PATH)
+	var combos: Variant = reread.get_value("machines", "combinations", PackedStringArray())
+	_check(reread.get_value("profile", "version", 0) == 5 and reread.get_value("machines", "unlocked_modules", []) == ["drill"]
+		and combos is PackedStringArray and combos == PackedStringArray(["trap", "laser"]),
+		"risalvato: versione 5, unlocked_modules e laser ancora li")
+	p.free()
+
+
+## combinations non valido: lista vuota, il resto si legge, nessun errore stampato.
+func _test_profile_junk_machines() -> void:
+	print("profile junk machines")
+	_remove_profile(PROFILE_PATH)
+	var config := ConfigFile.new()
+	config.set_value("profile", "version", 3)
+	config.set_value("profile", "scrap", 4)
+	config.set_value("machines", "combinations", 42)
+	config.save(PROFILE_PATH)
+	var p := _new_profile()
+	var counter := ErrorCounter.new()
+	OS.add_logger(counter)
+	var loaded := p.load_profile(PROFILE_PATH)
+	var saved := p.save_profile()
+	OS.remove_logger(counter)
+	_check(loaded == OK and saved == OK and p.machine_combos.is_empty() and p.scrap == 4, "combinations = 42: vuoto, il resto si legge")
+	_check(counter.errors == 0, "nessuna riga ERROR (%d)" % counter.errors)
+	var reread := ConfigFile.new()
+	reread.load(PROFILE_PATH)
+	var combos: Variant = reread.get_value("machines", "combinations", 0)
+	_check(combos is PackedStringArray and (combos as PackedStringArray).is_empty(), "risalvato con una lista vuota")
+	p.free()

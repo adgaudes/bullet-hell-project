@@ -22,6 +22,7 @@ func _initialize() -> void:
 	await _test_unlocks_and_recipes()
 	await _test_workshop_tabs()
 	await _test_recipe_book()
+	await _test_combinations_book()
 	await _test_banking_and_workshop_flow()
 	_remove_profile_files(TEMP_PATH)
 	# T-12: i nodi messi in coda con queue_free vanno liberati prima di uscire, o
@@ -491,6 +492,62 @@ func _test_recipe_book() -> void:
 	_check(workshop._detail_name.text == "Mortaio a crateri" and workshop._detail_text.text.contains(WeaponCatalog.find(&"mortar").text),
 		"il dettaglio della fusione scoperta ha nome e testo")
 	_check(workshop.recipe_text(&"fort").contains("Chiodatrice + ?"), "le altre restano da scoprire (Chiodatrice + ?)")
+	await _close_workshop(workshop)
+	profile.reset()
+
+
+func _combo_card(workshop: WorkshopPanel, id: StringName) -> Button:
+	return workshop.find_child("Combo_%s" % id, true, false) as Button
+
+
+## Piano B (task 7): sotto le fusioni, le sei combinazioni delle macchine, scoperte in partita.
+func _test_combinations_book() -> void:
+	print("combinazioni delle macchine")
+	var profile := _profile()
+	profile.reset()
+	var workshop: WorkshopPanel = await _open_workshop()
+	var column := workshop._overlay.get_child(0).get_child(0) as Control
+	var cards := workshop.find_child("Cards", true, false) as Control
+	var height_first_tab := cards.get_combined_minimum_size().y
+	var last := WorkshopPanel.TAB_NAMES.size() - 1
+	workshop.show_tab(last)
+	var all_shown := true
+	for id in MachineCatalog.COMBOS:
+		var card := _combo_card(workshop, id)
+		all_shown = all_shown and card != null and card.is_visible_in_tree()
+	var combos := workshop.find_child("Combos", true, false) as VBoxContainer
+	var label := combos.get_child(0) as Label if combos != null else null
+	var grid := combos.get_node_or_null(^"Grid_combos") as GridContainer if combos != null else null
+	_check(all_shown and grid != null and grid.get_child_count() == 6 and grid.columns == (workshop.find_child("Grid_recipes", true, false) as GridContainer).columns,
+		"Ricettario: sei carte Combo_<id> in Grid_combos, colonne come le fusioni")
+	_check(label != null and label.text == "Combinazioni delle macchine" and not workshop._tab_grids.has(grid), "etichetta della sezione, griglia fuori da _tab_grids")
+	_check(workshop.combo_text(&"extractor") == "???\nTrivella + ?", "combinazione da scoprire: ??? e la prima macchina (%s)" % workshop.combo_text(&"extractor").replace("\n", " | "))
+	var extractor := _combo_card(workshop, &"extractor")
+	_check((extractor.get_node(^"Icon") as UiIcon).kind == &"lock" and extractor.text == workshop.combo_text(&"extractor"), "da scoprire: icona del lucchetto")
+	_combo_card(workshop, &"trap").grab_focus()
+	_check(workshop._detail_name.text == "???" and workshop._detail_text.text == "Torretta + ?\n\nSi scopre la prima volta che fondi queste due macchine in partita.",
+		"il dettaglio segue la carta della combinazione da scoprire (%s)" % workshop._detail_text.text.replace("\n", " | "))
+	profile.discover_combo(&"extractor")
+	_check(workshop.combo_text(&"extractor") == "Estrattore\nTrivella + Calamita" and extractor.text == workshop.combo_text(&"extractor"),
+		"dopo la scoperta: Estrattore, Trivella + Calamita")
+	_check((extractor.get_node(^"Icon") as UiIcon).kind == MachineCatalog.find(&"drill").icon and workshop.combo_text(&"dozer") == "???\nTrivella + ?",
+		"scoperta: icona della Trivella; la Ruspa resta da scoprire")
+	var last_recipe := workshop._recipe_buttons[PermanentCatalog.RECIPES[-1]]
+	last_recipe.grab_focus()
+	await _send_joy(JOY_BUTTON_DPAD_DOWN)
+	_check(_focused_card(workshop) == extractor, "croce in giu dall'ultima fusione: focus su Combo_extractor")
+	_check(workshop._detail_name.text == "Estrattore" and workshop._detail_text.text == "Trivella + Calamita\n\n" + MachineCatalog.find_combo(&"extractor").text,
+		"il dettaglio della combinazione scoperta ha nome e testo")
+	last_recipe.grab_focus()
+	await _send_key(KEY_DOWN)
+	_check(_focused_card(workshop) == extractor, "freccia giu: stessa cosa da tastiera")
+	var height_book := cards.get_combined_minimum_size().y
+	_check(is_equal_approx(height_book, height_first_tab) and is_equal_approx(height_book, cards.custom_minimum_size.y),
+		"le carte non cambiano altezza fra le schede (%.0f e %.0f)" % [height_first_tab, height_book])
+	var fits := column.get_combined_minimum_size()
+	_check(fits.x <= 1280.0 and fits.y <= 800.0, "il pannello sta in 1280x800 (%.0f x %.0f)" % [fits.x, fits.y])
+	workshop.show_tab(0)
+	_check(not extractor.is_visible_in_tree() and not combos.is_visible_in_tree(), "le combinazioni si vedono solo nel Ricettario")
 	await _close_workshop(workshop)
 	profile.reset()
 
