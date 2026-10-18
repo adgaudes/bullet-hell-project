@@ -225,6 +225,26 @@ func set_protected(center: Vector3, radius: float, on: bool) -> void:
 		_protected[p] = 1 if on else 0
 
 
+## Protezione dei vertici del disco com'e ora (`{indices, flags}`): chi protegge per un tempo
+## la rimette con `restore_protected` senza togliere quella di altri (rovine, cortile).
+func snapshot_protected(center: Vector3, radius: float) -> Dictionary:
+	var indices := _disc_points(center, radius)
+	var values := PackedByteArray()
+	values.resize(indices.size())
+	for i in indices.size():
+		values[i] = _protected[indices[i]]
+	return {"indices": indices, "flags": values}
+
+
+func restore_protected(snapshot: Dictionary) -> void:
+	if snapshot.is_empty():
+		return
+	var indices: PackedInt32Array = snapshot["indices"]
+	var values: PackedByteArray = snapshot["flags"]
+	for i in mini(indices.size(), values.size()):
+		_protected[indices[i]] = values[i]
+
+
 # --- Scritture -------------------------------------------------------------------------
 
 ## Pennello a campana: [param amount] metri al centro, zero sul bordo; negativo scava.

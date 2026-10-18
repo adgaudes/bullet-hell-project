@@ -55,7 +55,9 @@ var center := Vector3.ZERO
 
 ## Secondi di livello dell'arrivo; negativo = non programmata.
 var _arrive_at := -1.0
-var _protected := false
+## Protezione che c'era sotto il disco prima dell'atterraggio (rovine, cortile): torna alla
+## chiusura. Vuota = la pedana non protegge nulla.
+var _protection_before: Dictionary = {}
 ## Ricerca a passi: candidati, prossimo da valutare, miglior ripiego e lampioni del momento.
 var _candidates: Array[Vector3] = []
 var _next_candidate := 0
@@ -71,6 +73,7 @@ var _rise_left := 0.0
 
 ## Programma l'arrivo a [param seconds] di livello e azzera la ricerca.
 func schedule(seconds: float) -> void:
+	_release_protection()
 	_arrive_at = seconds
 	phase = Phase.WAITING
 	_candidates.clear()
@@ -163,6 +166,8 @@ func find_landing_now(origin: Vector3) -> Dictionary:
 func land_at(point: Vector3) -> void:
 	if hud != null and phase == Phase.WARNING:
 		hud.clear_event_warning(RunHud.WarningPriority.FUSION)
+	# Un secondo atterraggio rimette prima il disco di quello precedente.
+	_release_protection()
 	center = Vector3(point.x, terrain_field.height_at(point) if terrain_field != null else point.y, point.z)
 	phase = Phase.OPEN
 	_ensure_model()
@@ -174,15 +179,15 @@ func land_at(point: Vector3) -> void:
 	var flat := false
 	if terrain_field != null:
 		flat = _is_level(center)
+		_protection_before = terrain_field.snapshot_protected(center, flat_radius())
 		terrain_field.set_protected(center, flat_radius(), true)
-		_protected = true
 	if hud != null:
 		hud.show_notice("PIAZZOLA DI FUSIONE ATTERRATA", NOTICE_SECONDS, RunHud.FUSION_COLOR)
 	print("PROTOTYPE01_FUSION_PAD_LANDED x=%.1f z=%.1f flat=%s" % [center.x, center.z, flat])
 	landed.emit(center)
 
 
-## Si richiude in ogni fase: niente avviso, protezione tolta, modello che risale e si nasconde.
+## Si richiude in ogni fase: niente avviso, protezione di prima rimessa, modello che risale e si nasconde.
 func close() -> void:
 	if phase == Phase.CLOSED:
 		return
@@ -190,9 +195,7 @@ func close() -> void:
 	var was_shown := was_warning or phase == Phase.OPEN
 	phase = Phase.CLOSED
 	_result = {}
-	if _protected:
-		terrain_field.set_protected(center, flat_radius(), false)
-		_protected = false
+	_release_protection()
 	if _model != null and _model.visible:
 		_descent_left = 0.0
 		_rise_left = RISE_SECONDS
@@ -203,6 +206,13 @@ func close() -> void:
 			hud.show_notice("LA PIAZZOLA SI RICHIUDE", NOTICE_SECONDS, RunHud.FUSION_COLOR)
 	print("PROTOTYPE01_FUSION_PAD_CLOSED")
 	closed.emit()
+
+
+## Rimette la protezione che c'era sotto il disco prima dell'atterraggio.
+func _release_protection() -> void:
+	if not _protection_before.is_empty() and terrain_field != null:
+		terrain_field.restore_protected(_protection_before)
+	_protection_before = {}
 
 
 # --- Ricerca ------------------------------------------------------------------------------

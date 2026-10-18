@@ -406,6 +406,7 @@ func _test_pad() -> void:
 	_test_pad_fallback()
 	_reset_pad_field()
 	await _test_pad_contains()
+	_test_pad_keeps_other_protection()
 	root.remove_child(_pad)
 	_pad.queue_free()
 	root.remove_child(_pad_field)
@@ -480,8 +481,9 @@ func _test_pad_avoids_pit() -> void:
 	points = _next_candidates(Vector3.ZERO)
 	for i in 20:
 		_pad_field.dig_to_base_offset(points[0], 9.0, 1.0)
-	_check(_pad_field.is_flat(points[0], _pad.flat_radius(), 0.35) and _pad_field.delta_at(points[0]) < -0.9,
-		"buca larga 12 m: fondo piatto, 1 m sotto la base")
+	# Scavo di raggio 9 m ripetuto: fondo piatto largo 12 m (a 6 m dal centro e ancora a -1 m).
+	_check(_pad_field.is_flat(points[0], _pad.flat_radius(), 0.35) and _pad_field.delta_at(points[0]) < -0.9
+		and _pad_field.delta_at(points[0] + Vector3(6.0, 0.0, 0.0)) < -0.9, "buca larga 12 m: fondo piatto, 1 m sotto la base")
 	r = _pad.find_landing_now(Vector3.ZERO)
 	p = r.point
 	_check(r.flat and p != points[0] and absf(_pad_field.delta_at(p)) <= 0.35, "la buca a fondo piatto non va (delta)")
@@ -539,6 +541,33 @@ func _test_pad_contains() -> void:
 	await _frames(2)
 
 
+## Un disco protetto da altri (rovina, cortile) che si sovrappone alla pedana resta protetto
+## dopo la chiusura, anche dopo un secondo atterraggio o una nuova programmazione.
+func _test_pad_keeps_other_protection() -> void:
+	print("pad keeps other protection")
+	var c := Vector3(5.0, 0.0, -4.0)
+	_pad_field.set_protected(c + Vector3(3.0, 0.0, 0.0), 3.0, true)
+	var only_other := c + Vector3(5.5, 0.0, 0.0)
+	var both := c + Vector3(2.0, 0.0, 0.0)
+	var only_pad := c + Vector3(-3.0, 0.0, 0.0)
+	_check(not _pad_field.is_protected(only_pad) and _pad_field.is_protected(both) and _pad_field.is_protected(only_other),
+		"prima: protetto solo il disco dell'altro")
+	_pad.land_at(c)
+	_check(_pad_field.is_protected(only_pad) and _pad_field.is_protected(both) and _pad_field.is_protected(only_other), "atterrata: tutto protetto")
+	_pad.close()
+	_check(not _pad_field.is_protected(only_pad) and _pad_field.is_protected(both) and _pad_field.is_protected(only_other),
+		"chiusa: torna libero solo cio che proteggeva la pedana")
+	_pad.land_at(c)
+	_pad.land_at(c + Vector3(-12.0, 0.0, 0.0))
+	_check(not _pad_field.is_protected(only_pad) and _pad_field.is_protected(both) and _pad_field.is_protected(c + Vector3(-12.0, 0.0, 0.0)),
+		"secondo atterraggio: il disco di prima torna com'era")
+	_pad.schedule(100.0)
+	_check(not _pad_field.is_protected(c + Vector3(-12.0, 0.0, 0.0)) and _pad_field.is_protected(both) and _pad_field.is_protected(only_other),
+		"nuova programmazione da aperta: disco rimesso, l'altro intatto")
+	_pad.close()
+	_pad_field.set_protected(c + Vector3(3.0, 0.0, 0.0), 3.0, false)
+
+
 ## Nella scena `arena_run`: servizi, arrivo a meta della chiamata, avviso, atterraggio,
 ## marker, protezione, luce e chiusura alla chiamata del boss.
 func _test_pad_in_run() -> void:
@@ -579,13 +608,16 @@ func _test_pad_in_run() -> void:
 	# Il segnale physics_frame viene prima dei passi dei nodi: il secondo segue il passo dopo.
 	await _frames(2)
 	_check(run.hud.event_warning_text().begins_with("PIAZZOLA DI FUSIONE"), "il passo dopo torna la pedana")
+	# Notte piena prima dell'arrivo: la lampada deve accendersi davvero.
+	run.day_night.night_start_seconds = 1.0
+	run.day_night.dusk_seconds = 0.001
 	await _frames(900)
 	var light := pad.light()
 	_check(pad.is_open() and landed[0] == 1 and run.terrain_field.is_protected(pad.center) and light != null,
 		"arrivata: aperta, disco protetto, luce")
-	_check(light != null and is_equal_approx(light.omni_range, t.pad_light_radius)
-		and is_equal_approx(light.light_energy, 2.2 * run.day_night.night_factor) and light.visible == (run.day_night.night_factor > 0.0),
-		"luce col fattore di notte, raggio %.0f m" % t.pad_light_radius)
+	_check(light != null and is_equal_approx(run.day_night.night_factor, 1.0) and is_equal_approx(light.omni_range, t.pad_light_radius)
+		and is_equal_approx(light.light_energy, 2.2) and light.visible,
+		"di notte la lampada e accesa: energia 2,2, raggio %.0f m" % t.pad_light_radius)
 	var away := Vector3(origin.x - pad.center.x, 0.0, origin.z - pad.center.z).normalized() * 25.0
 	var spot := pad.center + away
 	player.global_position = Vector3(spot.x, run.terrain_field.height_at(spot) + 0.88, spot.z)
