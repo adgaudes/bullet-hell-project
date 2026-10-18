@@ -443,7 +443,10 @@ func _test_repair_dead_and_level_up() -> void:
 	await _frames(2)
 	var opened := _run.level_up_menu.is_open and paused
 	_check(opened, "level-up aperto a meta tenuta: gioco in pausa%s" % ("" if opened else " (menu non aperto: offerta vuota?)"))
-	_check(_caravan.repair_progress() > 0.0, "in pausa il progresso resta fermo (%.3f)" % _caravan.repair_progress())
+	var held := _caravan.repair_progress()
+	await _frames(10)
+	_check(held > 0.0 and _caravan.repair_progress() == held and _turret.is_broken(),
+		"in pausa per 10 passi il progresso resta fermo (%.4f -> %.4f) e la Torretta guasta" % [held, _caravan.repair_progress()])
 	_run._pending_level_ups = 0
 	_run.level_up_menu.close()
 	_check(not _player.interact_held, "chiuso il menu senza scegliere: Interagisci rilasciato subito")

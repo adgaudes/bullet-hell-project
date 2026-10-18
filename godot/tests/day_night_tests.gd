@@ -172,6 +172,7 @@ func _test_dark_speed() -> void:
 	print("dark speed")
 	_place_player(Vector3.ZERO)
 	_machine.global_position = Vector3(-3.0, _machine.global_position.y, 0.0)
+	_machine.reset_physics_interpolation()
 	_machine.set_physics_process(false)
 	_player._invulnerable_left = 600.0
 	var base := _run.tuning.enemy_speed
@@ -202,6 +203,7 @@ func _test_dark_damage() -> void:
 	print("dark damage")
 	_place_player(Vector3(40.0, 0.0, 40.0))
 	_machine.global_position = Vector3(40.0, _machine.global_position.y, 80.0)
+	_machine.reset_physics_interpolation()
 	var contact := _run.tuning.contact_damage
 	# Dentro la torcia: il nemico nasce a contatto, a 0,5 m dal giocatore.
 	var lit := await _contact_damage(_player.global_position + Vector3(0.5, 0.0, 0.0), true)
@@ -211,6 +213,7 @@ func _test_dark_damage() -> void:
 	_run.light_field.set_radius(_run.torch_light_id, 0.0)
 	_lead.set_physics_process(false)
 	_lead.global_position = Vector3(41.0, _lead.global_position.y, 40.0)
+	_lead.reset_physics_interpolation()
 	_check(not _run.light_field.is_lit(_lead.global_position), "il Cassone accanto al giocatore non illumina nemmeno se stesso")
 	var dark := await _contact_damage(_player.global_position + Vector3(0.5, 0.0, 0.0), true)
 	_check(dark == contact + _run.tuning.night_dark_contact_bonus and _director.dark_contacts >= 1,

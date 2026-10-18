@@ -226,7 +226,7 @@ func _wait_menu() -> bool:
 func _wreck_pick(menu: LevelUpMenu) -> int:
 	var wanted: Array[String] = []
 	for id in [&"beacon"] + CLUSTER:
-		wanted.append("Nuova macchina: %s" % MachineCatalog.name_of(id))
+		wanted.append(MachineOffers.NAME_PREFIX + MachineCatalog.name_of(id))
 	for name in wanted:
 		for i in menu.card_count():
 			if _card_name(menu, i) == name:

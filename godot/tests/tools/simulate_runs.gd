@@ -128,8 +128,8 @@ const WRECK_PROGRESS_M := 0.05
 const WRECK_APPROACH_M := 0.5
 ## Esito di `_dig_toward`: nulla (lontano, campo non libero), in marcia verso il bersaglio, a portata.
 enum Dig { IDLE, WALKING, IN_REACH }
-## Inizio del nome delle carte macchina (MachineOffers.card): il menu non espone gli id.
-const MACHINE_CARD_NAME := "Nuova macchina: "
+## Inizio del nome delle carte macchina: il menu non espone gli id.
+const MACHINE_CARD_NAME := MachineOffers.NAME_PREFIX
 var _director: EnemyDirector
 var _path: PathField
 var _scrap: ScrapField

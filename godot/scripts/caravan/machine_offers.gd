@@ -8,6 +8,9 @@ extends RefCounted
 ## dei relitti sepolti (`wreck_cards`) hanno la stessa forma.
 
 const PREFIX := "m:new:"
+## Inizio del nome di ogni carta macchina (il menu espone i nomi, non gli id: test e bot la
+## riconoscono da qui).
+const NAME_PREFIX := "Nuova macchina: "
 
 
 static func is_machine_card(id: StringName) -> bool:
@@ -24,7 +27,7 @@ static func module_of(id: StringName) -> StringName:
 static func card(module_id: StringName, class_id: StringName) -> Dictionary:
 	var entry := MachineCatalog.find(module_id)
 	var mechanic := class_id == &"mechanic"
-	return {id = StringName(PREFIX + String(module_id)), name = "Nuova macchina: %s" % entry.name, category = &"companion",
+	return {id = StringName(PREFIX + String(module_id)), name = NAME_PREFIX + String(entry.name), category = &"companion",
 		rarity = UpgradeCatalog.Rarity.UNCOMMON if mechanic else UpgradeCatalog.Rarity.RARE, max_level = 0, requires = "",
 		deck = class_id if mechanic else &"common", text = entry.text, module_id = module_id, shown_level = 0,
 		icon = entry.icon}

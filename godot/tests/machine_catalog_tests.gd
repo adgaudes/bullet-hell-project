@@ -4,6 +4,8 @@ extends SceneTree
 ##   godot_console --headless --path godot --fixed-fps 60 --script res://tests/machine_catalog_tests.gd
 
 const TUNING_PATH := "res://resources/tuning/caravan_default.tres"
+## Tarature delle run (arena e ferrovia): Torcia e Faro leggono da li il raggio per livello.
+const RUN_TUNING_PATHS: Array[String] = ["res://resources/tuning/run_default.tres", "res://resources/tuning/run_railway.tres"]
 ## Distanza minima fra due colori (RGB 0..1): l'anello a terra e la striscia del HUD li
 ## devono far distinguere, anche dal rosso del guasto.
 const MIN_COLOR_DISTANCE := 0.25
@@ -16,6 +18,7 @@ func _initialize() -> void:
 	_test_modules()
 	_test_colors()
 	_test_tuning()
+	_test_card_texts()
 	await _frames(2)
 	print("PROTOTYPE01_TESTS %s failures=%d" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
@@ -32,6 +35,35 @@ func _check(condition: bool, label: String) -> void:
 func _frames(n: int) -> void:
 	for i in n:
 		await physics_frame
+
+
+## Revisione finale (B8): i numeri nel testo di queste carte sono copie della taratura (gli
+## effetti li calcolano i moduli e ArenaRun dalla taratura, non dai `values` della carta): una
+## ritaratura che dimentica la carta fallisce qui. Le altre carte leggono i propri `values`.
+func _test_card_texts() -> void:
+	print("card texts")
+	var tuning := load(TUNING_PATH) as CaravanTuning
+	var rate := UpgradeCatalog.value(&"turret_rate", &"rate_percent")
+	_check(is_equal_approx(rate, roundf((tuning.turret_rate_per_level - 1.0) * 100.0))
+		and UpgradeCatalog.describe(_upgrade(&"turret_rate")).contains("%d%%" % int(rate)),
+		"Torretta veloce: %d%% = turret_rate_per_level %.2f, e il testo lo dice" % [int(rate), tuning.turret_rate_per_level])
+	var magnet := UpgradeCatalog.value(&"magnet_range", &"radius_per_level")
+	_check(is_equal_approx(magnet, tuning.magnet_radius_per_level),
+		"Calamita potente: %.1f m = magnet_radius_per_level %.1f" % [magnet, tuning.magnet_radius_per_level])
+	var beacon := UpgradeCatalog.value(&"beacon_range", &"radius_per_level")
+	var torch := UpgradeCatalog.value(&"torch_range", &"radius_per_level")
+	for path in RUN_TUNING_PATHS:
+		var run := load(path) as RunTuning
+		_check(run != null and is_equal_approx(beacon, run.beacon_radius_per_level) and is_equal_approx(torch, run.torch_radius_per_level),
+			"Faro %.1f m e Torcia %.1f m per livello = %s (%.1f, %.1f)" % [beacon, torch, path.get_file(),
+				run.beacon_radius_per_level if run != null else -1.0, run.torch_radius_per_level if run != null else -1.0])
+
+
+func _upgrade(id: StringName) -> Dictionary:
+	for entry in UpgradeCatalog.all():
+		if entry.id == id:
+			return entry
+	return {text = ""}
 
 
 ## Otto moduli nell'ordine della spec, coi nomi, le icone e gli sblocchi di serie.

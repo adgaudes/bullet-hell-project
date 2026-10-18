@@ -46,6 +46,7 @@ func _initialize() -> void:
 	# Notte lontano dal Faro, con l'orda attorno.
 	beacon.set_physics_process(false)
 	beacon.global_position = player.global_position + Vector3(40.0, 0.0, 0.0)
+	beacon.reset_physics_interpolation()
 	for i in 20:
 		director.spawn_at(player.global_position + Vector3(cos(i * 0.314) * 9.0, 0.0, sin(i * 0.314) * 9.0))
 	for i in 40:
@@ -53,6 +54,7 @@ func _initialize() -> void:
 	await _save("night_dark")
 	# Torcia e Faro al massimo.
 	beacon.global_position = player.global_position + Vector3(6.0, 0.0, 0.0)
+	beacon.reset_physics_interpolation()
 	_run.apply_upgrade(&"torch_range", 3)
 	_run.apply_upgrade(&"beacon_range", 3)
 	for i in 20:
@@ -67,8 +69,10 @@ func _initialize() -> void:
 	for offset in [Vector3(7.2, 0.0, 0.0), Vector3(-7.2, 0.0, 0.0), Vector3(0.0, 0.0, 7.2), Vector3(0.0, 0.0, -7.2)]:
 		var world: Vector3 = player.global_position + offset
 		lead.global_position = world + Vector3(0.0, 0.3, 2.0)
+		lead.reset_physics_interpolation()
 		lamps.place_at(world)
 	lead.global_position = player.global_position + Vector3(6.0, 0.3, 0.0)
+	lead.reset_physics_interpolation()
 	for i in 20:
 		await physics_frame
 	await _save("night_lamps")

@@ -47,6 +47,7 @@ func _initialize() -> void:
 	player.global_position = Vector3(0.0, 0.88, 0.0)
 	player.rotation.y = deg_to_rad(-30.0)
 	machine.global_position = Vector3(-2.2, 0.3, 1.2)
+	machine.reset_physics_interpolation()
 	machine.rotation.y = deg_to_rad(-60.0)
 	caravan.carried = 2
 	# Seconda macchina, fuori dalla carovana (ferma), con i pezzi dei moduli Torretta, Calamita

@@ -482,7 +482,7 @@ func _test_level_up_flow() -> void:
 func _first_deck_card() -> int:
 	for i in _menu.card_count():
 		var lines := _menu.card_text(i).split("\n")
-		if not lines[1].begins_with("Nuova macchina") and not lines[2].begins_with(UpgradeCatalog.CATEGORY_NAMES[&"weapon"]):
+		if not lines[1].begins_with(MachineOffers.NAME_PREFIX) and not lines[2].begins_with(UpgradeCatalog.CATEGORY_NAMES[&"weapon"]):
 			return i
 	return -1
 
@@ -608,11 +608,15 @@ func _test_machine_card_level_up() -> void:
 	var pending := _run._pending_level_ups
 	var index := -1
 	for i in _menu.card_count():
-		if _menu.card_text(i).split("\n")[1] == "Nuova macchina: Torretta":
+		if _menu.card_text(i).split("\n")[1] == MachineOffers.NAME_PREFIX + MachineCatalog.name_of(&"turret"):
 			index = i
 	_check(_menu.is_open and pending == 2 and index >= 0, "level-up con la carta Nuova macchina: Torretta (carta %d, %d level-up)" % [index, pending])
 	if index < 0:
+		# Niente menu aperto ne pausa per i casi dopo.
 		progression.machine_cards = provider
+		_run._pending_level_ups = 0
+		_menu.close()
+		paused = false
 		return
 	_check(_menu.card_text(index).contains("NUOVO") and _menu.card_icon(index).kind == MachineCatalog.find(&"turret").icon,
 		"la carta mostra NUOVO e l'icona del modulo")

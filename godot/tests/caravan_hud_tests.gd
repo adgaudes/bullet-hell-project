@@ -133,6 +133,23 @@ func _test_strip() -> void:
 	_check(not strip.prompt_visible(), "nessuna guasta vicino: tasto Ripara spento")
 	_player.interact_held = false
 	await _frames(2)
+	# Solo la vita cambia (niente stato, niente changed): la casella la segue al passo dopo,
+	# attraverso `_tick_caravan_hud` di ArenaRun.
+	var health := turret.health
+	_changed = 0
+	turret._hit_cooldown_left = 0.0
+	turret._invulnerable_left = 0.0
+	_check(turret.take_hit(1) and turret.health == health - 1 and turret.state == Machine.State.OK and _changed == 0,
+		"un colpo da 1 PV: %d PV, in ordine, nessun changed" % turret.health)
+	await _frames(1)
+	var shown_hit := strip.slot_health(1)
+	_check(shown_hit == health - 1 and strip.slot_state(1) == Machine.State.OK,
+		"la casella mostra il colpo al passo dopo (%d PV)" % strip.slot_health(1))
+	turret.heal(1)
+	_check(turret.health == health and _changed == 0, "curata di 1 PV, nessun changed")
+	await _frames(1)
+	_check(shown_hit == health - 1 and strip.slot_health(1) == health,
+		"la casella mostra la cura al passo dopo (%d -> %d PV)" % [shown_hit, strip.slot_health(1)])
 
 
 # --- Indicatori sopra la colonna -----------------------------------------------------------------

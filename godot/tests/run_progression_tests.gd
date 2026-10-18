@@ -21,7 +21,8 @@ func _initialize() -> void:
 	_test_machine_card_shape()
 	_test_one_machine_card_per_offer()
 	_test_machine_cards_keep_offer_full()
-	_test_no_machine_cards()
+	_test_two_upgrades_and_machine_cards()
+	await _test_no_machine_cards()
 	_test_module_cards_with_machine_cards()
 	print("PROTOTYPE01_TESTS %s failures=%d" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
@@ -374,19 +375,67 @@ func _test_machine_cards_keep_offer_full() -> void:
 	_check(full and boots > 0, "un solo upgrade vero rimasto: sempre tre carte, al piu una macchina, lui offerto (%d su 200)" % boots)
 
 
-## Senza carte macchina possibili (carovana piena, nessun modulo) nessuna carta macchina.
+## Revisione finale (B1): due upgrade veri e le carte macchina, nessuna ripetibile. Le carte
+## macchina contano come una sola (`mini(machines.size(), 1)` in roll_offer): due veri piu una
+## macchina fanno tre carte, quindi le ripetibili non entrano nel pool. Senza quel termine
+## entrerebbero e comparirebbero nelle offerte.
+func _test_two_upgrades_and_machine_cards() -> void:
+	print("two upgrades and machine cards")
+	var p := _new(34)
+	p.module_count = func(_id: StringName) -> int: return 1
+	p.machine_cards = func() -> Array[Dictionary]: return _machine_cards(&"")
+	for upgrade in UpgradeCatalog.all():
+		if not upgrade.get(&"filler", false):
+			p.levels[upgrade.id] = upgrade.max_level
+	p.levels[&"boots"] = 0
+	p.levels[&"reach"] = 0
+	_check(p.eligible().size() == 2, "due upgrade veri ancora prendibili (%d)" % p.eligible().size())
+	var full := true
+	var fillers := 0
+	for i in 200:
+		var offer := p.roll_offer()
+		full = full and offer.size() == 3 and _machine_count(offer) == 1
+		fillers += offer.filter(func(u: Dictionary) -> bool: return u.get(&"filler", false)).size()
+	_check(full and fillers == 0, "200 offerte: i due veri e una carta macchina, mai una ripetibile (%d ripetibili)" % fillers)
+
+
+## Carovana piena: `MachineOffers.cards` non da carte, quindi nessuna carta macchina nelle
+## offerte. Prima la stessa carovana con posto le da (il controllo non e vuoto).
 func _test_no_machine_cards() -> void:
 	print("no machine cards")
+	var caravan := Caravan.new()
+	caravan.tuning = (load("res://resources/tuning/caravan_default.tres") as CaravanTuning).duplicate()
+	root.add_child(caravan)
+	# Il Cassone nasce nel _ready, che dentro _initialize arriva al primo fotogramma.
+	await process_frame
+	var available: Array[StringName] = []
+	for id: StringName in MachineCatalog.MODULES:
+		if id != &"cargo":
+			available.append(id)
 	var p := _new(32)
 	p.module_count = func(_id: StringName) -> int: return 1
-	p.machine_cards = func() -> Array[Dictionary]: return [] as Array[Dictionary]
+	p.machine_cards = func() -> Array[Dictionary]: return MachineOffers.cards(caravan, &"", available)
+	var seen := 0
+	for i in 300:
+		seen += _machine_count(p.roll_offer())
+	_check(caravan.module_count() == 1 and caravan.has_room() and seen > 0,
+		"carovana col solo Cassone e posto: le carte macchina compaiono (%d su 300)" % seen)
+	caravan.tuning.module_limit = caravan.module_count()
 	var none := true
 	var full := true
 	for i in 300:
 		var offer := p.roll_offer()
 		none = none and _machine_count(offer) == 0
 		full = full and offer.size() == 3
-	_check(none and full, "machine_cards vuota: 300 offerte di tre carte, nessuna carta macchina")
+	_check(not caravan.has_room() and MachineOffers.cards(caravan, &"", available).is_empty() and none and full,
+		"carovana piena: MachineOffers.cards vuota, 300 offerte di tre carte, nessuna carta macchina")
+	_check(MachineOffers.cards(null, &"", available).is_empty() and MachineOffers.cards(null, &"mechanic", available).is_empty(),
+		"senza carovana (null) MachineOffers.cards e vuota, senza errori")
+	root.remove_child(caravan)
+	caravan.queue_free()
+	# T-12: i nodi messi in coda con queue_free vanno liberati prima di uscire.
+	await physics_frame
+	await physics_frame
 
 
 ## Review Focus #4 di D-093: con le carte macchina nel pool una carta di livello di un modulo
