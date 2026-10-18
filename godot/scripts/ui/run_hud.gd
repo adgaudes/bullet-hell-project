@@ -4,8 +4,9 @@ extends CanvasLayer
 ## rottamatori abbattuti; annuncio del boss con freccia di direzione e barra
 ## della sua vita (D-043). Solo lettura: mai focus ne input.
 
-## Priorita dell'annuncio unico: treno e terremoto, poi boss, poi piazzola di estrazione.
-enum WarningPriority { EXTRACTION, BOSS, EVENT }
+## Priorita dell'annuncio unico: treno e terremoto, poi boss, poi piazzola di estrazione, poi
+## piazzola di fusione (D-093). I chiamanti usano sempre i nomi, mai i numeri.
+enum WarningPriority { FUSION, EXTRACTION, BOSS, EVENT }
 const XP_COLOR := UiPalette.XP
 const BOSS_COLOR := Color(0.95, 0.6, 0.08)
 const DAY_COLOR := Color(1.0, 0.9, 0.55)
@@ -13,6 +14,7 @@ const NIGHT_COLOR := Color(0.6, 0.65, 1.0)
 const TRAIN_COLOR := Color(1.0, 0.45, 0.3)
 const QUAKE_COLOR := Color(0.9, 0.62, 0.32)
 const EXTRACTION_COLOR := Color(0.35, 0.9, 0.6)
+const FUSION_COLOR := Color(0.45, 0.8, 1.0)
 const TITLE_COLOR := UiPalette.TEXT
 ## Distanza della freccia di direzione dal centro dello schermo, in frazione del lato corto.
 const ARROW_RADIUS_RATIO := 0.36

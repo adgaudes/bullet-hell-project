@@ -30,6 +30,7 @@ const MARKERS_PER_KIND := 2
 const MARKER_COURTYARD_COLOR := Color(0.95, 0.85, 0.55)
 const MARKER_DEPOSIT_COLOR := Color(0.95, 0.5, 0.15)
 const MARKER_BOSS_COLOR := Color(1.0, 0.25, 0.15)
+const MARKER_FUSION_COLOR := Color(0.5, 0.82, 1.0)
 ## Ogni quanto si ricontrolla quali punti di interesse hanno ancora celle Raised.
 const MARKER_REFRESH_SECONDS := 1.0
 const MAIN_MENU_SCENE := "res://scenes/main/main_menu.tscn"
@@ -82,6 +83,8 @@ var run_seed := 0
 var class_id: StringName = ClassCatalog.DEFAULT
 var loadout: WeaponLoadout
 var write_queue: TerrainWriteQueue
+## Piazzola di fusione (D-093, piano B): creata nel codice con carovana e rilievo; seme + 8.
+var fusion_pad: FusionPad
 ## Prato logico (Falce rotante, Erba alta): riempito dal distretto con il rilievo.
 var meadow: MeadowMap
 ## Carte dei mazzi di classe che non sono armi (spec D-092, par. 5).
@@ -197,6 +200,7 @@ func _ready() -> void:
 	_apply_permanent_upgrades()
 	_build_terrain_layout()
 	_start_position = player.global_position
+	_setup_fusion_pad()
 
 	player.health_changed.connect(hud.set_health)
 	player.damaged.connect(_on_player_damaged)
@@ -242,6 +246,8 @@ func _physics_process(delta: float) -> void:
 		extraction_pad.advance(delta)
 	if is_over:
 		return
+	if fusion_pad != null:
+		fusion_pad.advance(elapsed, delta)
 	_tick_boss(delta)
 	_tick_start_protection(delta)
 	_tick_markers(delta)
@@ -340,6 +346,11 @@ func current_markers() -> Array[Dictionary]:
 		var distance := Vector2(offset.x, offset.z).length()
 		if distance >= marker_min_distance():
 			markers.append({direction = Vector2(offset.x, offset.z), distance = distance, color = MARKER_BOSS_COLOR, text = "BOSS"})
+	if fusion_pad != null and fusion_pad.is_open():
+		var offset := fusion_pad.center - origin
+		var distance := Vector2(offset.x, offset.z).length()
+		if distance >= marker_min_distance():
+			markers.append({direction = Vector2(offset.x, offset.z), distance = distance, color = MARKER_FUSION_COLOR, text = "PIAZZOLA"})
 	return markers
 
 
@@ -364,6 +375,9 @@ func _tick_boss(delta: float) -> void:
 func call_boss() -> void:
 	if boss_phase != BossPhase.WAITING:
 		return
+	# La piazzola di fusione si richiude (prima dell'avviso: non atterra piu).
+	if fusion_pad != null:
+		fusion_pad.close()
 	# Solo direzioni in cui c'e spazio per arrivare da lontano (vicino ai bordi no).
 	var limit := _play_half_extents() - Vector2(3.0, 3.0)
 	var options: Array = []
@@ -829,6 +843,33 @@ func _setup_extraction() -> void:
 	extraction_pad.extraction_completed.connect(_on_extraction_completed)
 
 
+## Piazzola di fusione (D-093, piano B): solo con carovana e rilievo. L'arrivo a
+## `pad_boss_fraction` della chiamata del boss si decide qui, una volta: chi cambia
+## `boss_call_at` dopo non sposta la pedana.
+func _setup_fusion_pad() -> void:
+	if caravan == null or terrain_field == null:
+		return
+	fusion_pad = FusionPad.new()
+	fusion_pad.name = "FusionPad"
+	fusion_pad.terrain_field = terrain_field
+	fusion_pad.player = player
+	fusion_pad.hud = hud
+	fusion_pad.caravan = caravan
+	fusion_pad.path_field = director.path_field
+	fusion_pad.lamp_field = lamp_field
+	if caravan.tuning != null:
+		fusion_pad.tuning = caravan.tuning
+	fusion_pad.rng.seed = run_seed + 8
+	fusion_pad.fallback_point = _start_position
+	if train_event != null:
+		fusion_pad.on_tracks = func(p: Vector3) -> bool: return RailwayDistrict.is_on_tracks(Vector2(p.x, p.z))
+	add_child(fusion_pad)
+	# La lampada nasce all'atterraggio: le luci si rifanno al passo dopo.
+	fusion_pad.landed.connect(func(_center: Vector3) -> void: _night_factor_applied = -1.0)
+	if boss_call_at > 0.0:
+		fusion_pad.schedule(boss_call_at * fusion_pad.tuning.pad_boss_fraction)
+
+
 func _setup_quake() -> void:
 	if quake_event == null:
 		return
@@ -945,6 +986,12 @@ func _update_game_lights() -> void:
 		light.visible = factor > 0.0
 		light.light_energy = 2.2 * factor
 		light.omni_range = float(entry.radius) * 1.15
+	# Lampada della piazzola di fusione: solo visiva, nessuna sorgente di LightField.
+	if fusion_pad != null and fusion_pad.light() != null:
+		var pad_light := fusion_pad.light()
+		pad_light.visible = factor > 0.0
+		pad_light.light_energy = 2.2 * factor
+		pad_light.omni_range = fusion_pad.tuning.pad_light_radius
 
 
 ## Macchine, livelli o moduli accesi cambiati: le luci si rifanno al prossimo passo.

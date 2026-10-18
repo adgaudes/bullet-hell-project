@@ -2,11 +2,13 @@ extends SceneTree
 ## Fusione delle macchine (D-093, piano B): taglie, vita, velocita, forza, costi, anteprime di
 ## fusione e sgancio, sei combinazioni e valori di partenza in CaravanTuning; poi, sulla carovana
 ## della scena `ruins_arena` (task 2), macchine a piu moduli, `fuse`, `detach` e `remove_machine`
-## e la regola del capofila. Eseguire con:
+## e la regola del capofila; infine la piazzola di fusione (task 4), su un campo creato qui e
+## nella scena `arena_run`. Eseguire con:
 ##   godot_console --headless --path godot --fixed-fps 60 --script res://tests/fusion_tests.gd
 
 const TUNING_PATH := "res://resources/tuning/caravan_default.tres"
 const ArenaScene := preload("res://scenes/main/ruins_arena.tscn")
+const RunScene := preload("res://scenes/main/arena_run.tscn")
 ## Posizione del pezzo della Torretta sulla macchina (TurretModule.build_part).
 const TURRET_PART_POSITION := Vector3(0.0, 0.42, -0.25)
 
@@ -21,6 +23,9 @@ var _xp: XpField
 ## Combinazioni ricevute da `combo_formed` e macchine da `machine_removed`.
 var _combos_formed: Array[StringName] = []
 var _removed: Array[Machine] = []
+## Sezione piazzola: la pedana e il suo campo di 120 x 120 m.
+var _pad: FusionPad
+var _pad_field: TerrainField
 
 
 func _initialize() -> void:
@@ -36,6 +41,8 @@ func _initialize() -> void:
 		_test_preview()
 		_test_tuning()
 		await _test_caravan()
+		await _test_pad()
+		await _test_pad_in_run()
 	await _frames(2)
 	print("PROTOTYPE01_TESTS %s failures=%d" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
@@ -371,3 +378,246 @@ func _test_duplicates() -> void:
 	await _frames(1)
 	var nodes := _xp.attractors.map(func(e: Dictionary) -> Object: return e.node)
 	_check(single != null and nodes.size() == 2 and nodes.has(magnet) and nodes.has(single), "sganciata una Calamita: due attrattori, uno per macchina")
+
+
+# --- Sezione piazzola (task 4) ---------------------------------------------------------------
+
+## Pedana su un campo piano di 120 x 120 m creato qui, senza PathField, lampioni ne binari.
+func _test_pad() -> void:
+	print("pad")
+	_pad_field = TerrainField.new()
+	_pad_field.render = false
+	_pad_field.size_m = Vector2(120.0, 120.0)
+	root.add_child(_pad_field)
+	_pad = FusionPad.new()
+	_pad.name = "FusionPad"
+	_pad.terrain_field = _pad_field
+	_pad.tuning = t
+	_pad.rng.seed = 8
+	root.add_child(_pad)
+	await process_frame
+	_check(is_equal_approx(_pad.half_size(), 3.0) and is_equal_approx(_pad.flat_radius(), 3.0 * sqrt(2.0)) and _pad.light() == null,
+		"6 m di lato, disco di 4,24 m, nessuna luce prima dell'atterraggio")
+	_test_pad_candidates()
+	_test_pad_landing_flat()
+	_reset_pad_field()
+	_test_pad_avoids_pit()
+	_reset_pad_field()
+	_test_pad_fallback()
+	_reset_pad_field()
+	await _test_pad_contains()
+	root.remove_child(_pad)
+	_pad.queue_free()
+	root.remove_child(_pad_field)
+	_pad_field.queue_free()
+	await _frames(2)
+
+
+func _reset_pad_field() -> void:
+	_pad_field.reset_to_base(Vector3.ZERO, Vector2(60.0, 60.0))
+
+
+## Candidati che `find_landing_now` vedra: lo stato del generatore torna com'era.
+func _next_candidates(origin: Vector3) -> Array[Vector3]:
+	var state := _pad.rng.state
+	var points := _pad.candidate_points(origin)
+	_pad.rng.state = state
+	return points
+
+
+## Dislivello di un candidato come lo misura la pedana per il ripiego: quota massima meno
+## minima sulla griglia di 1 m dentro il disco, o lo scarto del centro dalla base se e maggiore.
+func _pad_relief(p: Vector3) -> float:
+	var r := _pad.flat_radius()
+	var lo := INF
+	var hi := -INF
+	for ix in range(-4, 5):
+		for iz in range(-4, 5):
+			if ix * ix + iz * iz > r * r:
+				continue
+			var h := _pad_field.height_at(p + Vector3(ix, 0.0, iz))
+			lo = minf(lo, h)
+			hi = maxf(hi, h)
+	return maxf(hi - lo, absf(_pad_field.delta_at(p)))
+
+
+func _test_pad_candidates() -> void:
+	print("pad candidates")
+	var origin := Vector3(2.0, 0.0, -1.0)
+	var points := _next_candidates(origin)
+	var radii := [25.0, 22.5, 27.5, 20.0, 30.0]
+	var shaped := points.size() == 120 and points == _pad.candidate_points(origin)
+	for i in points.size():
+		var d := Vector2(points[i].x - origin.x, points[i].z - origin.z).length()
+		shaped = shaped and absf(d - float(radii[floori(i / 24.0)])) < 0.001
+	_check(shaped, "120 candidati: raggi 25, 22,5, 27,5, 20, 30 m, ripetibili col generatore")
+	var a0 := Vector2(points[0].x - origin.x, points[0].z - origin.z).angle()
+	var a1 := Vector2(points[1].x - origin.x, points[1].z - origin.z).angle()
+	_check(absf(angle_difference(a0, a1) - deg_to_rad(15.0)) < 0.001, "24 angoli ogni 15 gradi")
+	_check(_next_candidates(origin)[0] != points[0], "lo scarto cambia a ogni ricerca")
+
+
+func _test_pad_landing_flat() -> void:
+	print("pad landing flat")
+	var r := _pad.find_landing_now(Vector3.ZERO)
+	var d := Vector2(r.point.x, r.point.z).length()
+	_check(r.flat and d >= 20.0 and d <= 30.0, "piano, a 20-30 m")
+	_check(absf(d - 25.0) < 0.001, "il primo candidato buono e sull'anello di 25 m (%.2f)" % d)
+
+
+## Review Focus 1: ne buca ne cumulo, e una buca larga a fondo piatto non vale (delta).
+func _test_pad_avoids_pit() -> void:
+	print("pad avoids pit")
+	var points := _next_candidates(Vector3.ZERO)
+	_pad_field.sculpt(points[0], 3.0, -1.0)
+	_pad_field.sculpt(points[1], 3.0, 1.0)
+	var r := _pad.find_landing_now(Vector3.ZERO)
+	var p: Vector3 = r.point
+	_check(r.flat and p != points[0] and p != points[1], "buca sul primo candidato e cumulo sul secondo: un altro punto")
+	_check(_pad_field.is_flat(p, _pad.flat_radius(), 0.35) and absf(_pad_field.delta_at(p)) <= 0.35,
+		"il punto scelto e piano entro 0,35 m e alla base (%.2f)" % _pad_field.delta_at(p))
+	_reset_pad_field()
+	points = _next_candidates(Vector3.ZERO)
+	for i in 20:
+		_pad_field.dig_to_base_offset(points[0], 9.0, 1.0)
+	_check(_pad_field.is_flat(points[0], _pad.flat_radius(), 0.35) and _pad_field.delta_at(points[0]) < -0.9,
+		"buca larga 12 m: fondo piatto, 1 m sotto la base")
+	r = _pad.find_landing_now(Vector3.ZERO)
+	p = r.point
+	_check(r.flat and p != points[0] and absf(_pad_field.delta_at(p)) <= 0.35, "la buca a fondo piatto non va (delta)")
+
+
+func _test_pad_fallback() -> void:
+	print("pad fallback")
+	for ix in range(-12, 13):
+		for iz in range(-12, 13):
+			var p := Vector3(ix * 3.0, 0.0, iz * 3.0)
+			var d := Vector2(p.x, p.z).length()
+			if d >= 15.0 and d <= 35.0:
+				_pad_field.sculpt(p, 2.5, 0.6 + fposmod(p.x * 0.37 + p.z * 0.61, 1.0) * 0.8)
+	var points := _next_candidates(Vector3.ZERO)
+	var best := Vector3.INF
+	var best_relief := INF
+	for p in points:
+		var relief := _pad_relief(p)
+		if relief < best_relief:
+			best = p
+			best_relief = relief
+	var r := _pad.find_landing_now(Vector3.ZERO)
+	_check(not r.flat and r.point == best and best_relief > 0.35,
+		"anello a cumuli: non piano, il candidato col dislivello minore (%.2f m)" % best_relief)
+	_pad.fallback_point = Vector3(1.0, 0.0, 2.0)
+	_pad.on_tracks = func(_p: Vector3) -> bool: return true
+	r = _pad.find_landing_now(Vector3.ZERO)
+	_check(not r.flat and r.point == Vector3(1.0, 0.0, 2.0), "tutto sui binari: il punto di partenza")
+	_pad.on_tracks = Callable()
+
+
+func _test_pad_contains() -> void:
+	print("pad contains")
+	var c := Vector3(5.0, 0.0, -4.0)
+	_pad.land_at(c)
+	_check(_pad.is_open() and _pad.phase == FusionPad.Phase.OPEN and _pad.light() != null and _pad.light().name == "PadLight",
+		"atterrata: aperta, con la luce PadLight")
+	_check(_pad.contains(c + Vector3(2.9, 0, 2.9)) and not _pad.contains(c + Vector3(3.1, 0, 0)), "quadrato di 6 m")
+	var deck := _pad.get_node_or_null(^"Model/Deck") as MeshInstance3D
+	_check(deck != null and (deck.mesh as BoxMesh).size.is_equal_approx(Vector3(6.0, 0.12, 6.0)) and deck.layers == Machine.VISUAL_LAYER,
+		"pianale 6 x 0,12 x 6 m sul layer visivo delle macchine")
+	_check(_pad_field.is_protected(c) and _pad_field.is_protected(c + Vector3(4.0, 0.0, 0.0))
+		and not _pad_field.is_protected(c + Vector3(5.0, 0.0, 0.0)), "protegge il disco circoscritto")
+	# Senza ArenaRun nessuno la fa avanzare: i passi qui, a 60 Hz.
+	var model := _pad.get_node(^"Model") as Node3D
+	_check(model.position.y > _pad_field.height_at(c) + 10.0, "il modello parte dall'alto")
+	for i in 100:
+		_pad.advance(0.0, 1.0 / 60.0)
+	_check(absf(model.position.y - _pad_field.height_at(c)) < 0.001, "dopo 1,5 s il modello poggia a terra")
+	_pad.close()
+	_check(not _pad.is_open() and _pad.phase == FusionPad.Phase.CLOSED and not _pad_field.is_protected(c), "chiusa: disco non piu protetto")
+	for i in 70:
+		_pad.advance(0.0, 1.0 / 60.0)
+	_check(not model.visible, "il modello risale e si nasconde")
+	await _frames(2)
+
+
+## Nella scena `arena_run`: servizi, arrivo a meta della chiamata, avviso, atterraggio,
+## marker, protezione, luce e chiusura alla chiamata del boss.
+func _test_pad_in_run() -> void:
+	print("pad in run")
+	var scene: Node3D = RunScene.instantiate()
+	root.add_child(scene)
+	var run: ArenaRun = scene.get_node(^"Run")
+	var player: PlayerCharacter = scene.get_node(^"Player")
+	(scene.get_node(^"EnemyDirector") as EnemyDirector).spawning = false
+	await _frames(5)
+	var pad := run.fusion_pad
+	_check(pad != null and pad.get_parent() == run and pad.terrain_field == run.terrain_field and pad.path_field == run.director.path_field
+		and pad.lamp_field == run.lamp_field and pad.caravan == run.caravan and pad.tuning == run.caravan.tuning, "pedana creata da ArenaRun coi servizi")
+	if pad == null:
+		root.remove_child(scene)
+		scene.queue_free()
+		return
+	_check(is_equal_approx(pad.arrive_at(), run.boss_call_at * 0.5) and is_equal_approx(pad.warning_at(), run.boss_call_at * 0.5 - 15.0),
+		"a meta della chiamata, 15 s di preavviso")
+	_check(pad.rng.seed == run.run_seed + 8 and pad.fallback_point == run._start_position and not pad.on_tracks.is_valid(),
+		"seme della run + 8, ripiego al punto di partenza, nessun binario")
+	var warned := [0]
+	var landed := [0]
+	pad.warned.connect(func(_c: Vector3) -> void: warned[0] += 1)
+	pad.landed.connect(func(_c: Vector3) -> void: landed[0] += 1)
+	var origin := player.global_position
+	pad.schedule(run.elapsed + 16.0)
+	await _frames(72)
+	var text := run.hud.event_warning_text()
+	_check(pad.phase == FusionPad.Phase.WARNING and warned[0] == 1 and text == "PIAZZOLA DI FUSIONE  -  15" and run.hud.is_boss_warning_visible(),
+		"dopo 1,2 s: avviso con freccia e conto 15 (%s)" % text)
+	var d := Vector2(pad.center.x - origin.x, pad.center.z - origin.z).length()
+	_check(d >= 20.0 and d <= 30.0, "a 20-30 m dal giocatore (%.1f)" % d)
+	await physics_frame
+	run.hud.set_event_warning("TRENO", Vector3.LEFT, 5.0, RunHud.TRAIN_COLOR)
+	await process_frame
+	_check(run.hud.event_warning_text().begins_with("TRENO"), "il treno nello stesso passo vince sulla pedana")
+	# Il segnale physics_frame viene prima dei passi dei nodi: il secondo segue il passo dopo.
+	await _frames(2)
+	_check(run.hud.event_warning_text().begins_with("PIAZZOLA DI FUSIONE"), "il passo dopo torna la pedana")
+	await _frames(900)
+	var light := pad.light()
+	_check(pad.is_open() and landed[0] == 1 and run.terrain_field.is_protected(pad.center) and light != null,
+		"arrivata: aperta, disco protetto, luce")
+	_check(light != null and is_equal_approx(light.omni_range, t.pad_light_radius)
+		and is_equal_approx(light.light_energy, 2.2 * run.day_night.night_factor) and light.visible == (run.day_night.night_factor > 0.0),
+		"luce col fattore di notte, raggio %.0f m" % t.pad_light_radius)
+	var away := Vector3(origin.x - pad.center.x, 0.0, origin.z - pad.center.z).normalized() * 25.0
+	var spot := pad.center + away
+	player.global_position = Vector3(spot.x, run.terrain_field.height_at(spot) + 0.88, spot.z)
+	player.velocity = Vector3.ZERO
+	player.reset_physics_interpolation()
+	var marker := _pad_marker(run)
+	_check(not marker.is_empty() and marker.color == ArenaRun.MARKER_FUSION_COLOR and absf(float(marker.distance) - 25.0) < 0.1
+		and run.marker_min_distance() < 25.0, "a 25 m il marker PIAZZOLA")
+	var h := run.terrain_field.height_at(pad.center)
+	run.terrain_field.player_sculpt(pad.center, 1.5, -0.6, TerrainField.ToolMode.DIG)
+	_check(is_equal_approx(run.terrain_field.height_at(pad.center), h), "un attrezzo sul centro non cambia la quota")
+	run.call_boss()
+	_check(not pad.is_open() and pad.phase == FusionPad.Phase.CLOSED and not run.terrain_field.is_protected(pad.center)
+		and not run.hud.event_warning_text().begins_with("PIAZZOLA") and _pad_marker(run).is_empty(),
+		"chiamato il boss: chiusa, nessun avviso ne marker, centro non protetto")
+	# Pedana programmata e boss chiamato prima dell'avviso (boss riportato in attesa a mano).
+	run.boss_phase = ArenaRun.BossPhase.WAITING
+	run.boss_call_at = 0.0
+	pad.schedule(run.elapsed + 15.5)
+	await _frames(15)
+	_check(pad.phase == FusionPad.Phase.SEARCHING, "ricerca in corso prima dell'avviso")
+	run.call_boss()
+	await _frames(75)
+	_check(pad.phase == FusionPad.Phase.CLOSED and warned[0] == 1 and landed[0] == 1 and not pad.is_open()
+		and not run.hud.event_warning_text().begins_with("PIAZZOLA") and _pad_marker(run).is_empty(),
+		"boss chiamato prima dell'avviso: nessun avviso, nessun atterraggio")
+	root.remove_child(scene)
+	scene.queue_free()
+
+
+func _pad_marker(run: ArenaRun) -> Dictionary:
+	for marker in run.current_markers():
+		if marker.text == "PIAZZOLA":
+			return marker
+	return {}
