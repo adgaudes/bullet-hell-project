@@ -14,7 +14,7 @@ var carried := 0:
 	set(value):
 		carried = clampi(value, 0, capacity)
 		if machine != null:
-			machine.set_cargo_view(capacity, carried)
+			machine.refresh_cargo_view()
 		if caravan != null:
 			caravan.notify_cargo_changed()
 ## Copia della capienza del tuning: le carte la aumentano senza toccare la risorsa.
@@ -30,7 +30,7 @@ var _watched_field: PathField
 func add_capacity(extra: int) -> void:
 	capacity += extra
 	if machine != null:
-		machine.set_cargo_view(capacity, carried)
+		machine.refresh_cargo_view()
 
 
 func room() -> int:

@@ -1,9 +1,10 @@
 class_name Machine
 extends CharacterBody3D
 ## Macchina della carovana (spec D-093, Sezioni 1 e 4): il carrello del compagno di oggi
-## (D-032) con i moduli come nodi figli (uno solo nel piano A). Autonoma e non pilotabile:
-## tiene il suo posto nel grappolo attorno al giocatore, o va dove un modulo la chiama
-## (il Cassone verso i rottami). Senza carovana o senza giocatore resta ferma.
+## (D-032) con i moduli come nodi figli (piu d'uno dal piano B, pezzi impilati sul pianale,
+## taglia dal numero dei moduli). Autonoma e non pilotabile: tiene il suo posto nel grappolo
+## attorno al giocatore, o va dove un modulo la chiama (il Cassone verso i rottami). Senza
+## carovana o senza giocatore resta ferma.
 ## Danni (Sezione 4): rottamatori e boss la colpiscono a contatto (`take_hit`, poi `hit_cooldown`
 ## d'immunita); a 0 PV si guasta (ferma, moduli spenti, fumo, punto esclamativo, anello rosso)
 ## finche non la si ripara (`repair`); con poca vita si ritira dal lato opposto al nemico piu
@@ -80,9 +81,26 @@ const SMOKE_RADIUS := 0.28
 const SMOKE_ALPHA := 0.7
 ## Altezza del punto esclamativo sull'origine della macchina.
 const BROKEN_MARK_HEIGHT := 1.5
+## Fumo: punto di partenza degli sbuffi e raggio della sfera d'emissione; dimensione in pixel
+## del punto esclamativo. Valori a scala 1 (macchina piccola).
+const SMOKE_POSITION := Vector3(0.0, 0.45, 0.1)
+const SMOKE_EMISSION_RADIUS := 0.15
+const BROKEN_MARK_PIXEL := 0.006
+
+# --- Piu moduli (piano B): pezzi impilati e taglia.
+## Scarto del pezzo del modulo i-esimo rispetto alla posizione del suo `build_part`: il primo
+## dove sta, gli altri a destra e sinistra e via via piu in alto sul pianale.
+const PART_STACK: Array[Vector3] = [Vector3(0, 0, 0), Vector3(0.32, 0.3, 0), Vector3(-0.32, 0.3, 0),
+	Vector3(0.32, 0.6, 0), Vector3(-0.32, 0.6, 0), Vector3(0, 0.9, 0), Vector3(0, 1.2, 0)]
 
 var caravan: Caravan
 var modules: Array[MachineModule] = []
+## Taglia, forza dei moduli, fattore della velocita massima e scala del modello: dal numero dei
+## moduli (MachineFusion), rifatti a ogni modulo aggiunto o tolto.
+var size := MachineFusion.Size.SMALL
+var power := 1.0
+var speed_factor := 1.0
+var model_scale := 1.0
 ## Punti vita del telaio (`chassis_health`, li imposta la carovana).
 var max_health := 6
 var health := 6
@@ -96,7 +114,16 @@ var _cargo_material: StandardMaterial3D
 ## Stato del movimento procedurale (vedi le costanti RIG_*, TILT_*, BOUNCE_*, SHIVER_*, CARGO_WOBBLE_*).
 var _cargo_rest: Array[Vector3] = []
 var _parts: Array[Node3D] = []
+## Posa di riposo di ogni pezzo (impilata, a scala 1) e posa di montaggio (come l'ha costruita
+## il modulo o chi l'ha montato).
 var _part_rest: Array[Transform3D] = []
+var _part_mount: Array[Transform3D] = []
+## Il modulo che ha montato ogni pezzo (impilato secondo il suo indice in `modules`).
+var _part_owner: Dictionary[Node3D, MachineModule] = {}
+## Scala del telaio attorno a RIG_GROUND (`model_scale`): fra telaio e pose di riposo.
+var _scale_rig := Transform3D.IDENTITY
+## Combinazioni dei moduli (MachineCatalog.combos_of), rifatte a ogni modulo aggiunto o tolto.
+var _combos: Array[StringName] = []
 var _model_rest := Transform3D.IDENTITY
 var _motion_time := 0.0
 var _road_phase := 0.0
@@ -160,19 +187,72 @@ func _ready() -> void:
 	_build_visuals()
 
 
-## Aggiunge un modulo: figlio della macchina, col suo pezzo visibile se ne ha uno. I servizi
-## glieli passa la carovana subito dopo.
+## Aggiunge un modulo: figlio della macchina, col suo pezzo visibile se ne ha uno (il secondo
+## dello stesso tipo si chiama `TurretModule2`, `TurretPart2`), poi ricostruisce taglia, vita e
+## scala. I servizi glieli passa la carovana subito dopo.
 func add_module(module: MachineModule) -> void:
 	module.machine = self
 	module.caravan = caravan
+	var type_name := String(module.module_id).capitalize()
 	if module.name.is_empty() or module.name.begins_with("@"):
-		module.name = "%sModule" % String(module.module_id).capitalize()
+		module.name = _free_child_name("%sModule" % type_name)
 	modules.append(module)
 	add_child(module)
 	var part := module.build_part()
 	if part != null:
-		mount_part(StringName("%sPart" % String(module.module_id).capitalize()), part)
-	_refresh_ring()
+		mount_part(_free_child_name("%sPart" % type_name), part)
+		_part_owner[part] = module
+	_rebuild()
+
+
+## Toglie [param module]: fuori dall'albero subito (Calamita e Faro si liberano ora in
+## `_exit_tree`), pezzo tolto, poi la ricostruzione. Il modulo viene liberato.
+func remove_module(module: MachineModule) -> void:
+	var index := modules.find(module)
+	if index < 0:
+		return
+	modules.remove_at(index)
+	for i in range(_parts.size() - 1, -1, -1):
+		var part := _parts[i]
+		if _part_owner.get(part) == module:
+			_part_owner.erase(part)
+			_parts.remove_at(i)
+			_part_rest.remove_at(i)
+			_part_mount.remove_at(i)
+			remove_child(part)
+			part.queue_free()
+	remove_child(module)
+	module.queue_free()
+	_rebuild()
+
+
+## Tipi dei moduli, nell'ordine di montaggio.
+func module_ids() -> Array[StringName]:
+	var ids: Array[StringName] = []
+	for each in modules:
+		ids.append(each.module_id)
+	return ids
+
+
+## Combinazioni dei moduli della macchina (anche da guasta: vedi `has_combo`).
+func combos() -> Array[StringName]:
+	return _combos
+
+
+## Vero se la combinazione [param id] vale ora: i suoi moduli sulla macchina, non guasta.
+func has_combo(id: StringName) -> bool:
+	return not is_broken() and _combos.has(id)
+
+
+## Velocita massima: quella della carovana per il fattore della taglia.
+func top_speed() -> float:
+	return caravan.tuning.max_speed * caravan.speed_scale * speed_factor
+
+
+## Raggio di contatto della carovana in scala con la macchina.
+func contact_reach() -> float:
+	var tuning := _tuning()
+	return tuning.contact_radius * model_scale if tuning != null else 0.0
 
 
 func has_module(id: StringName) -> bool:
@@ -345,7 +425,7 @@ func _physics_process(delta: float) -> void:
 		if _return_to_slot():
 			return
 	_tick_threat(delta)
-	var top_speed := tuning.max_speed * caravan.speed_scale
+	var top := top_speed()
 	var destination := _choose_destination()
 	var to_destination := destination - global_position
 	to_destination.y = 0.0
@@ -353,7 +433,7 @@ func _physics_process(delta: float) -> void:
 	var distance := to_destination.length()
 	if distance > tuning.arrive_radius:
 		# Rallenta in arrivo per non oscillare attorno al punto.
-		desired = to_destination / distance * minf(top_speed, distance * 3.0)
+		desired = to_destination / distance * minf(top, distance * 3.0)
 	var planar := Vector3(velocity.x, 0.0, velocity.z).move_toward(desired, tuning.acceleration * delta)
 	velocity.x = planar.x
 	velocity.z = planar.z
@@ -522,6 +602,21 @@ func set_cargo_view(capacity: int, carried: int) -> void:
 		_shown_carried = carried
 
 
+## Cubetti di tutti i Cassoni della macchina: capienza e carico sommati. Una macchina senza
+## Cassoni (e senza cubetti) non ne mostra.
+func refresh_cargo_view() -> void:
+	var total_capacity := 0
+	var total_carried := 0
+	for each in modules:
+		var box := each as CargoModule
+		if box != null:
+			total_capacity += box.capacity
+			total_carried += box.carried
+	if total_capacity == 0 and _cargo.is_empty():
+		return
+	set_cargo_view(total_capacity, total_carried)
+
+
 ## Monta un pezzo visibile (upgrade): una sola istanza per nome.
 func mount_part(part_name: StringName, part: Node3D) -> void:
 	var old := get_node_or_null(NodePath(part_name))
@@ -530,6 +625,8 @@ func mount_part(part_name: StringName, part: Node3D) -> void:
 		if index >= 0:
 			_parts.remove_at(index)
 			_part_rest.remove_at(index)
+			_part_mount.remove_at(index)
+		_part_owner.erase(old as Node3D)
 		# Via dall'albero subito: altrimenti il nuovo pezzo viene rinominato (@TurretPart@N)
 		# e dal terzo montaggio dello stesso nome i pezzi si accumulano.
 		remove_child(old)
@@ -539,6 +636,56 @@ func mount_part(part_name: StringName, part: Node3D) -> void:
 	add_child(part)
 	_parts.append(part)
 	_part_rest.append(part.transform)
+	_part_mount.append(part.transform)
+	part.transform = _scale_rig * part.transform
+
+
+## [param base] se nessun figlio ha quel nome, altrimenti `base2`, `base3`, ...
+func _free_child_name(base: String) -> StringName:
+	var candidate := base
+	var n := 2
+	while has_node(NodePath(candidate)):
+		candidate = "%s%d" % [base, n]
+		n += 1
+	return StringName(candidate)
+
+
+## Dopo ogni modulo aggiunto o tolto: taglia, forza (a ogni modulo), fattore di velocita, scala
+## e vita massima dal numero dei moduli (MachineFusion); la vita resta entro il nuovo massimo (la
+## frazione la fissa la carovana). Poi combinazioni, pezzi impilati (PART_STACK secondo l'indice
+## del modulo), modello, cubetti, anello, fumo e punto esclamativo in scala attorno a RIG_GROUND.
+func _rebuild() -> void:
+	var tuning := _tuning()
+	var count := modules.size()
+	if tuning != null and count > 0:
+		size = MachineFusion.size_of(count, tuning) as MachineFusion.Size
+		power = MachineFusion.power_of(count, tuning)
+		speed_factor = MachineFusion.speed_factor_of(count, tuning)
+		model_scale = MachineFusion.model_scale_of(count, tuning)
+		max_health = MachineFusion.max_health_of(count, tuning)
+		health = mini(health, max_health)
+	for each in modules:
+		each.power = power
+	_combos = MachineCatalog.combos_of(module_ids())
+	_scale_rig = Transform3D(Basis.from_scale(Vector3.ONE * model_scale), RIG_GROUND * (1.0 - model_scale))
+	for i in _parts.size():
+		var rest := _part_mount[i]
+		var owner_module: MachineModule = _part_owner.get(_parts[i])
+		if owner_module != null:
+			rest.origin += PART_STACK[mini(modules.find(owner_module), PART_STACK.size() - 1)]
+		_part_rest[i] = rest
+	if _ring != null:
+		_ring.size = RING_SIZE * model_scale
+		_smoke.position = _scale_rig * SMOKE_POSITION
+		_smoke.emission_sphere_radius = SMOKE_EMISSION_RADIUS * model_scale
+		_smoke.scale_amount_min = model_scale
+		_smoke.scale_amount_max = 1.6 * model_scale
+		_broken_mark.position = _scale_rig * Vector3(0.0, BROKEN_MARK_HEIGHT, 0.0)
+		_broken_mark.pixel_size = BROKEN_MARK_PIXEL * model_scale
+	refresh_cargo_view()
+	_refresh_ring()
+	if _model != null:
+		_apply_rig(Transform3D.IDENTITY, 0.0)
 
 
 static func planar_distance(a: Vector3, b: Vector3) -> float:
@@ -618,7 +765,7 @@ func _build_status_marks() -> void:
 	_smoke.amount = 10
 	_smoke.lifetime = 1.6
 	_smoke.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
-	_smoke.emission_sphere_radius = 0.15
+	_smoke.emission_sphere_radius = SMOKE_EMISSION_RADIUS
 	_smoke.direction = Vector3.UP
 	_smoke.spread = 15.0
 	_smoke.initial_velocity_min = 0.5
@@ -631,7 +778,7 @@ func _build_status_marks() -> void:
 	_smoke.scale_amount_curve = _smoke_growth
 	_smoke.color_ramp = _smoke_fade
 	_smoke.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	_smoke.position = Vector3(0.0, 0.45, 0.1)
+	_smoke.position = SMOKE_POSITION
 	_smoke.layers = VISUAL_LAYER
 	_smoke.emitting = false
 	_smoke.visible = false
@@ -641,7 +788,7 @@ func _build_status_marks() -> void:
 	_broken_mark.name = "BrokenMark"
 	_broken_mark.text = "!"
 	_broken_mark.font_size = 96
-	_broken_mark.pixel_size = 0.006
+	_broken_mark.pixel_size = BROKEN_MARK_PIXEL
 	_broken_mark.modulate = BrushPreview.INVALID_COLOR
 	_broken_mark.outline_size = 18
 	_broken_mark.outline_modulate = Color.BLACK
@@ -702,8 +849,7 @@ func _update_motion(delta: float) -> void:
 	_motion_time += delta
 	var local_velocity := Vector3(velocity.x, 0.0, velocity.z) * global_basis
 	var speed := local_velocity.length()
-	var top_speed := caravan.tuning.max_speed * caravan.speed_scale
-	var speed_ratio := clampf(speed / maxf(top_speed, 0.01), 0.0, 1.0)
+	var speed_ratio := clampf(speed / maxf(top_speed(), 0.01), 0.0, 1.0)
 	var change := local_velocity - _last_local_velocity
 	_last_local_velocity = local_velocity
 	var acceleration := change / maxf(delta, 0.0001)
@@ -735,10 +881,11 @@ func _update_motion(delta: float) -> void:
 	_motion_at_rest = false
 
 
-## Applica il telaio a modello, cubetti visibili e pezzi montati. [param wobble] (0..1)
-## fa ballare i cubetti, ognuno con la sua fase.
+## Applica il telaio a modello, cubetti visibili e pezzi montati, in scala (`_scale_rig`).
+## [param wobble] (0..1) fa ballare i cubetti, ognuno con la sua fase.
 func _apply_rig(rig: Transform3D, wobble: float) -> void:
-	_model.transform = rig * _model_rest
+	var frame := rig * _scale_rig
+	_model.transform = frame * _model_rest
 	# Tutti i cubetti, anche quelli nascosti: a interruttore spento tornano a riposo (P-05).
 	for i in _cargo.size():
 		var pose := Transform3D(Basis.IDENTITY, _cargo_rest[i])
@@ -746,6 +893,6 @@ func _apply_rig(rig: Transform3D, wobble: float) -> void:
 			var beat := _motion_time * TAU * CARGO_WOBBLE_HZ + i * 1.9
 			pose.basis = Basis.from_euler(Vector3(0.0, sin(beat) * CARGO_WOBBLE_TWIST * wobble, cos(beat) * CARGO_WOBBLE_TWIST * 0.5 * wobble))
 			pose.origin.y += absf(sin(beat)) * CARGO_WOBBLE_HOP * wobble
-		_cargo[i].transform = rig * pose
+		_cargo[i].transform = frame * pose
 	for i in _parts.size():
-		_parts[i].transform = rig * _part_rest[i]
+		_parts[i].transform = frame * _part_rest[i]

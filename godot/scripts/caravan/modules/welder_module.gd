@@ -49,6 +49,11 @@ func tick(delta: float) -> void:
 		_sparks(target)
 
 
+## Dimentica [param other] (macchina tolta dalla carovana: `Caravan.remove_machine`).
+func forget(other: Machine) -> void:
+	_broken_elapsed.erase(other)
+
+
 ## Spento (macchina guasta) dimentica le guaste che stava saldando.
 func _on_active_changed(_on: bool) -> void:
 	_broken_elapsed.clear()

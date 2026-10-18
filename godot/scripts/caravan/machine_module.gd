@@ -17,6 +17,9 @@ var module_id: StringName
 var machine: Machine
 var caravan: Caravan
 var level := 0
+## Forza della macchina (Machine.power, scelta 4 di D-093): la assegna la macchina a ogni modulo
+## aggiunto o tolto.
+var power := 1.0
 ## Un modulo spento non fa `tick` e non chiede mete: lo spegne il guasto della macchina (il
 ## Faro resta acceso anche di giorno, la sua luce la nasconde il fattore di notte).
 var active := true

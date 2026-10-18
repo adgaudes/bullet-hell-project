@@ -13,6 +13,14 @@ signal carried_changed(carried: int)
 ## (guasta, in ritirata, di nuovo in ordine) cambiati: HUD e luci dei Faro.
 signal changed
 signal machine_added(machine: Machine)
+## Una macchina tolta dalla carovana (assorbita da una fusione o rimossa).
+signal machine_removed(machine: Machine)
+## [param machine] ha assorbito un'altra macchina (`fuse`).
+signal fused(machine: Machine)
+## [param machine] e la macchina nuova nata da uno sgancio (`detach`).
+signal detached(machine: Machine)
+## Una fusione ha formato una combinazione che nessuna delle due macchine aveva.
+signal combo_formed(combo_id: StringName)
 
 const MACHINE_SCENE_PATH := "res://scenes/caravan/machine.tscn"
 ## Altezza dell'origine della macchina sul suolo (meta del box di collisione).
@@ -161,12 +169,138 @@ func beacon_lights() -> Array[Dictionary]:
 	return result
 
 
-## La macchina col Cassone piu vecchio, altrimenti la prima, altrimenti null.
+## Capofila (scelta 8 di D-093): la macchina piu vecchia con un Cassone non guasto; altrimenti
+## la piu vecchia con un Cassone; altrimenti la prima; altrimenti null.
 func lead() -> Machine:
+	var with_cargo: Machine = null
 	for machine in machines:
 		if machine.has_module(&"cargo"):
-			return machine
+			if not machine.is_broken():
+				return machine
+			if with_cargo == null:
+				with_cargo = machine
+	if with_cargo != null:
+		return with_cargo
 	return machines[0] if not machines.is_empty() else null
+
+
+# --- Fusione, sgancio e rimozione (piano B) --------------------------------------------------
+
+## Vero se [param other] puo entrare in [param base]: entrambe nella carovana, diverse, non
+## guaste, insieme entro `max_modules_per_machine` moduli, e i rottami dei Cassoni funzionanti
+## pagano il costo (`fuse_cost_per_module` per modulo della seconda).
+func can_fuse(base: Machine, other: Machine) -> bool:
+	if base == other or not machines.has(base) or not machines.has(other):
+		return false
+	if base.is_broken() or other.is_broken():
+		return false
+	if base.modules.size() + other.modules.size() > tuning.max_modules_per_machine:
+		return false
+	return working_carried() >= MachineFusion.fuse_cost(other.modules.size(), tuning)
+
+
+## [param other] entra in [param base] (scelta 2 di D-093), che tiene posto, nome e ordine:
+## paga, ricrea su [param base] ogni modulo della seconda (i rottami di un Cassone passano col
+## modulo), toglie la seconda e da alla base la frazione di vita delle due (scelta 3). Gira solo
+## ad albero fermo (dal banco). Falso, senza effetti, se `can_fuse` e falso.
+func fuse(base: Machine, other: Machine) -> bool:
+	if not can_fuse(base, other):
+		return false
+	var health_sum := base.health + other.health
+	var max_sum := base.max_health + other.max_health
+	var combos_before: Array[StringName] = []
+	combos_before.append_array(base.combos())
+	combos_before.append_array(other.combos())
+	var cost := MachineFusion.fuse_cost(other.modules.size(), tuning)
+	_begin_cargo_change()
+	pay(cost)
+	for module in other.modules.duplicate():
+		var scrap := 0
+		var box := module as CargoModule
+		if box != null:
+			scrap = box.carried
+			box.carried = 0
+		_attach_module(base, module.module_id, scrap)
+	remove_machine(other)
+	base.health = MachineFusion.carried_health(health_sum, max_sum, base.max_health)
+	_end_cargo_change()
+	for combo_id in base.combos():
+		if not combos_before.has(combo_id):
+			print("PROTOTYPE01_COMBO_FORMED combo=%s" % combo_id)
+			combo_formed.emit(combo_id)
+	print("PROTOTYPE01_MACHINE_FUSED modules=%s size=%s cost=%d machines=%d" % [
+		",".join(base.module_ids()), MachineFusion.SIZE_NAMES[base.size], cost, machines.size()])
+	fused.emit(base)
+	changed.emit()
+	return true
+
+
+## Vero se il modulo [param module_index] di [param machine] si puo sganciare: macchina nella
+## carovana, non guasta, con almeno due moduli, e i Cassoni funzionanti pagano lo sgancio.
+func can_detach(machine: Machine, module_index: int) -> bool:
+	if not machines.has(machine) or machine.is_broken():
+		return false
+	if machine.modules.size() < 2 or module_index < 0 or module_index >= machine.modules.size():
+		return false
+	return working_carried() >= MachineFusion.detach_cost(tuning)
+
+
+## Sgancia il modulo [param module_index] di [param machine] in una macchina piccola nuova, piena
+## (telaio nuovo), al primo posto libero sul suolo e coi rottami del modulo se e un Cassone; la
+## sorgente conserva la frazione di vita (scelta 3 di D-093). Gira solo ad albero fermo (dal
+## banco). La macchina nuova, o null se `can_detach` e falso.
+func detach(machine: Machine, module_index: int) -> Machine:
+	if not can_detach(machine, module_index):
+		return null
+	var health := machine.health
+	var max_health := machine.max_health
+	var cost := MachineFusion.detach_cost(tuning)
+	_begin_cargo_change()
+	pay(cost)
+	var module := machine.modules[module_index]
+	var module_id := module.module_id
+	var scrap := 0
+	var box := module as CargoModule
+	if box != null:
+		scrap = box.carried
+		box.carried = 0
+	machine.remove_module(module)
+	machine.health = MachineFusion.carried_health(health, max_health, machine.max_health)
+	# Il modulo tolto, uscendo dall'albero, puo aver tolto la registrazione di un gemello che
+	# resta (due Calamite sulla stessa macchina): i rimasti si registrano di nuovo.
+	for each in machine.modules:
+		each.apply_level(each.level)
+	var created := _add_machine(module_id, null, scrap)
+	_end_cargo_change()
+	print("PROTOTYPE01_MACHINE_DETACHED module=%s cost=%d machines=%d" % [module_id, cost, machines.size()])
+	detached.emit(created)
+	changed.emit()
+	return created
+
+
+## Toglie [param machine] dalla carovana: fuori da `machines` e da `write_queue.bodies`, la
+## riparazione azzerata se era sua, dimenticata dai Saldatori; fuori dall'albero subito (Calamita
+## e Faro si liberano ora in `_exit_tree`), poi liberata.
+func remove_machine(machine: Machine) -> void:
+	var index := machines.find(machine)
+	if index < 0:
+		return
+	machines.remove_at(index)
+	var queue := _services.get(&"write_queue") as TerrainWriteQueue
+	if queue != null:
+		queue.bodies.erase(machine)
+	if _repair_machine == machine:
+		_repair_machine = null
+		_repair_elapsed = 0.0
+	for module in modules_of(&"welder"):
+		(module as WelderModule).forget(machine)
+	_begin_cargo_change()
+	remove_child(machine)
+	machine.queue_free()
+	_end_cargo_change()
+	print("PROTOTYPE01_MACHINE_REMOVED machines=%d" % machines.size())
+	machine_removed.emit(machine)
+	changed.emit()
 
 
 ## Le macchine guaste, nell'ordine della carovana (HUD, riparazione).
@@ -470,6 +604,17 @@ func _add_machine(module_id: StringName, at: Variant, scrap: int) -> Machine:
 	machine.reset_physics_interpolation()
 	machines.append(machine)
 
+	_attach_module(machine, module_id, scrap)
+	_track_body(machine)
+	print("PROTOTYPE01_MACHINE_ADDED module=%s machines=%d modules=%d" % [module_id, machines.size(), module_count()])
+	machine_added.emit(machine)
+	changed.emit()
+	return machine
+
+
+## Un modulo nuovo di tipo [param module_id] su [param machine]: servizi, livello del tipo e, se
+## e un Cassone, capienza della carovana e [param scrap] rottami a bordo.
+func _attach_module(machine: Machine, module_id: StringName, scrap: int) -> MachineModule:
 	var module := module_script_for(module_id).new() as MachineModule
 	module.module_id = module_id
 	machine.add_module(module)
@@ -479,11 +624,7 @@ func _add_machine(module_id: StringName, at: Variant, scrap: int) -> Machine:
 		var cargo := module as CargoModule
 		cargo.capacity = tuning.cargo_capacity + _cargo_bonus
 		cargo.carried = scrap
-	_track_body(machine)
-	print("PROTOTYPE01_MACHINE_ADDED module=%s machines=%d modules=%d" % [module_id, machines.size(), module_count()])
-	machine_added.emit(machine)
-	changed.emit()
-	return machine
+	return module
 
 
 ## Indice di posto piu basso non occupato.
