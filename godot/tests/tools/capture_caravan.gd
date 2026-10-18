@@ -8,11 +8,13 @@ extends SceneTree
 ##                  se c'e, altrimenti un modulo del grappolo, altrimenti la prima carta);
 ##   cluster_day    sei macchine (Torretta, Faro, Sirena, Trivella, Pala finche c'e posto)
 ##                  attorno al giocatore con 16 rottamatori robusti attorno;
-##   broken         Torretta guasta a 1,2 m: fumo, punto esclamativo, anello rosso, tasto Ripara;
+##   broken         Torretta guasta a 1,2 m, 3 s dopo il guasto: fumo, punto esclamativo, anello
+##                  rosso, tasto Ripara (campo `smoke=`: emettitore acceso);
 ##   retreat        una macchina a 1 PV si ritira dal lato opposto a 8 rottamatori;
 ##   cluster_night  il grappolo di notte con l'orda: luce dai soli Faro;
-##   strip          striscia della carovana (Torretta in riparazione da 0,7 s, una in ritirata)
-##                  con tre frecce degli indicatori verso il basso; poi la run resta ferma;
+##   strip          striscia della carovana (Torretta in riparazione da 0,7 s, una macchina a 1 PV
+##                  con la tinta della vita bassa: senza nemici non si ritira) con tre frecce
+##                  degli indicatori verso il basso; poi la run resta ferma;
 ##   event_arrow    avviso di un evento con la freccia verso il basso a destra, sopra o dentro la
 ##                  colonna in basso a destra (osservazione HUD-2 del task 7, solo documentata);
 ##   machine_parts  primo piano dei sette pezzi dei moduli (Torretta, Calamita, Faro, Trivella,
@@ -97,10 +99,18 @@ func _initialize() -> void:
 	_director.clear_horde()
 	await _seconds(0.5)
 	var turret := _machine_with(&"turret")
+	if turret == null:
+		_abort("nessuna Torretta nella carovana per broken")
+		return
 	_break_beside_player(turret)
-	await _seconds(1.5)
-	await _shot("broken", "state=%s prompt=%s" % [Machine.State.keys()[turret.state],
-		_run.hud.caravan_strip().prompt_visible()])
+	# Il fumo (10 sbuffi in 1,6 s che salgono e crescono) e pieno dopo un ciclo intero: 3 s,
+	# dentro la finestra di 1-6 s prima del Saldatore.
+	var broken_at := _run.elapsed
+	await _seconds(3.0)
+	var smoke := turret.get_node_or_null(^"Smoke") as CPUParticles3D
+	await _shot("broken", "state=%s prompt=%s smoke=%s smoke_s=%.1f" % [Machine.State.keys()[turret.state],
+		_run.hud.caravan_strip().prompt_visible(), smoke != null and smoke.visible and smoke.emitting,
+		_run.elapsed - broken_at])
 	turret.repair(1.0)
 	turret.grant_invulnerability(3000.0)
 
@@ -138,7 +148,11 @@ func _initialize() -> void:
 	await _seconds(1.0)
 
 	# Striscia della carovana, come capture_weapons.gd -- --caravan: dopo, la run resta ferma.
+	# Senza nemici nessuna macchina si ritira: quella a 1 PV mostra solo la tinta della vita bassa.
 	turret = _machine_with(&"turret")
+	if turret == null:
+		_abort("nessuna Torretta nella carovana per strip")
+		return
 	_break_beside_player(turret)
 	var retreating := _first_other(turret)
 	if retreating != null:
@@ -293,6 +307,13 @@ func _ring(count: int) -> void:
 		var enemy := _director.spawn_at(center + Vector3(cos(angle), 0.0, sin(angle)) * (6.0 + 2.0 * (i % 2)))
 		enemy.health = 1000
 		enemy.max_health = 1000
+
+
+## Uscita con errore da uno scatto impossibile (invece di un accesso a null fino a `--quit-after`).
+func _abort(reason: String) -> void:
+	push_warning("capture_caravan: %s" % reason)
+	print("PROTOTYPE01_CAPTURE_CARAVAN aborted=%s" % reason.replace(" ", "_"))
+	quit(1)
 
 
 func _machine_with(module_id: StringName) -> Machine:

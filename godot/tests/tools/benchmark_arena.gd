@@ -192,7 +192,7 @@ func _bench_writes(run: ArenaRun, player: Node3D, step: float, weapons_ms: float
 ## Carovana (D-093, piano A; budget 0,5 ms per passo sul preset Deck). Di giorno sei macchine
 ## (Cassone, due Torrette, Trivella, Pala, Sirena), di notte il Cassone e i sei Faro accesi messi
 ## dalla riga `night`; giocatore e macchine immuni, 20 rottamatori robusti a 2-4 m dal grappolo
-## (con i 70 dell'orda circa 90 nemici: riga prudente). Si misura un ciclo intero della Sirena
+## (i 70 dell'orda restano lontani e contano solo nelle scansioni su tutti i nemici). Si misura un ciclo intero della Sirena
 ## (attiva e ferma) passo per passo, come `_time_weapons`: carovana, macchine coi figli che hanno
 ## un passo (le torrette) e la coda delle scritture (buche della Trivella, argini della Pala; per
 ## la finestra i robusti stanno a 7-9 m dal giocatore, cosi Trivella e Pala scrivono davvero);
@@ -309,7 +309,11 @@ func _bench_caravan(scene: Node, step: float, preset: String, night: bool) -> vo
 		nodes[i].set_physics_process(was_on[i])
 	for i in robust.size():
 		if is_instance_valid(robust[i]) and not robust[i].is_dead:
-			_teleport_enemy(robust[i], held_at[i])
+			# Un argine alzato nella finestra puo stare sotto il punto di prima: mai sotto il suolo.
+			var back := held_at[i]
+			if field != null:
+				back.y = maxf(back.y, field.height_at(back) + robust[i].spawn_center_height())
+			_teleport_enemy(robust[i], back)
 	print("PROTOTYPE01_ARENA_BENCH caravan_writes writes=%d steps=%d" % [writes, steps])
 
 	# Contatto dei rottamatori (EnemyDirector._apply_machine_contacts): stesso processo, blocchi
@@ -510,7 +514,8 @@ func _initialize() -> void:
 	for i in WARMUP_FRAMES:
 		await physics_frame
 	if night:
-		# Dopo il riscaldamento: il fattore di notte e applicato alle luci dei Faro.
+		# Dopo il riscaldamento (a albero fermo dal menu di casse e relitti: il fattore di notte
+		# sui Faro viene dalla chiamata a `_update_game_lights` qui sopra, non dal passo di ArenaRun).
 		var beacons := caravan.beacon_lights()
 		var lights := run.light_field.source_count()
 		print("PROTOTYPE01_ARENA_BENCH night phase=%s lamps=%d beacons=%d lights=%d"

@@ -36,9 +36,11 @@ extends SceneTree
 ##             prende presto la carta del cassone. Sul rilievo continuo (D-085) scava
 ##             la vena piu vicina (entro 70 m) tenendo il pennello finche ha rottami e,
 ##             dopo 60 s di livello, alza una volta un argine di 3 s dove sta. Prima delle
-##             vene, anche col cassone pieno, scava il relitto sepolto piu vicino (D-093):
-##             se in 20 s di scavo a portata il suolo sul relitto non scende di 5 cm lo
-##             lascia per la run (riga `PROTOTYPE01_SIM_WRECK_SKIP`).
+##             vene, anche col cassone pieno, scava il relitto sepolto piu vicino (D-093)
+##             se e a portata o ci puo andare (campo libero); altrimenti scava le vene. Lo
+##             lascia per la run se in 20 s il suolo sul relitto non scende di 5 cm (a
+##             portata) o il bot non gli si avvicina di 0,5 m (fuori portata): riga
+##             `PROTOTYPE01_SIM_WRECK_SKIP`. Fuori dal campo di percorso lo dimentica.
 ## Carovana (D-093): tutti i bot tranne passive riparano. Con una macchina guasta e nessun
 ## nemico entro 3,5 m vanno alla guasta piu vicina e, entro 1,5 m, tengono Interagisci
 ## finche non e riparata, anche coi nemici addosso; si staccano oltre 1,8 m. Nessuna soglia
@@ -119,9 +121,13 @@ const RAMPART_HOLD_SECONDS := 3.0
 const REPAIR_STOP_M := 1.5
 const REPAIR_HOLD_M := 1.8
 ## Un relitto a portata il cui suolo non scende di WRECK_PROGRESS_M in WRECK_GIVE_UP_S
-## secondi (punto protetto, bot troppo vicino) si lascia per il resto della run.
+## secondi (punto protetto, bot troppo vicino), o fuori portata senza che il bot gli si
+## avvicini di WRECK_APPROACH_M in WRECK_GIVE_UP_S secondi, si lascia per il resto della run.
 const WRECK_GIVE_UP_S := 20.0
 const WRECK_PROGRESS_M := 0.05
+const WRECK_APPROACH_M := 0.5
+## Esito di `_dig_toward`: nulla (lontano, campo non libero), in marcia verso il bersaglio, a portata.
+enum Dig { IDLE, WALKING, IN_REACH }
 ## Inizio del nome delle carte macchina (MachineOffers.card): il menu non espone gli id.
 const MACHINE_CARD_NAME := "Nuova macchina: "
 var _director: EnemyDirector
@@ -160,6 +166,7 @@ var _wrecks := 0
 var _wreck_index := -1
 var _wrecks_skipped: Array[int] = []
 var _wreck_best := INF
+var _wreck_best_distance := INF
 var _wreck_stall := 0.0
 ## Stato all'arrivo del boss: vita e livello (-1 se non e mai arrivato).
 var _health_at_boss := -1
@@ -285,6 +292,7 @@ func _simulate(bot: StringName, run_seed: int) -> Dictionary:
 	_wreck_index = -1
 	_wrecks_skipped.clear()
 	_wreck_best = INF
+	_wreck_best_distance = INF
 	_wreck_stall = 0.0
 	_hits = 0
 	_dark_samples = 0
@@ -634,15 +642,21 @@ func _tick_relief_brush(step: float) -> void:
 		_hold_brush(TerrainField.ToolMode.RAISE)
 		return
 	# Relitti sepolti (D-093) prima delle vene e anche col cassone pieno: la macchina conta
-	# piu dei rottami. Il relitto puntato resta finche il suo telaio c'e (non aperto ne scartato).
+	# piu dei rottami. Il relitto puntato resta finche il suo telaio c'e e il campo di percorso
+	# lo raggiunge; toglie il posto alle vene solo se il bot e a portata o ci sta andando,
+	# altrimenti si passa alle vene (e il tempo senza avvicinarsi conta per l'abbandono).
 	if _field != null and _run.wrecks != null:
-		if _wreck_index < 0 or _run.wrecks.frame_of(_wreck_index) == null:
+		if _wreck_index >= 0 and (_run.wrecks.frame_of(_wreck_index) == null
+				or _path.cost_at(_run.wrecks.position_of(_wreck_index)) == PathField.UNREACHABLE):
+			_wreck_index = -1
+		if _wreck_index < 0:
 			_pick_wreck()
 		if _wreck_index >= 0:
 			var wreck_at := _run.wrecks.position_of(_wreck_index)
-			if _dig_toward(wreck_at):
-				_track_wreck(wreck_at, step)
-			return
+			var state := _dig_toward(wreck_at)
+			_track_wreck(wreck_at, state == Dig.IN_REACH, step)
+			if state != Dig.IDLE:
+				return
 	var waiting := _scrap.positions_near(_player.global_position, _caravan.tuning.pickup_radius_from_player).size()
 	if _caravan.carried + waiting >= _caravan.capacity:
 		_player.tool_held = false
@@ -656,8 +670,8 @@ func _tick_relief_brush(step: float) -> void:
 
 
 ## Si avvicina a [param target] (centro di una vena o punto di un relitto) solo col campo
-## libero, poi lo mira e scava tenendo il pennello. Vero se il bersaglio e a portata.
-func _dig_toward(target: Vector3) -> bool:
+## libero, poi lo mira e scava tenendo il pennello (Dig: IDLE, WALKING, IN_REACH).
+func _dig_toward(target: Vector3) -> Dig:
 	var here := _planar(_player.global_position)
 	var to_target := _planar(target) - here
 	var reach := _planar(_player.terrain_target).distance_to(here)
@@ -666,14 +680,15 @@ func _dig_toward(target: Vector3) -> bool:
 		_player.tool_held = false
 		if _move.is_zero_approx() and _nearest_enemy_distance() > VEIN_WALK_SAFE_M:
 			_move = to_target.normalized()
-		return false
+			return Dig.WALKING
+		return Dig.IDLE
 	_aim = to_target.normalized()
 	var facing := _planar(-_player.global_basis.z).normalized()
 	if facing.dot(_aim) > 0.95:
 		_hold_brush(TerrainField.ToolMode.DIG)
 	else:
 		_player.tool_held = false
-	return true
+	return Dig.IN_REACH
 
 
 ## Il relitto chiuso piu vicino (entro VEIN_SEARCH_M e raggiungibile, come le vene), o -1.
@@ -698,17 +713,26 @@ func _nearest_wreck() -> int:
 func _pick_wreck() -> void:
 	_wreck_index = _nearest_wreck()
 	_wreck_best = INF
+	_wreck_best_distance = INF
 	_wreck_stall = 0.0
 
 
-## Scavo a portata del relitto puntato: se il suolo sul relitto non scende di WRECK_PROGRESS_M
-## sotto la quota piu bassa vista per WRECK_GIVE_UP_S secondi, il relitto si lascia.
-func _track_wreck(at: Vector3, step: float) -> void:
-	var ground := _field.height_at(at)
-	if ground < _wreck_best - WRECK_PROGRESS_M:
-		_wreck_best = ground
-		_wreck_stall = 0.0
-		return
+## Avanzamento sul relitto puntato: a portata il suolo sul relitto deve scendere di
+## WRECK_PROGRESS_M sotto la quota piu bassa vista, fuori portata il bot deve avvicinarsi di
+## WRECK_APPROACH_M; dopo WRECK_GIVE_UP_S secondi senza, il relitto si lascia per la run.
+func _track_wreck(at: Vector3, in_reach: bool, step: float) -> void:
+	if in_reach:
+		var ground := _field.height_at(at)
+		if ground < _wreck_best - WRECK_PROGRESS_M:
+			_wreck_best = ground
+			_wreck_stall = 0.0
+			return
+	else:
+		var distance := _planar(at).distance_to(_planar(_player.global_position))
+		if distance < _wreck_best_distance - WRECK_APPROACH_M:
+			_wreck_best_distance = distance
+			_wreck_stall = 0.0
+			return
 	_wreck_stall += step
 	if _wreck_stall < WRECK_GIVE_UP_S:
 		return
