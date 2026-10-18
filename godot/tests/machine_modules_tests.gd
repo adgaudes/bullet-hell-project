@@ -50,6 +50,7 @@ func _initialize() -> void:
 	await _frames(2)
 	await _load_run()
 	await _test_new_modules()
+	_test_power()
 	root.remove_child(_scene)
 	_scene.queue_free()
 	# T-12: i nodi messi in coda con queue_free vanno liberati prima di uscire. In piu le
@@ -723,6 +724,77 @@ func _test_broken_idle(drill: Machine, shovel: Machine, welder: Machine, siren: 
 		each.modules[0].set_active(false)
 	_scraps._veins.clear()
 	await _clear_enemies()
+
+
+# --- Forza dei moduli (piano B, scelta 4 di D-093), sulla seconda scena ------------------------
+
+## Macchine di due moduli (forza 1,15): Torretta intervallo / forza; Calamita, Faro e Sirena
+## raggio x forza; Trivella, Pala e Saldatore intervallo / forza (il Saldatore anche i 6 s sulle
+## guaste); Cassone raggio di ricerca x forza. I moduli gia montati prendono la forza nuova
+## (`set_power` riapplica il livello): attrattore e sorgente di luce seguono. Una piccola resta
+## com'era.
+func _test_power() -> void:
+	print("power")
+	var tuning := _caravan.tuning
+	var p := 1.15
+	for each in _caravan.machines.duplicate():
+		if each != _caravan.lead():
+			_caravan.remove_machine(each)
+	var lead := _caravan.lead()
+	_check(_caravan.machines.size() == 1 and is_equal_approx(lead.power, 1.0)
+		and is_equal_approx(lead.cargo().pickup_radius(), tuning.pickup_radius_from_player)
+		and is_equal_approx(lead.cargo().pickup_radius(), 6.0), "il Cassone da solo cerca a 6 m")
+	_caravan.carried = 5
+	var turret_machine := _add(&"turret")
+	var beacon_machine := _add(&"beacon")
+	var magnet_machine := _add(&"magnet")
+	if turret_machine == null or beacon_machine == null or magnet_machine == null:
+		return
+	_check(_caravan.fuse(turret_machine, beacon_machine) and _caravan.fuse(lead, magnet_machine),
+		"Torretta + Faro e Cassone + Calamita fusi")
+	_check(is_equal_approx(turret_machine.power, p) and is_equal_approx(lead.power, p), "forza 1,15 su due moduli")
+	var turret := turret_machine.module(&"turret") as TurretModule
+	var beacon := turret_machine.module(&"beacon") as BeaconModule
+	_check(is_equal_approx(turret.power, p) and is_equal_approx(beacon.power, p), "ogni modulo ha la forza della macchina")
+	_check(is_equal_approx(turret.weapon().fire_interval, 0.9 / p),
+		"Torretta: intervallo / forza (%.4f)" % turret.weapon().fire_interval)
+	_check(is_equal_approx(beacon.radius(), _run.tuning.beacon_radius * p)
+		and is_equal_approx(_run.light_field.radius_of(beacon.light_id), 11.0 * p),
+		"Faro: raggio x forza, anche nel campo delle luci (%.3f)" % _run.light_field.radius_of(beacon.light_id))
+	var magnet := lead.module(&"magnet") as MagnetModule
+	_check(is_equal_approx(magnet.radius(), 2.5 * p) and is_equal_approx(_attractor_radius(lead), 2.5 * p),
+		"Calamita: raggio x forza, anche l'attrattore (%.3f)" % _attractor_radius(lead))
+	_check(is_equal_approx(lead.cargo().pickup_radius(), 6.0 * p) and lead.cargo().capacity == tuning.cargo_capacity,
+		"Cassone: ricerca a 6 x forza, capienza invariata (%.3f)" % lead.cargo().pickup_radius())
+	var drill_machine := _add(&"drill")
+	var shovel_machine := _add(&"shovel")
+	if drill_machine == null or shovel_machine == null:
+		return
+	_caravan.carried = 5
+	_check(_caravan.fuse(drill_machine, shovel_machine), "Trivella + Pala fuse")
+	var drill := drill_machine.module(&"drill") as DrillModule
+	var shovel := drill_machine.module(&"shovel") as ShovelModule
+	_check(is_equal_approx(drill.interval(), 4.0 / p) and is_equal_approx(shovel.interval(), 5.0 / p),
+		"Trivella 4 / forza, Pala 5 / forza (%.4f, %.4f)" % [drill.interval(), shovel.interval()])
+	_caravan.remove_machine(turret_machine)
+	_caravan.remove_machine(drill_machine)
+	var welder_machine := _add(&"welder")
+	var siren_machine := _add(&"siren")
+	if welder_machine == null or siren_machine == null:
+		return
+	_caravan.carried = 5
+	_check(_caravan.fuse(welder_machine, siren_machine), "Saldatore + Sirena fusi")
+	var welder := welder_machine.module(&"welder") as WelderModule
+	var siren := welder_machine.module(&"siren") as SirenModule
+	_check(is_equal_approx(welder.heal_interval(), 3.0 / p) and is_equal_approx(welder.broken_seconds(), 6.0 / p),
+		"Saldatore 3 / forza e 6 / forza (%.4f, %.4f)" % [welder.heal_interval(), welder.broken_seconds()])
+	_check(is_equal_approx(siren.range_m(), 8.0 * p), "Sirena 8 x forza (%.3f)" % siren.range_m())
+	var lone := _add(&"turret")
+	if lone == null:
+		return
+	var lone_turret := lone.module(&"turret") as TurretModule
+	_check(is_equal_approx(lone.power, 1.0) and is_equal_approx(lone_turret.weapon().fire_interval, 0.9),
+		"una piccola resta com'era (%.4f)" % lone_turret.weapon().fire_interval)
 
 
 ## Come `_place_player`, poi risolve il campo di percorso dal punto nuovo (machine_damage_tests).

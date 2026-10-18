@@ -4,6 +4,7 @@ extends MachineModule
 ## guasta piu danneggiata entro `welder_range` (lui escluso, la prima della carovana a pari
 ## danno). Una guasta che resta in raggio `welder_broken_seconds` secondi riparte gratis con
 ## `repair_health_fraction` della vita; il tempo di una guasta che esce dal raggio torna a zero.
+## Entrambi i tempi sono divisi per la forza della macchina (scelta 4 del piano B).
 
 ## Altezza delle scintille sulla macchina saldata.
 const SPARK_HEIGHT := 0.6
@@ -24,7 +25,7 @@ func tick(delta: float) -> void:
 			_broken_elapsed.erase(other)
 			continue
 		var elapsed: float = _broken_elapsed.get(other, 0.0) + delta
-		if elapsed < tuning.welder_broken_seconds - TIMER_EPSILON:
+		if elapsed < broken_seconds() - TIMER_EPSILON:
 			_broken_elapsed[other] = elapsed
 			continue
 		_broken_elapsed.erase(other)
@@ -35,7 +36,7 @@ func tick(delta: float) -> void:
 	_heal_left -= delta
 	if _heal_left > TIMER_EPSILON:
 		return
-	_heal_left = tuning.welder_interval
+	_heal_left = heal_interval()
 	var target: Machine = null
 	var most := 0
 	for other in caravan.machines:
@@ -47,6 +48,16 @@ func tick(delta: float) -> void:
 	if target != null:
 		target.heal(1)
 		_sparks(target)
+
+
+## Secondi fra due saldature: `welder_interval` diviso per la forza.
+func heal_interval() -> float:
+	return caravan.tuning.welder_interval / power
+
+
+## Secondi in raggio dopo cui una guasta riparte: `welder_broken_seconds` diviso per la forza.
+func broken_seconds() -> float:
+	return caravan.tuning.welder_broken_seconds / power
 
 
 ## Dimentica [param other] (macchina tolta dalla carovana: `Caravan.remove_machine`).

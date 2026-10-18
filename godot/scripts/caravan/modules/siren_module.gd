@@ -2,8 +2,8 @@ class_name SirenModule
 extends MachineModule
 ## Sirena (spec D-093, Sezione 1): ciclo di `siren_period` secondi; nei primi `siren_active`
 ## attira verso la macchina, a `siren_pull_speed` m/s (`Welder.pull_toward`), i rottamatori vivi
-## entro `siren_range`: non i boss (`self_driven`) ne i portatori in commissione. A ogni
-## accensione il ciclo riparte dall'inizio.
+## entro `siren_range` per la forza della macchina (scelta 4 del piano B): non i boss
+## (`self_driven`) ne i portatori in commissione. A ogni accensione il ciclo riparte dall'inizio.
 
 ## Secondi dall'inizio del ciclo.
 var _cycle_time := 0.0
@@ -15,14 +15,20 @@ func tick(delta: float) -> void:
 		print("PROTOTYPE01_SIREN_ON")
 	if _cycle_time < tuning.siren_active - TIMER_EPSILON and is_instance_valid(director):
 		var here := machine.global_position
+		var reach := range_m()
 		for enemy in director.enemies:
 			if not is_instance_valid(enemy) or enemy.is_dead or enemy.self_driven or enemy.has_errand:
 				continue
-			if Machine.planar_distance(enemy.global_position, here) <= tuning.siren_range:
+			if Machine.planar_distance(enemy.global_position, here) <= reach:
 				Welder.pull_toward(enemy, here, tuning.siren_pull_speed)
 	_cycle_time += delta
 	if _cycle_time >= tuning.siren_period - TIMER_EPSILON:
 		_cycle_time = 0.0
+
+
+## Raggio d'attrazione: `siren_range` per la forza.
+func range_m() -> float:
+	return caravan.tuning.siren_range * power
 
 
 ## Vero nella parte attiva del ciclo (da accesa).

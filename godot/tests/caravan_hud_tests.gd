@@ -47,6 +47,7 @@ func _initialize() -> void:
 	_player._invulnerable_left = 3600.0
 	_caravan.changed.connect(_on_caravan_changed)
 	await _test_strip()
+	await _test_size_slots()
 	await _test_markers()
 	root.remove_child(_scene)
 	_scene.queue_free()
@@ -150,6 +151,52 @@ func _test_strip() -> void:
 	await _frames(1)
 	_check(shown_hit == health - 1 and strip.slot_health(1) == health,
 		"la casella mostra la cura al passo dopo (%d -> %d PV)" % [shown_hit, strip.slot_health(1)])
+
+
+# --- Taglia nella striscia (piano B, scelta 11 di D-093) -----------------------------------------
+
+## Casella larga `SLOT_SIZE + SIZE_STEP x taglia` (40, 54, 68, 82 px), un quadratino del colore di
+## ogni modulo oltre il primo, vita a tacche fino a 12 PV e a barra oltre. Tutto da ArenaRun.
+func _test_size_slots() -> void:
+	print("size slots")
+	var strip := _run.hud.caravan_strip()
+	var lead := _caravan.lead()
+	var turret := _caravan.machines[1]
+	_check(CaravanStrip.SIZE_STEP == 14.0 and CaravanStrip.MAX_PIPS == 12, "passo di 14 px per taglia, tacche fino a 12 PV")
+	_check(strip.slot_count() == 2 and is_equal_approx(strip.slot_width(0), 40.0) and strip.slot_size(0) == 0
+		and not strip.slot_uses_bar(0) and _extra(strip, 0).is_empty(), "piccola: 40 px, tacche, nessun quadratino")
+	_caravan.carried = 7
+	_check(_caravan.fuse(lead, turret), "Cassone e Torretta fusi")
+	_check(strip.slot_count() == 1 and is_equal_approx(strip.slot_width(0), 54.0) and strip.slot_size(0) == 1,
+		"casella media (%d caselle, %.0f px, taglia %d)" % [strip.slot_count(), strip.slot_width(0), strip.slot_size(0)])
+	_check(_extra(strip, 0) == [MachineCatalog.find(&"turret").color], "un quadratino del colore della Torretta")
+	_check(strip.slot_health(0) == lead.health and lead.max_health == 15 and strip.slot_uses_bar(0),
+		"media a 15 PV: vita a barra (%d PV)" % strip.slot_health(0))
+	var expected: Array = [MachineCatalog.find(&"turret").color]
+	for id: StringName in [&"magnet", &"beacon", &"welder", &"siren"]:
+		var machine := _caravan.add_machine(id)
+		_check(machine != null and _caravan.fuse(lead, machine), "%s fuso nel Cassone" % id)
+		expected.append(MachineCatalog.find(id).color)
+	_check(lead.modules.size() == 6 and lead.size == MachineFusion.Size.COLOSSUS and lead.max_health == 63,
+		"colosso di sei moduli, 63 PV")
+	_check(strip.slot_count() == 1 and is_equal_approx(strip.slot_width(0), 82.0) and strip.slot_size(0) == 3
+		and strip.slot_uses_bar(0), "colosso: 82 px, vita a barra (%.0f px)" % strip.slot_width(0))
+	_check(_extra(strip, 0).size() == 5 and _extra(strip, 0) == expected, "cinque quadratini, coi colori dei moduli in ordine")
+	var small := _caravan.detach(lead, 5)
+	_check(small != null and strip.slot_count() == 2, "sganciata la Sirena: due caselle")
+	_check(is_equal_approx(strip.slot_width(0), 68.0) and strip.slot_size(0) == 2 and _extra(strip, 0).size() == 4,
+		"grande: 68 px, quattro quadratini")
+	_check(is_equal_approx(strip.slot_width(1), 40.0) and strip.slot_size(1) == 0 and not strip.slot_uses_bar(1)
+		and _extra(strip, 1).is_empty() and strip.slot_health(1) == small.health,
+		"una piccola: tacche come prima (%.0f px, %d PV)" % [strip.slot_width(1), strip.slot_health(1)])
+	await _frames(2)
+	_check(is_equal_approx(strip._slots[0].size.x, 68.0) and is_equal_approx(strip._slots[1].size.x, 40.0),
+		"le caselle hanno davvero quella larghezza (%.0f, %.0f)" % [strip._slots[0].size.x, strip._slots[1].size.x])
+
+
+## Colori dei quadratini della casella [param index].
+func _extra(strip: CaravanStrip, index: int) -> Array:
+	return strip._slots[index].entry.get(&"extra", [])
 
 
 # --- Indicatori sopra la colonna -----------------------------------------------------------------

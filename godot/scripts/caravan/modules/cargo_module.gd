@@ -2,7 +2,9 @@ class_name CargoModule
 extends MachineModule
 ## Cassone (spec D-093, Sezione 1): il cassone del compagno di oggi (D-032). Raccoglie i
 ## rottami vicini al giocatore e li tiene per lampioni e riparazioni; la carovana somma i
-## Cassoni e fa da fornitore. Guasto non raccoglie (scelta 3 di D-093).
+## Cassoni e fa da fornitore. Guasto non raccoglie (scelta 3 di D-093). Il raggio di ricerca dei
+## rottami attorno al giocatore cresce con la forza della macchina, la capienza no (scelta 4 del
+## piano B).
 
 ## Passo di campionamento della linea dritta verso un rottame (audit C-01).
 const LINE_STEP_M := 0.6
@@ -31,6 +33,11 @@ func add_capacity(extra: int) -> void:
 	capacity += extra
 	if machine != null:
 		machine.refresh_cargo_view()
+
+
+## Raggio di ricerca dei rottami attorno al giocatore: `pickup_radius_from_player` per la forza.
+func pickup_radius() -> float:
+	return caravan.tuning.pickup_radius_from_player * power
 
 
 func room() -> int:
@@ -101,7 +108,7 @@ func _watch_path_field() -> void:
 func _nearest_reachable_scrap() -> Variant:
 	var routed := path_field != null and path_field.is_ready()
 	var candidates: Array[Vector3] = []
-	for point in scrap_field.positions_near(player.global_position, caravan.tuning.pickup_radius_from_player):
+	for point in scrap_field.positions_near(player.global_position, pickup_radius()):
 		if routed and path_field.cost_at(point) == PathField.UNREACHABLE:
 			continue
 		if caravan.is_scrap_claimed(point, self):

@@ -1,10 +1,11 @@
 class_name ShovelModule
 extends MachineModule
-## Pala (spec D-093, Sezione 1): ogni `shovel_interval` secondi alza un argine fra il nemico
-## vivo piu vicino entro `shovel_reach` e la macchina, a `shovel_gap` da lui: un disco di
-## `shovel_radius` portato a `shovel_height` sopra la base (`push_level`). Solo in un punto
-## libero (`clear_spot`), dove il suolo e piu basso dell'argine, e per `shovel_cost` rottami dai
-## Cassoni funzionanti, purche ne restino `repair_cost` (la riserva per una riparazione).
+## Pala (spec D-093, Sezione 1): ogni `shovel_interval` secondi (diviso per la forza della
+## macchina, scelta 4 del piano B) alza un argine fra il nemico vivo piu vicino entro
+## `shovel_reach` e la macchina, a `shovel_gap` da lui: un disco di `shovel_radius` portato a
+## `shovel_height` sopra la base (`push_level`). Solo in un punto libero (`clear_spot`), dove il
+## suolo e piu basso dell'argine, e per `shovel_cost` rottami dai Cassoni funzionanti, purche ne
+## restino `repair_cost` (la riserva per una riparazione).
 
 ## Secondi al prossimo argine; a 0 lavora al primo passo.
 var _shovel_left := 0.0
@@ -14,7 +15,7 @@ func tick(delta: float) -> void:
 	_shovel_left -= delta
 	if _shovel_left > TIMER_EPSILON:
 		return
-	_shovel_left = caravan.tuning.shovel_interval
+	_shovel_left = interval()
 	if terrain_field == null or write_queue == null:
 		return
 	var tuning := caravan.tuning
@@ -37,6 +38,11 @@ func tick(delta: float) -> void:
 	WeaponFx.dust(fx_parent(), Vector3(point.x, terrain_field.height_at(point), point.z), WeaponFx.EARTH, 0.5, 10,
 		tuning.shovel_radius, true)
 	print("PROTOTYPE01_SHOVEL_BANK x=%.1f z=%.1f" % [point.x, point.z])
+
+
+## Secondi fra due argini: `shovel_interval` diviso per la forza.
+func interval() -> float:
+	return caravan.tuning.shovel_interval / power
 
 
 ## Lama gialla inclinata su due bracci scuri, sul muso del pianale.

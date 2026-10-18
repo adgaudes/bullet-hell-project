@@ -23,11 +23,12 @@ func _init() -> void:
 	add_child(light)
 
 
-## Raggio logico della luce al livello corrente (0 senza la taratura della run).
+## Raggio logico della luce al livello corrente, per la forza della macchina (0 senza la taratura
+## della run).
 func radius() -> float:
 	if run_tuning == null:
 		return 0.0
-	return run_tuning.beacon_radius + run_tuning.beacon_radius_per_level * level
+	return (run_tuning.beacon_radius + run_tuning.beacon_radius_per_level * level) * power
 
 
 ## Idempotente (la carovana la richiama quando arrivano i servizi): registra la sorgente la

@@ -1423,7 +1423,8 @@ func _tick_weapon_hud() -> void:
 
 
 ## Striscia della carovana (D-093): caselle rifatte quando la carovana cambia (macchine, stato,
-## capienza) o cambiano i rottami; vita, stato e riparazione li segue `_tick_caravan_hud`.
+## capienza, moduli e taglia dopo fusione o sgancio) o cambiano i rottami; vita, stato e
+## riparazione li segue `_tick_caravan_hud`.
 func _refresh_caravan_hud() -> void:
 	if hud == null or caravan == null:
 		return
@@ -1437,8 +1438,13 @@ func _refresh_caravan_hud() -> void:
 		var machine := machines[i]
 		var module := MachineCatalog.find(machine.primary_module_id())
 		var repair := caravan.repair_progress() if machine == repairing else 0.0
+		# Un colore per ogni modulo oltre il primo (scelta 11 di D-093).
+		var extra: Array[Color] = []
+		for k in range(1, machine.modules.size()):
+			extra.append(MachineCatalog.find(machine.modules[k].module_id).get(&"color", UiPalette.BORDER))
 		entries.append({icon = module.get(&"icon", &"crate"), color = module.get(&"color", UiPalette.BORDER),
-			health = machine.health, max_health = machine.max_health, state = machine.state, repair = repair})
+			health = machine.health, max_health = machine.max_health, state = machine.state, repair = repair,
+			size = machine.size, extra = extra})
 		_caravan_health_shown[i] = machine.health
 		_caravan_state_shown[i] = machine.state
 		_caravan_repair_shown[i] = repair

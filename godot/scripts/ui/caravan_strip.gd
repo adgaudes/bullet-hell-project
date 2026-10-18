@@ -6,10 +6,18 @@ extends PanelContainer
 ## da ritirata, spicchio della riparazione dalle 12 in senso orario. In fondo il tasto Interagisci
 ## ("Ripara"), acceso solo vicino a una macchina guasta: il suo posto resta, le caselle non si
 ## spostano. Solo lettura: mai focus ne input.
-## Voci di `set_machines`: {icon, color, health, max_health, state (Machine.State), repair (0..1)}.
+## Taglia (piano B, scelta 11 di D-093): la casella e larga `SLOT_SIZE + SIZE_STEP x taglia`, ha un
+## quadratino del colore di ogni modulo oltre il primo e mostra la vita a tacche fino a
+## `MAX_PIPS` PV, a barra oltre.
+## Voci di `set_machines`: {icon, color, health, max_health, state (Machine.State), repair (0..1),
+## size (MachineFusion.Size, 0 se manca), extra (Array[Color], vuoto se manca)}.
 
 const SLOT_SIZE := 40.0
 const ROW_HEIGHT := 52.0
+## Pixel di larghezza in piu per ogni taglia oltre la piccola.
+const SIZE_STEP := 14.0
+## Oltre tanti PV la vita e una barra, non tacche.
+const MAX_PIPS := 12
 
 var _slot_row: HBoxContainer
 var _slots: Array[CaravanSlot] = []
@@ -61,6 +69,7 @@ func set_machines(entries: Array) -> void:
 		_slot_row.add_child(slot)
 		_slots.append(slot)
 	for i in entries.size():
+		_slots[i].custom_minimum_size = Vector2(SLOT_SIZE + SIZE_STEP * int(entries[i].get(&"size", 0)), SLOT_SIZE)
 		_slots[i].show_entry(entries[i])
 
 
@@ -94,6 +103,20 @@ func slot_repair(index: int) -> float:
 	return float(_slots[index].entry.get(&"repair", 0.0))
 
 
+## Larghezza minima della casella [param index] (cresce con la taglia).
+func slot_width(index: int) -> float:
+	return _slots[index].custom_minimum_size.x
+
+
+func slot_size(index: int) -> int:
+	return int(_slots[index].entry.get(&"size", 0))
+
+
+## Vero se la casella [param index] mostra la vita a barra (oltre MAX_PIPS PV).
+func slot_uses_bar(index: int) -> bool:
+	return _slots[index].uses_bar()
+
+
 func scrap_text() -> String:
 	return _scrap_label.text
 
@@ -110,6 +133,9 @@ class CaravanSlot:
 	const REPAIR_COLOR := Color(0.5, 0.85, 0.35, 0.55)
 	const HEALTH_ON := Color("7fc24f")
 	const HEALTH_OFF := Color(0.25, 0.2, 0.16)
+	## Quadratini dei moduli oltre il primo: lato e passo (px), in alto a destra.
+	const EXTRA_SIDE := 5.0
+	const EXTRA_STEP := 7.0
 	var entry: Dictionary = {}
 	var _icon: UiIcon
 	## Sopra l'icona: spicchio della riparazione, barra del guasto e tacche di vita.
@@ -142,11 +168,16 @@ class CaravanSlot:
 		if _icon == null:
 			return
 		_icon.kind = entry.get(&"icon", &"crate")
+		# L'icona si centra a sinistra dei quadratini: nessuna sovrapposizione.
+		_icon.offset_right = -5.0 - EXTRA_STEP * (entry.get(&"extra", []) as Array).size()
 		queue_redraw()
 		_overlay.queue_redraw()
 
 	func _state() -> int:
 		return int(entry.get(&"state", Machine.State.OK))
+
+	func uses_bar() -> bool:
+		return int(entry.get(&"max_health", 0)) > MAX_PIPS
 
 	func _draw() -> void:
 		var rect := Rect2(Vector2.ZERO, size)
@@ -174,9 +205,21 @@ class CaravanSlot:
 				_overlay.draw_colored_polygon(points, REPAIR_COLOR)
 		if _state() == Machine.State.BROKEN:
 			_overlay.draw_line(Vector2(4.0, size.y - 4.0), Vector2(size.x - 4.0, 4.0), UiPalette.DANGER, 4.0, true)
-		# Tacche di vita in basso: piene fino ai PV attuali.
+		# Un quadratino per modulo oltre il primo, da destra verso sinistra in alto.
+		var extra: Array = entry.get(&"extra", [])
+		for k in extra.size():
+			var square := Rect2(size.x - 4.0 - EXTRA_SIDE - k * EXTRA_STEP, 4.0, EXTRA_SIDE, EXTRA_SIDE)
+			_overlay.draw_rect(square, extra[k])
+			_overlay.draw_rect(square, HEALTH_OFF, false, 1.0)
+		# Vita in basso: tacche piene fino ai PV attuali, o una barra oltre MAX_PIPS.
 		var max_health := maxi(int(entry.get(&"max_health", 0)), 1)
 		var health := int(entry.get(&"health", 0))
+		if uses_bar():
+			var track := Rect2(4.0, size.y - 7.0, size.x - 8.0, 4.0)
+			_overlay.draw_rect(track, HEALTH_OFF)
+			var fill := track.size.x * clampf(float(health) / max_health, 0.0, 1.0)
+			_overlay.draw_rect(Rect2(track.position, Vector2(fill, track.size.y)), HEALTH_ON)
+			return
 		var pip_w := (size.x - 8.0) / max_health
 		for p in max_health:
 			var pip := Rect2(4.0 + p * pip_w + 0.5, size.y - 7.0, pip_w - 1.0, 4.0)

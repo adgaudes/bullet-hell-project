@@ -382,40 +382,61 @@ func _apply_contacts(enemy: Enemy, in_dark := false) -> void:
 				break
 
 
-## Rottamatori contro le macchine (D-093, scelta 7): per ogni macchina che accetta un colpo,
-## il primo rottamatore vivo entro `contact_radius` della carovana fra i secchi delle 9 celle
-## attorno a lei la colpisce di `contact_damage` (niente bonus del buio), poi la macchina
-## successiva. I boss (`self_driven`) colpiscono da soli in `drive`. Nessuna scansione di tutti
-## i nemici e nessuna allocazione: si leggono i secchi gia riempiti in questo passo.
+## Rottamatori contro le macchine (D-093, scelta 7; piano B, scelte 5 e 6). Per ogni macchina,
+## fra i secchi gia riempiti in questo passo entro il suo raggio di contatto in scala
+## (`contact_reach`, celle in `range(-c, c + 1)` con `c = ceili(raggio)`): prima il travolgere,
+## se la macchina puo (`can_trample`, anche immune o in ritirata), che toglie `trample_damage` a
+## ogni rottamatore vivo in raggio e poi apre l'attesa della macchina (`trample_done`); poi, se
+## la macchina accetta un colpo, il primo rottamatore vivo in raggio la colpisce di
+## `contact_damage` (niente bonus del buio). I boss (`self_driven`) non si travolgono e colpiscono
+## da soli in `drive`. Nessuna scansione di tutti i nemici e nessuna allocazione.
 func _apply_machine_contacts() -> void:
 	if caravan == null:
 		return
-	var radius := caravan.tuning.contact_radius
 	var damage := caravan.tuning.contact_damage
+	var trample_damage := caravan.tuning.trample_damage
 	for machine in caravan.machines:
-		if not machine.accepts_contact():
+		var trample := machine.can_trample()
+		var contact := machine.accepts_contact()
+		if not trample and not contact:
 			continue
+		var radius := machine.contact_reach()
 		var pos := machine.global_position
 		var base := Vector2i(floori(pos.x), floori(pos.z))
+		var c := ceili(radius)
+		var trampled_any := false
 		var done := false
-		for dx in range(-1, 2):
-			for dz in range(-1, 2):
+		for dx in range(-c, c + 1):
+			for dz in range(-c, c + 1):
 				var bucket: Variant = _buckets.get(base + Vector2i(dx, dz))
 				if bucket == null:
 					continue
 				for enemy: Enemy in bucket:
 					if enemy.is_dead or enemy.self_driven:
 						continue
-					if _planar(enemy.global_position - pos).length() <= radius:
+					if _planar(enemy.global_position - pos).length() > radius:
+						continue
+					if trample:
+						enemy.take_damage(trample_damage)
+						machine.trampled += 1
+						trampled_any = true
+						# Travolto a morte: non colpisce piu.
+						if enemy.is_dead:
+							continue
+					if contact:
+						contact = false
 						# L'affondo solo per un colpo vero: non contro una macchina protetta.
 						if machine.take_hit(damage):
 							enemy.notify_contact()
+					if not trample:
 						done = true
 						break
 				if done:
 					break
 			if done:
 				break
+		if trampled_any:
+			machine.trample_done()
 
 
 func _terrain_collision_body() -> StaticBody3D:

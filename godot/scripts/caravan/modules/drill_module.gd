@@ -1,11 +1,12 @@
 class_name DrillModule
 extends MachineModule
-## Trivella (spec D-093, Sezione 1): ogni `drill_interval` secondi, se una vena con rottami tocca
-## il cerchio di `drill_reach` attorno alla macchina, ne estrae un rottame e lo posa a terra sul
-## bordo della vena verso la macchina (accanto alla macchina se li non si passa), senza scrivere
-## il terreno. Altrimenti scava una buca (`DigCharge.dig_crater`) a 1 m dal nemico vivo piu
-## vicino entro `drill_reach`, verso la macchina: solo su suolo entro `drill_flat_tolerance`
-## dalla base e in un punto libero (`clear_spot`).
+## Trivella (spec D-093, Sezione 1): ogni `drill_interval` secondi (diviso per la forza della
+## macchina, scelta 4 del piano B), se una vena con rottami tocca il cerchio di `drill_reach`
+## attorno alla macchina, ne estrae un rottame e lo posa a terra sul bordo della vena verso la
+## macchina (accanto alla macchina se li non si passa), senza scrivere il terreno. Altrimenti
+## scava una buca (`DigCharge.dig_crater`) a 1 m dal nemico vivo piu vicino entro `drill_reach`,
+## verso la macchina: solo su suolo entro `drill_flat_tolerance` dalla base e in un punto libero
+## (`clear_spot`).
 
 ## Distanza della buca dal nemico, verso la macchina.
 const HOLE_GAP_M := 1.0
@@ -22,11 +23,16 @@ func tick(delta: float) -> void:
 	_drill_left -= delta
 	if _drill_left > TIMER_EPSILON:
 		return
-	_drill_left = caravan.tuning.drill_interval
+	_drill_left = interval()
 	if terrain_field == null:
 		return
 	if not _drill_vein():
 		_drill_hole()
+
+
+## Secondi fra due colpi: `drill_interval` diviso per la forza.
+func interval() -> float:
+	return caravan.tuning.drill_interval / power
 
 
 ## Vero se una vena con rottami tocca il raggio: ne cede uno, a terra, e il terreno resta com'e.

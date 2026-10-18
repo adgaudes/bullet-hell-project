@@ -107,6 +107,8 @@ var health := 6
 var state := State.OK
 ## Indice del posto nel grappolo (CaravanTuning.cluster_slots).
 var slot := 0
+## Rottamatori travolti finora (test e benchmark).
+var trampled := 0
 
 var _cargo: Array[MeshInstance3D] = []
 var _cargo_mesh: BoxMesh
@@ -150,6 +152,8 @@ var _invulnerable_left := 0.0
 ## Secondi senza colpi da danneggiata (fermi a 0 da guasta o a vita piena) e PV rigenerati da allora.
 var _since_hit := 0.0
 var _regen_given := 0
+## Secondi prima di poter travolgere di nuovo (`trample_interval` dopo l'ultimo colpo).
+var _trample_left := 0.0
 
 # --- Guinzaglio e ritirata.
 ## Meta finale dell'ultimo `_choose_destination` (ritirata, modulo o posto; mai un waypoint).
@@ -305,6 +309,22 @@ func accepts_contact() -> bool:
 	return not is_broken() and _hit_cooldown_left <= 0.0
 
 
+## Vero se ora travolge (scelta 6 di D-093): da `trample_min_size` in su, non guasta (anche
+## immune o in ritirata), in moto nel piano ad almeno `trample_min_speed` m/s e fuori
+## dall'attesa del colpo precedente. La velocita e quella del corpo, non lo spostamento.
+func can_trample() -> bool:
+	var tuning := _tuning()
+	if tuning == null or is_broken() or size < tuning.trample_min_size or _trample_left > 0.0:
+		return false
+	return Vector2(velocity.x, velocity.z).length() >= tuning.trample_min_speed
+
+
+## Il direttore ha travolto almeno un rottamatore: si riprova fra `trample_interval` secondi.
+func trample_done() -> void:
+	var tuning := _tuning()
+	_trample_left = tuning.trample_interval if tuning != null else 0.0
+
+
 ## Nessun colpo passa per almeno [param seconds] (benchmark, catture, test).
 func grant_invulnerability(seconds: float) -> void:
 	_invulnerable_left = maxf(_invulnerable_left, seconds)
@@ -331,12 +351,13 @@ func repair(fraction: float) -> void:
 	print("PROTOTYPE01_MACHINE_REPAIRED module=%s" % primary_module_id())
 
 
-## A ogni passo, anche senza giocatore: immunita e invulnerabilita scadono, lo stato segue la
-## vita, poi la rigenerazione (da danneggiata e non guasta: +1 PV dopo `regen_delay` secondi
-## senza colpi, poi ogni `regen_interval`).
+## A ogni passo, anche senza giocatore: immunita, invulnerabilita e attesa del travolgere
+## scadono, lo stato segue la vita, poi la rigenerazione (da danneggiata e non guasta: +1 PV
+## dopo `regen_delay` secondi senza colpi, poi ogni `regen_interval`).
 func _tick_health(delta: float) -> void:
 	_hit_cooldown_left = maxf(_hit_cooldown_left - delta, 0.0)
 	_invulnerable_left = maxf(_invulnerable_left - delta, 0.0)
+	_trample_left = maxf(_trample_left - delta, 0.0)
 	if _smoke_left > 0.0:
 		_smoke_left -= delta
 		if _smoke_left <= 0.0 and not is_broken():
@@ -665,7 +686,7 @@ func _rebuild() -> void:
 		max_health = MachineFusion.max_health_of(count, tuning)
 		health = mini(health, max_health)
 	for each in modules:
-		each.power = power
+		each.set_power(power)
 	_combos = MachineCatalog.combos_of(module_ids())
 	_scale_rig = Transform3D(Basis.from_scale(Vector3.ONE * model_scale), RIG_GROUND * (1.0 - model_scale))
 	for i in _parts.size():

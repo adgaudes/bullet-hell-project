@@ -66,6 +66,7 @@ func _initialize() -> void:
 	await _test_pit()
 	await _test_wide_pit()
 	await _test_run_without_teleport()
+	await _test_trample()
 	# Ruling 17: una macchina guasta (fumo acceso) si libera con la scena senza errori.
 	_turret.take_hit(_turret.health)
 	_check(_turret.is_broken(), "la Torretta resta guasta fino alla fine")
@@ -838,6 +839,136 @@ func _test_run_without_teleport() -> void:
 	_check(ran >= 25.0, "il giocatore corre %.1f m in 5 s" % ran)
 	_check(worst < 1.0, "nessuna macchina salta di oltre 1 m in un passo (%.2f m; al massimo a %.1f m dal giocatore)" % [worst, farthest])
 	await _frames(30)
+
+
+# --- Travolgere e contatto in scala (piano B, scelte 5 e 6 di D-093) ----------------------------
+
+## Una media (due moduli) col passo spento e `velocity` (2, 0, 0) a mano: il rottamatore a 0,7 m
+## perde 1 PV, poi ancora 1 solo dopo `trample_interval` (il tempo lo scala `_tick_health`, qui
+## chiamato a mano a ogni passo, prima del direttore). Piccola in moto, media ferma, media guasta e
+## boss: nessun danno. Raggio di contatto in scala: un rottamatore a 0,9 m colpisce la media
+## (1,0 m), non la piccola (0,8 m).
+func _test_trample() -> void:
+	print("trample")
+	var tuning := _caravan.tuning
+	_check(tuning.trample_min_size == 1 and tuning.trample_damage == 1 and is_equal_approx(tuning.trample_interval, 0.5)
+		and is_equal_approx(tuning.trample_min_speed, 1.0), "travolgere: da media, 1 danno, ogni 0,5 s, oltre 1 m/s")
+	_place_player(AREA)
+	_gather_machines()
+	# La Torretta spenta non abbatte i rottamatori di prova; a vita piena non rigenera.
+	_turret.repair(1.0)
+	_turret.heal(_turret.max_health)
+	var turret_module := _turret.module(&"turret") as TurretModule
+	turret_module.set_active(false)
+	_caravan.carried = 3
+	var medium := _caravan.add_machine(&"siren")
+	var other := _caravan.add_machine(&"welder")
+	_check(medium != null and other != null and _caravan.fuse(medium, other), "Sirena + Saldatore fusi")
+	if medium == null or not medium.has_module(&"welder"):
+		return
+	_watch(medium)
+	_check(medium.size == MachineFusion.Size.MEDIUM and is_equal_approx(medium.contact_reach(), 1.0)
+		and is_equal_approx(_turret.contact_reach(), 0.8), "raggio di contatto: media 1,0 m, piccola 0,8 m")
+	medium.set_physics_process(false)
+	_turret.set_physics_process(false)
+	var site := AREA + Vector3(8.0, 0.0, 2.0)
+	var small_site := AREA + Vector3(8.0, 0.0, -3.0)
+	_place_machine(medium, site)
+	_place_machine(_turret, small_site)
+	medium.grant_invulnerability(600.0)
+	_turret.grant_invulnerability(600.0)
+	await _frames(2)
+
+	medium.velocity = Vector3(2.0, 0.0, 0.0)
+	_check(medium.can_trample() and not _turret.can_trample(), "la media in moto puo travolgere, la piccola no")
+	var enemy := _spawn_still(medium.global_position + Vector3(0.0, 0.0, 0.7))
+	enemy.health = 3
+	await _tick_frames([medium, _turret], 1)
+	_check(enemy.health == 2 and medium.trampled == 1, "travolto: 1 danno (%d PV, %d)" % [enemy.health, medium.trampled])
+	_check(not medium.can_trample(), "poi aspetta trample_interval")
+	await _tick_frames([medium, _turret], 2)
+	_check(enemy.health == 2 and medium.trampled == 1, "due passi dopo: ancora 2 PV")
+	await _tick_frames([medium, _turret], 31)
+	_check(enemy.health == 1 and medium.trampled == 2, "dopo 0,5 s: 1 PV (%d, %d)" % [enemy.health, medium.trampled])
+	await _clear_enemies_ticking([medium, _turret])
+
+	_turret.velocity = Vector3(2.0, 0.0, 0.0)
+	enemy = _spawn_still(_turret.global_position + Vector3(0.0, 0.0, 0.7))
+	enemy.health = 3
+	await _tick_frames([medium, _turret], 40)
+	_check(enemy.health == 3, "piccola in moto: nessun danno")
+	_turret.velocity = Vector3.ZERO
+	await _clear_enemies_ticking([medium, _turret])
+
+	medium.velocity = Vector3.ZERO
+	enemy = _spawn_still(medium.global_position + Vector3(0.0, 0.0, 0.7))
+	enemy.health = 3
+	await _tick_frames([medium, _turret], 40)
+	_check(enemy.health == 3 and medium.trampled == 2, "media ferma: nessun danno")
+	await _clear_enemies_ticking([medium, _turret])
+
+	var boss := _run._make_demolisher()
+	boss.speed = 0.0
+	boss.wall_attraction_radius = 0.0
+	var boss_at := medium.global_position + Vector3(0.0, 0.0, 0.7)
+	_director.add_enemy(boss, Vector3(boss_at.x, boss.spawn_center_height(), boss_at.z))
+	# Senza giocatore `drive` esce subito: il boss resta fermo accanto alla media.
+	boss.player = null
+	var boss_health := boss.health
+	medium.velocity = Vector3(2.0, 0.0, 0.0)
+	await _tick_frames([medium, _turret], 40)
+	_check(boss.health == boss_health and medium.trampled == 2, "un boss a 0,7 m da una media in moto: nessun danno da travolgere")
+	_director.enemies.erase(boss)
+	boss.queue_free()
+	await _clear_enemies_ticking([medium, _turret])
+
+	medium._invulnerable_left = 0.0
+	_break(medium)
+	medium.velocity = Vector3(2.0, 0.0, 0.0)
+	enemy = _spawn_still(medium.global_position + Vector3(0.0, 0.0, 0.7))
+	enemy.health = 3
+	await _tick_frames([medium, _turret], 40)
+	_check(not medium.can_trample() and enemy.health == 3 and medium.trampled == 2, "media guasta: nessun danno")
+	medium.repair(1.0)
+	medium.velocity = Vector3.ZERO
+	await _clear_enemies_ticking([medium, _turret])
+
+	# Contatto in scala: a 0,9 m colpisce la media, non la piccola (macchine ferme).
+	medium._invulnerable_left = 0.0
+	medium._hit_cooldown_left = 0.0
+	_turret._invulnerable_left = 0.0
+	_turret._hit_cooldown_left = 0.0
+	var medium_health := medium.health
+	var small_health := _turret.health
+	_hits.clear()
+	_spawn_still(medium.global_position + Vector3(0.0, 0.0, 0.9))
+	_spawn_still(_turret.global_position + Vector3(0.0, 0.0, 0.9))
+	await _tick_frames([medium, _turret], 3)
+	var medium_hit_at_0_9 := medium.health == medium_health - 1 and _hits_on(medium).size() == 1
+	var small_hit_at_0_9 := _turret.health != small_health or not _hits_on(_turret).is_empty()
+	_check(medium_hit_at_0_9 and not small_hit_at_0_9,
+		"raggio di contatto in scala: 0,9 m colpisce la media (1,0 m), non la piccola (0,8 m) (%d, %d PV)" % [medium.health, _turret.health])
+	await _clear_enemies()
+	medium.set_physics_process(true)
+	_turret.set_physics_process(true)
+	_turret.heal(_turret.max_health)
+	turret_module.set_active(true)
+	_gather_machines()
+	await _frames(10)
+
+
+## [param count] passi fisici; a ogni passo, prima del direttore, `_tick_health` delle macchine
+## [param machines] col passo spento (immunita, invulnerabilita e attesa del travolgere scalano).
+func _tick_frames(machines: Array[Machine], count: int) -> void:
+	for i in count:
+		await physics_frame
+		for each in machines:
+			each._tick_health(1.0 / Engine.physics_ticks_per_second)
+
+
+func _clear_enemies_ticking(machines: Array[Machine]) -> void:
+	_director.clear_horde()
+	await _tick_frames(machines, 40)
 
 
 # --- Aiuti ----------------------------------------------------------------------------------------

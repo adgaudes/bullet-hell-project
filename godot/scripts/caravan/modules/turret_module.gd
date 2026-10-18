@@ -3,7 +3,8 @@ extends MachineModule
 ## Torretta (spec D-093, Sezione 1): la chiodatrice che il compagno montava con la carta
 ## "Torretta sul cassone", ora il modulo di una macchina. Spara da sola al rottamatore piu
 ## vicino entro `turret_range`; Torretta veloce (livello del tipo) divide l'intervallo per
-## `turret_rate_per_level` a ogni livello, per tutte le torrette.
+## `turret_rate_per_level` a ogni livello, per tutte le torrette, e per la forza della macchina
+## (scelta 4 di D-093).
 ## Spenta (macchina guasta, task 6) non spara: i chiodi gia in volo finiscono la corsa.
 
 ## Altezza della canna sull'origine della macchina (la torretta del compagno di oggi).
@@ -32,7 +33,7 @@ func apply_level(new_level: int) -> void:
 	if caravan != null and caravan.tuning != null:
 		var tuning := caravan.tuning
 		_weapon.weapon_range = tuning.turret_range
-		_weapon.fire_interval = tuning.turret_interval / pow(tuning.turret_rate_per_level, level)
+		_weapon.fire_interval = tuning.turret_interval / pow(tuning.turret_rate_per_level, level) / power
 	if run_tuning != null:
 		_weapon.damage = run_tuning.weapon_damage
 		_weapon.projectile_speed = run_tuning.projectile_speed

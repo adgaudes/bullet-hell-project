@@ -17,8 +17,8 @@ var module_id: StringName
 var machine: Machine
 var caravan: Caravan
 var level := 0
-## Forza della macchina (Machine.power, scelta 4 di D-093): la assegna la macchina a ogni modulo
-## aggiunto o tolto.
+## Forza della macchina (Machine.power, scelta 4 di D-093): la imposta la macchina con `set_power`
+## a ogni modulo aggiunto o tolto; raggi e intervalli dei moduli la includono.
 var power := 1.0
 ## Un modulo spento non fa `tick` e non chiede mete: lo spegne il guasto della macchina (il
 ## Faro resta acceso anche di giorno, la sua luce la nasconde il fattore di notte).
@@ -56,6 +56,12 @@ func build_part() -> Node3D:
 ## Livello del tipo di modulo (carte di livello): vale per tutti i moduli del tipo.
 func apply_level(new_level: int) -> void:
 	level = new_level
+
+
+## Forza nuova (Machine._rebuild): riapplica il livello, cosi raggi e intervalli la seguono.
+func set_power(value: float) -> void:
+	power = value
+	apply_level(level)
 
 
 ## Accende o spegne il modulo; a ogni cambio la carovana avvisa (`changed`: HUD, luci dei Faro).

@@ -1,15 +1,16 @@
 class_name MagnetModule
 extends MachineModule
 ## Calamita (spec D-093, Sezione 1): la macchina attira i frammenti di esperienza entro
-## `magnet_radius`, piu `magnet_radius_per_level` per livello del tipo (Calamita potente).
+## `magnet_radius`, piu `magnet_radius_per_level` per livello del tipo (Calamita potente), per la
+## forza della macchina (scelta 4 di D-093).
 ## Spenta toglie l'attrattore: i frammenti in volo verso di lei scelgono un altro bersaglio.
 
 
-## Raggio d'attrazione al livello corrente.
+## Raggio d'attrazione al livello corrente, per la forza.
 func radius() -> float:
 	if caravan == null or caravan.tuning == null:
 		return 0.0
-	return caravan.tuning.magnet_radius + caravan.tuning.magnet_radius_per_level * level
+	return (caravan.tuning.magnet_radius + caravan.tuning.magnet_radius_per_level * level) * power
 
 
 ## Idempotente (la carovana la richiama quando arrivano i servizi): senza campo dei frammenti
