@@ -113,7 +113,8 @@ func _extract(at: Vector3) -> void:
 ## fossato, un fossato sulla scia a `keep_clear + dozer_ditch_radius` dietro la macchina (se il
 ## suolo e entro `drill_flat_tolerance` dalla base e il punto e libero) e un argine a
 ## `dozer_bank_offset` alla sua destra, portato a base + `dozer_bank_height` dove il suolo e piu
-## basso (se il punto e libero). Il verso e quello del tratto percorso.
+## basso, se il punto e libero e nessuna parte del disco e gia piu alta. Il verso e quello del
+## tratto percorso.
 func _tick_dozer() -> void:
 	if not machine.has_combo(&"dozer") or machine.module(&"drill") != self or terrain_field == null \
 			or write_queue == null:
@@ -140,7 +141,9 @@ func _tick_dozer() -> void:
 		written = true
 	var bank := point + forward.cross(Vector3.UP) * tuning.dozer_bank_offset
 	var target := terrain_field.base_height_at(bank) + tuning.dozer_bank_height
-	if clear_spot(bank, tuning.dozer_bank_radius) and terrain_field.height_at(bank) < target - 0.05:
+	# `level` abbassa anche: niente argine dove una parte del disco e gia piu alta (come la Pala).
+	if clear_spot(bank, tuning.dozer_bank_radius) and terrain_field.height_at(bank) < target - 0.05 \
+			and terrain_field.highest_bump(bank, tuning.dozer_bank_radius, tuning.dozer_bank_height) == null:
 		write_queue.push_level(bank, tuning.dozer_bank_radius, target)
 		written = true
 	if written:

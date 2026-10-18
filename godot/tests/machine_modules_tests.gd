@@ -886,6 +886,13 @@ func _test_combo_reflector() -> void:
 		"Riflettore formato, rottamatore a 5 m nel raggio del Faro (%.2f m)" % beacon.radius())
 	var dealt := await _first_nail_damage(machine, at)
 	_check(dealt == 2 * damage, "Riflettore: un chiodo toglie %d (2 x %d)" % [dealt, damage])
+	# Il Faro (12,65 m) arriva oltre la portata della Torretta (8 m): la scala si chiede direttamente.
+	var turret := machine.module(&"turret") as TurretModule
+	var far := _spawn_still(machine.global_position + Vector3(beacon.radius() + 0.5, 0.0, 0.0))
+	var near := _spawn_still(at)
+	_check(is_equal_approx(turret._combo_scale(far), 1.0) and is_equal_approx(turret._combo_scale(near), _caravan.tuning.combo_damage_scale),
+		"oltre il raggio del Faro scala 1, dentro %.1f" % turret._combo_scale(near))
+	await _clear_enemies()
 	_caravan.remove_machine(machine)
 	await _frames(2)
 
@@ -1124,9 +1131,54 @@ func _test_combo_dozer() -> void:
 	_field.restore_protected(snapshot)
 	for p in ditches + banks:
 		_field.reset_to_base(p, Vector2(1.5, 1.5))
-	_caravan.remove_machine(machine)
 	_place_player_solved(AREA)
+	await _test_dozer_bank_guard(machine)
+	_caravan.remove_machine(machine)
 	await _frames(2)
+
+
+## L'argine della Ruspa non abbassa il terreno piu alto (`level` abbassa anche): un tratto di
+## 1,6 m lungo +X a passo spento, chiamato a mano. Con un cumulo di 1 m nel disco dove cadrebbe
+## il suo, il cumulo resta alto com'era; in terreno aperto l'argine sale.
+func _test_dozer_bank_guard(machine: Machine) -> void:
+	var tuning := _caravan.tuning
+	var module := machine.module(&"drill") as DrillModule
+	machine.set_physics_process(false)
+	var here := AREA + Vector3(-5.0, 0.0, 0.0)
+	_place_machine(machine, here)
+	var point := here - Vector3(tuning.keep_clear + tuning.dozer_ditch_radius, 0.0, 0.0)
+	# Verso +X: la destra e +Z.
+	var bank := point + Vector3(0.0, 0.0, tuning.dozer_bank_offset)
+	_check(_flat(point) and _flat(bank) and module.clear_spot(point, tuning.dozer_ditch_radius)
+		and module.clear_spot(bank, tuning.dozer_bank_radius), "punto del fossato e dell'argine in base e liberi")
+	# Un cumulo di 1 m su un vertice a 0,45 m dal centro dell'argine, dal lato opposto al fossato:
+	# il centro resta sotto base + `dozer_bank_height` (senza controllo l'argine si alzerebbe), la
+	# cima sta nel disco dell'argine.
+	var bump := Vector3(snappedf(bank.x, 0.5), 0.0, snappedf(bank.z + 0.45, 0.5))
+	_field.sculpt(bump, 0.7, 1.0)
+	var samples: Array[Vector3] = [bump, bump + Vector3(0.25, 0.0, 0.0), bump + Vector3(-0.25, 0.0, 0.0)]
+	var before: Array[float] = []
+	for p in samples:
+		before.append(_field.height_at(p))
+	_check(Machine.planar_distance(bump, bank) < tuning.dozer_bank_radius
+		and _field.delta_at(bank) < tuning.dozer_bank_height - 0.05 and _field.delta_at(bump) > tuning.dozer_bank_height + 0.2,
+		"cumulo di %.2f m nel disco dell'argine, centro a %.2f m" % [_field.delta_at(bump), _field.delta_at(bank)])
+	module._dozer_from = machine.global_position - Vector3(1.6, 0.0, 0.0)
+	module._tick_dozer()
+	await _drain()
+	var kept := true
+	for k in samples.size():
+		kept = kept and _field.height_at(samples[k]) == before[k]
+	_check(kept, "il cumulo resta a %.2f m: nessun argine che lo abbassi" % _field.delta_at(bump))
+	_field.reset_to_base(point, Vector2(1.5, 1.5))
+	_field.reset_to_base(bank, Vector2(1.5, 1.5))
+	module._dozer_from = machine.global_position - Vector3(1.6, 0.0, 0.0)
+	module._tick_dozer()
+	await _drain()
+	_check(_field.delta_at(bank) >= 0.6 * tuning.dozer_bank_height,
+		"in terreno aperto l'argine sale a %.2f m" % _field.delta_at(bank))
+	_field.reset_to_base(point, Vector2(1.5, 1.5))
+	_field.reset_to_base(bank, Vector2(1.5, 1.5))
 
 
 ## Guasta: `combos()` restano, `has_combo` e falso per tutte; la Torretta spenta non spara. Riparata
