@@ -3,7 +3,7 @@ extends SceneTree
 ## `arena_run.tscn`: livelli per tipo e bonus della carovana che valgono anche per le macchine
 ## aggiunte dopo, luci dei Faro col fattore di notte, il Cassone che non illumina piu. Poi, su una
 ## seconda scena (la prima finisce con la carovana piena), Trivella, Pala, Saldatore e Sirena
-## (task 8).
+## (task 8). Su una terza scena le sei combinazioni del piano B (task 6), con macchine fuse.
 ## Eseguire con:
 ##   godot_console --headless --path godot --fixed-fps 60 --script res://tests/machine_modules_tests.gd
 
@@ -51,6 +51,11 @@ func _initialize() -> void:
 	await _load_run()
 	await _test_new_modules()
 	_test_power()
+	root.remove_child(_scene)
+	_scene.queue_free()
+	await _frames(2)
+	await _load_run()
+	await _test_combos()
 	root.remove_child(_scene)
 	_scene.queue_free()
 	# T-12: i nodi messi in coda con queue_free vanno liberati prima di uscire. In piu le
@@ -795,6 +800,369 @@ func _test_power() -> void:
 	var lone_turret := lone.module(&"turret") as TurretModule
 	_check(is_equal_approx(lone.power, 1.0) and is_equal_approx(lone_turret.weapon().fire_interval, 0.9),
 		"una piccola resta com'era (%.4f)" % lone_turret.weapon().fire_interval)
+
+
+# --- Combinazioni (piano B, scelta 7 di D-093), sulla terza scena --------------------------------
+
+## Le sei combinazioni su macchine fuse con `caravan.fuse`, una alla volta (la carovana tiene al
+## piu sei moduli). Il capofila resta fermo: non va a raccogliere i rottami dei casi.
+func _test_combos() -> void:
+	print("combos")
+	_scraps._veins.clear()
+	_scraps.take_near(AREA, 40.0, _scraps.count())
+	_place_player_solved(AREA)
+	var lead := _caravan.lead()
+	lead.set_physics_process(false)
+	_place_machine(lead, AREA + LEAD_OFFSET)
+	await _test_combo_reflector()
+	await _test_combo_trap()
+	await _test_combo_both()
+	await _test_combo_armored_bait()
+	await _test_combo_mobile_mixer()
+	await _test_combo_extractor()
+	await _test_combo_dozer()
+	await _test_combo_off_when_broken()
+	lead.set_physics_process(true)
+
+
+## Macchina fusa coi moduli [param ids] nell'ordine: la prima aggiunta e la base, le altre vi
+## entrano una per volta (i rottami per pagare la fusione li mette il test).
+func _fused(ids: Array[StringName]) -> Machine:
+	var base := _add(ids[0])
+	if base == null:
+		return null
+	for k in range(1, ids.size()):
+		var other := _add(ids[k])
+		_caravan.carried = _caravan.capacity
+		if other == null or not _caravan.fuse(base, other):
+			_check(false, "fusione di %s" % ids[k])
+			return null
+	_check(base.module_ids() == ids, "macchina fusa %s" % [base.module_ids()])
+	return base
+
+
+## Danno del primo chiodo della Torretta di [param machine] su un rottamatore fermo in
+## [param at], -1 se entro 3 s non lo colpisce. Poi niente nemici e nessun chiodo in volo.
+func _first_nail_damage(machine: Machine, at: Vector3) -> int:
+	var gun := (machine.module(&"turret") as TurretModule).weapon()
+	var enemy := _spawn_still(at)
+	var start := enemy.health
+	var dealt := -1
+	for i in 180:
+		await physics_frame
+		if is_instance_valid(enemy) and enemy.health < start:
+			dealt = start - enemy.health
+			break
+	_director.clear_horde()
+	for i in 120:
+		await physics_frame
+		if gun.nail_count() == 0:
+			break
+	await _frames(5)
+	return dealt
+
+
+## Torretta ferma nel punto del caso, col tempo della Sirena congelato (la macchina non fa passi).
+func _still_turret(ids: Array[StringName]) -> Machine:
+	var machine := _fused(ids)
+	if machine == null:
+		return null
+	machine.set_physics_process(false)
+	_place_machine(machine, AREA + Vector3(3.0, 0.0, 2.0))
+	return machine
+
+
+## Riflettore: Torretta + Faro, rottamatore entro il raggio del Faro (e della Torretta): un
+## chiodo toglie 2 x weapon_damage.
+func _test_combo_reflector() -> void:
+	print("combo reflector")
+	var damage := _run.tuning.weapon_damage
+	var machine := _still_turret([&"turret", &"beacon"])
+	if machine == null:
+		return
+	var beacon := machine.module(&"beacon") as BeaconModule
+	var at := machine.global_position + Vector3(5.0, 0.0, 0.0)
+	_check(machine.has_combo(&"reflector") and beacon.active and 5.0 < beacon.radius(),
+		"Riflettore formato, rottamatore a 5 m nel raggio del Faro (%.2f m)" % beacon.radius())
+	var dealt := await _first_nail_damage(machine, at)
+	_check(dealt == 2 * damage, "Riflettore: un chiodo toglie %d (2 x %d)" % [dealt, damage])
+	_caravan.remove_machine(machine)
+	await _frames(2)
+
+
+## Trappola: Torretta + Sirena; nella fase attiva un rottamatore attirato a 6 m prende il doppio,
+## fuori fase il danno normale.
+func _test_combo_trap() -> void:
+	print("combo trap")
+	var tuning := _caravan.tuning
+	var damage := _run.tuning.weapon_damage
+	var machine := _still_turret([&"turret", &"siren"])
+	if machine == null:
+		return
+	var siren := machine.module(&"siren") as SirenModule
+	var at := machine.global_position + Vector3(6.0, 0.0, 0.0)
+	siren._cycle_time = 0.0
+	_check(machine.has_combo(&"trap") and siren.is_attracting() and 6.0 < siren.range_m(),
+		"Trappola formata, Sirena che attira, rottamatore a 6 m nel suo raggio (%.2f m)" % siren.range_m())
+	var dealt := await _first_nail_damage(machine, at)
+	_check(dealt == 2 * damage, "Trappola nella fase attiva: un chiodo toglie %d (2 x %d)" % [dealt, damage])
+	siren._cycle_time = tuning.siren_active + 0.1
+	_check(not siren.is_attracting(), "fuori fase la Sirena non attira")
+	dealt = await _first_nail_damage(machine, at)
+	_check(dealt == damage, "Trappola fuori fase: danno normale (%d)" % dealt)
+	_caravan.remove_machine(machine)
+	await _frames(2)
+
+
+## Riflettore e Trappola insieme: rottamatore illuminato e attirato, 4 x weapon_damage.
+func _test_combo_both() -> void:
+	print("combo both")
+	var damage := _run.tuning.weapon_damage
+	var machine := _still_turret([&"turret", &"beacon", &"siren"])
+	if machine == null:
+		return
+	var siren := machine.module(&"siren") as SirenModule
+	siren._cycle_time = 0.0
+	_check(machine.has_combo(&"reflector") and machine.has_combo(&"trap") and siren.is_attracting(),
+		"Torretta + Faro + Sirena: Riflettore e Trappola, la Sirena attira")
+	var dealt := await _first_nail_damage(machine, machine.global_position + Vector3(6.0, 0.0, 0.0))
+	_check(dealt == 4 * damage, "i due raddoppi si moltiplicano: %d (4 x %d)" % [dealt, damage])
+	_caravan.remove_machine(machine)
+	await _frames(2)
+
+
+## Esca blindata: Saldatore + Sirena; mentre attira due colpi da 1 a 0,9 s tolgono 1 PV (un solo
+## `damaged`, da 1), a Sirena ferma 2.
+func _test_combo_armored_bait() -> void:
+	print("combo armored bait")
+	var tuning := _caravan.tuning
+	var gap := roundi(0.9 * Engine.physics_ticks_per_second)
+	var machine := _fused([&"welder", &"siren"])
+	if machine == null:
+		return
+	await _settle(machine)
+	var siren := machine.module(&"siren") as SirenModule
+	var hits: Array[int] = []
+	var on_damaged := func(amount: int) -> void: hits.append(amount)
+	machine.damaged.connect(on_damaged)
+	machine._hit_cooldown_left = 0.0
+	siren._cycle_time = 0.0
+	var start := machine.health
+	_check(machine.has_combo(&"armored_bait") and is_equal_approx(machine.hit_scale(), tuning.combo_hit_scale),
+		"Esca blindata formata: con la Sirena che attira la scala del danno e %.2f" % machine.hit_scale())
+	var first := machine.take_hit(1)
+	await _frames(gap)
+	var attracting := siren.is_attracting()
+	var second := machine.take_hit(1)
+	_check(first and second and attracting and machine.health == start - 1,
+		"Sirena che attira: due colpi da 1 a 0,9 s tolgono 1 PV (%d -> %d)" % [start, machine.health])
+	_check(hits.size() == 1 and hits[0] == 1, "un solo damaged, da 1 PV (%s)" % [hits])
+	await _frames(gap)
+	hits.clear()
+	siren._cycle_time = tuning.siren_active + 0.01
+	start = machine.health
+	_check(not siren.is_attracting() and is_equal_approx(machine.hit_scale(), 1.0), "Sirena ferma: scala 1")
+	first = machine.take_hit(1)
+	await _frames(gap)
+	attracting = siren.is_attracting()
+	second = machine.take_hit(1)
+	_check(first and second and not attracting and machine.health == start - 2,
+		"Sirena ferma: due colpi da 1 tolgono 2 PV (%d -> %d)" % [start, machine.health])
+	_check(hits.size() == 2 and hits[0] == 1 and hits[1] == 1, "due damaged da 1 (%s)" % [hits])
+	machine.damaged.disconnect(on_damaged)
+	_caravan.remove_machine(machine)
+	await _frames(2)
+
+
+## Betoniera mobile: Pala + Cassone senza rottami, rottamatore a 5 m: l'argine sale lo stesso,
+## gratis e senza riserva.
+func _test_combo_mobile_mixer() -> void:
+	print("combo mobile mixer")
+	var tuning := _caravan.tuning
+	var machine := _fused([&"shovel", &"cargo"])
+	if machine == null:
+		return
+	await _settle(machine)
+	var module := machine.module(&"shovel") as ShovelModule
+	var d := machine.global_position
+	var w := _side(machine)
+	var bank := d + w * (5.0 - tuning.shovel_gap)
+	_spawn_still(d + w * 5.0)
+	_caravan.carried = 0
+	_check(machine.has_combo(&"mobile_mixer") and _flat(bank) and module.clear_spot(bank, tuning.shovel_radius)
+		and _caravan.carried == 0, "Betoniera mobile formata, 0 rottami, punto dell'argine in base e libero")
+	module._shovel_left = 0.0
+	await _frames(1)
+	var queued := _run.write_queue.pending() > 0
+	await _drain()
+	_check(queued and _field.height_at(bank) >= _field.base_height_at(bank) + 0.9,
+		"con 0 rottami l'argine sale a %.2f m sulla base" % _field.delta_at(bank))
+	_check(_caravan.carried == 0, "nessun rottame speso (%d a bordo)" % _caravan.carried)
+	_field.reset_to_base(bank, Vector2(2.0, 2.0))
+	_caravan.remove_machine(machine)
+	await _clear_enemies()
+
+
+## Estrattore: Trivella + Calamita; dopo la buca i tre rottami a terra entro 3 m vanno nei
+## Cassoni, quello a 4,5 m resta; poi il rottame cavato da una vena entra subito a bordo.
+func _test_combo_extractor() -> void:
+	print("combo extractor")
+	var tuning := _caravan.tuning
+	var machine := _fused([&"drill", &"magnet"])
+	if machine == null:
+		return
+	await _settle(machine)
+	var module := machine.module(&"drill") as DrillModule
+	var d := machine.global_position
+	var w := _side(machine)
+	var hole := d + w * 3.0
+	_spawn_still(d + w * 4.0)
+	for offset: Vector3 in [Vector3(0.0, 0.0, 1.2), Vector3(0.0, 0.0, -1.2), w * 1.5, w * 4.5]:
+		_scraps.spawn_on_ground(hole + offset)
+	_caravan.carried = 0
+	var scraps_before := _scraps.count()
+	_check(machine.has_combo(&"extractor") and _flat(hole) and module.clear_spot(hole, tuning.drill_radius)
+		and _scraps.positions_near(hole, tuning.extractor_radius).size() == 3 and _caravan.room() >= 3,
+		"Estrattore formato, buca in base e libera, tre rottami entro 3 m, posto a bordo")
+	module._drill_left = 0.0
+	await _frames(2)
+	_check(_caravan.carried == 3 and _scraps.count() == scraps_before - 3
+		and _scraps.positions_near(hole + w * 4.5, 0.5).size() == 1,
+		"dopo la buca 3 rottami a bordo (%d), quello a 4,5 m resta a terra" % _caravan.carried)
+	await _drain()
+	_check(absf(_field.height_at(hole) - (_field.base_height_at(hole) - tuning.drill_depth)) < 0.05,
+		"e la buca c'e (%.2f m sulla base)" % _field.delta_at(hole))
+	_field.reset_to_base(hole, Vector2(2.0, 2.0))
+	await _clear_enemies()
+	var vein_at := d + w * 3.0
+	_scraps.add_vein(vein_at, 1.2, 4, _field.base_height_at(vein_at))
+	scraps_before = _scraps.count()
+	module._drill_left = 0.0
+	await _frames(2)
+	_check(_scraps.vein_scrap_left(vein_at) == 3 and _caravan.carried == 4 and _scraps.count() == scraps_before,
+		"dalla vena un rottame dritto a bordo (%d), nessuno a terra" % _caravan.carried)
+	_scraps._veins.clear()
+	_scraps.take_near(AREA, 40.0, _scraps.count())
+	_caravan.carried = tuning.starting_scrap
+	_caravan.remove_machine(machine)
+	await _frames(2)
+
+
+## Ruspa: Trivella + Pala che percorre almeno 6 m in piano (il giocatore si sposta di 8 m, la
+## macchina lo segue): almeno due fossati con l'argine a lato, nessuna scrittura entro
+## `keep_clear` dal giocatore o da una macchina, la pedana protetta sulla scia intatta.
+func _test_combo_dozer() -> void:
+	print("combo dozer")
+	var tuning := _caravan.tuning
+	var queue := _run.write_queue
+	var machine := _fused([&"drill", &"shovel"])
+	if machine == null:
+		return
+	await _settle(machine)
+	var start := machine.global_position
+	# La pedana: un disco protetto attorno alla partenza, dove cadrebbe il primo fossato (0,8 m
+	# dietro il punto di partenza).
+	var pad_at := start
+	var snapshot := _field.snapshot_protected(pad_at, 1.2)
+	_field.set_protected(pad_at, 1.2, true)
+	var pad_points: Array[Vector3] = [pad_at]
+	# Anello a 0,4 m: i quattro vertici (passo 0,5 m) attorno a ogni punto stanno nel disco.
+	for k in 8:
+		pad_points.append(pad_at + Vector3(cos(TAU * k / 8.0), 0.0, sin(TAU * k / 8.0)) * 0.4)
+	var pad_heights: Array[float] = []
+	for p in pad_points:
+		pad_heights.append(_field.height_at(p))
+	_check(machine.has_combo(&"dozer") and _flat(start) and _flat(start + Vector3(8.0, 0.0, 0.0)),
+		"Ruspa formata, in piano")
+	_place_player_solved(AREA + Vector3(8.0, 0.0, 0.0))
+	var ditches: Array[Vector3] = []
+	var banks: Array[Vector3] = []
+	var seen: Dictionary[Vector3, bool] = {}
+	var clear := true
+	var nearest_pad := INF
+	for i in roundi(5.0 * Engine.physics_ticks_per_second):
+		await physics_frame
+		nearest_pad = minf(nearest_pad, Machine.planar_distance(machine.global_position, pad_at))
+		for job: Dictionary in queue._jobs:
+			var center: Vector3 = job.center
+			if seen.has(center):
+				continue
+			seen[center] = true
+			clear = clear and Machine.planar_distance(center, _player.global_position) > tuning.keep_clear
+			for each in _caravan.machines:
+				clear = clear and Machine.planar_distance(center, each.global_position) > tuning.keep_clear
+			if is_equal_approx(float(job.target), _field.base_height_at(center) - tuning.dozer_ditch_depth):
+				ditches.append(center)
+			elif is_equal_approx(float(job.target), _field.base_height_at(center) + tuning.dozer_bank_height):
+				banks.append(center)
+	var travelled := Machine.planar_distance(machine.global_position, start)
+	await _drain()
+	_check(travelled >= 6.0, "la macchina ha percorso %.2f m" % travelled)
+	_check(ditches.size() >= 2 and banks.size() >= 2, "%d fossati e %d argini lungo la scia" % [ditches.size(), banks.size()])
+	_check(clear, "nessuna scrittura entro keep_clear dal giocatore o da una macchina")
+	# Pennello di 0,8 m su vertici ogni 0,5 m: fuori da un vertice il centro arriva a circa tre
+	# quarti della quota piena (la campana), quindi si chiede almeno il 60 %.
+	var deep := true
+	var shallowest := -INF
+	for p in ditches:
+		shallowest = maxf(shallowest, _field.delta_at(p))
+		deep = deep and _field.delta_at(p) <= -0.6 * tuning.dozer_ditch_depth
+	var high := true
+	var lowest := INF
+	for p in banks:
+		lowest = minf(lowest, _field.delta_at(p))
+		high = high and _field.delta_at(p) >= 0.6 * tuning.dozer_bank_height
+	_check(not ditches.is_empty() and deep,
+		"fossati scavati verso %.1f m (il meno profondo a %.2f m)" % [tuning.dozer_ditch_depth, shallowest])
+	_check(not banks.is_empty() and high,
+		"argini alzati verso %.1f m (il piu basso a %.2f m)" % [tuning.dozer_bank_height, lowest])
+	var intact := true
+	for k in pad_points.size():
+		intact = intact and _field.height_at(pad_points[k]) == pad_heights[k]
+	_check(nearest_pad < 1.2 and intact,
+		"la scia parte dalla pedana (%.2f m), che resta intatta" % nearest_pad)
+	_field.restore_protected(snapshot)
+	for p in ditches + banks:
+		_field.reset_to_base(p, Vector2(1.5, 1.5))
+	_caravan.remove_machine(machine)
+	_place_player_solved(AREA)
+	await _frames(2)
+
+
+## Guasta: `combos()` restano, `has_combo` e falso per tutte; la Torretta spenta non spara. Riparata
+## le combinazioni tornano.
+func _test_combo_off_when_broken() -> void:
+	print("combo off when broken")
+	var machine := _still_turret([&"turret", &"beacon", &"siren", &"drill", &"shovel"])
+	if machine == null:
+		return
+	var combos := machine.combos()
+	_check(combos.size() == 3 and combos.all(func(id: StringName) -> bool: return machine.has_combo(id)),
+		"cinque moduli, tre combinazioni attive (%s)" % [combos])
+	_break(machine)
+	_check(machine.combos().size() == 3 and not combos.any(func(id: StringName) -> bool: return machine.has_combo(id)),
+		"guasta: has_combo falso per tutte")
+	var gun := (machine.module(&"turret") as TurretModule).weapon()
+	gun.fired.connect(_on_turret_fired)
+	_shots = 0
+	var enemy := _spawn_still(machine.global_position + Vector3(5.0, 0.0, 0.0))
+	await _frames(90)
+	_check(gun.shooter == null and _shots == 0 and is_instance_valid(enemy) and enemy.health == 9999,
+		"la Torretta spenta non spara (%d colpi)" % _shots)
+	gun.fired.disconnect(_on_turret_fired)
+	machine.repair(1.0)
+	_check(machine.has_combo(&"reflector") and machine.has_combo(&"trap") and machine.has_combo(&"dozer"),
+		"riparata, le combinazioni tornano")
+	_caravan.remove_machine(machine)
+	await _clear_enemies()
+
+
+## Passi finche la coda delle scritture e vuota (al piu 2 s).
+func _drain() -> void:
+	for i in 120:
+		await physics_frame
+		if _run.write_queue.pending() == 0:
+			return
 
 
 ## Come `_place_player`, poi risolve il campo di percorso dal punto nuovo (machine_damage_tests).

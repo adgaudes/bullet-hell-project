@@ -5,7 +5,8 @@ extends MachineModule
 ## `shovel_reach` e la macchina, a `shovel_gap` da lui: un disco di `shovel_radius` portato a
 ## `shovel_height` sopra la base (`push_level`). Solo in un punto libero (`clear_spot`), dove il
 ## suolo e piu basso dell'argine, e per `shovel_cost` rottami dai Cassoni funzionanti, purche ne
-## restino `repair_cost` (la riserva per una riparazione).
+## restino `repair_cost` (la riserva per una riparazione). Con la Betoniera mobile (Pala e Cassone
+## nella stessa macchina, scelta 7 di D-093) l'argine e gratis e senza riserva.
 
 ## Secondi al prossimo argine; a 0 lavora al primo passo.
 var _shovel_left := 0.0
@@ -32,7 +33,8 @@ func tick(delta: float) -> void:
 	# `level` abbassa anche: niente argine dove una parte del disco e gia piu alta.
 	if terrain_field.highest_bump(point, tuning.shovel_radius, tuning.shovel_height) != null:
 		return
-	if caravan.working_carried() < tuning.shovel_cost + tuning.repair_cost or not caravan.pay(tuning.shovel_cost):
+	if not machine.has_combo(&"mobile_mixer") and (caravan.working_carried() < tuning.shovel_cost + tuning.repair_cost
+			or not caravan.pay(tuning.shovel_cost)):
 		return
 	write_queue.push_level(point, tuning.shovel_radius, target)
 	WeaponFx.dust(fx_parent(), Vector3(point.x, terrain_field.height_at(point), point.z), WeaponFx.EARTH, 0.5, 10,

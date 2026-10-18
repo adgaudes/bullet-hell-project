@@ -923,6 +923,9 @@ func _test_trample() -> void:
 	await _clear_enemies_ticking([medium, _turret])
 
 	medium._invulnerable_left = 0.0
+	# Sirena + Saldatore e l'Esca blindata (task 6 del piano B): mentre la Sirena attira i colpi
+	# tolgono meta. A passo spento il suo ciclo e fermo: lo si porta fuori dalla fase attiva.
+	(medium.module(&"siren") as SirenModule)._cycle_time = tuning.siren_active
 	_break(medium)
 	medium.velocity = Vector3(2.0, 0.0, 0.0)
 	enemy = _spawn_still(medium.global_position + Vector3(0.0, 0.0, 0.7))
@@ -938,6 +941,9 @@ func _test_trample() -> void:
 	medium._hit_cooldown_left = 0.0
 	_turret._invulnerable_left = 0.0
 	_turret._hit_cooldown_left = 0.0
+	# Riparata, la Sirena si e riaccesa dall'inizio del ciclo (attira): di nuovo fuori fase, cosi
+	# l'Esca blindata non dimezza il colpo.
+	(medium.module(&"siren") as SirenModule)._cycle_time = tuning.siren_active
 	var medium_health := medium.health
 	var small_health := _turret.health
 	_hits.clear()

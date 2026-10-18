@@ -7,6 +7,11 @@ extends MachineModule
 ## scava una buca (`DigCharge.dig_crater`) a 1 m dal nemico vivo piu vicino entro `drill_reach`,
 ## verso la macchina: solo su suolo entro `drill_flat_tolerance` dalla base e in un punto libero
 ## (`clear_spot`).
+## Combinazioni (scelta 7 di D-093). Estrattore (con la Calamita): dopo una buca i rottami a terra
+## entro `extractor_radius` vanno nei Cassoni, se c'e posto; dopo una vena lo stesso attorno al
+## rottame cavato. Ruspa (con la Pala): ogni `dozer_spacing` m percorsi un fossato dietro la
+## macchina, oltre `keep_clear` da lei, e un argine alla sua destra, gratis, con le regole di
+## `clear_spot`.
 
 ## Distanza della buca dal nemico, verso la macchina.
 const HOLE_GAP_M := 1.0
@@ -15,11 +20,19 @@ const DROP_OUTSIDE_M := 0.4
 ## ...o, se li non si passa, a tanto dalla macchina verso la vena.
 const DROP_BESIDE_M := 0.6
 
+## Oltre tanti `dozer_spacing` in un passo la macchina e stata spostata (ritorno al posto): la
+## Ruspa riprende a misurare da li senza scavare.
+const DOZER_JUMP := 3.0
+
 ## Secondi al prossimo colpo di trivella; a 0 lavora al primo passo.
 var _drill_left := 0.0
+## Ruspa: punto (della macchina) dell'ultimo fossato, da cui si misura il tratto; INF finche la
+## Ruspa non lavora.
+var _dozer_from := Vector3.INF
 
 
 func tick(delta: float) -> void:
+	_tick_dozer()
 	_drill_left -= delta
 	if _drill_left > TIMER_EPSILON:
 		return
@@ -54,6 +67,7 @@ func _drill_vein() -> bool:
 		return false
 	_dust(center, float(vein.radius))
 	print("PROTOTYPE01_DRILL_HOLE x=%.1f z=%.1f vein=%d" % [center.x, center.z, 1])
+	_extract(drop)
 	return true
 
 
@@ -77,6 +91,61 @@ func _drill_hole() -> void:
 	DigCharge.dig_crater(write_queue, terrain_field, point, tuning.drill_radius, tuning.drill_depth)
 	_dust(point, tuning.drill_radius)
 	print("PROTOTYPE01_DRILL_HOLE x=%.1f z=%.1f vein=%d" % [point.x, point.z, 0])
+	_extract(point)
+
+
+## Estrattore: i rottami a terra entro `extractor_radius` da [param at] nei Cassoni, fino al posto
+## che resta.
+func _extract(at: Vector3) -> void:
+	if scrap_field == null or not machine.has_combo(&"extractor"):
+		return
+	var room := caravan.room()
+	if room <= 0:
+		return
+	var taken := scrap_field.take_near(at, caravan.tuning.extractor_radius, room)
+	if taken <= 0:
+		return
+	caravan.add_scrap(taken)
+	print("PROTOTYPE01_EXTRACTOR scrap=%d" % taken)
+
+
+## Ruspa (solo la prima Trivella della macchina): a ogni `dozer_spacing` m dal punto dell'ultimo
+## fossato, un fossato sulla scia a `keep_clear + dozer_ditch_radius` dietro la macchina (se il
+## suolo e entro `drill_flat_tolerance` dalla base e il punto e libero) e un argine a
+## `dozer_bank_offset` alla sua destra, portato a base + `dozer_bank_height` dove il suolo e piu
+## basso (se il punto e libero). Il verso e quello del tratto percorso.
+func _tick_dozer() -> void:
+	if not machine.has_combo(&"dozer") or machine.module(&"drill") != self or terrain_field == null \
+			or write_queue == null:
+		_dozer_from = Vector3.INF
+		return
+	var here := machine.global_position
+	if _dozer_from == Vector3.INF:
+		_dozer_from = here
+		return
+	var tuning := caravan.tuning
+	var moved := Vector3(here.x - _dozer_from.x, 0.0, here.z - _dozer_from.z)
+	var distance := moved.length()
+	if distance < tuning.dozer_spacing:
+		return
+	_dozer_from = here
+	if distance > tuning.dozer_spacing * DOZER_JUMP:
+		return
+	var forward := moved / distance
+	var point := Vector3(here.x, 0.0, here.z) - forward * (tuning.keep_clear + tuning.dozer_ditch_radius)
+	var written := false
+	if absf(terrain_field.height_at(point) - terrain_field.base_height_at(point)) <= tuning.drill_flat_tolerance \
+			and clear_spot(point, tuning.dozer_ditch_radius):
+		DigCharge.dig_crater(write_queue, terrain_field, point, tuning.dozer_ditch_radius, tuning.dozer_ditch_depth)
+		written = true
+	var bank := point + forward.cross(Vector3.UP) * tuning.dozer_bank_offset
+	var target := terrain_field.base_height_at(bank) + tuning.dozer_bank_height
+	if clear_spot(bank, tuning.dozer_bank_radius) and terrain_field.height_at(bank) < target - 0.05:
+		write_queue.push_level(bank, tuning.dozer_bank_radius, target)
+		written = true
+	if written:
+		_dust(point, tuning.dozer_ditch_radius)
+		print("PROTOTYPE01_DOZER_TRENCH x=%.1f z=%.1f" % [point.x, point.z])
 
 
 func _dust(at: Vector3, radius: float) -> void:

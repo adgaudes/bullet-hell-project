@@ -149,6 +149,8 @@ var _own_materials: Array[Material] = []
 ## Secondi d'immunita dopo l'ultimo colpo (`hit_cooldown`) e d'invulnerabilita concessa.
 var _hit_cooldown_left := 0.0
 var _invulnerable_left := 0.0
+## Frazione di PV dei colpi ridotti (Esca blindata) non ancora tolta: due mezzi colpi fanno 1 PV.
+var _damage_carry := 0.0
 ## Secondi senza colpi da danneggiata (fermi a 0 da guasta o a vita piena) e PV rigenerati da allora.
 var _since_hit := 0.0
 var _regen_given := 0
@@ -287,19 +289,35 @@ func is_broken() -> bool:
 
 ## Colpo da contatto (rottamatore, boss, carica della Trivella): falso, senza effetti, se la
 ## macchina e guasta, nell'immunita del colpo precedente o invulnerabile; altrimenti toglie
-## [param amount] PV, apre `hit_cooldown` d'immunita e riparte da zero il tempo senza colpi.
+## [param amount] PV per `hit_scale` (la parte intera, il resto si somma al colpo dopo), apre
+## `hit_cooldown` d'immunita e riparte da zero il tempo senza colpi. `damaged` solo se toglie PV.
 func take_hit(amount: int) -> bool:
 	if not accepts_contact() or _invulnerable_left > 0.0:
 		return false
-	health = maxi(health - amount, 0)
+	var scaled := amount * hit_scale() + _damage_carry
+	var dealt := int(scaled)
+	_damage_carry = scaled - dealt
+	health = maxi(health - dealt, 0)
 	var tuning := _tuning()
 	_hit_cooldown_left = tuning.hit_cooldown if tuning != null else 0.0
 	_since_hit = 0.0
 	_regen_given = 0
 	print("PROTOTYPE01_MACHINE_HIT module=%s health=%d" % [primary_module_id(), health])
-	damaged.emit(amount)
+	if dealt > 0:
+		damaged.emit(dealt)
 	_update_state()
 	return true
+
+
+## Scala dei colpi subiti: `combo_hit_scale` con l'Esca blindata mentre la sua Sirena attira
+## (scelta 7 di D-093), altrimenti 1.
+func hit_scale() -> float:
+	if not has_combo(&"armored_bait"):
+		return 1.0
+	var siren := module(&"siren") as SirenModule
+	if siren == null or not siren.is_attracting():
+		return 1.0
+	return caravan.tuning.combo_hit_scale
 
 
 ## Vero se un contatto puo colpire ora: non guasta e fuori dall'immunita del colpo precedente.
@@ -344,6 +362,7 @@ func repair(fraction: float) -> void:
 	if not is_broken():
 		return
 	health = clampi(ceili(max_health * fraction), 1, max_health)
+	_damage_carry = 0.0
 	_since_hit = 0.0
 	_regen_given = 0
 	_set_state(State.OK)

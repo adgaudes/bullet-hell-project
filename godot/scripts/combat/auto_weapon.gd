@@ -59,6 +59,9 @@ var fire_patches := false
 var spread_jitter := 0.0
 ## Coda delle scritture del terreno (dal loadout, dopo `add_child`): serve al Fortino.
 var write_queue: TerrainWriteQueue
+## Scala del danno dei chiodi per nemico (Enemy -> float): la imposta la Torretta per le
+## combinazioni (D-093, scelta 7); non valida vale 1. Le armi del giocatore non la impostano.
+var damage_scale: Callable
 
 ## Direzione planare (unitaria) dell'ultimo colpo: chi ascolta `fired` la usa per il rinculo.
 var last_fire_direction := Vector3.ZERO
@@ -237,7 +240,7 @@ func _move_nails(delta: float) -> void:
 					continue
 				if _segment_distance(from, to, enemy.global_position) <= HIT_RADIUS + enemy.hit_radius_bonus:
 					nail.hit.append(enemy)
-					enemy.take_damage(damage)
+					enemy.take_damage(_damage_for(enemy))
 					if _fx_ready(&"nail", 0.08):
 						WeaponFx.sparks(fx_parent(), enemy.global_position + Vector3(0.0, 0.6, 0.0), NAIL_COLOR, 6, 5.0, true)
 					# La macchia nasce al primo nemico colpito, anche se il chiodo prosegue.
@@ -260,6 +263,14 @@ func _move_nails(delta: float) -> void:
 				_spawn_patch(to)
 			_nails.remove_at(k)
 	_refresh_nail_view()
+
+
+## Danno di un chiodo su [param enemy]: `damage`, o `damage` per `damage_scale` arrotondato
+## (almeno 1) se la scala c'e.
+func _damage_for(enemy: Enemy) -> int:
+	if not damage_scale.is_valid():
+		return damage
+	return maxi(roundi(damage * float(damage_scale.call(enemy))), 1)
 
 
 # --- Fortino --------------------------------------------------------------------------------
