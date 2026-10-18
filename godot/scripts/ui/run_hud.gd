@@ -264,9 +264,10 @@ func set_caravan(entries: Array, carried: int, capacity: int) -> void:
 	_caravan_strip.show()
 
 
-## Tasto Interagisci ("Ripara") nella striscia della carovana: vicino a una macchina guasta.
-func set_caravan_prompt(shown: bool) -> void:
-	_caravan_strip.set_prompt(shown)
+## Tasto Interagisci nella striscia della carovana: "Ripara" vicino a una macchina guasta,
+## "Banco" sulla pedana di fusione (uno alla volta, Ripara prima).
+func set_caravan_prompt(repair: bool, bench := false) -> void:
+	_caravan_strip.set_prompt(repair, bench)
 
 
 func caravan_strip() -> CaravanStrip:

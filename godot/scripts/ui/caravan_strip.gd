@@ -4,8 +4,9 @@ extends PanelContainer
 ## delle armi. A sinistra i rottami ("3/5"), poi una casella per macchina: icona del modulo,
 ## cornice del colore del modulo, tacche di vita, bordo rosso e barra diagonale da guasta, tinta
 ## da ritirata, spicchio della riparazione dalle 12 in senso orario. In fondo il tasto Interagisci
-## ("Ripara"), acceso solo vicino a una macchina guasta: il suo posto resta, le caselle non si
-## spostano. Solo lettura: mai focus ne input.
+## ("Ripara"), acceso solo vicino a una macchina guasta, o nello stesso posto "Banco" sulla pedana
+## di fusione (uno alla volta, Ripara prima): il suo posto resta, le caselle non si spostano.
+## Solo lettura: mai focus ne input.
 ## Taglia (piano B, scelta 11 di D-093): la casella e larga `SLOT_SIZE + SIZE_STEP x taglia`, ha un
 ## quadratino del colore di ogni modulo oltre il primo e mostra la vita a tacche fino a
 ## `MAX_PIPS` PV, a barra oltre.
@@ -24,6 +25,8 @@ var _slots: Array[CaravanSlot] = []
 var _scrap_label: Label
 var _prompt: ButtonPrompts
 var _prompt_shown := false
+var _bench_prompt: ButtonPrompts
+var _bench_prompt_shown := false
 
 
 func _ready() -> void:
@@ -49,11 +52,24 @@ func _ready() -> void:
 	_slot_row.add_theme_constant_override(&"separation", 4)
 	_slot_row.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(_slot_row)
-	_prompt = ButtonPrompts.create([[&"interact", "Ripara"]])
-	_prompt.icon_size = 24
-	_prompt.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	_prompt.modulate.a = 0.0
-	row.add_child(_prompt)
+	# I due tasti di Interagisci uno sopra l'altro: il posto e quello del piu largo.
+	var prompts := MarginContainer.new()
+	prompts.name = "InteractPrompts"
+	prompts.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	prompts.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(prompts)
+	_prompt = _make_prompt("Ripara")
+	prompts.add_child(_prompt)
+	_bench_prompt = _make_prompt("Banco")
+	prompts.add_child(_bench_prompt)
+
+
+func _make_prompt(text: String) -> ButtonPrompts:
+	var prompt := ButtonPrompts.create([[&"interact", text]])
+	prompt.icon_size = 24
+	prompt.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	prompt.modulate.a = 0.0
+	return prompt
 
 
 ## Una casella per voce: si aggiungono o tolgono solo quando cambia il numero, le altre si
@@ -79,12 +95,15 @@ func set_scrap(carried: int, capacity: int) -> void:
 		_scrap_label.text = text
 
 
-## Tasto "Ripara" acceso o spento; spento tiene il suo posto (trasparente).
-func set_prompt(shown: bool) -> void:
-	if shown == _prompt_shown:
-		return
-	_prompt_shown = shown
-	_prompt.modulate.a = 1.0 if shown else 0.0
+## Tasto "Ripara" o "Banco" acceso (Ripara vince); spento tiene il suo posto (trasparente).
+func set_prompt(repair: bool, bench := false) -> void:
+	var show_bench := bench and not repair
+	if repair != _prompt_shown:
+		_prompt_shown = repair
+		_prompt.modulate.a = 1.0 if repair else 0.0
+	if show_bench != _bench_prompt_shown:
+		_bench_prompt_shown = show_bench
+		_bench_prompt.modulate.a = 1.0 if show_bench else 0.0
 
 
 func slot_count() -> int:
@@ -123,6 +142,10 @@ func scrap_text() -> String:
 
 func prompt_visible() -> bool:
 	return _prompt_shown
+
+
+func bench_prompt_visible() -> bool:
+	return _bench_prompt_shown
 
 
 class CaravanSlot:

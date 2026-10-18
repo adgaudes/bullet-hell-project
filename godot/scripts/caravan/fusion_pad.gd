@@ -8,6 +8,8 @@ extends Node3D
 ## con la freccia (priorita piu bassa dell'annuncio unico), da aperta protegge il suo disco e alla
 ## chiamata del boss si richiude. Solo modello: nessuna collisione, nessuna sorgente di LightField.
 ## Come la piazzola di estrazione non ha un passo fisico proprio: `ArenaRun` la fa avanzare.
+## Banco (scelta 9): Interagisci sulla pedana, senza guaste da riparare vicino, chiede il banco;
+## lo apre `ArenaRun` a fine passo se nello stesso passo non si apre un altro menu.
 
 signal warned(center: Vector3)
 signal landed(center: Vector3)
@@ -69,6 +71,8 @@ var _model: Node3D
 var _light: OmniLight3D
 var _descent_left := 0.0
 var _rise_left := 0.0
+## Interagisci premuto sulla pedana in questo passo: `ArenaRun` apre il banco a fine passo.
+var _bench_requested := false
 
 
 ## Programma l'arrivo a [param seconds] di livello e azzera la ricerca.
@@ -105,6 +109,36 @@ func flat_radius() -> float:
 func contains(point: Vector3) -> bool:
 	var h := half_size()
 	return absf(point.x - center.x) <= h and absf(point.z - center.z) <= h
+
+
+## Il banco si puo chiedere: pedana aperta, giocatore vivo sul quadrato, nessuna guasta da
+## riparare entro `repair_range` (con una guasta vicina vince la riparazione).
+func bench_available() -> bool:
+	if phase != Phase.OPEN or caravan == null or not is_instance_valid(player) or not player.is_alive():
+		return false
+	return contains(player.global_position) and caravan.repair_target() == null
+
+
+## Collegata a `player.interact_pressed`: segna la richiesta solo se il banco e disponibile.
+func request_bench() -> void:
+	if bench_available():
+		_bench_requested = true
+
+
+func has_bench_request() -> bool:
+	return _bench_requested
+
+
+## Consuma la richiesta: vero se c'era e il banco e ancora disponibile a fine passo.
+func take_bench_request() -> bool:
+	var requested := _bench_requested
+	_bench_requested = false
+	return requested and bench_available()
+
+
+## Scarta la richiesta (un altro menu si apre nello stesso passo, la pedana si chiude).
+func drop_bench_request() -> void:
+	_bench_requested = false
 
 
 ## Luce della lampada (accesa da `ArenaRun` col fattore di notte); null finche non atterra.
@@ -195,6 +229,7 @@ func close() -> void:
 	var was_shown := was_warning or phase == Phase.OPEN
 	phase = Phase.CLOSED
 	_result = {}
+	_bench_requested = false
 	_release_protection()
 	if _model != null and _model.visible:
 		_descent_left = 0.0

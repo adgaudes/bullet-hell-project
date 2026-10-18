@@ -2,7 +2,8 @@ extends SceneTree
 ## Striscia della carovana nel HUD (spec D-093, task 7 del piano A) sulla run vera di
 ## `arena_run.tscn`, coi soli segnali di ArenaRun: una casella per macchina con stato e vita,
 ## rottami "portati/capienza", tasto Ripara vicino a una macchina guasta, spicchio della
-## riparazione; frecce degli indicatori sopra la colonna in basso a destra. Eseguire con:
+## riparazione, tasto Banco sulla pedana di fusione; frecce degli indicatori sopra la colonna in
+## basso a destra. Eseguire con:
 ##   godot_console --headless --path godot --fixed-fps 60 --script res://tests/caravan_hud_tests.gd
 
 const RunScene := preload("res://scenes/main/arena_run.tscn")
@@ -48,6 +49,7 @@ func _initialize() -> void:
 	_caravan.changed.connect(_on_caravan_changed)
 	await _test_strip()
 	await _test_size_slots()
+	await _test_bench_prompt()
 	await _test_markers()
 	root.remove_child(_scene)
 	_scene.queue_free()
@@ -192,6 +194,33 @@ func _test_size_slots() -> void:
 	await _frames(2)
 	_check(is_equal_approx(strip._slots[0].size.x, 68.0) and is_equal_approx(strip._slots[1].size.x, 40.0),
 		"le caselle hanno davvero quella larghezza (%.0f, %.0f)" % [strip._slots[0].size.x, strip._slots[1].size.x])
+
+
+# --- Tasto Banco (piano B, scelta 11 di D-093) -----------------------------------------------------
+
+## Sulla pedana aperta, senza guaste vicino, il tasto Interagisci dice "Banco", nello stesso posto
+## di "Ripara"; lontano dalla pedana nessuno dei due; con tutti e due vince Ripara.
+func _test_bench_prompt() -> void:
+	print("bench prompt")
+	var strip := _run.hud.caravan_strip()
+	var pad := _run.fusion_pad
+	_check(strip._bench_prompt.prompt_count() == 1 and strip._bench_prompt.text_of(0) == "Banco" and strip._bench_prompt.icon_of(0) != null,
+		"tasto Banco con l'icona di Interagisci")
+	_check(strip._bench_prompt.get_parent() == strip._prompt.get_parent() and strip._prompt.get_parent() is MarginContainer,
+		"Banco e Ripara nello stesso posto")
+	_place_player(AREA)
+	pad.land_at(_player.global_position)
+	await _frames(2)
+	_check(_caravan.repair_target() == null and strip.bench_prompt_visible() and not strip.prompt_visible()
+		and strip._bench_prompt.modulate.a == 1.0, "sulla pedana senza guaste: tasto Banco, non Ripara")
+	_place_player(AREA + Vector3(10.0, 0.0, 0.0))
+	await _frames(2)
+	_check(not strip.bench_prompt_visible() and not strip.prompt_visible() and strip._bench_prompt.modulate.a == 0.0,
+		"a 10 m dalla pedana: nessun tasto")
+	strip.set_prompt(true, true)
+	_check(strip.prompt_visible() and not strip.bench_prompt_visible(), "Ripara e Banco insieme: vince Ripara")
+	strip.set_prompt(false)
+	pad.close()
 
 
 ## Colori dei quadratini della casella [param index].

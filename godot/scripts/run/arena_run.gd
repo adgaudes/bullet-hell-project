@@ -85,6 +85,8 @@ var loadout: WeaponLoadout
 var write_queue: TerrainWriteQueue
 ## Piazzola di fusione (D-093, piano B): creata nel codice con carovana e rilievo; seme + 8.
 var fusion_pad: FusionPad
+## Banco di fusione (piano B): creato con la pedana; si apre solo da `_open_next_level_up`.
+var fusion_bench: FusionBench
 ## Prato logico (Falce rotante, Erba alta): riempito dal distretto con il rilievo.
 var meadow: MeadowMap
 ## Carte dei mazzi di classe che non sono armi (spec D-092, par. 5).
@@ -590,6 +592,8 @@ func _end_level(victory: bool) -> void:
 	director.spawning = false
 	if level_up_menu.is_open:
 		level_up_menu.close()
+	if fusion_bench != null and fusion_bench.is_open:
+		fusion_bench.close()
 	var scrap := scrap_out(victory)
 	var banked := _bank(scrap, victory)
 	var save_failed := _profile != null and _profile.last_save_error != OK
@@ -868,6 +872,12 @@ func _setup_fusion_pad() -> void:
 	fusion_pad.landed.connect(func(_center: Vector3) -> void: _night_factor_applied = -1.0)
 	if boss_call_at > 0.0:
 		fusion_pad.schedule(boss_call_at * fusion_pad.tuning.pad_boss_fraction)
+	# Interagisci sulla pedana chiede il banco; si apre a fine passo, chiuso tornano i menu in coda.
+	player.interact_pressed.connect(fusion_pad.request_bench)
+	fusion_bench = FusionBench.new()
+	fusion_bench.name = "FusionBench"
+	add_child(fusion_bench)
+	fusion_bench.closed.connect(func() -> void: _open_next_level_up.call_deferred())
 
 
 func _setup_quake() -> void:
@@ -1079,22 +1089,34 @@ func _on_xp_collected(amount: int) -> void:
 	# il gioco qui, a meta passo, lascerebbe indietro i nodi non ancora elaborati.
 
 
+## Fine del passo (e dopo ogni menu chiuso): casse, relitti e level-up in coda (D-092, D-093),
+## un menu alla volta in quest'ordine; poi il banco di fusione, se Interagisci l'ha chiesto sulla
+## pedana in questo passo. Un altro menu aperto scarta la richiesta (scelta 9 di D-093).
 func _open_next_level_up() -> void:
-	if level_up_menu.is_open or is_over:
+	if fusion_bench != null and fusion_bench.is_open:
 		return
-	# Casse, relitti e level-up in coda (D-092, D-093): un menu alla volta, in quest'ordine.
-	if _open_next_cache() or _open_next_wreck() or _pending_level_ups <= 0:
+	if level_up_menu.is_open or is_over or _open_next_cache() or _open_next_wreck():
+		_drop_bench_request()
 		return
-	_cache_menu = false
-	_wreck_menu = false
-	var offer := progression.roll_offer()
-	if offer.is_empty():
+	if _pending_level_ups > 0:
+		_cache_menu = false
+		_wreck_menu = false
+		var offer := progression.roll_offer()
+		if not offer.is_empty():
+			var ids := offer.map(func(u: Dictionary) -> String: return str(u.id))
+			var shown_level := progression.level - _pending_level_ups + 1
+			print("PROTOTYPE01_LEVEL_UP level=%d offer=%s" % [shown_level, ",".join(PackedStringArray(ids))])
+			level_up_menu.open(offer, progression.levels, shown_level)
+			_drop_bench_request()
+			return
 		_pending_level_ups = 0
-		return
-	var ids := offer.map(func(u: Dictionary) -> String: return str(u.id))
-	var shown_level := progression.level - _pending_level_ups + 1
-	print("PROTOTYPE01_LEVEL_UP level=%d offer=%s" % [shown_level, ",".join(PackedStringArray(ids))])
-	level_up_menu.open(offer, progression.levels, shown_level)
+	if fusion_pad != null and fusion_bench != null and fusion_pad.take_bench_request():
+		fusion_bench.open(caravan)
+
+
+func _drop_bench_request() -> void:
+	if fusion_pad != null:
+		fusion_pad.drop_bench_request()
 
 
 func _on_upgrade_chosen(id: StringName) -> void:
@@ -1498,12 +1520,14 @@ func _refresh_caravan_hud() -> void:
 	hud.set_caravan(entries, caravan.carried, caravan.capacity)
 
 
-## A ogni passo: tasto Ripara vicino a una macchina guasta; le caselle si rifanno solo se vita,
-## stato o riparazione di una macchina sono cambiati (i rottami arrivano coi segnali).
+## A ogni passo: tasto Ripara vicino a una macchina guasta, altrimenti Banco sulla pedana; le
+## caselle si rifanno solo se vita, stato o riparazione di una macchina sono cambiati (i rottami
+## arrivano coi segnali).
 func _tick_caravan_hud() -> void:
 	if hud == null or caravan == null:
 		return
-	hud.set_caravan_prompt(caravan.repair_target() != null)
+	var repair_shown := caravan.repair_target() != null
+	hud.set_caravan_prompt(repair_shown, not repair_shown and fusion_pad != null and fusion_pad.bench_available())
 	var machines := caravan.machines
 	if machines.size() != _caravan_health_shown.size():
 		_refresh_caravan_hud()

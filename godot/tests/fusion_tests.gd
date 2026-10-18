@@ -2,8 +2,9 @@ extends SceneTree
 ## Fusione delle macchine (D-093, piano B): taglie, vita, velocita, forza, costi, anteprime di
 ## fusione e sgancio, sei combinazioni e valori di partenza in CaravanTuning; poi, sulla carovana
 ## della scena `ruins_arena` (task 2), macchine a piu moduli, `fuse`, `detach` e `remove_machine`
-## e la regola del capofila; infine la piazzola di fusione (task 4), su un campo creato qui e
-## nella scena `arena_run`. Eseguire con:
+## e la regola del capofila; la piazzola di fusione (task 4), su un campo creato qui e nella
+## scena `arena_run`; infine il banco di fusione (task 5) sulla run vera, con eventi di input veri
+## del controller e della tastiera. Eseguire con:
 ##   godot_console --headless --path godot --fixed-fps 60 --script res://tests/fusion_tests.gd
 
 const TUNING_PATH := "res://resources/tuning/caravan_default.tres"
@@ -26,6 +27,8 @@ var _removed: Array[Machine] = []
 ## Sezione piazzola: la pedana e il suo campo di 120 x 120 m.
 var _pad: FusionPad
 var _pad_field: TerrainField
+## Sezione banco: la run di `arena_run.tscn`.
+var _run: ArenaRun
 
 
 func _initialize() -> void:
@@ -43,6 +46,7 @@ func _initialize() -> void:
 		await _test_caravan()
 		await _test_pad()
 		await _test_pad_in_run()
+		await _test_bench()
 	await _frames(2)
 	print("PROTOTYPE01_TESTS %s failures=%d" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
@@ -653,3 +657,330 @@ func _pad_marker(run: ArenaRun) -> Dictionary:
 		if marker.text == "PIAZZOLA":
 			return marker
 	return {}
+
+
+# --- Banco di fusione (task 5) ----------------------------------------------------------------
+
+## Conta le riprese del gioco: un nodo che si ferma con la pausa riceve NOTIFICATION_UNPAUSED.
+class PauseProbe extends Node:
+	var resumed := 0
+
+	func _notification(what: int) -> void:
+		if what == NOTIFICATION_UNPAUSED:
+			resumed += 1
+
+
+## Run vera, carovana Cassone + Torretta + Trivella, pedana posata sotto il giocatore.
+func _test_bench() -> void:
+	print("fusion bench")
+	_scene = RunScene.instantiate()
+	root.add_child(_scene)
+	_run = _scene.get_node(^"Run")
+	_player = _scene.get_node(^"Player")
+	_caravan = _scene.get_node(^"Caravan")
+	_field = _scene.get_node(^"TerrainField")
+	(_scene.get_node(^"EnemyDirector") as EnemyDirector).spawning = false
+	await _frames(5)
+	# Niente chiodatrice, level-up, boss ne eventi (come caravan_hud_tests).
+	(_scene.get_node(^"PlayerWeapon") as AutoWeapon).set_physics_process(false)
+	_run.progression.xp_first_level = 100000
+	_run.boss_call_at = 0.0
+	for event: WorldEvent in [_run.quake_event, _run.train_event]:
+		if event != null:
+			event.schedule([])
+	var bench := _run.fusion_bench
+	_check(bench != null and bench.get_parent() == _run and bench.layer == 92 and bench.process_mode == Node.PROCESS_MODE_ALWAYS
+		and not bench.is_open, "banco creato da ArenaRun: layer 92, sempre attivo, chiuso")
+	if bench == null:
+		root.remove_child(_scene)
+		_scene.queue_free()
+		return
+	_check(_caravan.add_machine(&"turret") != null and _caravan.add_machine(&"drill") != null and _caravan.machines.size() == 3,
+		"carovana Cassone + Torretta + Trivella")
+	_run.fusion_pad.land_at(_player.global_position)
+	await _frames(2)
+	_check(_run.fusion_pad.is_open() and _run.fusion_pad.bench_available() and _caravan.working_carried() == 3,
+		"pedana aperta sotto il giocatore, banco disponibile, 3 rottami nei Cassoni")
+	await _test_bench_opens_paused()
+	await _test_bench_controller_fuse()
+	await _test_bench_keyboard_detach()
+	await _test_bench_unknown_combo()
+	await _test_bench_broken_and_short()
+	await _test_bench_repair_wins()
+	await _test_bench_menu_queue()
+	paused = false
+	root.remove_child(_scene)
+	_scene.queue_free()
+
+
+func _send_joypad_button(button: JoyButton, pressed: bool) -> void:
+	var event := InputEventJoypadButton.new()
+	event.button_index = button
+	event.pressed = pressed
+	event.pressure = 1.0 if pressed else 0.0
+	Input.parse_input_event(event)
+
+
+## Pressione e rilascio in frame distinti, come un dito reale.
+func _joy(button: JoyButton) -> void:
+	_send_joypad_button(button, true)
+	await process_frame
+	_send_joypad_button(button, false)
+	await process_frame
+
+
+func _send_key(key: Key, pressed: bool) -> void:
+	var event := InputEventKey.new()
+	event.keycode = key
+	event.physical_keycode = key
+	event.pressed = pressed
+	Input.parse_input_event(event)
+
+
+func _key(key: Key) -> void:
+	_send_key(key, true)
+	await process_frame
+	_send_key(key, false)
+	await process_frame
+
+
+## Attesa oltre la grazia del banco (0,45 s).
+func _wait_grace() -> void:
+	await _frames(ceili(0.45 * Engine.physics_ticks_per_second))
+
+
+func _focused() -> Control:
+	return root.gui_get_focus_owner()
+
+
+func _place_machine(machine: Machine, at: Vector3) -> void:
+	machine.global_position = Vector3(at.x, _field.height_at(at) + Caravan.GROUND_CLEARANCE, at.z)
+	machine.velocity = Vector3.ZERO
+	machine.reset_physics_interpolation()
+
+
+## X vero sulla pedana: due passi e il banco e aperto, a gioco fermo, sulla scheda Fondi. Durante
+## la grazia nessuna carta ha il focus e B non chiude; dopo, il focus e sulla prima carta.
+func _test_bench_opens_paused() -> void:
+	print("bench opens paused")
+	var bench := _run.fusion_bench
+	var opened := [0]
+	bench.opened.connect(func() -> void: opened[0] += 1)
+	_send_joypad_button(JOY_BUTTON_X, true)
+	await _frames(2)
+	_check(bench.is_open and paused and bench.title_text() == "BANCO DI FUSIONE", "X sulla pedana apre il banco in pausa")
+	_check(opened[0] == 1 and bench.mode == FusionBench.Mode.FUSE and bench.step == FusionBench.Step.PICK_FIRST
+		and bench.card_count() == 3, "aperto una volta, scheda Fondi, primo passo, una carta per macchina")
+	_check(bench.scrap_text() == "Nei Cassoni: 3", "rottami nei Cassoni (%s)" % bench.scrap_text())
+	_check(bench.card_text(0) == "Piccola - Cassone\nPV 6/6" and bench.card_text(1) == "Piccola - Torretta\nPV 6/6"
+		and bench.card_text(2) == "Piccola - Trivella\nPV 6/6", "carte: taglia, moduli e vita (%s)" % bench.card_text(0).replace("\n", " | "))
+	_check(_focused() == null, "durante la grazia nessuna carta ha il focus")
+	_send_joypad_button(JOY_BUTTON_X, false)
+	await _joy(JOY_BUTTON_B)
+	_check(bench.is_open and paused, "B durante la grazia non chiude il banco")
+	var enemy := _run.director.spawn_at(_player.global_position + Vector3(0.6, 0.0, 0.0))
+	var elapsed := _run.elapsed
+	var health := _player.health
+	await _frames(30)
+	_check(_run.elapsed == elapsed and _player.health == health and is_instance_valid(enemy) and bench.is_open,
+		"30 passi a banco aperto: tempo e vita fermi con un rottamatore addosso")
+	_check(_focused() == bench.card(0), "dopo la grazia il focus e sulla prima carta sceglibile")
+	_run.director.clear_horde()
+
+
+## Solo eventi del controller: A sceglie il capofila, croce a destra porta il focus sulla
+## Torretta e l'anteprima la segue, A fonde, B chiude; una sola ripresa del gioco.
+func _test_bench_controller_fuse() -> void:
+	print("bench controller fuse")
+	var bench := _run.fusion_bench
+	var probe := PauseProbe.new()
+	root.add_child(probe)
+	var lead := _caravan.lead()
+	var turret := _caravan.machines[1]
+	await _joy(JOY_BUTTON_A)
+	_check(bench.step == FusionBench.Step.PICK_SECOND and bench.card_count() == 3 and bench.card(0).disabled
+		and "BASE" in bench.card_text(0) and _focused() == bench.card(0), "A sceglie la prima carta: il capofila resta la base, col focus")
+	await _joy(JOY_BUTTON_DPAD_RIGHT)
+	_check(_focused() == bench.card(1) and bench.card_text(1).begins_with("Piccola - Torretta"), "croce a destra: focus sulla Torretta")
+	var preview := bench.preview_text()
+	_check("Media" in preview and "PV 15/15" in preview and "1 rottame" in preview, "anteprima della fusione")
+	_check("Diventa: Media (2 moduli)" in preview and "PV 15/15  Velocita 4,5 m/s" in preview
+		and "Costo: 1 rottame (nei Cassoni: 3)" in preview and "Combinazioni: nessuna" in preview,
+		"anteprima: taglia, vita, velocita, combinazioni e costo (%s)" % preview.replace("\n", " | "))
+	await _joy(JOY_BUTTON_A)
+	_check(_caravan.machines.size() == 2 and not is_instance_valid(turret), "A conferma: la Torretta e assorbita")
+	_check(_caravan.lead() == lead and lead.module_ids() == [&"cargo", &"turret"] and _caravan.working_carried() == 2,
+		"capofila Cassone + Torretta, un rottame speso (%d)" % _caravan.working_carried())
+	_check(bench.is_open and paused and bench.step == FusionBench.Step.PICK_FIRST and bench.card_count() == 2
+		and bench.card_text(0) == "Media - Cassone + Torretta\nPV 15/15" and bench.scrap_text() == "Nei Cassoni: 2"
+		and _focused() == bench.card(0), "dopo la conferma: banco aperto al primo passo, carte rifatte (%s)" % bench.card_text(0).replace("\n", " | "))
+	await _joy(JOY_BUTTON_B)
+	await _joy(JOY_BUTTON_B)
+	await _frames(2)
+	_check(not bench.is_open and not paused and probe.resumed == 1, "B, B: banco chiuso, gioco ripreso una volta (%d)" % probe.resumed)
+	root.remove_child(probe)
+	probe.free()
+
+
+## Solo tastiera: R apre, PagGiu passa a Sgancia, Invio sul capofila fuso, freccia sul modulo
+## Torretta, Invio sgancia, Esc chiude (senza aprire la pausa).
+func _test_bench_keyboard_detach() -> void:
+	print("bench keyboard detach")
+	var bench := _run.fusion_bench
+	var lead := _caravan.lead()
+	var r := InputEventKey.new()
+	r.physical_keycode = KEY_R
+	r.pressed = true
+	Input.parse_input_event(r)
+	await _frames(2)
+	_check(bench.is_open and paused and bench.mode == FusionBench.Mode.FUSE, "R sulla pedana apre il banco, sulla scheda Fondi")
+	var release := r.duplicate() as InputEventKey
+	release.pressed = false
+	Input.parse_input_event(release)
+	await _wait_grace()
+	await _key(KEY_PAGEDOWN)
+	_check(bench.mode == FusionBench.Mode.DETACH and bench.step == FusionBench.Step.PICK_FIRST and bench.card_count() == 2
+		and not bench.card(0).disabled and bench.card(1).disabled and _focused() == bench.card(0),
+		"PagGiu: Sgancia, la Trivella (un modulo) disattivata, focus sul capofila")
+	await _key(KEY_ENTER)
+	_check(bench.step == FusionBench.Step.PICK_SECOND and bench.card_count() == 2 and bench.card_text(0).begins_with("Cassone")
+		and bench.card_text(1).begins_with("Torretta") and _focused() == bench.card(0), "Invio sul capofila: i suoi due moduli")
+	await _key(KEY_RIGHT)
+	var preview := bench.preview_text()
+	_check(_focused() == bench.card(1) and "Piccola" in preview and "1 rottame" in preview
+		and "Diventa: Piccola (1 modulo)" in preview, "freccia sulla Torretta: anteprima (%s)" % preview.replace("\n", " | "))
+	await _key(KEY_ENTER)
+	_check(_caravan.machines.size() == 3 and lead.module_ids() == [&"cargo"] and _caravan.machines[2].module_ids() == [&"turret"]
+		and _caravan.working_carried() == 1, "Invio: la Torretta torna una macchina, un rottame speso")
+	_check(bench.is_open and bench.mode == FusionBench.Mode.DETACH and bench.step == FusionBench.Step.PICK_FIRST
+		and bench.card_count() == 3, "il banco resta aperto al primo passo, carte rifatte")
+	var pause_menu := root.get_node(^"PauseMenu")
+	await _key(KEY_ESCAPE)
+	await _frames(1)
+	_check(not bench.is_open and not paused and not pause_menu.is_open(), "Esc chiude il banco senza aprire la pausa")
+
+
+## Trivella + Calamita formano l'Estrattore: mai vista (di serie) -> "???"; conosciuta -> nome.
+func _test_bench_unknown_combo() -> void:
+	print("bench unknown combo")
+	var bench := _run.fusion_bench
+	var drill := _caravan.machines[1]
+	var magnet := _caravan.add_machine(&"magnet")
+	_check(drill.module_ids() == [&"drill"] and magnet != null, "Trivella e Calamita nella carovana")
+	if magnet == null:
+		return
+	bench.open(_caravan)
+	_check(not bench.combo_known.call(&"extractor"), "di serie nessuna combinazione e conosciuta")
+	var di := _caravan.machines.find(drill)
+	var mi := _caravan.machines.find(magnet)
+	bench.select(di)
+	bench.card(mi).grab_focus()
+	var preview := bench.preview_text()
+	_check("???" in preview and not "Estrattore" in preview, "combinazione mai vista: ??? (%s)" % preview.replace("\n", " | "))
+	var unknown := bench.combo_known
+	bench.combo_known = func(_id: StringName) -> bool: return true
+	bench.card(di).grab_focus()
+	bench.card(mi).grab_focus()
+	preview = bench.preview_text()
+	_check("Combinazioni: Estrattore (nuova)" in preview and not "???" in preview, "conosciuta: Estrattore (nuova)")
+	bench.combo_known = unknown
+	var fits := bench._panel.get_combined_minimum_size()
+	_check(fits.x <= 1280.0 - 32.0 and fits.y <= 800.0 - 32.0, "il pannello sta in 1280x800 (%.0f x %.0f)" % [fits.x, fits.y])
+	bench.close()
+	await _frames(1)
+
+
+## Macchina guasta: carta disattivata con GUASTA e fuse falso; senza rottami la conferma non
+## cambia nulla e lo dice.
+func _test_bench_broken_and_short() -> void:
+	print("bench broken and short")
+	var bench := _run.fusion_bench
+	var magnet := _caravan.machines[_caravan.machines.size() - 1]
+	var drill: Machine = _caravan.machines.filter(func(m: Machine) -> bool: return m.module_ids() == [&"drill"])[0]
+	_break(magnet)
+	_check(magnet.is_broken(), "Calamita guasta")
+	bench.open(_caravan)
+	var count := _caravan.machines.size()
+	var mi := _caravan.machines.find(magnet)
+	_check(bench.card(mi).disabled and "GUASTA" in bench.card_text(mi), "carta della guasta disattivata, GUASTA")
+	_check(not bench.fuse(0, mi) and _caravan.machines.size() == count and _caravan.working_carried() == 1, "fuse con la guasta: falso, nulla cambia")
+	_caravan.carried = 0
+	bench.select(0)
+	_check(bench.card(mi).disabled, "anche al secondo passo la guasta e disattivata")
+	bench.select(_caravan.machines.find(drill))
+	_check(_caravan.machines.size() == count and _caravan.working_carried() == 0 and drill.module_ids() == [&"drill"]
+		and bench.step == FusionBench.Step.PICK_SECOND and bench.message_text() == "Rottami insufficienti nei Cassoni",
+		"0 rottami: niente cambia (%s)" % bench.message_text())
+	bench.close()
+	_caravan.carried = 3
+	await _frames(1)
+
+
+## Guasta a 1 m sulla pedana, X tenuto: vince la riparazione, il banco non si apre; finita la
+## riparazione con X ancora tenuto il banco resta chiuso (serve una pressione nuova).
+func _test_bench_repair_wins() -> void:
+	print("bench repair wins")
+	var bench := _run.fusion_bench
+	var strip := _run.hud.caravan_strip()
+	var magnet := _caravan.machines[_caravan.machines.size() - 1]
+	_place_machine(magnet, _player.global_position + Vector3(1.0, 0.0, 0.0))
+	await _frames(2)
+	_check(_run.fusion_pad.contains(magnet.global_position) and _caravan.repair_target() == magnet and not _run.fusion_pad.bench_available(),
+		"guasta a 1 m sulla pedana: banco non disponibile")
+	_send_joypad_button(JOY_BUTTON_X, true)
+	await _frames(10)
+	_check(not bench.is_open and _caravan.repair_progress() > 0.0 and not strip.bench_prompt_visible() and strip.prompt_visible(),
+		"ripara, non apre")
+	await _frames(roundi(_caravan.tuning.repair_seconds * Engine.physics_ticks_per_second) + 5)
+	_check(not magnet.is_broken() and not bench.is_open and strip.bench_prompt_visible(), "riparata con X ancora tenuto: banco chiuso, tasto Banco")
+	_send_joypad_button(JOY_BUTTON_X, false)
+	await _frames(2)
+
+
+## Un menu alla volta: level-up e X nello stesso passo; START a banco aperto; B tenendo X;
+## richiesta e chiamata del boss nello stesso passo.
+func _test_bench_menu_queue() -> void:
+	print("bench menu queue")
+	var bench := _run.fusion_bench
+	var pad := _run.fusion_pad
+	_send_joypad_button(JOY_BUTTON_X, true)
+	await physics_frame
+	_check(pad.has_bench_request(), "X sulla pedana: richiesta del banco")
+	_run._pending_level_ups = 1
+	await _frames(2)
+	_check(_run.level_up_menu.is_open and not bench.is_open and not pad.has_bench_request(),
+		"level-up e X nello stesso passo: si apre il level-up, non il banco")
+	_send_joypad_button(JOY_BUTTON_X, false)
+	for i in 3:
+		if not _run.level_up_menu.is_open:
+			break
+		await _wait_grace()
+		_run.level_up_menu.press(0)
+		await _frames(2)
+	await _frames(2)
+	_check(not _run.level_up_menu.is_open and not bench.is_open and not paused, "scelta la carta: banco chiuso")
+
+	var pause_menu := root.get_node(^"PauseMenu")
+	_send_joypad_button(JOY_BUTTON_X, true)
+	await _frames(2)
+	_check(bench.is_open and paused, "X di nuovo: banco aperto")
+	await _joy(JOY_BUTTON_START)
+	await _frames(1)
+	_check(not pause_menu.is_open() and bench.is_open and paused, "START a banco aperto: niente pausa, banco ancora aperto")
+	await _wait_grace()
+	await _joy(JOY_BUTTON_B)
+	_check(not bench.is_open and not paused, "B chiude il banco tenendo X")
+	await _frames(10)
+	_check(not bench.is_open and not pad.has_bench_request(), "dopo 10 passi con X tenuto il banco resta chiuso")
+	_send_joypad_button(JOY_BUTTON_X, false)
+	await _frames(2)
+
+	_send_joypad_button(JOY_BUTTON_X, true)
+	await physics_frame
+	_check(pad.has_bench_request(), "richiesta del banco")
+	_run.call_boss()
+	await _frames(2)
+	_check(not pad.is_open() and not pad.has_bench_request() and not bench.is_open and not paused,
+		"richiesta e call_boss() nello stesso passo: pedana chiusa, nessun banco")
+	_send_joypad_button(JOY_BUTTON_X, false)
+	await _frames(2)
