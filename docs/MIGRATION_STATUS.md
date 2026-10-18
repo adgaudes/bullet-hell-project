@@ -2,15 +2,15 @@
 
 > **Breve per scelta** (audit D-06, 14 ottobre 2026): dove siamo, prossimo passo, cosa aspetta il proprietario. Va aggiornato a ogni avanzamento e tenuto **sotto 8 KB**: quando cresce, il vecchio va in `docs/archive/`. Storia delle sessioni fino al 14 ottobre 2026: `docs/archive/STATUS_LOG_2026-10.md`. Decisioni: `DECISIONS.md`. Piano di prodotto: `PROJECT_ROADMAP.md`. Per trovare un documento: `INDEX.md`.
 
-**Ultimo aggiornamento:** 17 ottobre 2026 (piano A della carovana: task 1-9 fatti, task 10 a meta in un commit WIP: strumenti scritti, da revisionare; documenti, export e gate alla ripresa).
+**Ultimo aggiornamento:** 18 ottobre 2026 (**piano A della carovana fatto**: task 10 chiuso con bot, benchmark, catture, documenti, export Windows e gate).
 
 ## Dove siamo
 
 - **Engine** Godot 4.7.2 (GDScript). La migrazione da Unreal e chiusa; il codice Unreal sta nel tag `unreal-prototype-final`.
 - **Prodotto:** fase 3, prototipo della promessa A. Due livelli (quartiere, ferrovia) su Terrain3D, boss, treno, terremoto, notte con lampioni, estrazione, Officina, campagna, carovana di macchine, audio Sonniss. Primo playtest del proprietario il 14 ottobre (vedi sotto).
 - **Branch di lavoro:** `feature/arena-run`. Non integrato: `feature/engineer-restyle` (Ingegnere D-088, worktree `../Videogame-engineer`), in attesa del giudizio del proprietario.
-- **Gate:** `tools/godot/Invoke-GodotChecks.ps1`: check-only, 58 suite con seme fisso, passo con finestra (Terrain3D e shader), smoke test. Ultimo gate completo verde il 17 ottobre, dopo il task 9 della carovana.
-- **Build:** `LocalBuilds/Prototype01-Godot-Win64/` e `-Linux/` (exe 196 MB).
+- **Gate:** `tools/godot/Invoke-GodotChecks.ps1`: check-only, 58 suite con seme fisso, passo con finestra (Terrain3D e shader), smoke test. Ultimo gate completo verde il 18 ottobre, a fine piano A della carovana (58 suite, nessun rilancio).
+- **Build:** Windows esportata il 18 ottobre in `LocalBuilds/Prototype01-Godot-Win64/` (exe 195 MB, avvio con `--autostart` pulito); la Linux in `-Linux/` e del 14 ottobre, senza la carovana.
 
 **Audit del 14 ottobre:** `docs/REVIEWS/FULL_AUDIT_2026-10-14.md`.
 
@@ -18,11 +18,11 @@
 
 Esito **Modifica**: 16 osservazioni, cause e piano in `docs/PLAYTESTS/OWNER_PLAYTEST_2026-10-14.md` (viene prima dell'audit; ordine D-089: grafica, gioco, armi, audio).
 
-**Fatto e dettagli** (blocchi 1-2, armi D-092, luce D-094, eventi D-097, carovana task 1-7): `docs/archive/STATUS_LOG_2026-10.md`.
+**Fatto e dettagli** (blocchi 1-2, armi D-092, luce D-094, eventi D-097, carovana piano A): `docs/archive/STATUS_LOG_2026-10.md`.
 
 ## Prossimo passo (agente)
 
-0. **In corso: piano A della carovana (D-093)**, `docs/superpowers/plans/2026-10-16-caravan-machines.md` (10 task). **Fatti i task 1-9**; **task 10 a meta** (commit WIP b5498bb: bot, benchmark e `capture_caravan` scritti e solo `--check-only`; numeri dell'esecutore: carovana 0,22 ms per passo sul Deck con 90 nemici, 13 luci di notte, ma `writes=0` nella finestra e `wrecks=0` nei bot, da capire). **Alla ripresa:** rilanciare un esecutore con `task-10-brief.md` + `task-10-rulings.md` (registro `.superpowers/sdd/2026-10-16-caravan-machines/progress.md`, sezione Task 10) partendo dal diff del WIP: revisione dei tre strumenti, le due anomalie, documenti (sezione Carovana in `GODOT_WORKFLOW`, INDEX, D-093 "piano A fatto", debito documentato), export Windows con `--autostart`, gate; poi la revisione finale del branch con le minori rimandate. Pre-flight con lettori e scettici, regole scritte prima dell'esecutore, revisione a piu lenti: il metodo dei task 4-7, da ripetere. Registro locale dell'esecuzione: `.superpowers/sdd/2026-10-16-caravan-machines/progress.md`. **Inondazione** (richiesta del 15 ottobre): spike di costo dell'acqua sul Deck, poi il design. Dopo: bilanciamento coi bot, playtest, musica scelta da lui. ProtonScatter approvato (D-090), da installare quando si spargono oggetti.
+0. **Piano A della carovana (D-093) fatto il 18 ottobre** (`docs/superpowers/plans/2026-10-16-caravan-machines.md`). Numeri: carovana 0,24 ms per passo sul Deck con sei macchine e circa 90 nemici (budget 0,5; passo peggiore 6,9 ms quando Trivella, Pala e Sirena scattano insieme), 0,22 ms di notte con sei Faro e 13 luci; bot senza errori, ma nessun bot prende una macchina (carte macchina sempre accanto a una carta arma, relitti a 54-114 m dalla partenza). Catture in `output/caravan/`. **Prossimo:** revisione finale del branch con le correzioni rimandate (elenco nel piano, sotto il task 10), poi i piani B (fusione) e C (colosso, eventi, Meccanico, Officina) dopo il playtest del proprietario. **Inondazione** (richiesta del 15 ottobre): spike di costo dell'acqua sul Deck, poi il design. Dopo: bilanciamento coi bot, playtest, musica scelta da lui. ProtonScatter approvato (D-090), da installare quando si spargono oggetti.
    **Grafica (richieste del 15 ottobre):** strumenti di D-095 uno alla volta con misura e catture (Effekseer solo per i boss, ProtonScatter, post-produzione, AreaLight3D di notte, Material Maker e Ucupaint); **carte degli upgrade da rifare** (D-096: bozze in cattura).
 1. **Voci rimaste dell'audit**, nell'ordine della sua sezione 1: `docs/REVIEWS/FULL_AUDIT_2026-10-14.md`.
 2. **Dopo la misura sul Deck:** V-02, V-03, V-06, Q-01, Q-03, Q-04 (costo GPU e contenuto del preset Deck).
@@ -30,7 +30,7 @@ Esito **Modifica**: 16 osservazioni, cause e piano in `docs/PLAYTESTS/OWNER_PLAY
 
 ## Cosa aspetta il proprietario
 
-0. **Playtest della carovana** (piano A, task 1-9): Cassone senza luce (illuminano solo i Faro), carte Nuova macchina e di livello, Torretta fissa del Meccanico, colpi di nemici e boss alle macchine, guasto (fumo, esclamativo, anello rosso), ritirata a 1 PV, rigenerazione, **riparazione** (vicino a una guasta compare Ripara: tenere X o R 1,5 s con 2 rottami, 4,5 s gratis con meno; spicchio nella casella; rilasciare, allontanarsi oltre 2 m o un level-up azzera), **striscia della carovana** sopra le armi (casella per macchina, vita, rottami "3/5"), **quattro moduli nuovi** dalle carte Nuova macchina: Trivella (rottami dalle vene, conche davanti ai nemici), Pala (argini a 1 rottame), Saldatore (cura e ripara le vicine), Sirena (attira i rottamatori); **relitti sepolti** (due per livello sotto cumuli e vagoni, telaio arrugginito e bagliore arancione entro 3 m: scavando fino alla base si sceglie fra due macchine, a carovana piena 3 rottami). **Da sapere:** in certe buche larghe una macchina resta incastrata finche non ti allontani di 20 m; se corri a lungo le macchine restano indietro e possono ricomparire al loro posto.
+0. **Playtest della carovana** (piano A fatto): Faro, carte Nuova macchina e di livello, colpi alle macchine, guasto, ritirata, riparazione tenendo X o R vicino a una guasta (1,5 s con 2 rottami, 4,5 s gratis con meno), striscia della carovana sopra le armi, Trivella, Pala, Saldatore, Sirena, relitti sepolti (telaio arrugginito e bagliore arancione). Catture da giudicare in `output/caravan/`. Elenco completo in archivio. **Da sapere:** in certe buche larghe una macchina resta incastrata finche non ti allontani di 20 m.
 0. **Carovana di macchine** (D-093): rileggere la spec (`docs/superpowers/specs/2026-10-15-caravan-machines-design.md`). **Confermare due scelte del piano A**, entrambe gia in gioco: luce di notte solo dai Faro (il carretto di partenza non ha piu il faro da 11 m di D-058) e riparazione gratis ma lenta (4,5 s invece di 1,5) sotto i 2 rottami. Dire se la striscia della carovana si legge e se il tasto Ripara deve tenere sempre il suo posto; se il Meccanico vede troppe carte Nuova macchina. **Scheda Gameplay** (D-097): dire se un evento di serie basta.
 0. **Armi e classi** (D-092): provare la scelta della classe in campagna, l'Officina a schede, le casse sepolte e gli effetti del piano 5 (`output/weapons/fx/`); `--class=sapper|mechanic|weeder`. Da confermare: Fortino "al 70%" come cadenza, Polarita inversa che respinge di circa 2 m. Dettaglio in archivio.
 1. **Luce (D-094):** giudicare in gioco o sulle catture `output/lighting_lab/`. **Carte degli upgrade (D-096):** scegliere fra le bozze quando arrivano.
