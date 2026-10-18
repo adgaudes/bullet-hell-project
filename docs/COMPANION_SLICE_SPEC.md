@@ -1,6 +1,6 @@
 # Companion Slice — specifica del primo compagno macchina
 
-**Stato:** storica. Proposta dall'agente il 3 ottobre 2026 (D-032); la scena `companion_slice.tscn`, la sfera hazard e l'aiuto del compagno contro il pericolo sono stati eliminati il 12 ottobre 2026 con la griglia a celle (D-087). Il compagno resta nel gioco: segue il giocatore, raccoglie i rottami delle vene e paga i lampioni.
+**Stato:** storica. Proposta dall'agente il 3 ottobre 2026 (D-032); la scena `companion_slice.tscn`, la sfera hazard e l'aiuto del compagno contro il pericolo sono stati eliminati il 12 ottobre 2026 con la griglia a celle (D-087). Il compagno resta nel gioco: segue il giocatore, raccoglie i rottami delle vene e paga i lampioni. Il 16 ottobre 2026 il compagno e diventato la carovana di macchine (D-093): oggi e la prima macchina, col Cassone.
 
 ## Perche
 
@@ -37,6 +37,8 @@ Scavare resta gratuito: e il modo di produrre materiale. Rialzare consuma. Ogni 
 
 Nello slice la sfera **colpisce** il giocatore: al contatto il corpo lampeggia e la sfera riparte (`PROTOTYPE01_PLAYER_HIT`). Non ci sono punti vita. Nella scena di parita il comportamento Unreal resta invariato (la sfera attraversa il giocatore).
 
+Nota del 18 ottobre 2026: `PROTOTYPE01_PLAYER_HIT` e stato tolto con la sfera e la griglia (D-087).
+
 ## Leggibilita
 
 - Compagno: cassone chiaro con una striscia gialla davanti; i rottami caricati sono cubetti impilati sopra.
@@ -50,6 +52,8 @@ Nemici, punti vita, morte, pathfinding (il compagno scivola lungo gli ostacoli),
 ## Marker diagnostici
 
 `PROTOTYPE01_COMPANION_READY`, `PROTOTYPE01_SCRAP_SPAWNED`, `PROTOTYPE01_SCRAP_COLLECTED carried=N`, `PROTOTYPE01_SCRAP_SPENT carried=N`, `PROTOTYPE01_TERRAIN_RAISE_NO_SCRAP`, `PROTOTYPE01_COMPANION_RAISE X=.. Y=..`, `PROTOTYPE01_PLAYER_HIT`.
+
+Nota del 18 ottobre 2026: `PROTOTYPE01_COMPANION_READY` e diventato `PROTOTYPE01_CARAVAN_READY machines=N carried=N` (D-093); `PROTOTYPE01_TERRAIN_RAISE_NO_SCRAP`, `PROTOTYPE01_COMPANION_RAISE` e `PROTOTYPE01_PLAYER_HIT` non esistono piu; i `PROTOTYPE01_SCRAP_*` restano.
 
 ## Domande per il playtest del proprietario
 

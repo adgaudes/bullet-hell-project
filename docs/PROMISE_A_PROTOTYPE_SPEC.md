@@ -152,6 +152,8 @@ Mappa di campagna, obiettivi di livello, altri tipi di nemico, musica e audio de
 
 `PROTOTYPE01_RUN_START seed=N`, `PROTOTYPE01_PATH_FIELD_READY`, `PROTOTYPE01_ENEMY_KILLED total=N`, `PROTOTYPE01_PLAYER_DAMAGED health=N`, `PROTOTYPE01_LEVEL_UP level=N offer=a,b,c`, `PROTOTYPE01_UPGRADE_CHOSEN id=.. level=N`, `PROTOTYPE01_DIG_BLAST`, `PROTOTYPE01_COMPANION_TURRET level=N`, `PROTOTYPE01_PLAYER_DIED time=.. level=.. kills=.. seed=N`.
 
+Nota del 18 ottobre 2026 (D-093): il compagno e diventato la carovana di macchine. `PROTOTYPE01_COMPANION_TURRET` non esiste piu (la Torretta e un modulo: `PROTOTYPE01_MACHINE_ADDED module=turret`); all'avvio la carovana stampa `PROTOTYPE01_CARAVAN_READY machines=N carried=N`.
+
 Per ripetere una run: `-- --seed=N` sulla riga di comando. Dal menu iniziale (D-051) `--seed=`, `--boss-at=` e `--autostart` portano dritti al livello.
 
 ## Playtest del proprietario
