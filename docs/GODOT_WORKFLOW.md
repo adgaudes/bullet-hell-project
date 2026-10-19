@@ -290,7 +290,7 @@ Trappole verificate:
 - `remove_machine` (anche da `fuse` e `detach`) fa `queue_free`: nei test `is_instance_valid(machine)` diventa falso solo dopo un frame (`_frames(1)`);
 - la pedana fotografa la protezione del terreno sotto il disco all'atterraggio e la rimette alla chiusura (`TerrainField.snapshot_protected`/`restore_protected`): un `set_protected(centro, raggio, false)` toglieva i dischi permanenti di rovine e cortile;
 - col pennello da 0,5 m del terreno fossato e argine della Ruspa (raggio 0,8 m) arrivano al 70-80% di 0,4 e 0,6 m: i test chiedono almeno il 60%;
-- regola di fusione dei bot: con la Pala in carovana i Cassoni restano sotto 3 rottami (la Pala paga quando ne restano almeno 3) e le riparazioni li svuotano, quindi "rottami per fondere tutto nel capofila" (5 con sei macchine) quasi non scatta; il novice del comando del piano muore prima della pedana a 360 s;
+- regola di fusione dei bot: con la Pala in carovana i Cassoni restano al piu a 3 rottami (la Pala paga quando ne restano almeno 3) e le riparazioni li svuotano, quindi "rottami per fondere tutto nel capofila" (5 con sei macchine) quasi non scatta; il novice del comando del piano muore prima della pedana a 360 s;
 - sotto `--script` il profilo e in memoria: `COMBO_DISCOVERED` si stampa ma nulla si salva (catture e bot non toccano il profilo del proprietario);
 - nelle catture gli scatti del piano B riaccendono il passo di ArenaRun (spento da `strip`), tolgono l'avviso di `event_arrow` e rimettono la camera di gioco dopo `machine_parts`; il banco si apre emettendo `player.interact_pressed` col giocatore sulla pedana, poi 0,6 s di attesa per la grazia.
 

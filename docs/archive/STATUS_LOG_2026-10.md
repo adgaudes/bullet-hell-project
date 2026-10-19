@@ -311,6 +311,10 @@ Voce del "Prossimo passo" prima della revisione finale del branch:
 
 ## 19 ottobre 2026 — voci spostate da MIGRATION_STATUS (piano B fatto)
 
+Voce spostata da MIGRATION_STATUS il 19 ottobre 2026 (spazio):
+
+0. **Conferme ancora aperte** su carovana (D-093: luce solo dai Faro, riparazione gratis ma lenta, striscia, tasto Ripara, carte del Meccanico) e armi (D-092: classi, Officina a schede, casse, effetti; Fortino al 70%, Polarita inversa 2 m): testo completo in `docs/archive/STATUS_LOG_2026-10.md`, sezione del 18 ottobre.
+
 Voce del "Prossimo passo" prima della chiusura del piano B:
 
 0. **Piano A della carovana (D-093) fatto e rivisto il 18 ottobre** (`docs/superpowers/plans/2026-10-16-caravan-machines.md`; numeri in archivio): revisione finale del branch chiusa, elenco (b) del task 10 fatto; restano debito le due correzioni del benchmark (righe `frame`, `run`, `path` a gioco fermo, orda lontana dal grappolo). **Piano B (fusione) scritto il 18 ottobre** (`docs/superpowers/plans/2026-10-18-caravan-fusion.md`, 8 task): attende la lettura del proprietario e le sue risposte alle 7 domande in testa al piano (sezione "Scelte di questo piano"); poi si esegue col metodo del piano A. **Prossimo:** playtest della carovana del proprietario, piano B, poi il piano C (colosso, eventi, Meccanico, Officina). **Inondazione** (richiesta del 15 ottobre): spike di costo dell'acqua sul Deck, poi il design. Dopo: bilanciamento coi bot, playtest, musica scelta da lui. ProtonScatter approvato (D-090), da installare quando si spargono oggetti.
