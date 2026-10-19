@@ -245,10 +245,11 @@ func can_detach(machine: Machine, module_index: int) -> bool:
 	return working_carried() >= MachineFusion.detach_cost(tuning)
 
 
-## Sgancia il modulo [param module_index] di [param machine] in una macchina piccola nuova, piena
-## (telaio nuovo), al primo posto libero sul suolo e coi rottami del modulo se e un Cassone; la
-## sorgente conserva la frazione di vita (scelta 3 di D-093). Gira solo ad albero fermo (dal
-## banco). La macchina nuova, o null se `can_detach` e falso.
+## Sgancia il modulo [param module_index] di [param machine] in una macchina piccola nuova, al
+## primo posto libero sul suolo e coi rottami del modulo se e un Cassone; sorgente e sganciata
+## conservano entrambe la frazione di vita (scelta 3 di D-093; dalla revisione finale anche la
+## sganciata, altrimenti sgancia-e-rifondi curava a 2 rottami il giro). Gira solo ad albero fermo
+## (dal banco). La macchina nuova, o null se `can_detach` e falso.
 func detach(machine: Machine, module_index: int) -> Machine:
 	if not can_detach(machine, module_index):
 		return null
@@ -264,13 +265,12 @@ func detach(machine: Machine, module_index: int) -> Machine:
 	if box != null:
 		scrap = box.carried
 		box.carried = 0
+	# `remove_module` ricostruisce la macchina: i moduli rimasti si registrano di nuovo (un
+	# gemello di quello tolto, due Calamite sulla stessa macchina, torna in `set_power`).
 	machine.remove_module(module)
 	machine.health = MachineFusion.carried_health(health, max_health, machine.max_health)
-	# Il modulo tolto, uscendo dall'albero, puo aver tolto la registrazione di un gemello che
-	# resta (due Calamite sulla stessa macchina): i rimasti si registrano di nuovo.
-	for each in machine.modules:
-		each.apply_level(each.level)
 	var created := _add_machine(module_id, null, scrap)
+	created.health = MachineFusion.carried_health(health, max_health, created.max_health)
 	_end_cargo_change()
 	print("PROTOTYPE01_MACHINE_DETACHED module=%s cost=%d machines=%d" % [module_id, cost, machines.size()])
 	detached.emit(created)

@@ -41,8 +41,11 @@ static func model_scale_of(module_count: int, tuning: CaravanTuning) -> float:
 	return tuning.size_model_scale[size_of(module_count, tuning)]
 
 
-## Vita dopo una fusione o uno sgancio: la stessa frazione del massimo, almeno 1 PV.
+## Vita dopo una fusione o uno sgancio: la stessa frazione del massimo, almeno 1 PV. Con un
+## massimo di partenza nullo (telai senza vita) la macchina nasce piena.
 static func carried_health(health_sum: int, max_sum: int, new_max: int) -> int:
+	if max_sum <= 0:
+		return maxi(new_max, 1)
 	return clampi(roundi(new_max * health_sum / float(max_sum)), 1, new_max)
 
 
@@ -86,9 +89,11 @@ static func preview_fuse(base_ids: Array[StringName], base_health: int, base_max
 	}
 
 
-## Anteprima dello sgancio del modulo [param index]: la sorgente conserva la frazione di vita,
-## la macchina sganciata nasce piena. `index` deve essere valido in [param ids].
+## Anteprima dello sgancio del modulo [param index]: sorgente e macchina sganciata conservano la
+## frazione di vita. Con `index` fuori da [param ids] l'anteprima e vuota e `allowed` falso.
 static func preview_detach(ids: Array[StringName], index: int, health: int, max_health: int, tuning: CaravanTuning) -> Dictionary:
+	if index < 0 or index >= ids.size():
+		return {source = {}, detached = {}, lost_combos = [] as Array[StringName], cost = detach_cost(tuning), allowed = false}
 	var source_ids: Array[StringName] = []
 	source_ids.append_array(ids)
 	source_ids.remove_at(index)
@@ -113,7 +118,7 @@ static func preview_detach(ids: Array[StringName], index: int, health: int, max_
 			modules = detached_ids,
 			size = size_of(1, tuning),
 			max_health = detached_max,
-			health = detached_max,
+			health = carried_health(health, max_health, detached_max),
 			speed = tuning.max_speed * speed_factor_of(1, tuning),
 		},
 		lost_combos = lost_combos,

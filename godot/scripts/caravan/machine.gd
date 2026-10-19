@@ -232,6 +232,11 @@ func remove_module(module: MachineModule) -> void:
 	_rebuild()
 
 
+## Meta finale dell'ultimo `destination()` (rottame, punto di ritirata o posto nel grappolo).
+func goal_point() -> Vector3:
+	return _goal_point
+
+
 ## Tipi dei moduli, nell'ordine di montaggio.
 func module_ids() -> Array[StringName]:
 	var ids: Array[StringName] = []

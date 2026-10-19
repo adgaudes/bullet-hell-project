@@ -21,6 +21,7 @@ const CARD_SIZE := Vector2(250, 78)
 const PREVIEW_SIZE := Vector2(0, 150)
 const SHORT_OF_SCRAP := "Rottami insufficienti nei Cassoni"
 const INK_WARNING := Color("e0603f")
+const INK_NOTICE := Color("3f7a2a")
 
 var is_open := false
 var caravan: Caravan
@@ -209,7 +210,7 @@ func fuse(base_index: int, other_index: int) -> bool:
 	if not caravan.fuse(base, other):
 		var fits := base != other and not base.is_broken() and not other.is_broken() \
 			and base.modules.size() + other.modules.size() <= caravan.tuning.max_modules_per_machine
-		_message.text = SHORT_OF_SCRAP if fits else ""
+		_set_message(SHORT_OF_SCRAP if fits else "", INK_WARNING)
 		return false
 	_after_change("Fusione fatta: %s" % _machine_title(base))
 	return true
@@ -225,7 +226,7 @@ func detach(machine_index: int, module_index: int) -> bool:
 		and module_index >= 0 and module_index < machine.modules.size()
 	var module_name := MachineCatalog.name_of(machine.modules[module_index].module_id) if fits else ""
 	if caravan.detach(machine, module_index) == null:
-		_message.text = SHORT_OF_SCRAP if fits else ""
+		_set_message(SHORT_OF_SCRAP if fits else "", INK_WARNING)
 		return false
 	_after_change("Sganciato: %s" % module_name)
 	return true
@@ -278,9 +279,9 @@ func _input(event: InputEvent) -> void:
 			back()
 
 
-## LB/RB e PagSu/PagGiu passano all'altra scheda.
+## LB/RB e PagSu/PagGiu passano all'altra scheda (dopo la grazia, come le carte).
 func _unhandled_input(event: InputEvent) -> void:
-	if not is_open:
+	if not is_open or _grace_left > 0.0:
 		return
 	var step_by := 0
 	if event is InputEventJoypadButton and event.pressed:
@@ -308,11 +309,17 @@ func _is_machine(index: int) -> bool:
 
 
 ## Dopo una conferma: primo passo della stessa scheda, carte rifatte, focus sulla prima sceglibile.
+## L'esito riuscito e in verde, non nel rosso degli avvisi.
 func _after_change(message: String) -> void:
 	_reset_step()
 	_rebuild()
-	_message.text = message
+	_set_message(message, INK_NOTICE)
 	_focus_default()
+
+
+func _set_message(text: String, ink: Color) -> void:
+	_message.text = text
+	_message.add_theme_color_override(&"font_color", ink)
 
 
 ## Rifà schede, rottami, suggerimento e carte del passo; l'anteprima va alla carta predefinita.

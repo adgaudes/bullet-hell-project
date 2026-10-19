@@ -75,9 +75,14 @@ var _rise_left := 0.0
 var _bench_requested := false
 
 
-## Programma l'arrivo a [param seconds] di livello e azzera la ricerca.
+## Programma l'arrivo a [param seconds] di livello e azzera la ricerca; una pedana ancora a
+## terra sparisce subito.
 func schedule(seconds: float) -> void:
 	_release_protection()
+	if _model != null:
+		_model.hide()
+	_descent_left = 0.0
+	_rise_left = 0.0
 	_arrive_at = seconds
 	phase = Phase.WAITING
 	_candidates.clear()
@@ -163,6 +168,13 @@ func advance(elapsed: float, delta: float) -> void:
 			return
 		_warn()
 	if elapsed >= _arrive_at:
+		# Nei 15 s dell'avviso il disco non e protetto: se qualcuno l'ha scavato o alzato, una
+		# ricerca intera adesso; senza un punto piano resta quello annunciato.
+		if terrain_field != null and not _is_level(center):
+			var again := find_landing_now(_search_origin())
+			if again.flat:
+				center = Vector3(again.point.x, terrain_field.height_at(again.point), again.point.z)
+				print("PROTOTYPE01_FUSION_PAD_MOVED x=%.1f z=%.1f" % [center.x, center.z])
 		land_at(center)
 		return
 	if hud != null:

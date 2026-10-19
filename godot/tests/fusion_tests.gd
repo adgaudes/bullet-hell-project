@@ -118,6 +118,9 @@ func _test_preview() -> void:
 	_check(d.source.max_health == 15 and d.source.health == 15 and d.detached.max_health == 6, "sgancio: 15/15 e 6/6")
 	_check(d.lost_combos == [&"trap"] and d.source.combos == [&"reflector"] and d.cost == 1, "sgancio: Trappola persa")
 	_check(not MachineFusion.preview_detach([&"cargo"], 0, 6, 6, t).allowed, "una piccola non si sgancia")
+	var bad := MachineFusion.preview_detach([&"cargo", &"turret"], 2, 15, 15, t)
+	_check(not bad.allowed and bad.source.is_empty() and bad.detached.is_empty() and bad.cost == 1, "indice fuori dai moduli: anteprima vuota, non permessa")
+	_check(MachineFusion.carried_health(0, 0, 15) == 15 and MachineFusion.carried_health(5, 10, 6) == 3, "vita portata: massimo nullo -> piena; meta -> meta")
 	_check(not MachineFusion.preview_fuse([&"cargo", &"turret", &"magnet"], 23, 23, [&"drill", &"shovel", &"siren", &"welder"], 36, 36, t).allowed, "oltre 6 moduli no")
 	var q := MachineFusion.preview_fuse([&"drill", &"magnet"], 15, 15, [&"shovel"], 6, 6, t)
 	_check(q.new_combos == [&"dozer"] and q.combos == [&"extractor", &"dozer"] and q.modules == [&"drill", &"magnet", &"shovel"], "anteprima: solo la Ruspa e nuova, la seconda entra nella prima")
@@ -156,9 +159,11 @@ func _test_caravan() -> void:
 	await _frames(2)
 	_check(_queue.bodies.has(_caravan.lead()), "il capofila sta nella coda di scrittura")
 	await _test_fuse_two()
+	await _test_fuse_lead_absorbed()
 	await _test_fuse_rejects()
 	await _test_six_into_colossus()
 	await _test_detach()
+	await _test_detach_keeps_fraction()
 	await _test_remove_machine()
 	await _test_lead_rule()
 	await _test_combo_signal()
@@ -218,6 +223,25 @@ func _test_fuse_two() -> void:
 	_check(not _queue.bodies.has(turret) and _removed == [turret], "assorbita fuori dalla coda, machine_removed")
 	await _frames(1)
 	_check(lead.get_node_or_null(^"TurretPart") != null and not is_instance_valid(turret), "pezzo montato, assorbita liberata")
+
+
+## Il capofila (Cassone con 3 rottami) entra in una Torretta: i rottami passano col modulo meno
+## il costo, la Torretta diventa capofila; da guasta non si sgancia nulla.
+func _test_fuse_lead_absorbed() -> void:
+	print("fuse lead absorbed")
+	var lead := await _reset()
+	var turret := _add(&"turret")
+	_check(_caravan.lead() == lead and lead.cargo().carried == 3, "il Cassone e capofila con 3 rottami")
+	_check(_caravan.fuse(turret, lead), "la Torretta assorbe il capofila")
+	_check(_caravan.machines == [turret] and turret.module_ids() == [&"turret", &"cargo"] and _caravan.lead() == turret,
+		"la Torretta e la sola macchina e il capofila (%s)" % [turret.module_ids()])
+	_check(turret.cargo() != null and turret.cargo().carried == 2 and _caravan.carried == 2 and _caravan.working_carried() == 2,
+		"i rottami passano col Cassone meno il costo (%d)" % _caravan.carried)
+	_check(_caravan.can_detach(turret, 1), "da sana si sgancia il Cassone")
+	_break(turret)
+	_check(turret.is_broken() and not _caravan.can_detach(turret, 1) and _caravan.detach(turret, 1) == null
+		and turret.modules.size() == 2 and _caravan.carried == 2, "da guasta non si sgancia, niente cambia")
+	await _frames(1)
 
 
 func _test_fuse_rejects() -> void:
@@ -299,6 +323,24 @@ func _test_detach() -> void:
 	_caravan.carried = 0
 	_check(cargo.modules.size() == 2 and not _caravan.can_detach(cargo, 1) and _caravan.detach(cargo, 1) == null,
 		"senza rottami non si sgancia")
+
+
+## Revisione finale: la sganciata nasce con la frazione di vita della sorgente, cosi sganciare e
+## rifondere non cura (prima: telaio nuovo pieno, +40% di vita a 2 rottami il giro).
+func _test_detach_keeps_fraction() -> void:
+	print("detach keeps fraction")
+	var m := await _reset()
+	_caravan.fuse(m, _add(&"turret"))
+	_caravan.carried = 3
+	m.health = 3
+	var p := MachineFusion.preview_detach(m.module_ids(), 1, 3, 15, _caravan.tuning)
+	_check(p.source.health == 1 and p.detached.health == 1 and p.detached.max_health == 6, "anteprima: 1/6 e 1/6")
+	var turret := _caravan.detach(m, 1)
+	_check(turret != null and turret.health == 1 and turret.max_health == 6 and m.health == 1 and m.max_health == 6,
+		"a 3/15: sorgente 1/6, sganciata 1/6 (%d, %d)" % [m.health, turret.health if turret != null else -1])
+	_check(_caravan.fuse(m, turret) and m.health == 3 and m.max_health == 15 and _caravan.carried == 1,
+		"rifusa: torna 3/15, 2 rottami spesi, niente cura (%d/%d)" % [m.health, m.max_health])
+	await _frames(1)
 
 
 func _test_remove_machine() -> void:
@@ -387,6 +429,20 @@ func _test_duplicates() -> void:
 	await _frames(1)
 	var nodes := _xp.attractors.map(func(e: Dictionary) -> Object: return e.node)
 	_check(single != null and nodes.size() == 2 and nodes.has(magnet) and nodes.has(single), "sganciata una Calamita: due attrattori, uno per macchina")
+	# Revisione finale: il secondo Cassone della stessa macchina pretende un rottame solo se la
+	# macchina ci sta andando (niente pretesa fantasma dal suo ultimo bersaglio).
+	var boxes := lead.modules.filter(func(mod: MachineModule) -> bool: return mod is CargoModule)
+	_check(boxes.size() == 2, "due Cassoni sul capofila (%d)" % boxes.size())
+	if boxes.size() == 2:
+		var second_box := boxes[1] as CargoModule
+		var scrap_at := Vector3(7.0, 0.0, 7.0)
+		second_box._target = scrap_at
+		second_box._searched = true
+		lead._goal_point = Vector3.ZERO
+		_check(second_box.claimed_scrap() == null and not _caravan.is_scrap_claimed(scrap_at, null), "la macchina va altrove: nessuna pretesa")
+		lead._goal_point = scrap_at
+		_check(second_box.claimed_scrap() == scrap_at and _caravan.is_scrap_claimed(scrap_at, null), "la macchina ci va: pretesa valida")
+		second_box._forget_target()
 
 
 # --- Sezione piazzola (task 4) ---------------------------------------------------------------
@@ -416,6 +472,8 @@ func _test_pad() -> void:
 	_reset_pad_field()
 	await _test_pad_contains()
 	_test_pad_keeps_other_protection()
+	_reset_pad_field()
+	_test_pad_rechecks_at_arrival()
 	root.remove_child(_pad)
 	_pad.queue_free()
 	root.remove_child(_pad_field)
@@ -496,6 +554,31 @@ func _test_pad_avoids_pit() -> void:
 	r = _pad.find_landing_now(Vector3.ZERO)
 	p = r.point
 	_check(r.flat and p != points[0] and absf(_pad_field.delta_at(p)) <= 0.35, "la buca a fondo piatto non va (delta)")
+
+
+## Revisione finale: il centro annunciato viene scavato durante l'avviso; all'arrivo la pedana
+## cerca di nuovo e atterra su un punto piano; una nuova programmazione da aperta la nasconde.
+func _test_pad_rechecks_at_arrival() -> void:
+	print("pad rechecks at arrival")
+	_pad.fallback_point = Vector3.ZERO
+	_pad.schedule(30.0)
+	_pad.advance(_pad.warning_at() - 1.0, 0.0)
+	_pad.advance(_pad.warning_at(), 0.0)
+	var announced := _pad.center
+	_check(_pad.phase == FusionPad.Phase.WARNING and Vector2(announced.x, announced.z).length() >= 20.0, "avviso dato, centro fissato")
+	_pad_field.sculpt(announced, 3.0, -1.0)
+	_pad.advance(30.0, 0.0)
+	var c := _pad.center
+	_check(_pad.is_open() and Vector2(c.x - announced.x, c.z - announced.z).length() > 1.0
+		and _pad_field.is_flat(c, _pad.flat_radius(), 0.35) and absf(_pad_field.delta_at(c)) <= 0.35,
+		"scavato il centro annunciato: atterra altrove, in piano (%.1f m)" % Vector2(c.x - announced.x, c.z - announced.z).length())
+	_check(_pad_field.is_protected(c) and not _pad_field.is_protected(announced), "protetto il disco nuovo, non quello annunciato")
+	var model := _pad.get_node(^"Model") as Node3D
+	_pad.schedule(90.0)
+	_check(not model.visible and _pad.phase == FusionPad.Phase.WAITING and not _pad_field.is_protected(c),
+		"riprogrammata da aperta: modello nascosto, disco libero")
+	_pad.close()
+	_pad.schedule(-1.0)
 
 
 func _test_pad_fallback() -> void:
@@ -719,6 +802,10 @@ func _test_bench() -> void:
 	_scene.queue_free()
 
 
+func _message_ink(bench: FusionBench) -> Color:
+	return bench._message.get_theme_color(&"font_color")
+
+
 func _send_joypad_button(button: JoyButton, pressed: bool) -> void:
 	var event := InputEventJoypadButton.new()
 	event.button_index = button
@@ -784,6 +871,9 @@ func _test_bench_opens_paused() -> void:
 	_send_joypad_button(JOY_BUTTON_X, false)
 	await _joy(JOY_BUTTON_B)
 	_check(bench.is_open and paused, "B durante la grazia non chiude il banco")
+	await _joy(JOY_BUTTON_RIGHT_SHOULDER)
+	await _key(KEY_PAGEDOWN)
+	_check(bench.mode == FusionBench.Mode.FUSE, "RB e PagGiu durante la grazia non cambiano scheda")
 	var enemy := _run.director.spawn_at(_player.global_position + Vector3(0.6, 0.0, 0.0))
 	var elapsed := _run.elapsed
 	var health := _player.health
@@ -820,6 +910,8 @@ func _test_bench_controller_fuse() -> void:
 	_check(bench.is_open and paused and bench.step == FusionBench.Step.PICK_FIRST and bench.card_count() == 2
 		and bench.card_text(0) == "Media - Cassone + Torretta\nPV 15/15" and bench.scrap_text() == "Nei Cassoni: 2"
 		and _focused() == bench.card(0), "dopo la conferma: banco aperto al primo passo, carte rifatte (%s)" % bench.card_text(0).replace("\n", " | "))
+	_check(bench.message_text() == "Fusione fatta: Media - Cassone + Torretta" and _message_ink(bench) == FusionBench.INK_NOTICE,
+		"esito in verde (%s)" % bench.message_text())
 	await _joy(JOY_BUTTON_B)
 	await _joy(JOY_BUTTON_B)
 	await _frames(2)
@@ -915,8 +1007,9 @@ func _test_bench_broken_and_short() -> void:
 	_check(bench.card(mi).disabled, "anche al secondo passo la guasta e disattivata")
 	bench.select(_caravan.machines.find(drill))
 	_check(_caravan.machines.size() == count and _caravan.working_carried() == 0 and drill.module_ids() == [&"drill"]
-		and bench.step == FusionBench.Step.PICK_SECOND and bench.message_text() == "Rottami insufficienti nei Cassoni",
-		"0 rottami: niente cambia (%s)" % bench.message_text())
+		and bench.step == FusionBench.Step.PICK_SECOND and bench.message_text() == "Rottami insufficienti nei Cassoni"
+		and _message_ink(bench) == FusionBench.INK_WARNING,
+		"0 rottami: niente cambia, avviso in rosso (%s)" % bench.message_text())
 	bench.close()
 	_caravan.carried = 3
 	await _frames(1)

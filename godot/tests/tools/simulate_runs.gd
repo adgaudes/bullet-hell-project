@@ -420,7 +420,11 @@ func _tick_bot(step: float) -> void:
 				_dark_samples += 1
 			if _escape_left <= 0.0:
 				_move = _choose_direction()
-		var repairing := _tick_fusion() or _tick_repair()
+		var repairing := _tick_fusion()
+		if repairing:
+			_drop_repair()  # la fusione ha la precedenza: niente Interagisci tenuto dalla riparazione
+		else:
+			repairing = _tick_repair()
 		if not repairing and _params.digs and not _tick_lamps():
 			_tick_relief_brush(step)
 		# Tenendo Interagisci nessuna attiva: la carica dell'Ariete lo porterebbe fuori portata.
