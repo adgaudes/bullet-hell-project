@@ -19,8 +19,10 @@ extends SceneTree
 ## peggiore della carovana in un ciclo della Sirena, contatto dei rottamatori come A/B del
 ## direttore), `caravan_writes` (scritture della coda nel ciclo) e `caravan_slots` (calcolo del
 ## posto di ogni macchina); di giorno Cassone, due Torrette, Trivella, Pala e Sirena, di notte
-## il Cassone e i sei Faro. Poi le armi (`weapons`, `weapons_fused`, `weapons_frame`), con le
-## macchine immuni e i moduli fermi tranne il capofila.
+## il Cassone e i sei Faro. Di giorno poi la riga `caravan_colossus` (piano B): le sei macchine
+## fuse nel capofila, un Colosso di sei moduli, misurato nella stessa finestra. Poi le armi
+## (`weapons`, `weapons_fused`, `weapons_frame`), con le macchine immuni e i moduli fermi tranne il
+## Cassone del capofila.
 ## Marker: PROTOTYPE01_ARENA_BENCH ...
 
 const WARMUP_FRAMES := 120
@@ -201,7 +203,9 @@ func _bench_writes(run: ArenaRun, player: Node3D, step: float, weapons_ms: float
 ## anche sulle macchine immuni). Riga `caravan_slots`: `slot_target` di tutte le macchine, il
 ## posto che ogni macchina ricalcola a ogni passo. Il costo delle luci dei Faro accesi sta nelle
 ## righe `step`, `frame` e `render` (di notte il direttore rinfresca il campo di luce a ogni passo).
-## Alla fine i moduli si spengono (tranne il capofila) e i robusti spariscono.
+## Di giorno, coi robusti ancora sul grappolo, `_bench_colossus` fonde tutto nel capofila e
+## rimisura (riga `caravan_colossus`); di notte no (i sei Faro restano macchine piccole).
+## Alla fine i moduli si spengono (tranne il Cassone del capofila) e i robusti spariscono.
 func _bench_caravan(scene: Node, step: float, preset: String, night: bool) -> void:
 	var run: ArenaRun = scene.get_node(^"Run")
 	var caravan := run.caravan
@@ -248,6 +252,101 @@ func _bench_caravan(scene: Node, step: float, preset: String, night: bool) -> vo
 	for i in 120:
 		await physics_frame
 
+	var window := _caravan_window(run, player, robust, step)
+	print("PROTOTYPE01_ARENA_BENCH caravan_writes writes=%d steps=%d" % [window.writes, window.steps])
+
+	# Contatto dei rottamatori (EnemyDirector._apply_machine_contacts): stesso processo, blocchi
+	# alterni con e senza carovana nel direttore.
+	director.set_physics_process(false)
+	var totals := [0, 0]
+	for block in 40:
+		director.caravan = caravan if block % 2 == 0 else null
+		var b0 := Time.get_ticks_usec()
+		for i in 30:
+			director._physics_process(step)
+		totals[block % 2] += Time.get_ticks_usec() - b0
+	director.caravan = caravan
+	var modules: PackedStringArray = []
+	for machine in caravan.machines:
+		modules.append(String(machine.primary_module_id()))
+	print("PROTOTYPE01_ARENA_BENCH caravan preset=%s machines=%d modules=%s enemies=%d step_ms=%.3f director_on_ms=%.3f director_off_ms=%.3f max_ms=%.3f"
+		% [preset, caravan.machines.size(), ",".join(modules), director.enemies.size(), window.step_ms,
+			totals[0] / 600000.0, totals[1] / 600000.0, window.max_ms])
+	# Posto nel grappolo (task 6): ogni macchina lo ricalcola a ogni passo; un passo = tutte.
+	var s0 := Time.get_ticks_usec()
+	for i in 240:
+		for machine in caravan.machines:
+			caravan.slot_target(machine)
+	print("PROTOTYPE01_ARENA_BENCH caravan_slots machines=%d slot_target_ms=%.4f"
+		% [caravan.machines.size(), (Time.get_ticks_usec() - s0) / 240.0 / 1000.0])
+
+	if not night:
+		await _bench_colossus(run, player, robust, step, preset)
+
+	# Pulizia: moduli spenti tranne il Cassone del capofila (di giorno il Colosso ha anche gli
+	# altri cinque), robusti tolti senza esperienza (non con `clear_horde`, il cui tween a gioco
+	# fermo non finisce), coda vuota, stati di prima.
+	var lead := caravan.lead()
+	for machine in caravan.machines:
+		for module in machine.modules:
+			if machine != lead or module.module_id != &"cargo":
+				module.set_active(false)
+	for enemy in robust:
+		if not is_instance_valid(enemy) or enemy.is_dead:
+			continue
+		enemy.is_dead = true
+		enemy.collision_layer = 0
+		enemy.collision_mask = 0
+		director.enemies.erase(enemy)
+		enemy.queue_free()
+	queue.clear()
+	director.set_physics_process(director_was_on)
+	run.set_physics_process(run_was_on)
+	paused = was_paused
+
+
+## Colosso (D-093, piano B; budget 0,5 ms per passo sul preset Deck, come le sei macchine): coi
+## 20 robusti ancora sul grappolo, i rottami per fondere tutto nel capofila (`fuse_cost_per_module`
+## per modulo assorbito) entrano prima nei Cassoni; poi le altre cinque macchine entrano nel
+## capofila con `Caravan.fuse` (fuori dal banco: fra due passi, nessun nodo e a meta del suo),
+## 60 passi di assestamento e la stessa finestra della riga `caravan`. `trampled` = rottamatori
+## travolti dal Colosso dalla fusione alla fine della finestra (il travolgere sta nel passo del
+## direttore, che gira nei 60 passi di assestamento, non nella finestra).
+func _bench_colossus(run: ArenaRun, player: PlayerCharacter, robust: Array[Enemy], step: float, preset: String) -> void:
+	var caravan := run.caravan
+	var lead := caravan.lead()
+	var others: Array[Machine] = []
+	var cost := 0
+	for machine in caravan.machines:
+		if machine != lead:
+			others.append(machine)
+			cost += MachineFusion.fuse_cost(machine.modules.size(), caravan.tuning)
+	caravan.add_cargo_capacity(cost)
+	caravan.add_scrap(cost)
+	# L'A/B del contatto ha lasciato spento il passo del direttore: nell'assestamento i robusti
+	# devono muoversi e il Colosso travolgerli (la pulizia rimette lo stato di prima).
+	run.director.set_physics_process(true)
+	for machine in others:
+		if not caravan.fuse(lead, machine):
+			push_error("colossus bench: fuse(%s) rifiutata" % machine.primary_module_id())
+	if lead.size != MachineFusion.Size.COLOSSUS:
+		push_error("colossus bench: taglia %d invece del Colosso" % lead.size)
+	lead.grant_invulnerability(120.0)
+	var trampled_before := lead.trampled
+	for i in 60:
+		await physics_frame
+	var window := _caravan_window(run, player, robust, step)
+	print("PROTOTYPE01_ARENA_BENCH caravan_colossus preset=%s machines=%d modules=%d size=%d enemies=%d step_ms=%.3f max_ms=%.3f trampled=%d"
+		% [preset, caravan.machines.size(), caravan.module_count(), lead.size, run.director.enemies.size(),
+			window.step_ms, window.max_ms, lead.trampled - trampled_before])
+
+
+## Finestra della carovana (righe `caravan` e `caravan_colossus`): un ciclo della Sirena passo per
+## passo coi nodi della carovana spenti e chiamati a mano, i robusti su un anello a WRITE_RING_M dal
+## giocatore e poi rimessi dov'erano. `{step_ms, max_ms, writes, steps}`.
+func _caravan_window(run: ArenaRun, player: PlayerCharacter, robust: Array[Enemy], step: float) -> Dictionary:
+	var caravan := run.caravan
+	var queue := run.write_queue
 	# Nodi col passo della carovana: lei (riparazione), ogni macchina e i suoi discendenti col
 	# passo (TurretWeapon), poi la coda delle scritture; spenti durante la misura.
 	var nodes: Array[Node] = [caravan]
@@ -314,52 +413,7 @@ func _bench_caravan(scene: Node, step: float, preset: String, night: bool) -> vo
 			if field != null:
 				back.y = maxf(back.y, field.height_at(back) + robust[i].spawn_center_height())
 			_teleport_enemy(robust[i], back)
-	print("PROTOTYPE01_ARENA_BENCH caravan_writes writes=%d steps=%d" % [writes, steps])
-
-	# Contatto dei rottamatori (EnemyDirector._apply_machine_contacts): stesso processo, blocchi
-	# alterni con e senza carovana nel direttore.
-	director.set_physics_process(false)
-	var totals := [0, 0]
-	for block in 40:
-		director.caravan = caravan if block % 2 == 0 else null
-		var b0 := Time.get_ticks_usec()
-		for i in 30:
-			director._physics_process(step)
-		totals[block % 2] += Time.get_ticks_usec() - b0
-	director.caravan = caravan
-	var modules: PackedStringArray = []
-	for machine in caravan.machines:
-		modules.append(String(machine.primary_module_id()))
-	print("PROTOTYPE01_ARENA_BENCH caravan preset=%s machines=%d modules=%s enemies=%d step_ms=%.3f director_on_ms=%.3f director_off_ms=%.3f max_ms=%.3f"
-		% [preset, caravan.machines.size(), ",".join(modules), director.enemies.size(), total_usec / float(steps) / 1000.0,
-			totals[0] / 600000.0, totals[1] / 600000.0, max_usec / 1000.0])
-	# Posto nel grappolo (task 6): ogni macchina lo ricalcola a ogni passo; un passo = tutte.
-	var s0 := Time.get_ticks_usec()
-	for i in 240:
-		for machine in caravan.machines:
-			caravan.slot_target(machine)
-	print("PROTOTYPE01_ARENA_BENCH caravan_slots machines=%d slot_target_ms=%.4f"
-		% [caravan.machines.size(), (Time.get_ticks_usec() - s0) / 240.0 / 1000.0])
-
-	# Pulizia: moduli spenti tranne il capofila, robusti tolti senza esperienza (non con
-	# `clear_horde`, il cui tween a gioco fermo non finisce), coda vuota, stati di prima.
-	var lead := caravan.lead()
-	for machine in caravan.machines:
-		if machine != lead:
-			for module in machine.modules:
-				module.set_active(false)
-	for enemy in robust:
-		if not is_instance_valid(enemy) or enemy.is_dead:
-			continue
-		enemy.is_dead = true
-		enemy.collision_layer = 0
-		enemy.collision_mask = 0
-		director.enemies.erase(enemy)
-		enemy.queue_free()
-	queue.clear()
-	director.set_physics_process(director_was_on)
-	run.set_physics_process(run_was_on)
-	paused = was_paused
+	return {step_ms = total_usec / float(steps) / 1000.0, max_ms = max_usec / 1000.0, writes = writes, steps = steps}
 
 
 static func _teleport_enemy(enemy: Enemy, at: Vector3) -> void:

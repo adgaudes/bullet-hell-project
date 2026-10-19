@@ -16,6 +16,8 @@ extends SceneTree
 ##   --night-at=N                    letto da ArenaRun: anticipa il tramonto (0 = niente notte)
 ##   --level=railway                 livello da simulare (LevelCatalog; default il quartiere)
 ##   Lo scrapper, di notte, piazza un lampione dove sta (3 rottami, max 6): riga `lamps=`.
+##   --caravan=turret,drill,...      macchine in piu alla partenza (un modulo ciascuna, fino al
+##                                   limite della carovana): serve a provare la regola della fusione
 ## Con `--fixed-fps 60` e 60 passi fisici al secondo una run e ripetibile: stesso
 ## seme e stesso bot danno la stessa riga (il seme arriva ad ArenaRun dalla variabile
 ## `PROTOTYPE01_SEED`, impostata prima di istanziare la scena: casse, relitti, treno,
@@ -46,12 +48,18 @@ extends SceneTree
 ## finche non e riparata, anche coi nemici addosso; si staccano oltre 1,8 m. Nessuna soglia
 ## di rottami (scelta 3 del piano A: sotto i 2 la riparazione e gratis e dura 4,5 s). Fra le
 ## carte, "Nuova macchina" viene subito dopo le armi (kiter e scrapper; il novice prende la prima).
+## Fusione (D-093, piano B): con la pedana aperta, la carovana al limite dei moduli, piu di una
+## macchina, nessuna guasta, nei Cassoni funzionanti i rottami per fondere tutto nel capofila e
+## nessun nemico entro 3,5 m, i bot tranne passive vanno al centro della pedana e, sul quadrato,
+## premono Interagisci; col banco aperto fondono una macchina per passo nel capofila e lo chiudono.
+## Viene prima della riparazione: con una guasta la regola non vale e la riparazione resta com'era.
 ## Col boss in campo i bot che si muovono gli girano attorno a portata di chiodatrice.
 ## Movimento e mira passano dalle azioni di input (`Input.action_press`), il tool
 ## da un `InputEventAction`; le carte del level-up da `LevelUpMenu.press`.
 ## Marker: PROTOTYPE01_SIM (una riga per run; con `machines` = macchine a fine run, Cassone
 ## compreso, `repairs` = riparazioni finite dal bot, `repairs_free` = quelle gratis, `wrecks` =
-## relitti aperti da chiunque: il novice non scava, per lui sono armi o boss),
+## relitti aperti da chiunque: il novice non scava, per lui sono armi o boss; `fusions` = fusioni
+## fatte dal bot al banco, `colossus` = 1 se una sua fusione ha dato un Colosso),
 ## PROTOTYPE01_SIM_SUMMARY, PROTOTYPE01_SIM_AFFORD (run necessarie per ogni livello
 ## dell'Officina), PROTOTYPE01_SIM_BRUSH (ogni pennellata del bot sul rilievo: tempo, modo,
 ## punto), PROTOTYPE01_SIM_WRECK_SKIP (relitto lasciato dallo scrapper).
@@ -98,6 +106,8 @@ var _seeds: Array[int] = []
 var _profile_levels: Dictionary[StringName, int] = {}
 var _max_seconds := 1500.0
 var _hz := 60
+## Moduli delle macchine aggiunte alla partenza (`--caravan=`).
+var _extra_machines: Array[StringName] = []
 
 var _scene: Node3D
 var _run: ArenaRun
@@ -120,6 +130,9 @@ const RAMPART_HOLD_SECONDS := 3.0
 ## resta entro REPAIR_HOLD_M (`repair_range` 2 m meno 0,2 di margine).
 const REPAIR_STOP_M := 1.5
 const REPAIR_HOLD_M := 1.8
+## Fusione: secondi di attesa dopo un banco chiuso senza fusioni (regola vera ma `fuse` rifiutato),
+## cosi il bot non riapre il banco a ogni passo.
+const FUSION_RETRY_S := 5.0
 ## Un relitto a portata il cui suolo non scende di WRECK_PROGRESS_M in WRECK_GIVE_UP_S
 ## secondi (punto protetto, bot troppo vicino), o fuori portata senza che il bot gli si
 ## avvicini di WRECK_APPROACH_M in WRECK_GIVE_UP_S secondi, si lascia per il resto della run.
@@ -160,6 +173,11 @@ var _repair_mine := false
 var _repair_free := false
 var _repairs := 0
 var _repairs_free := 0
+## Fusione (piano B): fusioni fatte, Colosso ottenuto, fusioni di questo banco, attesa dopo un rifiuto.
+var _fusions := 0
+var _colossus := false
+var _bench_fusions := 0
+var _fusion_wait := 0.0
 ## Relitti aperti nella run (da chiunque), relitto puntato, quelli lasciati e lo scavo a portata
 ## senza progresso: quota piu bassa vista sul relitto e secondi da allora.
 var _wrecks := 0
@@ -213,6 +231,12 @@ func _parse_arguments() -> void:
 				_scene_path = LevelCatalog.scene_of(level)
 		elif arg.begins_with("--hz="):
 			_hz = maxi(arg.trim_prefix("--hz=").to_int(), 30)
+		elif arg.begins_with("--caravan="):
+			for module_id in arg.trim_prefix("--caravan=").split(",", false):
+				if not MachineCatalog.find(StringName(module_id)).is_empty():
+					_extra_machines.append(StringName(module_id))
+				else:
+					push_warning("simulate_runs: modulo sconosciuto in --caravan: %s" % module_id)
 	if _bots.is_empty():
 		_bots = BOT_NAMES.duplicate()
 	if _seeds.is_empty():
@@ -288,6 +312,10 @@ func _simulate(bot: StringName, run_seed: int) -> Dictionary:
 	_repair_free = false
 	_repairs = 0
 	_repairs_free = 0
+	_fusions = 0
+	_colossus = false
+	_bench_fusions = 0
+	_fusion_wait = 0.0
 	_wrecks = 0
 	_wreck_index = -1
 	_wrecks_skipped.clear()
@@ -303,6 +331,9 @@ func _simulate(bot: StringName, run_seed: int) -> Dictionary:
 	_run.boss_spawned.connect(_on_boss_spawned)
 	if _run.lamp_field != null:
 		_run.lamp_field.lamp_placed.connect(func(_at: Vector3) -> void: _lamps_bought += 1)
+	for module_id in _extra_machines:
+		if _caravan.add_machine(module_id) == null:
+			push_warning("simulate_runs: --caravan=%s non entra (carovana piena)" % module_id)
 
 	var step := 1.0 / Engine.physics_ticks_per_second
 	var timed_out := false
@@ -320,6 +351,9 @@ func _simulate(bot: StringName, run_seed: int) -> Dictionary:
 		if _menu.is_open:
 			_release_inputs()
 			_pick_card()
+		elif _run.fusion_bench != null and _run.fusion_bench.is_open:
+			_release_inputs()
+			_drive_bench()
 		else:
 			_tick_bot(step)
 		await physics_frame
@@ -342,14 +376,15 @@ func _simulate(bot: StringName, run_seed: int) -> Dictionary:
 		health = _player.health, digs = _digs, carried = _caravan.carried, capacity = _caravan.capacity,
 		scrap_out = _run.scrap_out(victory), hits = _hits, machines = _caravan.machines.size(),
 		repairs = _repairs, repairs_free = _repairs_free, wrecks = _wrecks,
+		fusions = _fusions, colossus = 1 if _colossus else 0,
 	}
 	var outcome := "victory_at" if victory else ("timeout_at" if timed_out else "died_at")
 	var night_phase := DayNightCycle.PHASE_NAMES[_run.day_night.phase] if _run.day_night != null else "DAY"
-	print("PROTOTYPE01_SIM seed=%d bot=%s %s=%.1f level=%d kills=%d boss=%s boss_hp=%d hp=%d hits=%d hp_at_boss=%d level_at_boss=%d digs=%d scrap_carried=%d capacity=%d scrap_out=%d upgrades=%s night=%s dark_contacts=%d dark_decisions=%d lamps=%d actives=%d machines=%d repairs=%d repairs_free=%d wrecks=%d class=%s wall_s=%.1f"
+	print("PROTOTYPE01_SIM seed=%d bot=%s %s=%.1f level=%d kills=%d boss=%s boss_hp=%d hp=%d hits=%d hp_at_boss=%d level_at_boss=%d digs=%d scrap_carried=%d capacity=%d scrap_out=%d upgrades=%s night=%s dark_contacts=%d dark_decisions=%d lamps=%d actives=%d machines=%d repairs=%d repairs_free=%d wrecks=%d fusions=%d colossus=%d class=%s wall_s=%.1f"
 		% [run_seed, bot, outcome, result.time, result.level, result.kills, boss_state, boss_health, result.health,
 			_hits, _health_at_boss, _level_at_boss, _digs, result.carried, result.capacity, result.scrap_out, ",".join(upgrades),
 			night_phase, _director.dark_contacts, _dark_samples, _lamps_bought, _actives_used, result.machines,
-			_repairs, _repairs_free, _wrecks, _run.class_id, (Time.get_ticks_msec() - wall_start) / 1000.0])
+			_repairs, _repairs_free, _wrecks, result.fusions, result.colossus, _run.class_id, (Time.get_ticks_msec() - wall_start) / 1000.0])
 
 	paused = false
 	root.remove_child(_scene)
@@ -375,6 +410,7 @@ func _on_boss_spawned(_boss: Enemy) -> void:
 func _tick_bot(step: float) -> void:
 	_dig_cooldown = maxf(_dig_cooldown - step, 0.0)
 	_escape_left = maxf(_escape_left - step, 0.0)
+	_fusion_wait = maxf(_fusion_wait - step, 0.0)
 	_decision_left -= step
 	if _bot != &"passive":
 		_track_stuck(step)
@@ -384,7 +420,7 @@ func _tick_bot(step: float) -> void:
 				_dark_samples += 1
 			if _escape_left <= 0.0:
 				_move = _choose_direction()
-		var repairing := _tick_repair()
+		var repairing := _tick_fusion() or _tick_repair()
 		if not repairing and _params.digs and not _tick_lamps():
 			_tick_relief_brush(step)
 		# Tenendo Interagisci nessuna attiva: la carica dell'Ariete lo porterebbe fuori portata.
@@ -436,6 +472,64 @@ func _tick_repair() -> bool:
 	_repair_mine = _caravan.repairing_machine() == _repair_target and _caravan.repair_progress() >= 0.9
 	_repair_free = _caravan.carried < _caravan.tuning.repair_cost
 	return true
+
+
+## Fusione (D-093, piano B): vero se il bot va alla pedana per fondere (niente pennello). La
+## regola: pedana aperta, carovana al limite dei moduli, piu di una macchina, nessuna guasta, nei
+## Cassoni funzionanti i rottami per fondere tutto nel capofila, nemico piu vicino oltre
+## BRUSH_SAFE_M. Va al centro della pedana e, entro un quarto del lato dal centro, preme
+## Interagisci (il banco si apre a fine passo, da ArenaRun); una richiesta segnata non si ripete.
+func _tick_fusion() -> bool:
+	var pad := _run.fusion_pad
+	if pad == null or not pad.is_open() or _fusion_wait > 0.0:
+		return false
+	if _caravan.module_count() < _caravan.tuning.module_limit or _caravan.machines.size() < 2:
+		return false
+	if not _caravan.broken_machines().is_empty() or _caravan.working_carried() < _fuse_all_cost():
+		return false
+	if _nearest_enemy_distance() < BRUSH_SAFE_M:
+		return false
+	_player.tool_held = false
+	_aim = Vector2.ZERO
+	if Machine.planar_distance(pad.center, _player.global_position) <= pad.half_size() * 0.5:
+		_move = Vector2.ZERO
+		if not pad.has_bench_request():
+			_bench_fusions = 0
+			_player.interact_pressed.emit()
+		return true
+	if _escape_left <= 0.0:
+		_move = (_planar(pad.center) - _planar(_player.global_position)).normalized()
+	return true
+
+
+## Rottami per fondere nel capofila tutte le altre macchine.
+func _fuse_all_cost() -> int:
+	var lead := _caravan.lead()
+	var cost := 0
+	for machine in _caravan.machines:
+		if machine != lead:
+			cost += MachineFusion.fuse_cost(machine.modules.size(), _caravan.tuning)
+	return cost
+
+
+## Banco aperto: una macchina per passo entra nel capofila (`FusionBench.fuse`, la via della
+## conferma); quando nessuna puo piu entrare il banco si chiude. Senza fusioni in questo banco il
+## bot aspetta FUSION_RETRY_S prima di riprovare.
+func _drive_bench() -> void:
+	var bench := _run.fusion_bench
+	var lead := _caravan.lead()
+	if lead != null:
+		for machine in _caravan.machines:
+			if machine != lead and _caravan.can_fuse(lead, machine):
+				if bench.fuse(_caravan.machines.find(lead), _caravan.machines.find(machine)):
+					_fusions += 1
+					_bench_fusions += 1
+					if lead.size == MachineFusion.Size.COLOSSUS:
+						_colossus = true
+					return
+	if _bench_fusions == 0:
+		_fusion_wait = FUSION_RETRY_S
+	bench.close()
 
 
 ## La guasta piu vicina al giocatore (piano XZ), o null.

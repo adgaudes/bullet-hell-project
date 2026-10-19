@@ -10,7 +10,7 @@
 
 **Spec:** `docs/superpowers/specs/2026-10-15-caravan-machines-design.md` (Sezione 2; Sezione 1 per taglie e combinazioni; Sezione 5 per Ricettario e profilo v3; Sezione 6 per HUD, prestazioni e bot; "Valori di partenza"; "Verifica"). Modello di formato e convenzioni: `docs/superpowers/plans/2026-10-16-caravan-machines.md` (piano A, fatto). Righe del codice citate a HEAD `f400c19`: riverificarle prima di toccarle.
 
-**Stato:** scritto il 18 ottobre 2026, da eseguire.
+**Stato:** fatto il 19 ottobre 2026.
 
 ## Global Constraints
 
@@ -68,7 +68,7 @@ Proposta al proprietario (non installare): pedana e gru dai pacchetti 3D CC0 di 
 - `MachineCatalog`: `const COMBOS: Array[StringName] = [&"extractor", &"reflector", &"mobile_mixer", &"armored_bait", &"dozer", &"trap"]`; `static func combos() -> Array[Dictionary]` (costruito una volta, voci `{id, name, parts: Array[StringName], text}`); `static func find_combo(id: StringName) -> Dictionary` ({} se sconosciuto); `static func combos_of(module_ids: Array[StringName]) -> Array[StringName]` (nell'ordine di `COMBOS`, duplicati ignorati). Voci, testi esatti: Estrattore (drill + magnet, "Le buche risucchiano i rottami vicini nel Cassone."), Riflettore (turret + beacon, "I nemici illuminati prendono doppio danno dalla Torretta."), Betoniera mobile (shovel + cargo, "Gli argini della Pala sono gratis."), Esca blindata (welder + siren, "Mentre attira subisce meta danno."), Ruspa (drill + shovel, "Scava un fossato con un argine a lato dove passa."), Trappola (turret + siren, "Chi e attirato prende doppio danno dalla Torretta.").
 - `class_name MachineFusion extends RefCounted`: `enum Size { SMALL, MEDIUM, LARGE, COLOSSUS }`; `const SIZE_NAMES: Array[String] = ["Piccola", "Media", "Grande", "Colosso"]`; `static func size_of(module_count: int, tuning: CaravanTuning) -> int` (indice piu alto con `size_min_modules[i] <= n`); `static func max_health_of(module_count: int, tuning: CaravanTuning) -> int` = `roundi(chassis_health * n * (1 + health_bonus_per_size * size))`; `static func speed_factor_of(module_count: int, tuning: CaravanTuning) -> float` = `1 - speed_malus_per_size * size`; `static func power_of(module_count: int, tuning: CaravanTuning) -> float` = `1 + power_per_extra_module * (n - 1)`; `static func model_scale_of(module_count: int, tuning: CaravanTuning) -> float`; `static func carried_health(health_sum: int, max_sum: int, new_max: int) -> int` = `clampi(roundi(new_max * health_sum / float(max_sum)), 1, new_max)`; `static func fuse_cost(absorbed_modules: int, tuning: CaravanTuning) -> int`; `static func detach_cost(tuning: CaravanTuning) -> int`; `static func preview_fuse(base_ids: Array[StringName], base_health: int, base_max: int, other_ids: Array[StringName], other_health: int, other_max: int, tuning: CaravanTuning) -> Dictionary` = `{modules, size, max_health, health, speed (m/s = max_speed x fattore), power, combos, new_combos (del risultato e di nessuna delle due), cost, allowed (n <= max_modules_per_machine)}`; `static func preview_detach(ids: Array[StringName], index: int, health: int, max_health: int, tuning: CaravanTuning) -> Dictionary` = `{source: {modules, size, max_health, health, speed, combos}, detached: {modules, size, max_health, health, speed}, lost_combos, cost, allowed (ids.size() >= 2)}`.
 
-- [ ] **Step 1: test che falliscono** (`fusion_tests.gd`, sezione logica, senza scene):
+- [x] **Step 1: test che falliscono** (`fusion_tests.gd`, sezione logica, senza scene):
 
 ```gdscript
 func _test_sizes() -> void:  # tuning = load("res://resources/tuning/caravan_default.tres")
@@ -107,10 +107,10 @@ func _test_tuning() -> void:  # valori della spec nel .tres
 	_check(t.fuse_cost_per_module == 1 and t.detach_cost_per_module == 1 and t.max_modules_per_machine == 6, "costi e massimo per macchina")
 ```
 
-- [ ] **Step 2:** `godot_console --headless --path godot --fixed-fps 60 --script res://tests/fusion_tests.gd` → FAIL (`MachineFusion` sconosciuta).
-- [ ] **Step 3:** implementare le interfacce sopra; poi la cache delle classi (Global Constraints).
-- [ ] **Step 4:** `fusion_tests.gd` → `PROTOTYPE01_TESTS PASS failures=0`; `machine_catalog_tests.gd` verde; `--check-only` sui tre script.
-- [ ] **Step 5: commit** `Carovana (D-093), piano B: taglie, costi, anteprima e combinazioni (MachineFusion, MachineCatalog.COMBOS, valori in CaravanTuning); test`.
+- [x] **Step 2:** `godot_console --headless --path godot --fixed-fps 60 --script res://tests/fusion_tests.gd` → FAIL (`MachineFusion` sconosciuta).
+- [x] **Step 3:** implementare le interfacce sopra; poi la cache delle classi (Global Constraints).
+- [x] **Step 4:** `fusion_tests.gd` → `PROTOTYPE01_TESTS PASS failures=0`; `machine_catalog_tests.gd` verde; `--check-only` sui tre script.
+- [x] **Step 5: commit** `Carovana (D-093), piano B: taglie, costi, anteprima e combinazioni (MachineFusion, MachineCatalog.COMBOS, valori in CaravanTuning); test`.
 
 ### Task 2: Machine multi-modulo; fuse, detach e remove_machine nella carovana
 
@@ -122,7 +122,7 @@ func _test_tuning() -> void:  # valori della spec nel .tres
 - `WelderModule.forget(machine: Machine) -> void` (toglie la chiave da `_broken_elapsed`).
 - `Caravan`: `signal machine_removed(machine: Machine)`, `signal fused(machine: Machine)`, `signal detached(machine: Machine)`, `signal combo_formed(combo_id: StringName)`. `func can_fuse(base: Machine, other: Machine) -> bool` (entrambe nella carovana, diverse, non guaste, moduli insieme <= `max_modules_per_machine`, `working_carried() >= fuse_cost`); `func fuse(base: Machine, other: Machine) -> bool` (frazione di vita calcolata prima; `pay(costo)`; ogni modulo di `other` ricreato su `base` con `_attach_module`, i rottami di un Cassone passano col modulo; `remove_machine(other)`; `base.health = carried_health(...)`; `combo_formed` una volta per combinazione nuova; marker `PROTOTYPE01_MACHINE_FUSED modules=%s size=%s cost=%d machines=%d`; `fused` e `changed`); `func can_detach(machine: Machine, module_index: int) -> bool`; `func detach(machine: Machine, module_index: int) -> Machine` (paga, toglie il modulo, conserva la frazione della sorgente, `_add_machine` del modulo al primo posto libero sul suolo coi suoi rottami, marker `PROTOTYPE01_MACHINE_DETACHED module=%s cost=%d machines=%d`; null se non si puo); `func remove_machine(machine: Machine) -> void` (fuori da `machines` e da `write_queue.bodies`; riparazione azzerata se era sua; `forget` su ogni Saldatore; `remove_child` poi `queue_free`, cosi Calamita e Faro si liberano subito in `_exit_tree`; marker `PROTOTYPE01_MACHINE_REMOVED machines=%d`; `machine_removed` e `changed`). `lead()` con la regola della scelta 8. `_attach_module(machine: Machine, module_id: StringName, scrap: int) -> MachineModule` estratto da `_add_machine` (:473-481) e usato da tutti e tre.
 
-- [ ] **Step 1: test che falliscono** (`fusion_tests.gd`, sezione carovana):
+- [x] **Step 1: test che falliscono** (`fusion_tests.gd`, sezione carovana):
 
 ```gdscript
 func _test_fuse_two() -> void:  # lead Cassone (3 rottami) + add_machine(&"turret")
@@ -157,10 +157,10 @@ func _test_duplicates() -> void:  # Review Focus 2
 	# cubetti visibili == carried; dopo il turno di 2 s nessun errore nel log
 ```
 
-- [ ] **Step 2:** `fusion_tests.gd` → FAIL (`fuse` non esiste).
-- [ ] **Step 3:** implementare. Nota del piano A: `add_machine(at)` non aggiunge `GROUND_CLEARANCE`, quindi `detach` posa la macchina nuova al suo posto (`at = null`). Le fusioni girano ad albero fermo: nessuna macchina e a meta passo.
-- [ ] **Step 4:** `fusion_tests.gd`, poi `caravan_tests.gd`, `machine_damage_tests.gd`, `machine_modules_tests.gd`, `caravan_hud_tests.gd`, `actor_motion_tests.gd` una alla volta verdi; gate completo verde.
-- [ ] **Step 5: commit** `Carovana (D-093), piano B: macchine a piu moduli (pezzi impilati, vita e velocita per taglia), fuse, detach e remove_machine, capofila col Cassone funzionante; test`.
+- [x] **Step 2:** `fusion_tests.gd` → FAIL (`fuse` non esiste).
+- [x] **Step 3:** implementare. Nota del piano A: `add_machine(at)` non aggiunge `GROUND_CLEARANCE`, quindi `detach` posa la macchina nuova al suo posto (`at = null`). Le fusioni girano ad albero fermo: nessuna macchina e a meta passo.
+- [x] **Step 4:** `fusion_tests.gd`, poi `caravan_tests.gd`, `machine_damage_tests.gd`, `machine_modules_tests.gd`, `caravan_hud_tests.gd`, `actor_motion_tests.gd` una alla volta verdi; gate completo verde.
+- [x] **Step 5: commit** `Carovana (D-093), piano B: macchine a piu moduli (pezzi impilati, vita e velocita per taglia), fuse, detach e remove_machine, capofila col Cassone funzionante; test`.
 
 ### Task 3: la taglia si vede e pesa: forza dei moduli, travolgere, striscia
 
@@ -172,7 +172,7 @@ func _test_duplicates() -> void:  # Review Focus 2
 - `EnemyDirector._apply_machine_contacts`: raggio `machine.contact_reach()`, secchi in `range(-c, c + 1)` con `c = ceili(raggio)`; prima il travolgere (anche se la macchina non accetta contatti: ogni nemico vivo non `self_driven` in raggio prende `trample_damage`, `trampled += 1`, poi `trample_done()`), poi il contatto di oggi solo se `accepts_contact()`.
 - `CaravanStrip`: voci con `size: int` e `extra: Array[Color]` (colori dei moduli oltre il primo); `const SIZE_STEP := 14.0`, `const MAX_PIPS := 12`; `func slot_width(index: int) -> float`, `func slot_size(index: int) -> int`, `func slot_uses_bar(index: int) -> bool`. `ArenaRun._refresh_caravan_hud` passa `size` e `extra`.
 
-- [ ] **Step 1: test che falliscono.**
+- [x] **Step 1: test che falliscono.**
 
 ```gdscript
 # machine_modules_tests._test_power(): una macchina Torretta + Faro (fuse), power 1.15
@@ -190,10 +190,10 @@ _check(strip.slot_count() == 1 and is_equal_approx(strip.slot_width(0), 54.0) an
 # colosso: larghezza 82, slot_uses_bar(0) vero (63 PV), cinque quadratini; una piccola: tacche come prima
 ```
 
-- [ ] **Step 2:** le tre suite → FAIL.
-- [ ] **Step 3:** implementare; nessuna allocazione nel giro dei secchi.
-- [ ] **Step 4:** le tre suite verdi, poi `caravan_tests.gd`, `classes_tests.gd` (Motore truccato travolge ancora), `driller_tests.gd`, `boss_tests.gd`; `--check-only` su ogni script toccato.
-- [ ] **Step 5: commit** `Carovana (D-093), piano B: forza dei moduli per taglia, travolgere da media in su, contatto in scala, taglia nella striscia del HUD; test`.
+- [x] **Step 2:** le tre suite → FAIL.
+- [x] **Step 3:** implementare; nessuna allocazione nel giro dei secchi.
+- [x] **Step 4:** le tre suite verdi, poi `caravan_tests.gd`, `classes_tests.gd` (Motore truccato travolge ancora), `driller_tests.gd`, `boss_tests.gd`; `--check-only` su ogni script toccato.
+- [x] **Step 5: commit** `Carovana (D-093), piano B: forza dei moduli per taglia, travolgere da media in su, contatto in scala, taglia nella striscia del HUD; test`.
 
 ### Task 4: piazzola di fusione
 
@@ -205,7 +205,7 @@ _check(strip.slot_count() == 1 and is_equal_approx(strip.slot_width(0), 54.0) an
 - `RunHud`: `enum WarningPriority { FUSION, EXTRACTION, BOSS, EVENT }` (FUSION la piu bassa); `const FUSION_COLOR := Color(0.45, 0.8, 1.0)`.
 - `ArenaRun`: `var fusion_pad: FusionPad`; `func _setup_fusion_pad() -> void` (solo con carovana e rilievo; servizi; `rng.seed = run_seed + 8`; `fallback_point = _start_position`; `on_tracks` = `RailwayDistrict.is_on_tracks` sul piano solo se `train_event != null`; `schedule(boss_call_at x pad_boss_fraction)` se `boss_call_at > 0`, deciso una volta al `_ready`: i test che cambiano `boss_call_at` dopo non spostano la pedana); `fusion_pad.advance(elapsed, delta)` dopo la piazzola di estrazione e prima di `_tick_boss`; `call_boss` chiama `fusion_pad.close()`; `current_markers` aggiunge `{text = "PIAZZOLA", color = MARKER_FUSION_COLOR}` con la pedana aperta oltre `marker_min_distance()`; `_update_game_lights` accende `fusion_pad.light()` col fattore di notte e raggio `pad_light_radius`; `landed` azzera `_night_factor_applied`.
 
-- [ ] **Step 1: test che falliscono** (`fusion_tests.gd`, sezione piazzola):
+- [x] **Step 1: test che falliscono** (`fusion_tests.gd`, sezione piazzola):
 
 ```gdscript
 func _test_pad_landing_flat() -> void:  # campo piano, giocatore all'origine, senza PathField
@@ -229,10 +229,10 @@ func _test_pad_in_run() -> void:  # arena_run.tscn
 	# pedana programmata e boss chiamato prima dell'avviso: nessun atterraggio, nessun marker WARNING
 ```
 
-- [ ] **Step 2:** `fusion_tests.gd` → FAIL.
-- [ ] **Step 3:** implementare; cache delle classi.
-- [ ] **Step 4:** `fusion_tests.gd`, poi `arena_run_tests.gd`, `boss_tests.gd`, `train_tests.gd`, `quake_tests.gd`, `world_event_tests.gd`, `day_night_tests.gd`, `railway_tests.gd` una alla volta; gate completo verde.
-- [ ] **Step 5: commit** `Carovana (D-093), piano B: piazzola di fusione (arrivo a meta della chiamata del boss, avviso con freccia, atterraggio su un tratto piano raggiungibile, gru e faro, chiusura alla chiamata); test`.
+- [x] **Step 2:** `fusion_tests.gd` → FAIL.
+- [x] **Step 3:** implementare; cache delle classi.
+- [x] **Step 4:** `fusion_tests.gd`, poi `arena_run_tests.gd`, `boss_tests.gd`, `train_tests.gd`, `quake_tests.gd`, `world_event_tests.gd`, `day_night_tests.gd`, `railway_tests.gd` una alla volta; gate completo verde.
+- [x] **Step 5: commit** `Carovana (D-093), piano B: piazzola di fusione (arrivo a meta della chiamata del boss, avviso con freccia, atterraggio su un tratto piano raggiungibile, gru e faro, chiusura alla chiamata); test`.
 
 ### Task 5: banco di fusione in pausa
 
@@ -244,7 +244,7 @@ func _test_pad_in_run() -> void:  # arena_run.tscn
 - Contenuto: titolo "BANCO DI FUSIONE"; rottami "Nei Cassoni: N" (`working_carried()`); due schede a interruttore "Fondi" e "Sgancia" (LB/RB e PagSu/PagGiu come l'Officina, clic col mouse); una carta per macchina ("<Taglia> - Cassone + Torretta", "PV a/b"; guaste disattivate con "GUASTA"; in Sgancia disattivate quelle da un modulo); secondo passo: in Fondi le altre macchine (oltre il massimo disattivate), in Sgancia i moduli della scelta. L'anteprima segue il focus: "Diventa: Media (2 moduli)", "PV 11/15  Velocita 4,5 m/s", "Combinazioni: Estrattore (nuova)" o "???" se `combo_known` e falso, "Costo: 1 rottame (nei Cassoni: 3)". A conferma; rottami insufficienti: niente cambia e messaggio "Rottami insufficienti nei Cassoni". Dopo una conferma il banco resta aperto al primo passo, con le carte rifatte. B indietro. Riga `ButtonPrompts` con `ui_accept` "Scegli" e `ui_cancel` "Indietro".
 - `ArenaRun`: `var fusion_bench: FusionBench` (creato nel `_ready`, `closed` -> `_open_next_level_up.call_deferred()`); `_open_next_level_up`: esce anche col banco aperto; cassa o relitto aperti, o level-up aperto: `fusion_pad.drop_bench_request()`; nessun menu e `take_bench_request()`: `fusion_bench.open(caravan)`; `_end_level` chiude il banco se aperto. `RunHud.set_caravan_prompt(repair: bool, bench := false)`; `CaravanStrip`: secondo tasto `interact` "Banco" nello stesso posto (uno acceso alla volta, "Ripara" prima), `func bench_prompt_visible() -> bool`.
 
-- [ ] **Step 1: test che falliscono** (`fusion_tests.gd`, sezione banco; carovana Cassone + Torretta + Trivella, pedana posata sotto il giocatore con `land_at`):
+- [x] **Step 1: test che falliscono** (`fusion_tests.gd`, sezione banco; carovana Cassone + Torretta + Trivella, pedana posata sotto il giocatore con `land_at`):
 
 ```gdscript
 func _test_bench_opens_paused() -> void:  # X vero (JOY_BUTTON_X), due passi
@@ -273,10 +273,10 @@ func _test_bench_prompt() -> void:  # caravan_hud_tests
 	# sulla pedana senza guaste: bench_prompt_visible() vero e prompt_visible() falso; a 10 m: entrambi falsi
 ```
 
-- [ ] **Step 2:** `fusion_tests.gd` → FAIL.
-- [ ] **Step 3:** implementare; cache delle classi.
-- [ ] **Step 4:** `fusion_tests.gd`, `caravan_hud_tests.gd`, `input_events_tests.gd`, `button_prompts_tests.gd`, `arena_run_tests.gd`, `machine_wrecks_tests.gd` una alla volta; gate completo verde.
-- [ ] **Step 5: commit** `Carovana (D-093), piano B: banco di fusione in pausa (fondere e sganciare coi rottami dei Cassoni, anteprima di taglia, vita, velocita e combinazioni, ??? per le nuove), a controller e tastiera; tasto Banco nel HUD; test`.
+- [x] **Step 2:** `fusion_tests.gd` → FAIL.
+- [x] **Step 3:** implementare; cache delle classi.
+- [x] **Step 4:** `fusion_tests.gd`, `caravan_hud_tests.gd`, `input_events_tests.gd`, `button_prompts_tests.gd`, `arena_run_tests.gd`, `machine_wrecks_tests.gd` una alla volta; gate completo verde.
+- [x] **Step 5: commit** `Carovana (D-093), piano B: banco di fusione in pausa (fondere e sganciare coi rottami dei Cassoni, anteprima di taglia, vita, velocita e combinazioni, ??? per le nuove), a controller e tastiera; tasto Banco nel HUD; test`.
 
 ### Task 6: le sei combinazioni
 
@@ -289,7 +289,7 @@ func _test_bench_prompt() -> void:  # caravan_hud_tests
 - `ShovelModule`: con Betoniera mobile costo 0 e nessuna riserva.
 - `DrillModule`: Estrattore: dopo una buca `scrap_field.take_near(punto, extractor_radius, caravan.room())` e `caravan.add_scrap(n)`; dopo una vena lo stesso sul punto di caduta; marker `PROTOTYPE01_EXTRACTOR scrap=%d`. Ruspa (`_tick_dozer(delta)`): scia delle posizioni; ogni `dozer_spacing` m percorsi, sul punto della scia lontano dalla macchina almeno `keep_clear + dozer_ditch_radius`, fossato `DigCharge.dig_crater(write_queue, terrain_field, p, dozer_ditch_radius, dozer_ditch_depth)` se il suolo e entro `drill_flat_tolerance` dalla base e `clear_spot(p, dozer_ditch_radius)`; argine a `p + lato destro x dozer_bank_offset` con `push_level` a base + `dozer_bank_height` se `clear_spot`, piu basso e senza `highest_bump`; gratis; marker `PROTOTYPE01_DOZER_TRENCH x= z=`.
 
-- [ ] **Step 1: test che falliscono** (`machine_modules_tests.gd`, run vera; macchine fuse con `caravan.fuse`):
+- [x] **Step 1: test che falliscono** (`machine_modules_tests.gd`, run vera; macchine fuse con `caravan.fuse`):
 
 ```gdscript
 # _test_combo_reflector: Torretta + Faro, rottamatore entro il raggio del Faro: un chiodo toglie il doppio di quello di una Torretta sola (2 x weapon_damage)
@@ -303,10 +303,10 @@ func _test_bench_prompt() -> void:  # caravan_hud_tests
 # _test_combo_off_when_broken: macchina guasta: has_combo falso per tutte, la Torretta spenta non spara
 ```
 
-- [ ] **Step 2:** `machine_modules_tests.gd` → FAIL.
-- [ ] **Step 3:** implementare.
-- [ ] **Step 4:** `machine_modules_tests.gd`, `machine_damage_tests.gd`, `loadout_tests.gd`, `combat_services_tests.gd` (chiodatrice del giocatore invariata), `fusion_tests.gd` una alla volta; gate completo verde.
-- [ ] **Step 5: commit** `Carovana (D-093), piano B: le sei combinazioni (Estrattore, Riflettore, Betoniera mobile, Esca blindata, Ruspa, Trappola); test`.
+- [x] **Step 2:** `machine_modules_tests.gd` → FAIL.
+- [x] **Step 3:** implementare.
+- [x] **Step 4:** `machine_modules_tests.gd`, `machine_damage_tests.gd`, `loadout_tests.gd`, `combat_services_tests.gd` (chiodatrice del giocatore invariata), `fusion_tests.gd` una alla volta; gate completo verde.
+- [x] **Step 5: commit** `Carovana (D-093), piano B: le sei combinazioni (Estrattore, Riflettore, Betoniera mobile, Esca blindata, Ruspa, Trappola); test`.
 
 ### Task 7: profilo v3, ricettario delle combinazioni, scoperta in partita
 
@@ -317,7 +317,7 @@ func _test_bench_prompt() -> void:  # caravan_hud_tests
 - `ArenaRun`: `caravan.combo_formed` -> `profile.discover_combo`; `fusion_bench.combo_known = profile.has_combo` (senza profilo resta il default).
 - `WorkshopPanel`: nella scheda Ricettario, sotto la griglia delle fusioni, un `VBoxContainer` "Combos" con l'etichetta "Combinazioni delle macchine" e la griglia `Grid_combos` (non in `_tab_grids`; visibile solo sul Ricettario); carte `Combo_<id>` con testo "???\nTrivella + ?" se ignota e "Estrattore\nTrivella + Calamita" se nota, icona del primo modulo o `lock`; dettaglio come `_show_recipe_detail` ("Si scopre la prima volta che fondi queste due macchine in partita."); `func combo_text(id: StringName) -> String`; altezza minima del corpo ricalcolata con le carte delle combinazioni.
 
-- [ ] **Step 1: test che falliscono.**
+- [x] **Step 1: test che falliscono.**
 
 ```gdscript
 # fusion_tests._test_profile_v2_loads(): file v2 scritto a mano (scrap 9, recipes mortar, upgrades tool_reach 1,
@@ -336,10 +336,10 @@ _check(reread.get_value("profile", "version", 0) == 3 and reread.get_value("myst
 #   dopo discover_combo: "Estrattore\nTrivella + Calamita"; croce in giu dall'ultima fusione porta il focus su Combo_extractor
 ```
 
-- [ ] **Step 2:** le suite → FAIL.
-- [ ] **Step 3:** implementare.
-- [ ] **Step 4:** `fusion_tests.gd`, `profile_v2_tests.gd`, `workshop_tests.gd`, `settings_tests.gd` (non tocca il profilo, controllo di non regressione) una alla volta; gate completo verde.
-- [ ] **Step 5: commit** `Carovana (D-093), piano B: profilo versione 3 (sezione machines, un v2 si carica intatto), combinazioni scoperte in partita, sezione Combinazioni nel Ricettario dell'Officina; test`.
+- [x] **Step 2:** le suite → FAIL.
+- [x] **Step 3:** implementare.
+- [x] **Step 4:** `fusion_tests.gd`, `profile_v2_tests.gd`, `workshop_tests.gd`, `settings_tests.gd` (non tocca il profilo, controllo di non regressione) una alla volta; gate completo verde.
+- [x] **Step 5: commit** `Carovana (D-093), piano B: profilo versione 3 (sezione machines, un v2 si carica intatto), combinazioni scoperte in partita, sezione Combinazioni nel Ricettario dell'Officina; test`.
 
 ### Task 8: bot, benchmark col colosso, catture, gate, documenti
 
@@ -347,18 +347,20 @@ _check(reread.get_value("profile", "version", 0) == 3 and reread.get_value("myst
 
 **Interfaces — Consumes:** tutti i task precedenti.
 
-- [ ] **Bot.** `--caravan=<moduli>` (solo `simulate_runs`: macchine in piu alla partenza, per provare la regola). `_tick_fusion() -> bool` (prima della riparazione nel ritmo di `_tick_bot`): pedana aperta, `module_count() >= module_limit`, piu di una macchina, nessuna guasta, `working_carried()` >= costo di fondere tutto nel capofila, nemico piu vicino oltre `BRUSH_SAFE_M`: va al centro della pedana e, dentro, emette `_player.interact_pressed`. Nel giro, con `_run.fusion_bench.is_open`: `_drive_bench()` fonde una macchina per passo nel capofila con `fusion_bench.fuse(...)`, poi `close()`. Campi nuovi `fusions=` e `colossus=` (0/1) nella riga `PROTOTYPE01_SIM`. Prova: `simulate_runs.gd -- --bots=novice,scrapper --seeds=1-3 --max-seconds=600` senza errori e `--bots=novice --seeds=1 --max-seconds=420 --caravan=turret,turret,drill,shovel,siren` con `colossus=1`; numeri riportati.
-- [ ] **Benchmark.** Dopo la riga `caravan` di giorno, coi 20 robusti ancora sul grappolo: le sei macchine fuse nel capofila con `caravan.fuse` (rottami aggiunti prima), 60 passi di assestamento, stessa finestra della riga `caravan` (anello dei robusti a 7-9 m, coda vuota, timer dei moduli a zero), riga `PROTOTYPE01_ARENA_BENCH caravan_colossus preset=%s machines=%d modules=%d size=%d enemies=%d step_ms=%.3f max_ms=%.3f trampled=%d`; pulizia: moduli spenti tranne il Cassone del capofila. `benchmark_arena.gd -- --enemies=70 --preset=deck`: `step_ms` <= 0,5 per entrambe le righe; se si sfora, prima gli effetti, poi la frequenza dei moduli. Di notte nessuna riga del colosso (detto nel commit).
-- [ ] **Catture** (`capture_caravan.gd -- --out=../output/caravan --quake-at=0`, dopo quelle del piano A): `fusion_pad` (pedana atterrata col giocatore sopra e il grappolo, camera di gioco), `fusion_pad_night` (di notte da circa 25 m: faro e fascio visibili), `fusion_bench` (banco aperto, anteprima Trivella + Calamita con "???"), `fused_machine` (macchina grande coi pezzi impilati e la casella larga nel HUD); righe `PROTOTYPE01_CAPTURE_CARAVAN shot=<nome> err=<n> ...`; lette una per una.
-- [ ] **Gate** completo verde (59 suite); build Windows esportata e avviata col `--autostart` senza errori nel log; `--boss-at=60` a mano: pedana a 30 s, banco, chiusura alla chiamata.
-- [ ] **Documenti** come da elenco Files; nella sezione Carovana di `GODOT_WORKFLOW.md` i comandi verificati, i marker del piano B e le trappole trovate (fra cui: la pedana e decisa al `_ready`, i test che spostano `boss_call_at` non la spostano).
-- [ ] **Commit** `Carovana (D-093), piano B chiuso: bot che fondono il colosso, riga caravan_colossus del benchmark, catture della piazzola e del banco; documenti`.
+- [x] **Bot.** `--caravan=<moduli>` (solo `simulate_runs`: macchine in piu alla partenza, per provare la regola). `_tick_fusion() -> bool` (prima della riparazione nel ritmo di `_tick_bot`): pedana aperta, `module_count() >= module_limit`, piu di una macchina, nessuna guasta, `working_carried()` >= costo di fondere tutto nel capofila, nemico piu vicino oltre `BRUSH_SAFE_M`: va al centro della pedana e, dentro, emette `_player.interact_pressed`. Nel giro, con `_run.fusion_bench.is_open`: `_drive_bench()` fonde una macchina per passo nel capofila con `fusion_bench.fuse(...)`, poi `close()`. Campi nuovi `fusions=` e `colossus=` (0/1) nella riga `PROTOTYPE01_SIM`. Prova: `simulate_runs.gd -- --bots=novice,scrapper --seeds=1-3 --max-seconds=600` senza errori e `--bots=novice --seeds=1 --max-seconds=420 --caravan=turret,turret,drill,shovel,siren` con `colossus=1`; numeri riportati.
+- [x] **Benchmark.** Dopo la riga `caravan` di giorno, coi 20 robusti ancora sul grappolo: le sei macchine fuse nel capofila con `caravan.fuse` (rottami aggiunti prima), 60 passi di assestamento, stessa finestra della riga `caravan` (anello dei robusti a 7-9 m, coda vuota, timer dei moduli a zero), riga `PROTOTYPE01_ARENA_BENCH caravan_colossus preset=%s machines=%d modules=%d size=%d enemies=%d step_ms=%.3f max_ms=%.3f trampled=%d`; pulizia: moduli spenti tranne il Cassone del capofila. `benchmark_arena.gd -- --enemies=70 --preset=deck`: `step_ms` <= 0,5 per entrambe le righe; se si sfora, prima gli effetti, poi la frequenza dei moduli. Di notte nessuna riga del colosso (detto nel commit).
+- [x] **Catture** (`capture_caravan.gd -- --out=../output/caravan --quake-at=0`, dopo quelle del piano A): `fusion_pad` (pedana atterrata col giocatore sopra e il grappolo, camera di gioco), `fusion_pad_night` (di notte da circa 25 m: faro e fascio visibili), `fusion_bench` (banco aperto, anteprima Trivella + Calamita con "???"), `fused_machine` (macchina grande coi pezzi impilati e la casella larga nel HUD); righe `PROTOTYPE01_CAPTURE_CARAVAN shot=<nome> err=<n> ...`; lette una per una.
+- [x] **Gate** completo verde (59 suite); build Windows esportata e avviata col `--autostart` senza errori nel log; `--boss-at=60` a mano: pedana a 30 s, banco, chiusura alla chiamata.
+- [x] **Documenti** come da elenco Files; nella sezione Carovana di `GODOT_WORKFLOW.md` i comandi verificati, i marker del piano B e le trappole trovate (fra cui: la pedana e decisa al `_ready`, i test che spostano `boss_call_at` non la spostano).
+- [x] **Commit** `Carovana (D-093), piano B chiuso: bot che fondono il colosso, riga caravan_colossus del benchmark, catture della piazzola e del banco; documenti`.
 
 ---
 
 ## Esecuzione
 
 In sequenza, un esecutore nuovo per task e una revisione prima del successivo: i task condividono `caravan.gd`, `machine.gd` e `arena_run.gd`, e le suite Godot non girano in parallelo. Gate completo dopo i task 2, 4, 5, 6, 7 e 8; negli altri le suite elencate. Nessuna scena toccata: col proprietario nell'editor basta dirgli quali script cambiano. Il risultato di Codex o di un subagente resta non verificato finche il controllore non rilegge diff, suite e gate.
+
+Stato dell'esecuzione (19 ottobre 2026): task 1-8 chiusi, ognuno con revisione (task 4 e 6 con un giro di correzioni e una seconda revisione) e gate verde dopo i task 2, 4, 5, 6, 7 e 8. Le osservazioni minori rimandate e le scelte dell'esecuzione stanno nel registro locale `.superpowers/sdd/2026-10-18-caravan-fusion/progress.md` (ignorato da Git; righe `Minor (deferred)` e `Ruling:`); le scelte (le 7 domande eseguite coi default, `remove_machine` con `queue_free`, forza del Cassone sul solo raggio di ricerca, argine della Ruspa con le condizioni della Pala, `combinations` riscritto vuoto se non e una lista, protezione della pedana fotografata e rimessa) e il debito, una frase per task, sono in D-093. Limite della verifica del task 8: con la regola del piano i bot non fondono nelle run di prova (Cassoni sotto i 5 rottami, novice morto prima della pedana); la regola e provata con lo scrapper, la Calamita, la pedana a 150 s e l'Officina `cargo:3,stock:2` (Colosso in 2 semi su 3).
 
 ## Autoverifica (18 ottobre 2026)
 

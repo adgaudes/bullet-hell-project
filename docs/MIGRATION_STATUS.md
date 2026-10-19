@@ -2,15 +2,15 @@
 
 > **Breve per scelta** (audit D-06, 14 ottobre 2026): dove siamo, prossimo passo, cosa aspetta il proprietario. Va aggiornato a ogni avanzamento e tenuto **sotto 8 KB**: quando cresce, il vecchio va in `docs/archive/`. Storia delle sessioni fino al 14 ottobre 2026: `docs/archive/STATUS_LOG_2026-10.md`. Decisioni: `DECISIONS.md`. Piano di prodotto: `PROJECT_ROADMAP.md`. Per trovare un documento: `INDEX.md`.
 
-**Ultimo aggiornamento:** 18 ottobre 2026 (**piano A della carovana fatto e rivisto**: revisione finale del branch chiusa con gate ed export Windows).
+**Ultimo aggiornamento:** 19 ottobre 2026 (**piano B della carovana fatto**: fusione delle macchine; gate verde con 59 suite, export Windows).
 
 ## Dove siamo
 
 - **Engine** Godot 4.7.2 (GDScript). La migrazione da Unreal e chiusa; il codice Unreal sta nel tag `unreal-prototype-final`.
 - **Prodotto:** fase 3, prototipo della promessa A. Due livelli (quartiere, ferrovia) su Terrain3D, boss, treno, terremoto, notte con lampioni, estrazione, Officina, campagna, carovana di macchine, audio Sonniss. Primo playtest del proprietario il 14 ottobre (vedi sotto).
 - **Branch di lavoro:** `feature/arena-run`. Non integrato: `feature/engineer-restyle` (Ingegnere D-088, worktree `../Videogame-engineer`), in attesa del giudizio del proprietario.
-- **Gate:** `tools/godot/Invoke-GodotChecks.ps1`: check-only, 58 suite con seme fisso, passo con finestra (Terrain3D e shader), smoke test. Ultimo gate completo verde il 18 ottobre, dopo la revisione finale della carovana (58 suite, nessun rilancio).
-- **Build:** Windows riesportata il 18 ottobre, dopo la revisione finale, in `LocalBuilds/Prototype01-Godot-Win64/` (exe 195 MB, avvio con `--autostart` pulito); la Linux in `-Linux/` e del 14 ottobre, senza la carovana.
+- **Gate:** `tools/godot/Invoke-GodotChecks.ps1`: check-only, 59 suite con seme fisso, passo con finestra (Terrain3D e shader), smoke test. Ultimo gate completo verde il 19 ottobre, chiusura del piano B della carovana (59 suite, nessun rilancio).
+- **Build:** Windows riesportata il 19 ottobre, chiusura del piano B, in `LocalBuilds/Prototype01-Godot-Win64/` (exe 195 MB, avvio con `--autostart` pulito); la Linux in `-Linux/` e del 14 ottobre, senza la carovana.
 
 **Audit del 14 ottobre:** `docs/REVIEWS/FULL_AUDIT_2026-10-14.md`.
 
@@ -22,7 +22,7 @@ Esito **Modifica**: 16 osservazioni, cause e piano in `docs/PLAYTESTS/OWNER_PLAY
 
 ## Prossimo passo (agente)
 
-0. **Piano A della carovana (D-093) fatto e rivisto il 18 ottobre** (`docs/superpowers/plans/2026-10-16-caravan-machines.md`; numeri in archivio): revisione finale del branch chiusa, elenco (b) del task 10 fatto; restano debito le due correzioni del benchmark (righe `frame`, `run`, `path` a gioco fermo, orda lontana dal grappolo). **Piano B (fusione) scritto il 18 ottobre** (`docs/superpowers/plans/2026-10-18-caravan-fusion.md`, 8 task): attende la lettura del proprietario e le sue risposte alle 7 domande in testa al piano (sezione "Scelte di questo piano"); poi si esegue col metodo del piano A. **Prossimo:** playtest della carovana del proprietario, piano B, poi il piano C (colosso, eventi, Meccanico, Officina). **Inondazione** (richiesta del 15 ottobre): spike di costo dell'acqua sul Deck, poi il design. Dopo: bilanciamento coi bot, playtest, musica scelta da lui. ProtonScatter approvato (D-090), da installare quando si spargono oggetti.
+0. **Carovana (D-093): piano A fatto il 18 ottobre, piano B (fusione) fatto il 19 ottobre** (`docs/superpowers/plans/2026-10-18-caravan-fusion.md`): pedana a meta della chiamata del boss, banco in pausa, taglie fino al Colosso, travolgere, sei combinazioni, profilo v3. Deck: carovana 0,26 ms per passo con sei macchine, 0,11 ms col Colosso (budget 0,5). Bot: nelle run del piano nessuna fusione (Cassoni sotto i 5 rottami; il novice muore prima della pedana a 360 s); lo scrapper con Calamita, pedana a 150 s e `cargo:3,stock:2` fonde il Colosso in 2 semi su 3 (dettaglio in D-093). Restano debito le due correzioni del benchmark del piano A. **Prossimo:** playtest della carovana e della fusione del proprietario, poi il piano C (colosso pilotato, eventi, Meccanico, Officina). **Inondazione** (richiesta del 15 ottobre): spike di costo dell'acqua sul Deck, poi il design. Dopo: bilanciamento coi bot, playtest, musica scelta da lui. ProtonScatter approvato (D-090), da installare quando si spargono oggetti.
    **Grafica (richieste del 15 ottobre):** strumenti di D-095 uno alla volta con misura e catture (Effekseer solo per i boss, ProtonScatter, post-produzione, AreaLight3D di notte, Material Maker e Ucupaint); **carte degli upgrade da rifare** (D-096: bozze in cattura).
 1. **Voci rimaste dell'audit**, nell'ordine della sua sezione 1: `docs/REVIEWS/FULL_AUDIT_2026-10-14.md`.
 2. **Dopo la misura sul Deck:** V-02, V-03, V-06, Q-01, Q-03, Q-04 (costo GPU e contenuto del preset Deck).
@@ -30,8 +30,8 @@ Esito **Modifica**: 16 osservazioni, cause e piano in `docs/PLAYTESTS/OWNER_PLAY
 
 ## Cosa aspetta il proprietario
 
-0. **Piano B della carovana da leggere** e 7 scelte da confermare (pedana 6 m, verso della fusione, Riflettore anche di giorno, Ruspa gratis, doppi danni x4, Cassone con raggio invece di capienza, luce della pedana solo visiva): sono in testa al piano `2026-10-18-caravan-fusion.md`.
-0. **Playtest della carovana** (piano A fatto): Faro, carte Nuova macchina e di livello, colpi alle macchine, guasto, ritirata, riparazione tenendo X o R vicino a una guasta (1,5 s con 2 rottami, 4,5 s gratis con meno), striscia della carovana sopra le armi, Trivella, Pala, Saldatore, Sirena, relitti sepolti (telaio arrugginito e bagliore arancione). Catture da giudicare in `output/caravan/`. Elenco completo in archivio. Fumo del guasto ora grigio chiaro: dire se si legge. **Da sapere:** una macchina caduta in una buca da cui non risale torna al suo posto dopo 3 s, anche se le resti vicino.
+0. **Piano B fatto: 7 scelte eseguite coi default**, da confermare o ribaltare (pedana 6 m, prima la base poi l'assorbita, Riflettore anche di giorno, Ruspa gratis, doppi danni x4, Cassone con raggio invece di capienza, luce della pedana solo visiva). Catture nuove da giudicare in `output/caravan/`: `fusion_pad`, `fusion_pad_night`, `fusion_bench`, `fused_machine`. **Da sapere:** fossato e argine della Ruspa arrivano a circa il 75% di 0,4 e 0,6 m col pennello attuale da 0,5 m; il pannello dell'Officina e piu alto su ogni scheda.
+0. **Playtest della carovana e della fusione**: Faro, carte Nuova macchina e di livello, colpi alle macchine, guasto, ritirata, riparazione tenendo X o R vicino a una guasta, striscia, Trivella, Pala, Saldatore, Sirena, relitti sepolti; pedana a meta della chiamata del boss, banco con X o R sulla pedana, taglie, combinazioni. Elenco completo in archivio. **Da sapere:** una macchina caduta in una buca da cui non risale torna al suo posto dopo 3 s.
 0. **Conferme ancora aperte** su carovana (D-093: luce solo dai Faro, riparazione gratis ma lenta, striscia, tasto Ripara, carte del Meccanico) e armi (D-092: classi, Officina a schede, casse, effetti; Fortino al 70%, Polarita inversa 2 m): testo completo in `docs/archive/STATUS_LOG_2026-10.md`, sezione del 18 ottobre.
 0. **Decidere** se le carte macchina devono battere i livelli delle armi (o se il bot scrapper deve avvicinarsi ai relitti con margine minore): fin li i bot prendono una macchina solo da un'offerta senza carte arma o da un relitto vicino.
 1. **Luce (D-094):** giudicare in gioco o sulle catture `output/lighting_lab/`. **Carte degli upgrade (D-096):** scegliere fra le bozze quando arrivano.

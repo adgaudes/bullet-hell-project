@@ -1,5 +1,5 @@
 extends SceneTree
-## Catture della carovana (D-093, piano A, task 10), non e una suite. Con finestra reale:
+## Catture della carovana (D-093, piano A task 10 e piano B task 8), non e una suite. Con finestra reale:
 ##   godot_console --path godot --resolution 1280x800 --fixed-fps 60 --quit-after 6000 --script res://tests/tools/capture_caravan.gd -- --out=../output/caravan --quake-at=0
 ## Seme fisso 20261014 (quello del gate) se `PROTOTYPE01_SEED` non e gia un intero: relitti e
 ## casse stanno sempre negli stessi punti. Produce, in quest'ordine:
@@ -18,7 +18,17 @@ extends SceneTree
 ##   event_arrow    avviso di un evento con la freccia verso il basso a destra, sopra o dentro la
 ##                  colonna in basso a destra (osservazione HUD-2 del task 7, solo documentata);
 ##   machine_parts  primo piano dei sette pezzi dei moduli (Torretta, Calamita, Faro, Trivella,
-##                  Pala, Saldatore, Sirena) su sette macchine fuori dalla carovana.
+##                  Pala, Saldatore, Sirena) su sette macchine fuori dalla carovana;
+## poi quelle del piano B (la run riparte, camera di gioco, macchine riparate):
+##   fusion_pad       pedana di fusione atterrata sotto il giocatore, col grappolo attorno e il
+##                    tasto Banco acceso nella striscia;
+##   fusion_pad_night la pedana di notte da circa 25 m (camera fissa, HUD nascosto): lampada e
+##                    fascio di luce;
+##   fusion_bench     banco aperto sulla pedana (Interagisci), base la Trivella e focus sulla
+##                    Calamita: anteprima "Trivella + Calamita" con la combinazione "???";
+##   fused_machine    la Trivella fusa con Calamita, Torretta e Sirena (Grande, quattro pezzi
+##                    impilati) nel grappolo, 9 m a sud della pedana, camera vicina (11 m), casella
+##                    larga nella striscia.
 ## Una riga `PROTOTYPE01_CAPTURE_CARAVAN shot=<nome> err=<n> ...` per cattura. Ogni teletrasporto
 ## azzera la velocita e chiama `reset_physics_interpolation()`; le attese sono in secondi di gioco.
 ## Il giocatore mira col controller e guarda verso la camera: l'anello del pennello sta davanti a
@@ -176,6 +186,7 @@ func _initialize() -> void:
 		_run.hud._corner.get_global_rect().position.y])
 
 	await _parts_closeup(scene)
+	await _fusion_shots(scene)
 	quit()
 
 
@@ -246,6 +257,7 @@ func _parts_closeup(scene: Node3D) -> void:
 	_player.visible = false
 	_caravan.visible = false
 	var count := 0
+	var closeup_machines: Array[Machine] = []
 	var spacing := 1.4
 	var first := -spacing * (_parts.size() - 1) * 0.5
 	for i in _parts.size():
@@ -253,6 +265,7 @@ func _parts_closeup(scene: Node3D) -> void:
 		var id: StringName = entry[0]
 		var machine: Machine = MACHINE_SCENE.instantiate()
 		scene.add_child(machine)
+		closeup_machines.append(machine)
 		machine.set_physics_process(false)
 		(machine.get_node(^"GroundRing") as Decal).visible = false
 		var at := Vector3(first + i * spacing, 0.0, 0.0)
@@ -274,6 +287,138 @@ func _parts_closeup(scene: Node3D) -> void:
 	closeup.look_at_from_position(target + Vector3(sin(yaw) * cos(pitch), sin(pitch), cos(yaw) * cos(pitch)) * 10.5, target)
 	await _frames(6)
 	await _shot("machine_parts", "parts=%d" % count)
+	# Via le sette macchine e la camera del primo piano: dopo vengono gli scatti del piano B.
+	for machine in closeup_machines:
+		machine.queue_free()
+	closeup.queue_free()
+	_run.hud.visible = true
+	_player.visible = true
+	_caravan.visible = true
+
+
+## Piano B: pedana, pedana di notte, banco e macchina fusa. La striscia ha spento il passo di
+## ArenaRun (pedana e banco ne hanno bisogno: il banco si apre a fine passo) e lasciato un avviso.
+func _fusion_shots(scene: Node3D) -> void:
+	var pad := _run.fusion_pad
+	var bench := _run.fusion_bench
+	if pad == null or bench == null:
+		_abort("nessuna pedana o banco nella run")
+		return
+	_run.set_physics_process(true)
+	_run.hud.clear_event_warning()
+	_run.hud.set_markers([] as Array[Dictionary])
+	var game_camera := scene.get_node(^"CameraRig/Camera") as Camera3D
+	game_camera.make_current()
+	for machine in _caravan.machines:
+		if machine.is_broken():
+			machine.repair(1.0)
+		machine.health = machine.max_health
+		machine.grant_invulnerability(3000.0)
+	_place_player(Vector3.ZERO)
+	await _seconds(1.5)
+
+	# Pedana atterrata sotto il giocatore, nel cortile (piano): discesa di 1,5 s, poi la scritta.
+	pad.land_at(_player.global_position)
+	await _seconds(2.5)
+	await _shot("fusion_pad", "open=%s center=%.1f,%.1f on_pad=%s machines=%d bench_prompt=%s" % [pad.is_open(),
+		pad.center.x, pad.center.z, pad.contains(_player.global_position), _caravan.machines.size(),
+		_run.hud.caravan_strip().bench_prompt_visible()])
+
+	# Di notte da circa 25 m: camera fissa a sud della pedana, HUD nascosto (non e la camera di gioco).
+	var day_elapsed := _run.elapsed
+	_run.elapsed = _run.day_night.night_start_seconds + _run.day_night.dusk_seconds + 2.0
+	await _seconds(2.5)
+	var far := Camera3D.new()
+	far.fov = 50.0
+	scene.add_child(far)
+	var eye := pad.center + Vector3(0.0, 8.0, 24.0)
+	far.look_at_from_position(eye, pad.center + Vector3.UP * 3.0)
+	far.make_current()
+	_run.hud.visible = false
+	await _frames(6)
+	var lamp := pad.light()
+	await _shot("fusion_pad_night", "distance=%.1f lamp=%s energy=%.2f range=%.1f" % [eye.distance_to(pad.center),
+		lamp != null and lamp.visible, lamp.light_energy if lamp != null else 0.0, lamp.omni_range if lamp != null else 0.0])
+	far.queue_free()
+	game_camera.make_current()
+	_run.hud.visible = true
+	_run.elapsed = day_elapsed
+	await _seconds(1.5)
+
+	# Trivella e Calamita piccole nella carovana (si fa posto togliendo un'altra macchina), rottami
+	# per pagare le fusioni, giocatore al centro della pedana; Interagisci apre il banco.
+	var drill := await _small_machine(&"drill", [] as Array[Machine])
+	var magnet := await _small_machine(&"magnet", [drill] as Array[Machine])
+	if drill == null or magnet == null:
+		_abort("Trivella o Calamita non entrano nella carovana")
+		return
+	_caravan.add_cargo_capacity(10)
+	_caravan.add_scrap(10)
+	_place_player(pad.center)
+	await _seconds(1.5)
+	_player.interact_pressed.emit()
+	for i in int(2.0 * Engine.physics_ticks_per_second):
+		if bench.is_open:
+			break
+		await physics_frame
+	if not bench.is_open:
+		_abort("il banco non si e aperto sulla pedana")
+		return
+	# Grazia del banco (0,4 s), poi base la Trivella e focus sulla Calamita.
+	await _seconds(0.6)
+	bench.select(_caravan.machines.find(drill))
+	await _frames(2)
+	bench.card(_caravan.machines.find(magnet)).grab_focus()
+	await _frames(3)
+	await _shot("fusion_bench", "open=%s cards=%d preview=%s" % [bench.is_open, bench.card_count(),
+		bench.preview_text().replace("\n", "|").replace(" ", "_")])
+
+	# Conferma, poi Torretta e Sirena nella stessa macchina: una Grande coi quattro pezzi impilati.
+	bench.select(_caravan.machines.find(magnet))
+	for id: StringName in [&"turret", &"siren"]:
+		var other := _single_machine(id, drill)
+		if other != null:
+			bench.fuse(_caravan.machines.find(drill), _caravan.machines.find(other))
+	bench.close()
+	drill.grant_invulnerability(3000.0)
+	# Giocatore 9 m a sud della pedana: il grappolo lo segue e il fascio resta fuori dal quadro.
+	_place_player(pad.center + Vector3(0.0, 0.0, 9.0))
+	await _seconds(3.0)
+	var rig := scene.get_node(^"CameraRig") as IsometricCameraRig
+	rig.set_distance_index(0, true)
+	await _seconds(1.0)
+	var index := _caravan.machines.find(drill)
+	var strip := _run.hud.caravan_strip()
+	await _shot("fused_machine", "size=%s modules=%s slot_size=%d slot_w=%.0f machines=%d" % [
+		MachineFusion.SIZE_NAMES[drill.size], ",".join(drill.module_ids()), strip.slot_size(index),
+		strip.slot_width(index), _caravan.machines.size()])
+
+
+## Una macchina di un solo modulo [param module_id] nella carovana: quella che c'e, altrimenti una
+## nuova; se non c'e posto esce l'ultima macchina che non e il capofila ne in [param keep].
+func _small_machine(module_id: StringName, keep: Array[Machine]) -> Machine:
+	var found := _single_machine(module_id, null)
+	if found != null:
+		return found
+	if not _caravan.has_room():
+		for i in range(_caravan.machines.size() - 1, -1, -1):
+			var machine := _caravan.machines[i]
+			if machine != _caravan.lead() and not keep.has(machine):
+				_caravan.remove_machine(machine)
+				break
+		await _frames(2)
+	var added := _caravan.add_machine(module_id)
+	if added != null:
+		added.grant_invulnerability(3000.0)
+	return added
+
+
+## La prima macchina con il solo modulo [param module_id], diversa da [param other], o null.
+func _single_machine(module_id: StringName, other: Machine) -> Machine:
+	for machine in _caravan.machines:
+		if machine != other and machine.modules.size() == 1 and machine.has_module(module_id):
+			return machine
+	return null
 
 
 ## Rompe [param machine] a 1,2 m dal giocatore nello stesso passo (come capture_weapons), a

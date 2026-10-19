@@ -91,7 +91,7 @@ godot_console --headless --path godot --fixed-fps 60 --script res://tests/drille
 godot_console --headless --path godot --fixed-fps 60 --script res://tests/campaign_tests.gd
 ```
 
-Al 17 ottobre 2026 le suite in `godot/tests/` sono 58 (il gate le trova da solo; `terrain_tests`, `terrain_tool_tests` e `slice_b_tests` sono sparite con la griglia, D-087). Dal 9 ottobre il gate **fallisce anche se una suite stampa `SCRIPT ERROR` o `ERROR:`** (allowlist **per suite** in `Invoke-GodotChecks.ps1` dal 14 ottobre 2026: `settings_tests` ammette `Parameter "material" is null` del renderer fittizio e il parse error del file illeggibile provocato apposta, `workshop_tests` il parse error del profilo illeggibile; negli smoke test nessuna eccezione): un errore runtime provocato apposta da un test va stampato come marker, non con `push_error`. Regola dal 9 ottobre 2026 (T-12): una suite che ha fatto `queue_free()` di una scena attende due `physics_frame` prima di `quit()`, altrimenti il motore segnala istanze ObjectDB perse all'uscita.
+Al 19 ottobre 2026 le suite in `godot/tests/` sono 59 (`fusion_tests` dal piano B della carovana; il gate le trova da solo; `terrain_tests`, `terrain_tool_tests` e `slice_b_tests` sono sparite con la griglia, D-087). Dal 9 ottobre il gate **fallisce anche se una suite stampa `SCRIPT ERROR` o `ERROR:`** (allowlist **per suite** in `Invoke-GodotChecks.ps1` dal 14 ottobre 2026: `settings_tests` ammette `Parameter "material" is null` del renderer fittizio e il parse error del file illeggibile provocato apposta, `workshop_tests` il parse error del profilo illeggibile; negli smoke test nessuna eccezione): un errore runtime provocato apposta da un test va stampato come marker, non con `push_error`. Regola dal 9 ottobre 2026 (T-12): una suite che ha fatto `queue_free()` di una scena attende due `physics_frame` prima di `quit()`, altrimenti il motore segnala istanze ObjectDB perse all'uscita.
 
 Piu semplice: `tools/godot/Invoke-GodotChecks.ps1` esegue tutte le suite presenti in `godot/tests/`.
 
@@ -271,6 +271,28 @@ Trappole verificate:
 - limite noto dei bot: le carte "Nuova macchina" vengono subito dopo le armi, quindi **nessun bot prende una carta macchina finche ogni offerta ha una carta arma** (D-092 ne mette una in quasi tutte; in una run del 18 ottobre lo scrapper ha preso il Saldatore al livello 18, da un'offerta senza armi);
 - dalla revisione finale (18 ottobre 2026): in una suite, un nodo aggiunto a `root` dentro `_initialize` riceve `_ready` solo al primo fotogramma (una `Caravan.new()` resta senza Cassone finche non si attende `process_frame`; `run_progression_tests`);
 - dai task 2-9: i servizi arrivano ai moduli dopo `add_child` (nel `_ready` sono null); le macchine immuni passano lo stesso dal controllo dei contatti; nei test della Sirena i nemici con `speed_scale = 0` (gli storditi ignorano la deriva); le scritture in coda arrivano dopo n+3 passi; `interact_held` si azzera a pausa, perdita del focus e morte; `reset_to_base` arrotonda il rettangolo alla griglia da 0,5 m (il treno scarta casse e relitti col rettangolo allargato di due celle).
+
+### Carovana (D-093, piano B)
+
+Comandi verificati il 19 ottobre 2026:
+
+- benchmark: lo stesso comando del piano A (`benchmark_arena.gd -- --enemies=70 --preset=deck`, con finestra). Di giorno, dopo `caravan` e `caravan_slots`, la riga `caravan_colossus preset= machines= modules= size= enemies= step_ms= max_ms= trampled=`: coi 20 robusti ancora sul grappolo i rottami per fondere tutto entrano nei Cassoni, le cinque macchine entrano nel capofila con `Caravan.fuse`, 60 passi di assestamento e la stessa finestra della riga `caravan` (`_caravan_window`); poi tutti i moduli spenti tranne il Cassone del capofila. Di notte nessuna riga del colosso. Numeri del 19 ottobre sul preset Deck: `caravan` `step_ms` 0,261-0,263 e `max_ms` 4,5-4,7 (di notte 0,259 e 0,56); `caravan_colossus` `machines=1 modules=6 size=3`, `step_ms` 0,110-0,116, `max_ms` 2,0-3,7, `trampled=0` (il Colosso resta fermo al suo posto, e il travolgere sta nel passo del direttore, non nella finestra);
+- bot: `simulate_runs.gd -- --bots=novice,scrapper --seeds=1-3 --max-seconds=600` e, per la regola di fusione, `--caravan=turret,turret,drill,shovel,siren` (macchine di un modulo aggiunte alla partenza, solo nel simulatore); campi `fusions=` e `colossus=` (0/1) della riga `PROTOTYPE01_SIM`. La regola si vede con `--bots=scrapper --seeds=1-3 --max-seconds=300 --boss-at=300 --profile=cargo:3,stock:2 --caravan=turret,turret,drill,magnet,siren` (`fusions=5 colossus=1` nei semi 1 e 3);
+- catture: lo stesso comando del piano A, ora tredici scatti: dopo i nove, `fusion_pad`, `fusion_pad_night` (camera fissa a circa 25 m, HUD nascosto), `fusion_bench`, `fused_machine`.
+
+Marker: `PROTOTYPE01_MACHINE_FUSED modules= size= cost= machines=`, `MACHINE_DETACHED`, `MACHINE_REMOVED machines=`, `COMBO_FORMED combo=`, `FUSION_PAD_WARNING x= z= at=`, `FUSION_PAD_LANDED x= z= flat=`, `FUSION_PAD_CLOSED`, `FUSION_BENCH_OPENED machines=`, `FUSION_BENCH_CLOSED`, `COMBO_DISCOVERED id=`, `EXTRACTOR`, `DOZER_TRENCH`, `SIM ... fusions= colossus=`, `ARENA_BENCH caravan_colossus`.
+
+Trappole verificate:
+
+- la pedana e decisa al `_ready` di ArenaRun (`fusion_pad.schedule(boss_call_at * pad_boss_fraction)`): un test che sposta `boss_call_at` dopo non sposta la pedana; per provarla si chiama `schedule(s)` o `land_at(p)`. Con `--boss-at=60` arriva a 30 s, l'avviso a 15 s;
+- `PackedVector3Array(...)` non e un'espressione costante: una costante di vettori si scrive `const X: Array[Vector3] = [...]` (`Machine.PART_STACK`);
+- `ui_theme_tests` conta le carte dell'Officina: un tipo di carta nuovo (dal task 7 le sei combinazioni) va aggiunto al conteggio atteso;
+- `remove_machine` (anche da `fuse` e `detach`) fa `queue_free`: nei test `is_instance_valid(machine)` diventa falso solo dopo un frame (`_frames(1)`);
+- la pedana fotografa la protezione del terreno sotto il disco all'atterraggio e la rimette alla chiusura (`TerrainField.snapshot_protected`/`restore_protected`): un `set_protected(centro, raggio, false)` toglieva i dischi permanenti di rovine e cortile;
+- col pennello da 0,5 m del terreno fossato e argine della Ruspa (raggio 0,8 m) arrivano al 70-80% di 0,4 e 0,6 m: i test chiedono almeno il 60%;
+- regola di fusione dei bot: con la Pala in carovana i Cassoni restano sotto 3 rottami (la Pala paga quando ne restano almeno 3) e le riparazioni li svuotano, quindi "rottami per fondere tutto nel capofila" (5 con sei macchine) quasi non scatta; il novice del comando del piano muore prima della pedana a 360 s;
+- sotto `--script` il profilo e in memoria: `COMBO_DISCOVERED` si stampa ma nulla si salva (catture e bot non toccano il profilo del proprietario);
+- nelle catture gli scatti del piano B riaccendono il passo di ArenaRun (spento da `strip`), tolgono l'avviso di `event_arrow` e rimettono la camera di gioco dopo `machine_parts`; il banco si apre emettendo `player.interact_pressed` col giocatore sulla pedana, poi 0,6 s di attesa per la grazia.
 
 ### Verifica visiva
 
