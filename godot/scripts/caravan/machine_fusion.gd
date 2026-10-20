@@ -32,8 +32,17 @@ static func speed_factor_of(module_count: int, tuning: CaravanTuning) -> float:
 
 
 ## Forza dei moduli (scelta 4 di D-093): +`power_per_extra_module` per modulo oltre il primo.
-static func power_of(module_count: int, tuning: CaravanTuning) -> float:
-	return 1.0 + tuning.power_per_extra_module * (module_count - 1)
+## Pilotata dal giocatore (piano C) vale `pilot_power_bonus` in piu.
+static func power_of(module_count: int, tuning: CaravanTuning, piloted := false) -> float:
+	var power := 1.0 + tuning.power_per_extra_module * (module_count - 1)
+	if piloted:
+		power *= 1.0 + tuning.pilot_power_bonus
+	return power
+
+
+## Velocita del giocatore a bordo: quella a piedi x `pilot_speed_factor`.
+static func pilot_speed(player_walk_speed: float, tuning: CaravanTuning) -> float:
+	return player_walk_speed * tuning.pilot_speed_factor
 
 
 ## Scala del modello, dei pezzi, dell'anello a terra e del raggio di contatto.

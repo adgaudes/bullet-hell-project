@@ -167,3 +167,29 @@ extends Resource
 @export var dozer_bank_offset := 1.6
 @export var dozer_bank_radius := 0.8
 @export var dozer_bank_height := 0.6
+
+@export_group("Colossus")
+## Salita e discesa: secondi di pressione di `interact` e portata dal colosso.
+@export var pilot_hold_seconds := 0.5
+@export var pilot_mount_range := 2.5
+## Pilotato: forza dei moduli +`pilot_power_bonus` e velocita del giocatore x `pilot_speed_factor`.
+@export var pilot_power_bonus := 0.5
+@export var pilot_speed_factor := 0.7
+## Carburante: ogni `pilot_fuel_interval` secondi a bordo costa `pilot_fuel_cost` unita.
+@export var pilot_fuel_interval := 10.0
+@export var pilot_fuel_cost := 1
+## Sotto questa frazione di vita il colosso sbalza il pilota; poi ritirata forzata per i secondi indicati.
+@export var pilot_eject_below := 0.3
+@export var pilot_forced_retreat_seconds := 6.0
+## Travolgere: danno per contatto; portata della mira del punto di scavo a bordo.
+@export var pilot_trample_damage := 2
+@export var pilot_aim_reach := 3.0
+
+@export_group("Events")
+## Moduli staccati da terremoto e treno; il treno li lancia a una distanza tra min e max (m).
+@export var quake_detach_count := 1
+@export var train_detach_count := 1
+@export var train_throw_min := 6.0
+@export var train_throw_max := 8.0
+## Portata per riprendere un modulo staccato (relitto).
+@export var relic_pickup_range := 2.0
