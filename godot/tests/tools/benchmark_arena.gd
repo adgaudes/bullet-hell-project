@@ -549,10 +549,9 @@ func _initialize() -> void:
 			lamps.place_at(world)
 		lead.global_position = player.global_position + Vector3(3.0, 0.3, 0.0)
 		lead.reset_physics_interpolation()
-		# Sei Faro accesi (D-093: di notte illuminano solo i Faro). Il tuning della carovana e una
-		# copia in memoria col settimo posto (mai scrivere caravan_default.tres): Cassone + sei Faro.
-		caravan.tuning = caravan.tuning.duplicate()
-		caravan.tuning.module_limit = 7
+		# Sei Faro accesi (D-093: di notte illuminano solo i Faro). Il settimo posto sta nella
+		# carovana (`extra_module_slots`), il tuning condiviso resta com'e: Cassone + sei Faro.
+		caravan.extra_module_slots = 1
 		for i in 6:
 			var beacon := caravan.add_machine(&"beacon")
 			if beacon == null:

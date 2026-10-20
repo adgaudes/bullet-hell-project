@@ -29,6 +29,10 @@ const GROUND_CLEARANCE := 0.3
 const SLOT_SEARCH_DEGREES: Array[float] = [0.0, 30.0, -30.0, 60.0, -60.0]
 ## Margine sulla durata della riparazione: la somma dei passi non la raggiunge esatta.
 const REPAIR_EPSILON := 0.0001
+## Stacco degli eventi: i rottami del Cassone cadono in fila a lato della macchina, a questa
+## distanza dal centro (in scala col modello) e a `DETACH_SCRAP_SPACING` m l'uno dall'altro.
+const DETACH_SCRAP_SIDE_M := 1.0
+const DETACH_SCRAP_SPACING := 0.8
 
 @export var tuning: CaravanTuning
 @export var player: PlayerCharacter
@@ -40,6 +44,9 @@ var machines: Array[Machine] = []
 ## Moltiplicatore della velocita massima: le macchine lo leggono a ogni passo, quindi vale
 ## per tutte, anche per quelle aggiunte dopo.
 var speed_scale := 1.0
+## Posti per i moduli oltre `tuning.module_limit` (Officina mobile, piano C): stanno qui e non
+## nel tuning, che e condiviso e non si modifica.
+var extra_module_slots := 0
 ## Rottami di tutti i Cassoni, guasti compresi. Assegnarlo ridistribuisce il totale dal
 ## capofila in poi (una notifica sola).
 var carried: int:
@@ -128,8 +135,13 @@ func module_count() -> int:
 	return total
 
 
+## Moduli che la carovana puo portare: `tuning.module_limit` piu `extra_module_slots`.
+func module_limit() -> int:
+	return tuning.module_limit + extra_module_slots
+
+
 func has_room(count := 1) -> bool:
-	return module_count() + count <= tuning.module_limit
+	return module_count() + count <= module_limit()
 
 
 func count_of(module_id: StringName) -> int:
@@ -182,6 +194,21 @@ func lead() -> Machine:
 	if with_cargo != null:
 		return with_cargo
 	return machines[0] if not machines.is_empty() else null
+
+
+## La macchina con un Cassone (anche guasta) piu vicina a [param point] nel piano, la prima
+## nell'ordine della carovana a pari distanza; senza Cassoni il capofila; senza macchine null.
+func nearest_cargo_machine(point: Vector3) -> Machine:
+	var best: Machine = null
+	var best_distance := INF
+	for machine in machines:
+		if not machine.has_module(&"cargo"):
+			continue
+		var distance := Machine.planar_distance(machine.global_position, point)
+		if distance < best_distance:
+			best = machine
+			best_distance = distance
+	return best if best != null else lead()
 
 
 # --- Fusione, sgancio e rimozione (piano B) --------------------------------------------------
@@ -276,6 +303,42 @@ func detach(machine: Machine, module_index: int) -> Machine:
 	detached.emit(created)
 	changed.emit()
 	return created
+
+
+## Stacco degli eventi (piano C: terremoto, treno): con almeno due moduli toglie da
+## [param machine] un modulo a caso ([param rng]), gratis, senza pedana e anche da guasta. Il
+## modulo non diventa una macchina; la sorgente conserva la frazione di vita (`carried_health`;
+## da guasta resta a 0 PV). I rottami di un Cassone staccato cadono a terra accanto alla macchina,
+## uno ogni `DETACH_SCRAP_SPACING` m (senza `scrap_field` vanno persi). L'id del modulo tolto;
+## `&""` se la macchina ha un modulo solo o non e nella carovana.
+func detach_random(machine: Machine, rng: RandomNumberGenerator) -> StringName:
+	if not machines.has(machine) or machine.modules.size() < 2:
+		return &""
+	var health := machine.health
+	var max_health := machine.max_health
+	var module := machine.modules[rng.randi_range(0, machine.modules.size() - 1)]
+	var module_id := module.module_id
+	var scrap := 0
+	var box := module as CargoModule
+	_begin_cargo_change()
+	if box != null:
+		scrap = box.carried
+		box.carried = 0
+	machine.remove_module(module)
+	if not machine.is_broken():
+		machine.health = MachineFusion.carried_health(health, max_health, machine.max_health)
+	_end_cargo_change()
+	if scrap_field != null and scrap > 0:
+		var side := machine.global_basis.x
+		side.y = 0.0
+		side = side.normalized() if not side.is_zero_approx() else Vector3.RIGHT
+		var along := side.cross(Vector3.UP)
+		var start := machine.global_position + side * DETACH_SCRAP_SIDE_M * machine.model_scale
+		for i in scrap:
+			scrap_field.spawn_on_ground(start + along * DETACH_SCRAP_SPACING * (i - (scrap - 1) * 0.5))
+	print("PROTOTYPE01_MODULE_DETACHED module=%s by=event" % module_id)
+	changed.emit()
+	return module_id
 
 
 ## Toglie [param machine] dalla carovana: fuori da `machines` e da `write_queue.bodies`, la
@@ -424,10 +487,10 @@ func is_scrap_claimed(point: Vector3, by: MachineModule) -> bool:
 # --- Riparazione -----------------------------------------------------------------------------
 
 ## La macchina guasta piu vicina al giocatore (distanza planare) entro `repair_range`, la prima
-## nell'ordine della carovana a pari distanza; null senza giocatore vivo. Non guarda se
-## Interagisci e tenuto: serve anche al tasto nel HUD.
+## nell'ordine della carovana a pari distanza; null senza giocatore vivo o col giocatore a bordo
+## (piano C: a bordo non si ripara). Non guarda se Interagisci e tenuto: serve anche al tasto nel HUD.
 func repair_target() -> Machine:
-	if not is_instance_valid(player) or not player.is_alive():
+	if not is_instance_valid(player) or not player.is_alive() or player.pilot != null:
 		return null
 	var best: Machine = null
 	var best_distance := INF

@@ -385,7 +385,7 @@ func _apply_contacts(enemy: Enemy, in_dark := false) -> void:
 ## Rottamatori contro le macchine (D-093, scelta 7; piano B, scelte 5 e 6). Per ogni macchina,
 ## fra i secchi gia riempiti in questo passo entro il suo raggio di contatto in scala
 ## (`contact_reach`, celle in `range(-c, c + 1)` con `c = ceili(raggio)`): prima il travolgere,
-## se la macchina puo (`can_trample`, anche immune o in ritirata), che toglie `trample_damage` a
+## se la macchina puo (`can_trample`, anche immune o in ritirata), che toglie `trample_damage()` a
 ## ogni rottamatore vivo in raggio e poi apre l'attesa della macchina (`trample_done`); poi, se
 ## la macchina accetta un colpo, il primo rottamatore vivo in raggio la colpisce di
 ## `contact_damage` (niente bonus del buio). I boss (`self_driven`) non si travolgono e colpiscono
@@ -394,7 +394,6 @@ func _apply_machine_contacts() -> void:
 	if caravan == null:
 		return
 	var damage := caravan.tuning.contact_damage
-	var trample_damage := caravan.tuning.trample_damage
 	for machine in caravan.machines:
 		var trample := machine.can_trample()
 		var contact := machine.accepts_contact()
@@ -404,6 +403,7 @@ func _apply_machine_contacts() -> void:
 		var pos := machine.global_position
 		var base := Vector2i(floori(pos.x), floori(pos.z))
 		var c := ceili(radius)
+		var trample_damage := machine.trample_damage()
 		var trampled_any := false
 		var done := false
 		for dx in range(-c, c + 1):

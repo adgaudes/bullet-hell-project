@@ -109,6 +109,8 @@ var state := State.OK
 var slot := 0
 ## Rottamatori travolti finora (test e benchmark).
 var trampled := 0
+## Vero col giocatore a bordo (piano C): travolge di `pilot_trample_damage`.
+var piloted := false
 
 var _cargo: Array[MeshInstance3D] = []
 var _cargo_mesh: BoxMesh
@@ -156,6 +158,8 @@ var _since_hit := 0.0
 var _regen_given := 0
 ## Secondi prima di poter travolgere di nuovo (`trample_interval` dopo l'ultimo colpo).
 var _trample_left := 0.0
+## Secondi di ritirata forzata ancora da fare (`force_retreat`, piano C).
+var _forced_retreat_left := 0.0
 
 # --- Guinzaglio e ritirata.
 ## Meta finale dell'ultimo `_choose_destination` (ritirata, modulo o posto; mai un waypoint).
@@ -348,6 +352,15 @@ func trample_done() -> void:
 	_trample_left = tuning.trample_interval if tuning != null else 0.0
 
 
+## Danno del travolgere a ogni rottamatore in contatto: `pilot_trample_damage` col giocatore a
+## bordo (`piloted`), altrimenti `trample_damage`.
+func trample_damage() -> int:
+	var tuning := _tuning()
+	if tuning == null:
+		return 0
+	return tuning.pilot_trample_damage if piloted else tuning.trample_damage
+
+
 ## Nessun colpo passa per almeno [param seconds] (benchmark, catture, test).
 func grant_invulnerability(seconds: float) -> void:
 	_invulnerable_left = maxf(_invulnerable_left, seconds)
@@ -375,13 +388,38 @@ func repair(fraction: float) -> void:
 	print("PROTOTYPE01_MACHINE_REPAIRED module=%s" % primary_module_id())
 
 
-## A ogni passo, anche senza giocatore: immunita, invulnerabilita e attesa del travolgere
-## scadono, lo stato segue la vita, poi la rigenerazione (da danneggiata e non guasta: +1 PV
-## dopo `regen_delay` secondi senza colpi, poi ogni `regen_interval`).
+## Guasto immediato (piano C: il treno): vita a 0 e stato BROKEN come dopo un colpo mortale, ma
+## senza `damaged` ne immunita; su una macchina gia guasta non fa nulla. Il marker del treno lo
+## stampa il treno.
+func break_down() -> void:
+	if is_broken():
+		return
+	health = 0
+	_update_state()
+
+
+## Ritirata per almeno [param seconds] qualunque sia la vita (piano C: il pilota sbalzato); una
+## macchina guasta resta guasta. Scaduta, la regola della vita riprende da "in ordine".
+func force_retreat(seconds: float) -> void:
+	_forced_retreat_left = maxf(_forced_retreat_left, seconds)
+	_update_state()
+
+
+## A ogni passo, anche senza giocatore: immunita, invulnerabilita, attesa del travolgere e
+## ritirata forzata scadono, lo stato segue la vita, poi la rigenerazione (da danneggiata e non
+## guasta: +1 PV dopo `regen_delay` secondi senza colpi, poi ogni `regen_interval`).
 func _tick_health(delta: float) -> void:
 	_hit_cooldown_left = maxf(_hit_cooldown_left - delta, 0.0)
 	_invulnerable_left = maxf(_invulnerable_left - delta, 0.0)
 	_trample_left = maxf(_trample_left - delta, 0.0)
+	if _forced_retreat_left > 0.0:
+		_forced_retreat_left = maxf(_forced_retreat_left - delta, 0.0)
+		# Scaduta: si riparte da "in ordine" senza l'isteresi della ritirata (a meta vita non si
+		# resta in ritirata fino a `retreat_until`); sotto `retreat_below` ci torna `_update_state`.
+		var rules := _tuning()
+		if _forced_retreat_left <= 0.0 and state == State.RETREAT and rules != null \
+				and float(health) / maxi(max_health, 1) >= rules.retreat_below:
+			_set_state(State.OK)
 	if _smoke_left > 0.0:
 		_smoke_left -= delta
 		if _smoke_left <= 0.0 and not is_broken():
@@ -398,13 +436,16 @@ func _tick_health(delta: float) -> void:
 		heal(1)
 
 
-## Stato dalla vita: a 0 PV guasta (ne esce solo con `repair`); sotto `retreat_below` del
-## massimo in ritirata, sopra `retreat_until` di nuovo in ordine.
+## Stato dalla vita: a 0 PV guasta (ne esce solo con `repair`); in ritirata forzata ritirata;
+## sotto `retreat_below` del massimo in ritirata, sopra `retreat_until` di nuovo in ordine.
 func _update_state() -> void:
 	if state == State.BROKEN:
 		return
 	if health <= 0:
 		_set_state(State.BROKEN)
+		return
+	if _forced_retreat_left > 0.0:
+		_set_state(State.RETREAT)
 		return
 	var tuning := _tuning()
 	if tuning == null:

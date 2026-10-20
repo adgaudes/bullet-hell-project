@@ -487,7 +487,7 @@ func _tick_fusion() -> bool:
 	var pad := _run.fusion_pad
 	if pad == null or not pad.is_open() or _fusion_wait > 0.0:
 		return false
-	if _caravan.module_count() < _caravan.tuning.module_limit or _caravan.machines.size() < 2:
+	if _caravan.module_count() < _caravan.module_limit() or _caravan.machines.size() < 2:
 		return false
 	if not _caravan.broken_machines().is_empty() or _caravan.working_carried() < _fuse_all_cost():
 		return false

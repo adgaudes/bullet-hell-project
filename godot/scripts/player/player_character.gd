@@ -76,6 +76,8 @@ var tool_held := false
 ## Bot, test e catture possono impostarlo a mano: la rete di sicurezza vale solo per le pressioni
 ## nate da eventi.
 var interact_held := false
+## A bordo di una macchina: la imposta il piano C.
+var pilot: Node3D = null
 ## Attesa prima del prossimo affondo dell'animazione di scavo.
 var _dig_anim_left := 0.0
 var pack: SoilPack
