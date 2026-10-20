@@ -90,12 +90,17 @@ func nearest_index(point: Vector3, range: float) -> int:
 	return best
 
 
+## Modulo del relitto [param index]; &"" per un indice fuori lista.
 func module_of(index: int) -> StringName:
+	if not _has_index(index):
+		return &""
 	return _relics[index].module_id
 
 
-## Punto del relitto [param index] alla quota del suolo.
+## Punto del relitto [param index] alla quota del suolo; `Vector3.INF` per un indice fuori lista.
 func position_of(index: int) -> Vector3:
+	if not _has_index(index):
+		return Vector3.INF
 	return _relics[index].position
 
 
@@ -110,8 +115,10 @@ func glint_visible(index: int) -> bool:
 
 
 ## Toglie da terra il relitto [param index] (pezzo e luccichio) e ritorna il suo modulo; &"" se
-## era gia stato ripreso o spazzato.
+## era gia stato ripreso o spazzato o se l'indice e fuori lista.
 func take(index: int) -> StringName:
+	if not _has_index(index):
+		return &""
 	var relic: Dictionary = _relics[index]
 	if relic.taken:
 		return &""
@@ -162,6 +169,10 @@ func _process(delta: float) -> void:
 			glint.scale = Vector3.ONE * pulse
 
 
+func _has_index(index: int) -> bool:
+	return index >= 0 and index < _relics.size()
+
+
 func _remove(relic: Dictionary) -> void:
 	relic.taken = true
 	(relic.piece as Node3D).queue_free()
@@ -191,11 +202,34 @@ func _build_piece(module_id: StringName, p: Vector3) -> Node3D:
 		box.position.y = FALLBACK_SIZE * 0.5
 		part = box
 	else:
-		# Il pezzo nasce alzato sul telaio della macchina: a terra poggia sul suolo.
+		# Il pezzo nasce alzato sul telaio della macchina: a terra poggia sul suolo col suo
+		# punto piu basso (la base della Torretta, centrata nell'origine, finirebbe sotto).
 		part.position = Vector3.ZERO
+		part.position.y = -_bottom_of(part)
 	piece.add_child(part)
 	_set_visual_layer(piece)
 	return piece
+
+
+## Quota piu bassa delle mesh di [param part] nello spazio del suo genitore (0 senza mesh).
+static func _bottom_of(part: Node3D) -> float:
+	var meshes: Array[Node] = part.find_children("*", "MeshInstance3D", true, false)
+	if part is MeshInstance3D:
+		meshes.append(part)
+	var bottom := INF
+	for node in meshes:
+		var mesh_instance := node as MeshInstance3D
+		if mesh_instance.mesh == null:
+			continue
+		var xform := Transform3D.IDENTITY
+		var walker: Node3D = mesh_instance
+		while walker != null:
+			xform = walker.transform * xform
+			if walker == part:
+				break
+			walker = walker.get_parent() as Node3D
+		bottom = minf(bottom, (xform * mesh_instance.mesh.get_aabb()).position.y)
+	return bottom if bottom != INF else 0.0
 
 
 static func _set_visual_layer(node: Node) -> void:

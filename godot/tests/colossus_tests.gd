@@ -353,6 +353,11 @@ func _test_relic_models() -> void:
 	for mesh: MeshInstance3D in meshes:
 		layered = layered and mesh.layers == Machine.VISUAL_LAYER
 	_check(meshes.size() > 1 and layered, "Torretta: il suo pezzo, sul layer delle macchine")
+	var bottom := INF
+	for mesh: MeshInstance3D in meshes:
+		bottom = minf(bottom, (mesh.global_transform * mesh.mesh.get_aabb()).position.y)
+	_check(absf(bottom - relics.position_of(turret).y) < 0.01, "il punto piu basso del pezzo sta alla quota del suolo (%.3f su %.3f)"
+		% [bottom, relics.position_of(turret).y])
 	var boxes := relics.piece_of(cargo).find_children("*", "MeshInstance3D", true, false)
 	var box: MeshInstance3D = boxes[0] if boxes.size() == 1 else null
 	_check(box != null and box.mesh is BoxMesh and (box.mesh as BoxMesh).size.is_equal_approx(Vector3.ONE * 0.4)
@@ -360,6 +365,9 @@ func _test_relic_models() -> void:
 		and box.layers == Machine.VISUAL_LAYER, "Cassone senza pezzo: cubo da 0,4 m del suo colore")
 	relics.take(turret)
 	relics.take(cargo)
+	# Indici fuori lista: risposte neutre invece di un errore (gli eventi e i task dopo le chiamano).
+	_check(relics.module_of(-1) == &"" and relics.module_of(99) == &"" and relics.position_of(99) == Vector3.INF
+		and relics.position_of(-1) == Vector3.INF and relics.take(99) == &"" and relics.take(-1) == &"", "indici fuori lista: nome vuoto e INF")
 
 
 func _send_joypad_button(button: JoyButton, pressed: bool) -> void:
