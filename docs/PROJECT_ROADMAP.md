@@ -10,7 +10,7 @@ Principio guida:
 
 > Prima dimostriamo che e divertente. Poi dimostriamo che e producibile. Solo dopo costruiamo tutto il resto.
 
-## Stato operativo al 19 ottobre 2026
+## Stato operativo al 20 ottobre 2026
 
 > Sezione breve per scelta (audit D-06). La versione lunga, con la cronologia giorno per giorno fino al 14 ottobre 2026, e in `docs/archive/ROADMAP_STATUS_2026-10.md`. Il dettaglio della sessione corrente e in `docs/MIGRATION_STATUS.md`.
 
@@ -32,7 +32,7 @@ Principio guida:
   - audio Sonniss (D-084);
   - restyling dell'ambiente (D-077, D-083);
   - armi e classi (D-092): quattro classi, 12 armi, 6 fusioni, casse sepolte, Officina a schede; suoni, telegrafo delle attive ed effetti fatti il 16 ottobre (piano 5);
-  - carovana di macchine (D-093): piano A fatto e rivisto il 18 ottobre 2026 (otto moduli su macchine proprie, grappolo attorno al giocatore, danni, guasto e riparazione con Interagisci, ritirata e rigenerazione, relitti sepolti, carte Nuova macchina, striscia nel HUD; bot, benchmark e catture); **piano B (fusione) fatto e rivisto il 19 ottobre 2026** (piazzola di fusione a meta della chiamata del boss, banco in pausa, taglie fino al Colosso, travolgere, sei combinazioni, profilo v3 e Ricettario; carovana 0,26 ms per passo sul Deck con sei macchine, 0,11 ms col Colosso, budget 0,5; revisione finale del branch: nessun critico, chiusa la cura gratuita sgancia-e-rifondi, pedana che ricontrolla il piano all'arrivo). **Prossimo:** playtest del proprietario, poi piano C.
+  - carovana di macchine (D-093): piano A fatto e rivisto il 18 ottobre 2026 (otto moduli su macchine proprie, grappolo attorno al giocatore, danni, guasto e riparazione con Interagisci, ritirata e rigenerazione, relitti sepolti, carte Nuova macchina, striscia nel HUD; bot, benchmark e catture); **piano B (fusione) fatto e rivisto il 19 ottobre 2026** (piazzola di fusione a meta della chiamata del boss, banco in pausa, taglie fino al Colosso, travolgere, sei combinazioni, profilo v3 e Ricettario; carovana 0,26 ms per passo sul Deck con sei macchine, 0,11 ms col Colosso, budget 0,5; revisione finale del branch: nessun critico, chiusa la cura gratuita sgancia-e-rifondi, pedana che ricontrolla il piano all'arrivo); **piano C scritto il 20 ottobre 2026, task 1-4 fatti e rivisti** (`docs/superpowers/plans/2026-10-20-caravan-colossus.md`: valori del pilotaggio, basi della carovana, relitti dei moduli staccati con Interagisci, terremoto e treno che staccano moduli; fermato dal proprietario dopo il task 4). **Prossimo:** task 5-8 del piano C (colosso pilotato, Meccanico, scheda Macchine, bot/benchmark/catture), poi playtest del proprietario.
 
   Il 14 ottobre: audit generale con performance e correzioni (`docs/REVIEWS/FULL_AUDIT_2026-10-14.md`), poi **primo playtest del proprietario, esito Modifica** (`docs/PLAYTESTS/OWNER_PLAYTEST_2026-10-14.md`): gameplay piatto, grafica scialba, 14 osservazioni. Steam Deck mai misurato.
 - **Fasi 4-14:** non iniziate formalmente.

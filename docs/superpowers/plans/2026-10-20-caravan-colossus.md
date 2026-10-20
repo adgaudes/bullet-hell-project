@@ -408,4 +408,16 @@ In sequenza, un esecutore nuovo per task e una revisione prima del successivo: i
 
 ## Stato dell'esecuzione
 
-(da compilare task per task: data, commit, scelte prese, debito lasciato, numeri del benchmark)
+**20 ottobre 2026: task 1-4 fatti e rivisti (commit da `edb04c2` a `3d4c066`), esecuzione fermata dal proprietario dopo il task 4; restano i task 5-8** (colosso pilotato, Meccanico, scheda Macchine, bot/benchmark/catture/documenti). Gate completo verde dopo il task 3 (60 suite, `button_prompts_tests` adattata al conteggio dei cinque tasti); dopo il task 4 rilanciate a mano le suite colossus, train, world_event, arena_run, caravan, extraction, machine_damage, machine_wrecks, driller, campaign, fusion, caravan_hud, machine_modules, day_night, railway: tutte verdi. Registro locale in `.superpowers/sdd/2026-10-20-caravan-colossus/progress.md` (ignorato da Git).
+
+Decisioni dell'esecuzione (anche in D-093):
+
+1. Si lavora su `feature/arena-run` senza worktree, come per i piani A e B.
+2. Il campo `PlayerCharacter.pilot` nasce nel task 2 (`Node3D`, null) perche `Caravan.repair_target()` lo legge; il task 5 lo ritipizza `Machine`.
+3. Alla scadenza di `force_retreat` lo stato si ricalcola da capo (OK se la vita e almeno `retreat_below`, altrimenti RETREAT), non con l'isteresi `retreat_until`: altrimenti un colosso sbalzato a meta vita resterebbe in ritirata per sempre.
+4. Lo smistatore di Interagisci prende un relitto solo senza macchina guasta in portata e con giocatore vivo (precedenza Ripara > Riprendi).
+5. `detach_random(machine, rng, by := &"event")`: il terzo parametro va nel marker (`by=quake`, `by=train`).
+6. Il terremoto rifiuta i punti sui binari con un Callable `on_tracks` che ArenaRun da solo nei livelli col treno (nel quartiere la striscia |z| <= 3,6 m resta libera).
+7. Dal task 3, chiuse nel task 4: i pezzi dei relitti poggiano col punto piu basso al suolo (minimo dell'AABB); `ModuleRelics` risponde neutro a indici fuori lista.
+
+Debito e note (una frase per task): task 2, `_forced_retreat_left` non si azzera al guasto (riparata prima della scadenza torna in ritirata: da chiudere nel task 5), scadenza sotto `retreat_below` senza test, `detach_random` duplica meta di `detach`, rottami del Cassone staccato senza `is_open_point` e raccoglibili subito da un secondo Cassone, marker `MODULE_DETACHED` non asserito; task 3, precedenza Ripara > Riprendi e relitto sulla pedana senza test, `_process` con `player != null`, `_build_piece` istanzia un modulo intero per `build_part`, striscia forse piu larga per "Riprendi" (da guardare nelle catture), trailer "Claude Opus 5.5" nei commit `0fb7bd0` e `3bbf0f8`; task 4, rifiuto `on_tracks` senza test, controlli del cablaggio del tuning uguali ai default, marker `BROKEN_BY_TRAIN` anche su una gia guasta, commento "oltre il solco" impreciso, test che legge `quake._front`, nessun test con due macchine sulla fascia. **Domande di design per il proprietario:** il relitto del treno cade dal lato che `_push_out` preferisce (se e murato la macchina finisce dall'altro lato) e senza controllo di percorribilita; i rottami di un Cassone staccato dal treno cadono sulla fascia e il treno li porta via.

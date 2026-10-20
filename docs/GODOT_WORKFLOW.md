@@ -294,6 +294,23 @@ Trappole verificate:
 - sotto `--script` il profilo e in memoria: `COMBO_DISCOVERED` si stampa ma nulla si salva (catture e bot non toccano il profilo del proprietario);
 - nelle catture gli scatti del piano B riaccendono il passo di ArenaRun (spento da `strip`), tolgono l'avviso di `event_arrow` e rimettono la camera di gioco dopo `machine_parts`; il banco si apre emettendo `player.interact_pressed` col giocatore sulla pedana, poi 0,6 s di attesa per la grazia.
 
+### Carovana (D-093, piano C, task 1-4)
+
+Comandi verificati il 20 ottobre 2026:
+
+- suite nuova: `godot_console --headless --path godot --fixed-fps 60 --script res://tests/colossus_tests.gd` (valori del tuning, forza a bordo, basi della carovana su `ruins_arena`, relitti dei moduli e terremoto su `arena_run`, treno su `railway_run`; input veri di joypad e tastiera come `fusion_tests`); e la sessantesima suite del gate.
+
+Marker: `PROTOTYPE01_MODULE_DETACHED module= by=event|quake|train`, `MODULE_RELIC_DROPPED module= x= z=`, `MODULE_RELIC_TAKEN module=`, `MACHINE_BROKEN_BY_TRAIN module=`, `QUAKE_DONE ... modules=`, `quake_hit(&"module")`.
+
+Trappole verificate:
+
+- un test headless sotto `--script` non genera il `.uid` di uno script nuovo: `godot_console --headless --path godot --editor --quit` lo crea e riordina `[physics]` in `project.godot` (annullare solo quello);
+- `button_prompts_tests` conta i `ButtonPrompts` del HUD: ogni tasto nuovo nella striscia della carovana (dal piano C cinque: Ripara, Pilota, Scendi, Riprendi, Banco) va aggiunto al conteggio atteso (8);
+- la pressione di Interagisci passa dallo smistatore `ArenaRun._on_interact_pressed` (relitto in portata e con posto, poi `fusion_pad.request_bench`); bot e catture che emettono `player.interact_pressed` non cambiano;
+- `detach_random` si chiama a meta passo dagli eventi senza problemi: `remove_module` toglie il modulo dalla lista subito, e gli eventi li fa avanzare ArenaRun, non la macchina;
+- il terremoto conosce i binari solo tramite il Callable `on_tracks` che ArenaRun da nei livelli col treno: nel quartiere la striscia |z| <= 3,6 m non e esclusa;
+- a bordo (`player.pilot != null`, dal task 5) `Caravan.repair_target()` e null: niente riparazione.
+
 ### Verifica visiva
 
 Lo script salva un PNG, che l'agente puo poi **aprire e guardare**:
