@@ -7,7 +7,8 @@ extends WorldEvent
 ## **cresta** e scava un **solco** a fianco; sulla griglia (ferrovia) le celle Normal si
 ## rialzano e le trincee si riempiono. Chi sta sulla faglia: i rottamatori vengono
 ## travolti (contano come abbattuti), il giocatore subisce `player_damage` e il suo punto
-## viene risparmiato, le macchine della carovana e il boss sono risparmiati. I lampioni sulla linea cadono; i
+## viene risparmiato, le macchine della carovana e il boss sono risparmiati (una macchina fusa
+## perde pero un modulo, una volta per terremoto, che resta a terra oltre il solco: D-093, piano C). I lampioni sulla linea cadono; i
 ## rottami a terra rotolano o vengono riportati in superficie da ScrapField.
 ##
 ## Come il treno non ha un passo fisico proprio: `ArenaRun` lo fa avanzare con il tempo di
@@ -16,7 +17,7 @@ extends WorldEvent
 
 signal quake_warned(direction: Vector3, seconds: float)
 signal quake_started(center: Vector3)
-## Qualcosa e stato colpito: "cell", "enemy", "player", "lamp".
+## Qualcosa e stato colpito: "cell", "enemy", "player", "lamp", "module" (un modulo staccato).
 signal quake_hit(what: StringName)
 signal quake_done(quakes: int)
 
@@ -40,6 +41,8 @@ const FAULT_ATTEMPTS := 4
 const BOSS_SPARE_RADIUS := 3.0
 ## Faglia impossibile (tutta fuori campo o protetta): si riprova dopo questi secondi.
 const SKIP_RETRY_SECONDS := 8.0
+## Il modulo staccato da una macchina fusa cade a questa distanza dalla faglia (oltre il solco).
+const RELIC_OFFSET := 2.5
 
 ## Rilievo continuo (D-085): la faglia e una fila di pennellate.
 @export var terrain_field: TerrainField
@@ -62,6 +65,11 @@ var player_damage := 1
 var boss: Enemy
 ## Dove posare i moduli staccati dalla carovana (D-093, piano C; lo imposta ArenaRun).
 var module_relics: ModuleRelics
+## Moduli che perde una macchina fusa sulla faglia (`CaravanTuning.quake_detach_count`, lo copia
+## ArenaRun); mai sotto un modulo.
+var module_detach_count := 1
+## Vector3 -> bool: il punto sta sui binari (come per la pedana). Non valida = nessun binario.
+var on_tracks: Callable
 var rng := RandomNumberGenerator.new()
 
 var state := State.IDLE
@@ -78,6 +86,10 @@ var cells_raised := 0
 var cells_filled := 0
 var enemies_hit := 0
 var player_hits := 0
+## Moduli staccati dall'ultimo terremoto.
+var modules_detached := 0
+## Macchine che hanno gia perso moduli in questo terremoto (una volta sola per scossa).
+var _detached: Dictionary[Node, bool] = {}
 var _front := 0
 var _front_progress := 0.0
 var _dust_left := 0.0
@@ -192,6 +204,8 @@ func _start_shaking() -> void:
 	cells_filled = 0
 	enemies_hit = 0
 	player_hits = 0
+	modules_detached = 0
+	_detached.clear()
 	_front = 0
 	_front_progress = 0.0
 	volume_moved = 0.0
@@ -234,6 +248,7 @@ func _shake_point(p: Vector3) -> void:
 	if caravan != null:
 		for machine in caravan.machines:
 			if _near(machine, at):
+				_detach_modules(machine, at)
 				return
 	if is_instance_valid(boss) and not boss.is_dead and _planar_distance(boss.global_position, at) < BOSS_SPARE_RADIUS:
 		return
@@ -257,6 +272,37 @@ func _shake_point(p: Vector3) -> void:
 	quake_hit.emit(&"cell")
 	if lamp_field != null and lamp_field.knock_down_near(at, 1.5) > 0:
 		quake_hit.emit(&"lamp")
+
+
+## Una macchina fusa sulla faglia (pennellata [param at]) perde `module_detach_count` moduli, mai
+## sotto uno e una volta sola per terremoto; ogni modulo resta a terra in `_relic_point`.
+func _detach_modules(machine: Machine, at: Vector3) -> void:
+	if machine.modules.size() < 2 or _detached.has(machine):
+		return
+	_detached[machine] = true
+	var point := _relic_point(at)
+	for i in module_detach_count:
+		var module_id := caravan.detach_random(machine, rng, &"quake")
+		if module_id == &"":
+			break
+		if module_relics != null:
+			module_relics.drop(module_id, point)
+		modules_detached += 1
+		quake_hit.emit(&"module")
+
+
+## Oltre il solco ([constant RELIC_OFFSET] dalla pennellata [param at]) se il punto e libero
+## (dentro il campo, non protetto, fuori dai binari), altrimenti dal lato della cresta, altrimenti
+## sulla pennellata.
+func _relic_point(at: Vector3) -> Vector3:
+	var limit := terrain_field.half_extents()
+	for candidate: Vector3 in [at + _fault_side * RELIC_OFFSET, at - _fault_side * RELIC_OFFSET]:
+		if absf(candidate.x) > limit.x or absf(candidate.z) > limit.y or terrain_field.is_protected(candidate):
+			continue
+		if on_tracks.is_valid() and on_tracks.call(candidate):
+			continue
+		return candidate
+	return at
 
 
 ## Riappoggia sulla nuova quota i nemici vivi entro [param radius] dalla pennellata.
@@ -307,8 +353,8 @@ func _finish() -> void:
 	state = State.IDLE
 	quakes += 1
 	_advance_schedule()
-	print("PROTOTYPE01_QUAKE_DONE n=%d raised=%d filled=%d enemies=%d player_hits=%d volume=%.1f"
-		% [quakes, cells_raised, cells_filled, enemies_hit, player_hits, volume_moved])
+	print("PROTOTYPE01_QUAKE_DONE n=%d raised=%d filled=%d enemies=%d player_hits=%d volume=%.1f modules=%d"
+		% [quakes, cells_raised, cells_filled, enemies_hit, player_hits, volume_moved, modules_detached])
 	if flow_preview != null:
 		flow_preview.show_now()
 	quake_done.emit(quakes)

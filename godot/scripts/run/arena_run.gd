@@ -856,6 +856,10 @@ func _setup_train() -> void:
 	train_event.player_damage = tuning.train_player_damage
 	train_event.boss_damage = tuning.train_boss_damage
 	train_event.rng.seed = run_seed + 3
+	if caravan != null and caravan.tuning != null:
+		train_event.module_detach_count = caravan.tuning.train_detach_count
+		train_event.throw_min = caravan.tuning.train_throw_min
+		train_event.throw_max = caravan.tuning.train_throw_max
 
 
 func _setup_extraction() -> void:
@@ -942,6 +946,11 @@ func _setup_quake() -> void:
 	quake_event.distance_max = tuning.quake_distance_max
 	quake_event.player_damage = tuning.quake_player_damage
 	quake_event.rng.seed = run_seed + 4
+	if caravan != null and caravan.tuning != null:
+		quake_event.module_detach_count = caravan.tuning.quake_detach_count
+	# I binari ci sono solo dove c'e il treno (come per la pedana).
+	if train_event != null:
+		quake_event.on_tracks = func(p: Vector3) -> bool: return RailwayDistrict.is_on_tracks(Vector2(p.x, p.z))
 
 
 ## Eventi del mondo (D-097): quanti ne dice la scheda Gameplay, di tipo e istante casuali fra

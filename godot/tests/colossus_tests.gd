@@ -8,6 +8,7 @@ extends SceneTree
 const TUNING_PATH := "res://resources/tuning/caravan_default.tres"
 const ArenaScene := preload("res://scenes/main/ruins_arena.tscn")
 const RunScene := preload("res://scenes/main/arena_run.tscn")
+const RailwayScene := preload("res://scenes/main/railway_run.tscn")
 
 var _failures := 0
 var t: CaravanTuning
@@ -32,8 +33,8 @@ func _initialize() -> void:
 		_test_power()
 		await _test_caravan()
 		await _test_relics()
-		# Sezioni dei task 4-7, in ordine: _test_events,
-		# _test_pilot, _test_mechanic, _test_workshop (tutte con await).
+		await _test_events()
+		# Sezioni dei task 5-7, in ordine: _test_pilot, _test_mechanic, _test_workshop (tutte con await).
 	await _frames(2)
 	print("PROTOTYPE01_TESTS %s failures=%d" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
@@ -241,7 +242,28 @@ func _test_break_and_retreat() -> void:
 ## protetto della partenza si toglie per poter scolpire vicino al giocatore.
 func _test_relics() -> void:
 	print("relics")
-	_scene = RunScene.instantiate()
+	await _start_run(RunScene)
+	var relics := _run.module_relics
+	_check(relics != null and relics.get_parent() == _run and relics.name == "ModuleRelics" and relics.terrain_field == _field
+		and relics.player == _player and relics.count() == 0, "ModuleRelics creato da ArenaRun coi servizi, vuoto")
+	if relics == null:
+		_stop_run()
+		return
+	# `arena_run.tscn` ha il terremoto e non il treno (sta nella scena dei binari).
+	_check(_run.quake_event != null and _run.quake_event.module_relics == relics
+		and (_run.train_event == null or _run.train_event.module_relics == relics), "il terremoto (e il treno, se c'e) riceve i relitti")
+	await _test_relic_pickup()
+	await _test_relic_full_and_nearest()
+	await _test_relic_follows_ground()
+	await _test_relic_glint()
+	_test_relic_models()
+	_stop_run()
+
+
+## Run vera di [param scene] senza nemici, level-up, boss ne eventi in programma; il disco
+## protetto della partenza e tolto.
+func _start_run(scene: PackedScene) -> void:
+	_scene = scene.instantiate()
 	root.add_child(_scene)
 	_run = _scene.get_node(^"Run")
 	_player = _scene.get_node(^"Player")
@@ -255,23 +277,11 @@ func _test_relics() -> void:
 	for event: WorldEvent in [_run.quake_event, _run.train_event]:
 		if event != null:
 			event.schedule([])
-	var relics := _run.module_relics
-	_check(relics != null and relics.get_parent() == _run and relics.name == "ModuleRelics" and relics.terrain_field == _field
-		and relics.player == _player and relics.count() == 0, "ModuleRelics creato da ArenaRun coi servizi, vuoto")
-	if relics == null:
-		root.remove_child(_scene)
-		_scene.queue_free()
-		return
-	# `arena_run.tscn` ha il terremoto e non il treno (sta nella scena dei binari).
-	_check(_run.quake_event != null and _run.quake_event.module_relics == relics
-		and (_run.train_event == null or _run.train_event.module_relics == relics), "il terremoto (e il treno, se c'e) riceve i relitti")
 	_run._start_protect_left = 0.0
 	_field.set_protected(Vector3.ZERO, _field.tuning.start_protected_radius_m, false)
-	await _test_relic_pickup()
-	await _test_relic_full_and_nearest()
-	await _test_relic_follows_ground()
-	await _test_relic_glint()
-	_test_relic_models()
+
+
+func _stop_run() -> void:
 	root.remove_child(_scene)
 	_scene.queue_free()
 
@@ -368,6 +378,247 @@ func _test_relic_models() -> void:
 	# Indici fuori lista: risposte neutre invece di un errore (gli eventi e i task dopo le chiamano).
 	_check(relics.module_of(-1) == &"" and relics.module_of(99) == &"" and relics.position_of(99) == Vector3.INF
 		and relics.position_of(-1) == Vector3.INF and relics.take(99) == &"" and relics.take(-1) == &"", "indici fuori lista: nome vuoto e INF")
+
+
+# --- Terremoto e treno staccano moduli (task 4) -------------------------------------------------
+
+## Terremoto sulla run del quartiere (`arena_run.tscn`), treno su quella dei binari
+## (`railway_run.tscn`).
+func _test_events() -> void:
+	print("events: quake")
+	await _start_run(RunScene)
+	var ready_quake := _run.module_relics != null and _run.quake_event != null and _run.quake_event.module_relics == _run.module_relics
+	_check(ready_quake and _run.quake_event.module_detach_count == t.quake_detach_count and not _run.quake_event.on_tracks.is_valid(),
+		"il terremoto ha i relitti e il numero di moduli del tuning; nel quartiere niente binari")
+	if ready_quake:
+		await _test_quake_detaches()
+		await _test_quake_once_per_machine()
+	_stop_run()
+	await _frames(2)
+	print("events: train")
+	await _start_run(RailwayScene)
+	var ready_train := _run.module_relics != null and _run.train_event != null and _run.train_event.module_relics == _run.module_relics
+	_check(ready_train and _run.train_event.module_detach_count == t.train_detach_count
+		and is_equal_approx(_run.train_event.throw_min, t.train_throw_min) and is_equal_approx(_run.train_event.throw_max, t.train_throw_max),
+		"il treno ha i relitti e i valori del tuning")
+	if ready_train:
+		await _test_train_breaks_and_detaches()
+		await _test_train_small_only_breaks()
+		await _test_train_sweeps_relics()
+	_stop_run()
+
+
+func _until(condition: Callable, seconds: float) -> bool:
+	for i in ceili(seconds * 60):
+		if condition.call():
+			return true
+		await physics_frame
+	return condition.call()
+
+
+func _place_player(at: Vector3) -> void:
+	_player.global_position = Vector3(at.x, _field.height_at(at) + 0.88, at.z)
+	_player.velocity = Vector3.ZERO
+	_player.reset_physics_interpolation()
+
+
+## Terremoto deterministico (seme dell'evento fisso, giocatore nell'origine) con preavviso corto:
+## ritorna la faglia appena annunciata.
+func _start_quake(cells_per_second: float) -> Array[Vector3]:
+	var quake := _run.quake_event
+	_place_player(Vector3.ZERO)
+	quake.rng.seed = 20261010
+	quake.warning_seconds = 0.5
+	quake.cells_per_second = cells_per_second
+	quake.schedule([_run.elapsed + quake.warning_seconds + 0.1])
+	await _until(func() -> bool: return quake.state == QuakeEvent.State.WARNING, 2.0)
+	return quake.fault_points.duplicate()
+
+
+## Dove il terremoto posa il modulo staccato alla pennellata [param p]: oltre il solco se si puo,
+## altrimenti dal lato della cresta, altrimenti sul punto (fuori dai binari: qui non ce ne sono).
+func _quake_relic_point(p: Vector3) -> Vector3:
+	var side := _run.quake_event.fault_side()
+	var limit := _field.half_extents()
+	for candidate: Vector3 in [p + side * 2.5, p - side * 2.5]:
+		if absf(candidate.x) <= limit.x and absf(candidate.z) <= limit.y and not _field.is_protected(candidate):
+			return candidate
+	return p
+
+
+## Prima pennellata (con una dopo) lontana dal giocatore il cui relitto cadrebbe fuori dalla
+## fascia dei binari (il controllo del test vale anche qui, dove la fascia non c'e); -1 se nessuna.
+func _quake_index(fault: Array[Vector3]) -> int:
+	for i in range(1, fault.size() - 1):
+		var c := _quake_relic_point(fault[i])
+		var far := Machine.planar_distance(fault[i], _player.global_position) > 4.0 \
+			and Machine.planar_distance(fault[i + 1], _player.global_position) > 4.0
+		if far and not RailwayDistrict.is_on_tracks(Vector2(c.x, c.z)):
+			return i
+	return -1
+
+
+func _test_quake_detaches() -> void:
+	print("quake detaches")
+	var quake := _run.quake_event
+	var relics := _run.module_relics
+	var fused: Machine = await _reset_fused()
+	var small := _add(&"drill")
+	_check(_caravan.lead() == fused and _caravan.machines[1] == small, "capofila fuso (Cassone e Torretta), dietro una Trivella")
+	var hits := {}
+	var on_hit := func(what: StringName) -> void: hits[what] = int(hits.get(what, 0)) + 1
+	quake.quake_hit.connect(on_hit)
+	var fault: Array[Vector3] = await _start_quake(1000.0)
+	var k := _quake_index(fault)
+	_check(quake.state == QuakeEvent.State.WARNING and k >= 0, "faglia annunciata, pennellata scelta (%d di %d)" % [k, fault.size()])
+	if k < 0:
+		quake.quake_hit.disconnect(on_hit)
+		return
+	var before := quake.quakes
+	# Le macchine seguono il giocatore: rimesse sulla faglia a ogni passo fino alla scossa.
+	var pinned := func() -> bool:
+		if quake.quakes > before:
+			return true
+		_place(fused, fault[k])
+		_place(small, fault[k + 1])
+		return false
+	await _until(pinned, 4.0)
+	quake.quake_hit.disconnect(on_hit)
+	_check(quake.quakes == before + 1, "il terremoto e passato")
+	_check(fused.modules.size() == 1 and not fused.is_broken() and small.modules.size() == 1 and not small.is_broken(),
+		"la fusa perde un modulo, la piccola no, nessuna guasta")
+	var expected := _quake_relic_point(fault[k])
+	var index := relics.nearest_index(expected, 0.5)
+	var p := relics.position_of(index)
+	_check(relics.count() == 1 and index >= 0 and not RailwayDistrict.is_on_tracks(Vector2(p.x, p.z))
+		and absf(Machine.planar_distance(p, fault[k]) - 2.5) < 0.01, "un relitto a terra a 2,5 m dalla faglia, fuori dalla fascia")
+	_check(_cargo_and_turret(relics.module_of(index), fused.primary_module_id()), "il relitto e il modulo staccato (%s)" % relics.module_of(index))
+	_check(quake.modules_detached == 1 and int(hits.get(&"module", 0)) == 1, "una macchina colpita: modules_detached 1, un quake_hit module")
+	_check(_caravan.lead() != null and _caravan.carried >= 0, "capofila valido")
+
+
+## Un colosso da 6 che segue il fronte della faglia: un solo modulo per terremoto; al terremoto
+## dopo ne perde un altro (`_detached` si azzera alla scossa).
+func _test_quake_once_per_machine() -> void:
+	print("quake once per machine")
+	var quake := _run.quake_event
+	var relics := _run.module_relics
+	relics.discard_in_rect(Rect2(-500.0, -500.0, 1000.0, 1000.0))
+	var colossus: Machine = await _reset_fused()
+	for id: StringName in [&"drill", &"shovel", &"welder", &"siren"]:
+		var other := _add(id)
+		_caravan.add_scrap(5)
+		_caravan.fuse(colossus, other)
+	_check(colossus.modules.size() == 6 and _caravan.machines.size() == 1, "colosso da 6 moduli")
+	var fault: Array[Vector3] = await _start_quake(4.0)
+	_check(fault.size() >= 4, "faglia di %d pennellate" % fault.size())
+	var before := quake.quakes
+	var visited := {}
+	# Sempre sulla prossima pennellata del fronte.
+	var follow := func() -> bool:
+		if quake.quakes > before:
+			return true
+		var i: int = mini(quake._front, fault.size() - 1) if quake.is_shaking() else 0
+		if quake.is_shaking():
+			visited[i] = true
+		_place(colossus, fault[i])
+		return false
+	await _until(follow, 10.0)
+	_check(quake.quakes == before + 1 and visited.size() >= 3, "terremoto passato col colosso su %d pennellate" % visited.size())
+	_check(colossus.modules.size() == 5 and relics.count() == 1 and quake.modules_detached == 1, "un solo modulo per terremoto")
+	fault = await _start_quake(1000.0)
+	var k := maxi(_quake_index(fault), 0)
+	before = quake.quakes
+	var pinned := func() -> bool:
+		if quake.quakes > before:
+			return true
+		_place(colossus, fault[k])
+		return false
+	await _until(pinned, 4.0)
+	_check(quake.quakes == before + 1 and colossus.modules.size() == 4 and relics.count() == 2, "al terremoto dopo ne perde un altro")
+	relics.discard_in_rect(Rect2(-500.0, -500.0, 1000.0, 1000.0))
+
+
+## Il relitto e la macchina si sono divisi Cassone e Torretta.
+func _cargo_and_turret(relic: StringName, kept: StringName) -> bool:
+	return (relic == &"cargo" and kept == &"turret") or (relic == &"turret" and kept == &"cargo")
+
+
+## Un passaggio del treno corto e veloce; [param each_frame] gira prima di ogni passo. Vero se e
+## passato.
+func _train_pass(each_frame: Callable) -> bool:
+	var train := _run.train_event
+	var passes := train.passes
+	train.warning_seconds = 1.0
+	train.speed = 80.0
+	train.next_at = _run.elapsed + 1.05
+	for i in 900:
+		each_frame.call()
+		await physics_frame
+		if train.passes > passes:
+			return true
+	return false
+
+
+func _test_train_breaks_and_detaches() -> void:
+	print("train breaks and detaches")
+	var train := _run.train_event
+	var relics := _run.module_relics
+	var at := Vector3(10.0, 0.0, 0.0)
+	# Fuori dalla fascia ma entro il guinzaglio (oltre leash_distance la macchina torna da lui).
+	_place_player(at + Vector3(0.0, 0.0, 12.0))
+	var fused: Machine = await _reset_fused()
+	var companions := [0]
+	var on_hit := func(what: StringName) -> void:
+		if what == &"companion":
+			companions[0] += 1
+	train.train_hit.connect(on_hit)
+	# Tenuta sulla fascia (seguirebbe il giocatore) finche il treno non la investe.
+	var pinned := func() -> void:
+		if not fused.is_broken():
+			_place(fused, at)
+	var passed: bool = await _train_pass(pinned)
+	train.train_hit.disconnect(on_hit)
+	_check(passed and companions[0] == 1, "il treno e passato e ha investito la macchina una volta")
+	_check(fused.is_broken() and fused.modules.size() == 1, "guasta e con un modulo in meno")
+	var p := relics.position_of(0)
+	_check(relics.count() == 1 and absf(p.z) >= RailwayDistrict.TRACK_HALF_WIDTH + 6.0 - 0.01
+		and absf(p.z) <= RailwayDistrict.TRACK_HALF_WIDTH + 8.0 + 0.01 and not RailwayDistrict.is_on_tracks(Vector2(p.x, p.z)),
+		"relitto a 6-8 m oltre il bordo, fuori dalla fascia (z=%.2f)" % p.z)
+	_check(p.z > 0.0 and absf(p.x - at.x) < 1.0 and is_equal_approx(p.y, _field.height_at(p)),
+		"dal lato della spinta (a z = 0 verso sud), alla x della macchina, al suolo")
+	_check(_cargo_and_turret(relics.module_of(0), fused.primary_module_id()), "il relitto e il modulo staccato (%s)" % relics.module_of(0))
+	_check(absf(fused.global_position.z) > RailwayDistrict.TRACK_HALF_WIDTH, "spinta fuori come oggi")
+
+
+func _test_train_small_only_breaks() -> void:
+	print("train small only breaks")
+	var relics := _run.module_relics
+	relics.discard_in_rect(Rect2(-500.0, -500.0, 1000.0, 1000.0))
+	var at := Vector3(-10.0, 0.0, 1.0)
+	_place_player(at + Vector3(0.0, 0.0, 12.0))
+	var small: Machine = await _reset()
+	var pinned := func() -> void:
+		if not small.is_broken():
+			_place(small, at)
+	var passed: bool = await _train_pass(pinned)
+	_check(passed, "il treno e passato")
+	_check(small.is_broken() and small.modules.size() == 1 and relics.count() == 0, "la piccola si guasta e basta")
+	_check(absf(small.global_position.z) > RailwayDistrict.TRACK_HALF_WIDTH, "spinta fuori")
+
+
+func _test_train_sweeps_relics() -> void:
+	print("train sweeps relics")
+	var relics := _run.module_relics
+	_place_player(Vector3(0.0, 0.0, 20.0))
+	var keeper: Machine = await _reset()
+	_place(keeper, Vector3(2.0, 0.0, 21.0))
+	var i := relics.drop(&"drill", Vector3(5.0, 0.0, 1.5))
+	var p := relics.position_of(i)
+	_check(relics.count() == 1 and RailwayDistrict.is_on_tracks(Vector2(p.x, p.z)), "relitto posato sulla fascia")
+	var passed: bool = await _train_pass(func() -> void: pass)
+	_check(passed and relics.count() == 0, "il treno porta via il relitto")
+	_check(not keeper.is_broken(), "fuori dalla fascia la macchina resta intera")
 
 
 func _send_joypad_button(button: JoyButton, pressed: bool) -> void:

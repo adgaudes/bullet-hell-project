@@ -6,7 +6,8 @@ extends WorldEvent
 ## spariscono senza lasciare rottami (le vene dei vagoni si azzerano), i solchi si
 ## riempiono, i rottami a terra e i lampioni spariscono. Chi sta sulla fascia viene travolto:
 ## i rottamatori muoiono (e contano come abbattuti dal giocatore), il giocatore
-## subisce danno e viene spinto fuori, le macchine della carovana vengono solo spinte, il boss
+## subisce danno e viene spinto fuori, le macchine della carovana si guastano e vengono spinte
+## fuori (una fusa perde un modulo, scagliato oltre il bordo: D-093, piano C), il boss
 ## subisce `boss_damage` e viene spinto.
 ##
 ## Non ha un passo fisico proprio: `ArenaRun` lo fa avanzare con il tempo di
@@ -55,6 +56,11 @@ var buried_caches: BuriedCaches
 var machine_wrecks: MachineWrecks
 ## Moduli staccati a terra (D-093, piano C): spazzati via come i relitti sepolti.
 var module_relics: ModuleRelics
+## Moduli che perde una macchina fusa investita e quanto lontano oltre il bordo della fascia
+## cadono (`CaravanTuning.train_detach_count`, `train_throw_min/max`; li copia ArenaRun).
+var module_detach_count := 1
+var throw_min := 6.0
+var throw_max := 8.0
 
 var warning_seconds := 10.0
 var speed := 18.0
@@ -256,6 +262,9 @@ func _sweep_actors() -> void:
 		for machine in caravan.machines:
 			if _covers(machine.global_position, tail_x) and not _hit.has(machine):
 				_hit[machine] = true
+				_throw_modules(machine)
+				machine.break_down()
+				print("PROTOTYPE01_MACHINE_BROKEN_BY_TRAIN module=%s" % machine.primary_module_id())
 				_push_out(machine)
 				train_hit.emit(&"companion")
 	if director == null:
@@ -280,6 +289,22 @@ func _covers(at: Vector3, tail_x: float) -> bool:
 	if not RailwayDistrict.is_on_tracks(Vector2(at.x, at.z)):
 		return false
 	return minf(_head_x, tail_x) - 0.5 <= at.x and at.x <= maxf(_head_x, tail_x) + 0.5
+
+
+## Una macchina fusa investita perde `module_detach_count` moduli (mai sotto uno), scagliati alla
+## sua x oltre il bordo della fascia, fra `throw_min` e `throw_max` m, dal lato in cui `_push_out`
+## la spingera; il relitto poggia al suolo (`ModuleRelics.drop`).
+func _throw_modules(machine: Machine) -> void:
+	var at := machine.global_position
+	var side := 1.0 if at.z >= 0.0 else -1.0
+	var reach := district.half_z() - 1.0
+	for i in module_detach_count:
+		var module_id := caravan.detach_random(machine, rng, &"train")
+		if module_id == &"":
+			return
+		var z := side * minf(RailwayDistrict.TRACK_HALF_WIDTH + rng.randf_range(throw_min, throw_max), reach)
+		if module_relics != null:
+			module_relics.drop(module_id, Vector3(at.x, 0.0, z))
 
 
 ## Spinto fuori dalla fascia dal lato dove gia pende (a z = 0 verso sud, dove sta la camera),

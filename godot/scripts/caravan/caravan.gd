@@ -310,8 +310,9 @@ func detach(machine: Machine, module_index: int) -> Machine:
 ## modulo non diventa una macchina; la sorgente conserva la frazione di vita (`carried_health`;
 ## da guasta resta a 0 PV). I rottami di un Cassone staccato cadono a terra accanto alla macchina,
 ## uno ogni `DETACH_SCRAP_SPACING` m (senza `scrap_field` vanno persi). L'id del modulo tolto;
-## `&""` se la macchina ha un modulo solo o non e nella carovana.
-func detach_random(machine: Machine, rng: RandomNumberGenerator) -> StringName:
+## `&""` se la macchina ha un modulo solo o non e nella carovana. [param by] (`&"quake"`,
+## `&"train"`) finisce nel marker.
+func detach_random(machine: Machine, rng: RandomNumberGenerator, by: StringName = &"event") -> StringName:
 	if not machines.has(machine) or machine.modules.size() < 2:
 		return &""
 	var health := machine.health
@@ -336,7 +337,7 @@ func detach_random(machine: Machine, rng: RandomNumberGenerator) -> StringName:
 		var start := machine.global_position + side * DETACH_SCRAP_SIDE_M * machine.model_scale
 		for i in scrap:
 			scrap_field.spawn_on_ground(start + along * DETACH_SCRAP_SPACING * (i - (scrap - 1) * 0.5))
-	print("PROTOTYPE01_MODULE_DETACHED module=%s by=event" % module_id)
+	print("PROTOTYPE01_MODULE_DETACHED module=%s by=%s" % [module_id, by])
 	changed.emit()
 	return module_id
 
