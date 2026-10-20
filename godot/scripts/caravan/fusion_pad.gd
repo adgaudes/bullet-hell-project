@@ -124,7 +124,7 @@ func bench_available() -> bool:
 	return contains(player.global_position) and caravan.repair_target() == null
 
 
-## Collegata a `player.interact_pressed`: segna la richiesta solo se il banco e disponibile.
+## Da `ArenaRun._on_interact_pressed` (Interagisci premuto): segna la richiesta solo se il banco e disponibile.
 func request_bench() -> void:
 	if bench_available():
 		_bench_requested = true

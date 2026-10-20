@@ -60,6 +60,8 @@ var cells_per_second := 14.0
 var player_damage := 1
 ## Il boss in campo, se c'e (lo imposta ArenaRun).
 var boss: Enemy
+## Dove posare i moduli staccati dalla carovana (D-093, piano C; lo imposta ArenaRun).
+var module_relics: ModuleRelics
 var rng := RandomNumberGenerator.new()
 
 var state := State.IDLE

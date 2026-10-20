@@ -123,6 +123,8 @@ var wrecks: MachineWrecks
 var _pending_wrecks := 0
 var _wreck_menu := false
 var _wreck_rng := RandomNumberGenerator.new()
+## Moduli staccati a terra (D-093, piano C): li posano terremoto e treno, Interagisci li riprende.
+var module_relics: ModuleRelics
 ## Punti di interesse ancora da indicare: { center: Vector3, text: String, color: Color, kind: StringName }.
 var _marker_targets: Array[Dictionary] = []
 var _marker_refresh_left := 0.0
@@ -203,6 +205,8 @@ func _ready() -> void:
 	_build_terrain_layout()
 	_start_position = player.global_position
 	_setup_fusion_pad()
+	# Una sola pressione di Interagisci per tutto: la smista `_on_interact_pressed`.
+	player.interact_pressed.connect(_on_interact_pressed)
 
 	player.health_changed.connect(hud.set_health)
 	player.damaged.connect(_on_player_damaged)
@@ -697,6 +701,7 @@ func _build_terrain_relief() -> void:
 	district.apply_strokes(terrain_field, _scrap_field())
 	_place_caches()
 	_place_wrecks()
+	_place_module_relics()
 	var margin: float = terrain_field.tuning.protected_radius_m
 	for rect: Rect2 in district.block_rects():
 		var center := rect.get_center()
@@ -755,6 +760,19 @@ func _place_wrecks() -> void:
 	if train_event != null:
 		train_event.machine_wrecks = wrecks
 	print("PROTOTYPE01_WRECK_PLACED count=%d" % wrecks.count())
+
+
+## Moduli staccati dagli eventi (D-093, piano C): stanno in superficie, li prende Interagisci.
+func _place_module_relics() -> void:
+	module_relics = ModuleRelics.new()
+	module_relics.name = "ModuleRelics"
+	module_relics.terrain_field = terrain_field
+	module_relics.player = player
+	add_child(module_relics)
+	if train_event != null:
+		train_event.module_relics = module_relics
+	if quake_event != null:
+		quake_event.module_relics = module_relics
 
 
 ## Pennellate del quartiere ancora alte dopo la posa (sulla fascia dei binari i cumuli sono
@@ -872,8 +890,8 @@ func _setup_fusion_pad() -> void:
 	fusion_pad.landed.connect(func(_center: Vector3) -> void: _night_factor_applied = -1.0)
 	if boss_call_at > 0.0:
 		fusion_pad.schedule(boss_call_at * fusion_pad.tuning.pad_boss_fraction)
-	# Interagisci sulla pedana chiede il banco; si apre a fine passo, chiuso tornano i menu in coda.
-	player.interact_pressed.connect(fusion_pad.request_bench)
+	# Interagisci sulla pedana chiede il banco (da `_on_interact_pressed`); si apre a fine passo,
+	# chiuso tornano i menu in coda.
 	fusion_bench = FusionBench.new()
 	fusion_bench.name = "FusionBench"
 	add_child(fusion_bench)
@@ -883,6 +901,36 @@ func _setup_fusion_pad() -> void:
 	if _profile != null:
 		caravan.combo_formed.connect(_profile.discover_combo)
 		fusion_bench.combo_known = _profile.has_combo
+
+
+## Smistatore di Interagisci premuto (D-093, piano C), con la precedenza fissa: la riparazione e
+## a tenuta e la fa la carovana (vicino a una guasta qui non si prende nulla); a bordo nulla (salire
+## e scendere sono a tenuta, task 5); poi un modulo staccato in portata, con posto in carovana,
+## torna macchina piccola; altrimenti la pedana segna la richiesta del banco, se disponibile.
+func _on_interact_pressed() -> void:
+	if is_over or player.pilot != null:
+		return
+	var index := _relic_in_reach()
+	if index >= 0:
+		caravan.add_machine(module_relics.take(index))
+		return
+	if fusion_pad != null:
+		fusion_pad.request_bench()
+
+
+## Vero se Interagisci ora riprenderebbe un modulo staccato (tasto "Riprendi" del HUD).
+func relic_available() -> bool:
+	return _relic_in_reach() >= 0
+
+
+## Relitto entro `relic_pickup_range` dal giocatore vivo e a piedi, con posto in carovana e
+## nessuna macchina guasta da riparare vicino; -1 altrimenti.
+func _relic_in_reach() -> int:
+	if module_relics == null or caravan == null or caravan.tuning == null:
+		return -1
+	if not player.is_alive() or player.pilot != null or not caravan.has_room() or caravan.repair_target() != null:
+		return -1
+	return module_relics.nearest_index(player.global_position, caravan.tuning.relic_pickup_range)
 
 
 func _setup_quake() -> void:
@@ -1525,14 +1573,14 @@ func _refresh_caravan_hud() -> void:
 	hud.set_caravan(entries, caravan.carried, caravan.capacity)
 
 
-## A ogni passo: tasto Ripara vicino a una macchina guasta, altrimenti Banco sulla pedana; le
+## A ogni passo: tasto Interagisci (Ripara, Riprendi o Banco, la striscia ne accende uno); le
 ## caselle si rifanno solo se vita, stato o riparazione di una macchina sono cambiati (i rottami
 ## arrivano coi segnali).
 func _tick_caravan_hud() -> void:
 	if hud == null or caravan == null:
 		return
 	var repair_shown := caravan.repair_target() != null
-	hud.set_caravan_prompt(repair_shown, not repair_shown and fusion_pad != null and fusion_pad.bench_available())
+	hud.set_caravan_prompt(repair_shown, fusion_pad != null and fusion_pad.bench_available(), relic_available())
 	var machines := caravan.machines
 	if machines.size() != _caravan_health_shown.size():
 		_refresh_caravan_hud()

@@ -53,6 +53,8 @@ const DIRECTION_NAMES: Dictionary[int, String] = {-1: "EST", 1: "OVEST"}
 var buried_caches: BuriedCaches
 ## Relitti sepolti (D-093): come le casse, spazzati via senza aprirsi.
 var machine_wrecks: MachineWrecks
+## Moduli staccati a terra (D-093, piano C): spazzati via come i relitti sepolti.
+var module_relics: ModuleRelics
 
 var warning_seconds := 10.0
 var speed := 18.0
@@ -212,6 +214,8 @@ func _sweep_band() -> void:
 		buried_caches.discard_in_rect(buried_rect)
 	if machine_wrecks != null:
 		machine_wrecks.discard_in_rect(buried_rect)
+	if module_relics != null:
+		module_relics.discard_in_rect(buried_rect)
 	var volume := terrain_field.reset_to_base(center, half)
 	if volume > 0.01:
 		# Il tratto spianato torna massicciata di ghiaia (i cumuli dei vagoni erano ruggine).

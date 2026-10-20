@@ -7,6 +7,7 @@ extends SceneTree
 
 const TUNING_PATH := "res://resources/tuning/caravan_default.tres"
 const ArenaScene := preload("res://scenes/main/ruins_arena.tscn")
+const RunScene := preload("res://scenes/main/arena_run.tscn")
 
 var _failures := 0
 var t: CaravanTuning
@@ -15,6 +16,9 @@ var _field: TerrainField
 var _caravan: Caravan
 var _queue: TerrainWriteQueue
 var _scrap_field: ScrapField
+## Sezioni sulla run vera (`arena_run.tscn`, dal task 3).
+var _run: ArenaRun
+var _player: PlayerCharacter
 
 
 func _initialize() -> void:
@@ -27,7 +31,8 @@ func _initialize() -> void:
 		_test_tuning()
 		_test_power()
 		await _test_caravan()
-		# Sezioni dei task 3-7, in ordine: _test_relics, _test_events,
+		await _test_relics()
+		# Sezioni dei task 4-7, in ordine: _test_events,
 		# _test_pilot, _test_mechanic, _test_workshop (tutte con await).
 	await _frames(2)
 	print("PROTOTYPE01_TESTS %s failures=%d" % ["PASS" if _failures == 0 else "FAIL", _failures])
@@ -228,3 +233,161 @@ func _test_break_and_retreat() -> void:
 	m.piloted = true
 	_check(m.trample_damage() == 2, "travolgere pilotato 2")
 	m.piloted = false
+
+
+# --- Relitti dei moduli staccati (task 3) ------------------------------------------------------
+
+## Run vera senza nemici, level-up, boss ne eventi (come fusion_tests._test_bench); il disco
+## protetto della partenza si toglie per poter scolpire vicino al giocatore.
+func _test_relics() -> void:
+	print("relics")
+	_scene = RunScene.instantiate()
+	root.add_child(_scene)
+	_run = _scene.get_node(^"Run")
+	_player = _scene.get_node(^"Player")
+	_caravan = _scene.get_node(^"Caravan")
+	_field = _scene.get_node(^"TerrainField")
+	(_scene.get_node(^"EnemyDirector") as EnemyDirector).spawning = false
+	await _frames(5)
+	(_scene.get_node(^"PlayerWeapon") as AutoWeapon).set_physics_process(false)
+	_run.progression.xp_first_level = 100000
+	_run.boss_call_at = 0.0
+	for event: WorldEvent in [_run.quake_event, _run.train_event]:
+		if event != null:
+			event.schedule([])
+	var relics := _run.module_relics
+	_check(relics != null and relics.get_parent() == _run and relics.name == "ModuleRelics" and relics.terrain_field == _field
+		and relics.player == _player and relics.count() == 0, "ModuleRelics creato da ArenaRun coi servizi, vuoto")
+	if relics == null:
+		root.remove_child(_scene)
+		_scene.queue_free()
+		return
+	# `arena_run.tscn` ha il terremoto e non il treno (sta nella scena dei binari).
+	_check(_run.quake_event != null and _run.quake_event.module_relics == relics
+		and (_run.train_event == null or _run.train_event.module_relics == relics), "il terremoto (e il treno, se c'e) riceve i relitti")
+	_run._start_protect_left = 0.0
+	_field.set_protected(Vector3.ZERO, _field.tuning.start_protected_radius_m, false)
+	await _test_relic_pickup()
+	await _test_relic_full_and_nearest()
+	await _test_relic_follows_ground()
+	await _test_relic_glint()
+	_test_relic_models()
+	root.remove_child(_scene)
+	_scene.queue_free()
+
+
+func _test_relic_pickup() -> void:
+	var relics := _run.module_relics
+	var at := _player.global_position + Vector3(1.0, 0.0, 0.0)
+	var i := relics.drop(&"siren", at)
+	_check(relics.count() == 1 and relics.module_of(i) == &"siren" and relics.nearest_index(_player.global_position, 2.0) == i, "relitto a 1 m")
+	_check(relics.nearest_index(_player.global_position, 0.5) == -1, "fuori portata: nessun indice")
+	await _frames(1)
+	_check(_run.hud.caravan_strip().relic_prompt_visible() and not _run.hud.caravan_strip().bench_prompt_visible(), "tasto Riprendi acceso")
+	var machines := _caravan.machines.size()
+	await _joy(JOY_BUTTON_X)
+	await _frames(2)
+	_check(relics.count() == 0 and _caravan.machines.size() == machines + 1 and _caravan.machines[-1].primary_module_id() == &"siren", "X: la Sirena torna macchina piccola")
+	_check(not _run.fusion_pad.has_bench_request(), "la pressione che riprende non chiede il banco")
+	await _frames(1)
+	_check(not _run.hud.caravan_strip().relic_prompt_visible(), "ripreso: tasto Riprendi spento")
+
+
+func _test_relic_full_and_nearest() -> void:
+	while _caravan.has_room():
+		_caravan.add_machine(&"turret")
+	var relics := _run.module_relics
+	relics.drop(&"drill", _player.global_position + Vector3(1.5, 0.0, 0.0))
+	relics.drop(&"shovel", _player.global_position + Vector3(0.6, 0.0, 0.0))
+	await _frames(1)
+	_check(not _run.hud.caravan_strip().relic_prompt_visible() and not _run.relic_available(), "piena: tasto spento")
+	await _key(KEY_R)
+	await _frames(2)
+	_check(relics.count() == 2, "piena: R non prende nulla")
+	_caravan.remove_machine(_caravan.machines[-1])
+	await _frames(1)
+	_check(_run.relic_available() and _run.hud.caravan_strip().relic_prompt_visible(), "con posto: tasto Riprendi acceso")
+	await _key(KEY_R)
+	await _frames(2)
+	_check(relics.count() == 1 and relics.module_of(relics.nearest_index(_player.global_position, 5.0)) == &"drill"
+		and _caravan.machines[-1].primary_module_id() == &"shovel", "con posto: R prende la Pala, la piu vicina")
+	relics.discard_in_rect(Rect2(-100, -100, 200, 200))
+	_check(relics.count() == 0, "discard_in_rect li toglie")
+
+
+func _test_relic_follows_ground() -> void:
+	var relics := _run.module_relics
+	var at := _player.global_position + Vector3(4.0, 0.0, 0.0)
+	var i := relics.drop(&"turret", at)
+	var y0 := relics.position_of(i).y
+	_check(is_equal_approx(y0, _field.height_at(at)), "il pezzo poggia alla quota del suolo")
+	_field.set_protected(at, 2.0, false)
+	_field.sculpt(at, 1.0, 1.0)
+	await _frames(4)
+	_check(relics.position_of(i).y > y0 + 0.5, "il pezzo sale col suolo")
+	relics.take(i)
+	_check(relics.count() == 0, "take lo toglie")
+
+
+## Il luccichio si vede solo entro GLINT_RANGE dal giocatore; senza relitti _process e spento.
+func _test_relic_glint() -> void:
+	var relics := _run.module_relics
+	var near := relics.drop(&"magnet", _player.global_position + Vector3(1.0, 0.0, 0.0))
+	var far := relics.drop(&"beacon", _player.global_position + Vector3(0.0, 0.0, ModuleRelics.GLINT_RANGE + 3.0))
+	await process_frame
+	await process_frame
+	_check(relics.is_processing() and relics.glint_visible(near) and not relics.glint_visible(far), "luccichio vicino si, lontano no")
+	relics.take(near)
+	relics.take(far)
+	_check(relics.count() == 0 and not relics.is_processing(), "senza relitti il luccichio non gira")
+
+
+## Pezzo del modulo (Torretta) o, senza pezzo (Cassone), cubo da 0,4 m del colore del catalogo;
+## sempre sul layer visivo delle macchine.
+func _test_relic_models() -> void:
+	var relics := _run.module_relics
+	var turret := relics.drop(&"turret", _player.global_position + Vector3(-3.0, 0.0, 0.0))
+	var cargo := relics.drop(&"cargo", _player.global_position + Vector3(-3.0, 0.0, 2.0))
+	var meshes := relics.piece_of(turret).find_children("*", "MeshInstance3D", true, false)
+	var layered := not meshes.is_empty()
+	for mesh: MeshInstance3D in meshes:
+		layered = layered and mesh.layers == Machine.VISUAL_LAYER
+	_check(meshes.size() > 1 and layered, "Torretta: il suo pezzo, sul layer delle macchine")
+	var boxes := relics.piece_of(cargo).find_children("*", "MeshInstance3D", true, false)
+	var box: MeshInstance3D = boxes[0] if boxes.size() == 1 else null
+	_check(box != null and box.mesh is BoxMesh and (box.mesh as BoxMesh).size.is_equal_approx(Vector3.ONE * 0.4)
+		and (box.material_override as StandardMaterial3D).albedo_color == MachineCatalog.find(&"cargo").color
+		and box.layers == Machine.VISUAL_LAYER, "Cassone senza pezzo: cubo da 0,4 m del suo colore")
+	relics.take(turret)
+	relics.take(cargo)
+
+
+func _send_joypad_button(button: JoyButton, pressed: bool) -> void:
+	var event := InputEventJoypadButton.new()
+	event.button_index = button
+	event.pressed = pressed
+	event.pressure = 1.0 if pressed else 0.0
+	Input.parse_input_event(event)
+
+
+## Pressione e rilascio in frame distinti, come un dito reale (da fusion_tests).
+func _joy(button: JoyButton) -> void:
+	_send_joypad_button(button, true)
+	await process_frame
+	_send_joypad_button(button, false)
+	await process_frame
+
+
+func _send_key(key: Key, pressed: bool) -> void:
+	var event := InputEventKey.new()
+	event.keycode = key
+	event.physical_keycode = key
+	event.pressed = pressed
+	Input.parse_input_event(event)
+
+
+func _key(key: Key) -> void:
+	_send_key(key, true)
+	await process_frame
+	_send_key(key, false)
+	await process_frame

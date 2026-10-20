@@ -219,6 +219,15 @@ func _test_bench_prompt() -> void:
 		"a 10 m dalla pedana: nessun tasto")
 	strip.set_prompt(true, true)
 	_check(strip.prompt_visible() and not strip.bench_prompt_visible(), "Ripara e Banco insieme: vince Ripara")
+	strip.set_prompt(false, true, true)
+	_check(strip.relic_prompt_visible() and not strip.bench_prompt_visible() and not strip.prompt_visible() and strip.pilot_prompt_text() == ""
+		and strip._relic_prompt.text_of(0) == "Riprendi" and strip._relic_prompt.modulate.a == 1.0 and strip._bench_prompt.modulate.a == 0.0,
+		"Riprendi e Banco insieme: solo Riprendi")
+	strip.set_prompt(false, true, true, "Pilota")
+	_check(strip.pilot_prompt_text() == "Pilota" and not strip.relic_prompt_visible() and not strip.bench_prompt_visible(),
+		"Pilota vince su Riprendi e Banco")
+	strip.set_prompt(true, false, false, "Scendi")
+	_check(strip.prompt_visible() and strip.pilot_prompt_text() == "", "Ripara vince su Pilota/Scendi")
 	strip.set_prompt(false)
 	pad.close()
 

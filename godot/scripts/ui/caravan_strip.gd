@@ -27,6 +27,12 @@ var _prompt: ButtonPrompts
 var _prompt_shown := false
 var _bench_prompt: ButtonPrompts
 var _bench_prompt_shown := false
+var _relic_prompt: ButtonPrompts
+var _relic_prompt_shown := false
+## "Pilota" e "Scendi" (task 5 del piano C); `_pilot_shown` e il testo acceso, "" se spento.
+var _pilot_prompt: ButtonPrompts
+var _unpilot_prompt: ButtonPrompts
+var _pilot_shown := ""
 
 
 func _ready() -> void:
@@ -52,7 +58,7 @@ func _ready() -> void:
 	_slot_row.add_theme_constant_override(&"separation", 4)
 	_slot_row.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(_slot_row)
-	# I due tasti di Interagisci uno sopra l'altro: il posto e quello del piu largo.
+	# I tasti di Interagisci uno sopra l'altro: il posto e quello del piu largo.
 	var prompts := MarginContainer.new()
 	prompts.name = "InteractPrompts"
 	prompts.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -62,6 +68,12 @@ func _ready() -> void:
 	prompts.add_child(_prompt)
 	_bench_prompt = _make_prompt("Banco")
 	prompts.add_child(_bench_prompt)
+	_relic_prompt = _make_prompt("Riprendi")
+	prompts.add_child(_relic_prompt)
+	_pilot_prompt = _make_prompt("Pilota")
+	prompts.add_child(_pilot_prompt)
+	_unpilot_prompt = _make_prompt("Scendi")
+	prompts.add_child(_unpilot_prompt)
 
 
 func _make_prompt(text: String) -> ButtonPrompts:
@@ -95,12 +107,23 @@ func set_scrap(carried: int, capacity: int) -> void:
 		_scrap_label.text = text
 
 
-## Tasto "Ripara" o "Banco" acceso (Ripara vince); spento tiene il suo posto (trasparente).
-func set_prompt(repair: bool, bench := false) -> void:
-	var show_bench := bench and not repair
+## Un tasto di Interagisci acceso alla volta, in quest'ordine: "Ripara", poi [param pilot]
+## ("Pilota" o "Scendi", "" nessuno), poi "Riprendi" (un modulo staccato in portata), poi "Banco".
+## Spento tiene il suo posto (trasparente).
+func set_prompt(repair: bool, bench := false, relic := false, pilot := "") -> void:
+	var show_pilot := "" if repair else pilot
+	var show_relic := relic and not repair and show_pilot.is_empty()
+	var show_bench := bench and not repair and show_pilot.is_empty() and not relic
 	if repair != _prompt_shown:
 		_prompt_shown = repair
 		_prompt.modulate.a = 1.0 if repair else 0.0
+	if show_pilot != _pilot_shown:
+		_pilot_shown = show_pilot
+		_pilot_prompt.modulate.a = 1.0 if show_pilot == "Pilota" else 0.0
+		_unpilot_prompt.modulate.a = 1.0 if show_pilot == "Scendi" else 0.0
+	if show_relic != _relic_prompt_shown:
+		_relic_prompt_shown = show_relic
+		_relic_prompt.modulate.a = 1.0 if show_relic else 0.0
 	if show_bench != _bench_prompt_shown:
 		_bench_prompt_shown = show_bench
 		_bench_prompt.modulate.a = 1.0 if show_bench else 0.0
@@ -146,6 +169,15 @@ func prompt_visible() -> bool:
 
 func bench_prompt_visible() -> bool:
 	return _bench_prompt_shown
+
+
+func relic_prompt_visible() -> bool:
+	return _relic_prompt_shown
+
+
+## "Pilota" o "Scendi" se acceso, altrimenti "".
+func pilot_prompt_text() -> String:
+	return _pilot_shown
 
 
 class CaravanSlot:
